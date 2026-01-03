@@ -1,6 +1,6 @@
 ###############################################################################
 # Package: humidity_intelligence.yaml
-# Versions:v1.0.0
+# Versions:v1.0.1
 # Humidity Intelligence – core backend
 # - House average humidity + comfort band
 # - 7-day drift
@@ -52,6 +52,7 @@ template:
             'sensor.bathroom_humidity',
             'sensor.toilet_humidity'
           ] %}
+
           {% set vals = [] %}
           {% for e in rooms %}
             {% set s = states(e) %}
@@ -59,10 +60,12 @@ template:
               {% set vals = vals + [ s|float ] %}
             {% endif %}
           {% endfor %}
+
           {% if vals|length == 0 %}
-            unknown
+            {# No usable data yet – reuse last numeric value (or 0 on first boot) #}
+            {{ states(this.entity_id) | float(0) }}
           {% else %}
-            {{ (vals|sum / vals|length)|round(1) }}
+            {{ (vals | sum / vals | length) | round(1) }}
           {% endif %}
 
       #########################################################################
