@@ -1,0 +1,773 @@
+type: vertical-stack
+cards:
+  ###########################################################################
+  # Top row – Humidity, Condensation, Mould, Drift badges v1.0.0
+  ###########################################################################
+  - type: horizontal-stack
+    cards:
+      # --- Humidity badge ---------------------------------------------------
+      - type: custom:button-card
+        entity: sensor.house_average_humidity
+        name: Humidity
+        icon: mdi:water-percent
+        show_name: true
+        show_state: true
+        show_label: false
+        state_display: |
+          [[[
+            const h = parseFloat(entity.state);
+            if (isNaN(h)) return '—%';
+            return `${Math.round(h)}%`;
+          ]]]
+        tap_action:
+          action: more-info
+        styles:
+          card:
+            - width: |
+                [[[
+                  const w = window.innerWidth || 390;
+                  return (w >= 760) ? '122px' : '88px';
+                ]]]
+            - height: |
+                [[[
+                  const w = window.innerWidth || 390;
+                  return (w >= 760) ? '122px' : '88px';
+                ]]]
+            - border-radius: 50%
+            - padding: |
+                [[[
+                  const w = window.innerWidth || 390;
+                  return (w >= 760) ? '10px' : '7px';
+                ]]]
+            - overflow: hidden
+            - background: rgba(10,12,16,0.62)
+            - border: |
+                [[[
+                  const h = parseFloat(entity.state);
+                  const danger =
+                    states['binary_sensor.humidity_danger']?.state === 'on' ||
+                    states['binary_sensor.condensation_danger']?.state === 'on' ||
+                    states['binary_sensor.mould_danger']?.state === 'on';
+
+                  if (danger) return '2px solid rgba(239,68,68,0.85)';
+                  if (isNaN(h)) return '2px solid rgba(148,163,184,0.22)';
+
+                  if (h < 45) return '2px solid rgba(56,189,248,0.75)';
+                  if (h < 49) return '2px solid rgba(125,211,252,0.70)';
+                  if (h < 60) return '2px solid rgba(74,222,128,0.70)';
+                  if (h < 68) return '2px solid rgba(250,204,21,0.75)';
+                  return '2px solid rgba(239,68,68,0.85)';
+                ]]]
+            - box-shadow: |
+                [[[
+                  const h = parseFloat(entity.state);
+                  const danger =
+                    states['binary_sensor.humidity_danger']?.state === 'on' ||
+                    states['binary_sensor.condensation_danger']?.state === 'on' ||
+                    states['binary_sensor.mould_danger']?.state === 'on';
+
+                  if (danger) return '0 0 22px rgba(239,68,68,0.45)';
+                  if (isNaN(h)) return '0 0 16px rgba(148,163,184,0.18)';
+
+                  if (h < 45) return '0 0 20px rgba(56,189,248,0.30)';
+                  if (h < 49) return '0 0 20px rgba(125,211,252,0.26)';
+                  if (h < 60) return '0 0 20px rgba(74,222,128,0.26)';
+                  if (h < 68) return '0 0 20px rgba(250,204,21,0.28)';
+                  return '0 0 22px rgba(239,68,68,0.40)';
+                ]]]
+          grid:
+            - grid-template-areas: "\"i\" \"n\" \"s\""
+            - grid-template-columns: 1fr
+            - grid-template-rows: 34px min-content min-content
+            - row-gap: 2px
+            - justify-items: center
+            - align-items: center
+          icon:
+            - width: |
+                [[[
+                  const w = window.innerWidth || 390;
+                  return (w >= 760) ? '32px' : '24px';
+                ]]]
+            - color: |
+                [[[
+                  const h = parseFloat(entity.state);
+                  const danger =
+                    states['binary_sensor.humidity_danger']?.state === 'on' ||
+                    states['binary_sensor.condensation_danger']?.state === 'on' ||
+                    states['binary_sensor.mould_danger']?.state === 'on';
+
+                  if (danger) return '#ef4444';
+                  if (isNaN(h)) return '#94a3b8';
+                  if (h < 45) return '#38bdf8';
+                  if (h < 49) return '#7dd3fc';
+                  if (h < 60) return '#4ade80';
+                  if (h < 68) return '#facc15';
+                  return '#ef4444';
+                ]]]
+          name:
+            - font-size: |
+                [[[
+                  const w = window.innerWidth || 390;
+                  return (w >= 760) ? '12px' : '10px';
+                ]]]
+            - font-weight: 900
+            - opacity: 0.95
+          state:
+            - font-size: |
+                [[[
+                  const w = window.innerWidth || 390;
+                  return (w >= 760) ? '18px' : '14px';
+                ]]]
+            - font-weight: 900
+            - letter-spacing: 0.2px
+            - color: |
+                [[[
+                  const h = parseFloat(entity.state);
+                  const danger =
+                    states['binary_sensor.humidity_danger']?.state === 'on' ||
+                    states['binary_sensor.condensation_danger']?.state === 'on' ||
+                    states['binary_sensor.mould_danger']?.state === 'on';
+
+                  if (danger) return '#ef4444';
+                  if (isNaN(h)) return '#94a3b8';
+                  if (h < 45) return '#38bdf8';
+                  if (h < 49) return '#7dd3fc';
+                  if (h < 60) return '#4ade80';
+                  if (h < 68) return '#facc15';
+                  return '#ef4444';
+                ]]]
+        card_mod:
+          style: |
+            ha-card {
+              position: relative;
+              backdrop-filter: blur(10px);
+              -webkit-backdrop-filter: blur(10px);
+            }
+            ha-card::before {
+              content: "";
+              position: absolute;
+              inset: -45%;
+              background: linear-gradient(
+                120deg,
+                rgba(255,255,255,0.00) 40%,
+                rgba(255,255,255,0.10) 48%,
+                rgba(255,255,255,0.00) 58%
+              );
+              transform: translateX(-30%) translateY(-10%) rotate(8deg);
+              animation: cvShimmer 8s ease-in-out infinite;
+              pointer-events: none;
+              opacity: 0.45;
+            }
+            ha-card::after {
+              content: "";
+              position: absolute;
+              inset: 0;
+              border-radius: 50%;
+              background: radial-gradient(circle at 30% 25%, rgba(255,255,255,0.10), rgba(255,255,255,0.00) 55%);
+              pointer-events: none;
+              opacity: 0.45;
+            }
+            @keyframes cvShimmer {
+              0%   { transform: translateX(-38%) translateY(-12%) rotate(8deg); opacity: 0.25; }
+              50%  { transform: translateX(38%)  translateY(10%)  rotate(8deg); opacity: 0.50; }
+              100% { transform: translateX(-38%) translateY(-12%) rotate(8deg); opacity: 0.25; }
+            }
+
+      # --- Condensation badge ----------------------------------------------
+      - type: custom:button-card
+        entity: sensor.worst_room_condensation_risk
+        name: Condensation
+        icon: mdi:water-alert
+        show_name: true
+        show_state: true
+        show_label: false
+        state_display: |
+          [[[
+            const r = entity.state;
+            if (!r || r === 'unknown' || r === 'unavailable') return '—';
+            return r;
+          ]]]
+        tap_action:
+          action: more-info
+        styles:
+          card:
+            - width: |
+                [[[
+                  const w = window.innerWidth || 390;
+                  return (w >= 760) ? '122px' : '88px';
+                ]]]
+            - height: |
+                [[[
+                  const w = window.innerWidth || 390;
+                  return (w >= 760) ? '122px' : '88px';
+                ]]]
+            - border-radius: 50%
+            - padding: |
+                [[[
+                  const w = window.innerWidth || 390;
+                  return (w >= 760) ? '10px' : '7px';
+                ]]]
+            - overflow: hidden
+            - background: rgba(10,12,16,0.62)
+            - border: |
+                [[[
+                  const r = entity.state;
+                  const c =
+                    r === 'Danger' ? 'rgba(239,68,68,0.80)' :
+                    r === 'Risk'   ? 'rgba(250,204,21,0.75)' :
+                    r === 'Watch'  ? 'rgba(125,211,252,0.75)' :
+                    'rgba(148,163,184,0.22)';
+                  return `2px solid ${c}`;
+                ]]]
+            - box-shadow: |
+                [[[
+                  const r = entity.state;
+                  return r === 'Danger' ? '0 0 22px rgba(239,68,68,0.40)' :
+                         r === 'Risk'   ? '0 0 20px rgba(250,204,21,0.28)' :
+                         r === 'Watch'  ? '0 0 20px rgba(125,211,252,0.25)' :
+                         '0 0 16px rgba(148,163,184,0.18)';
+                ]]]
+          grid:
+            - grid-template-areas: "\"i\" \"n\" \"s\""
+            - grid-template-columns: 1fr
+            - grid-template-rows: 34px min-content min-content
+            - row-gap: 2px
+            - justify-items: center
+            - align-items: center
+          icon:
+            - width: |
+                [[[
+                  const w = window.innerWidth || 390;
+                  return (w >= 760) ? '32px' : '24px';
+                ]]]
+            - color: |
+                [[[
+                  const r = entity.state;
+                  if (r === 'Danger') return '#ef4444';
+                  if (r === 'Risk')   return '#facc15';
+                  if (r === 'Watch')  return '#7dd3fc';
+                  return '#94a3b8';
+                ]]]
+          name:
+            - font-size: |
+                [[[
+                  const w = window.innerWidth || 390;
+                  return (w >= 760) ? '12px' : '10px';
+                ]]]
+            - font-weight: 900
+            - opacity: 0.95
+          state:
+            - font-size: |
+                [[[
+                  const w = window.innerWidth || 390;
+                  return (w >= 760) ? '18px' : '14px';
+                ]]]
+            - font-weight: 900
+            - color: |
+                [[[
+                  const r = entity.state;
+                  if (r === 'Danger') return '#ef4444';
+                  if (r === 'Risk')   return '#facc15';
+                  if (r === 'Watch')  return '#7dd3fc';
+                  return '#94a3b8';
+                ]]]
+        card_mod:
+          style: >
+            ha-card { position: relative; backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px); }
+
+            ha-card::before {
+              content:""; position:absolute; inset:-45%;
+              background: linear-gradient(120deg, rgba(255,255,255,0) 40%, rgba(255,255,255,0.10) 48%, rgba(255,255,255,0) 58%);
+              transform: translateX(-30%) translateY(-10%) rotate(8deg);
+              animation: cvShimmer 8s ease-in-out infinite;
+              pointer-events:none; opacity:0.45;
+            }
+
+            ha-card::after {
+              content:""; position:absolute; inset:0; border-radius:50%;
+              background: radial-gradient(circle at 30% 25%, rgba(255,255,255,0.10), rgba(255,255,255,0) 55%);
+              pointer-events:none; opacity:0.45;
+            }
+
+            @keyframes cvShimmer {
+              0%{transform:translateX(-38%) translateY(-12%) rotate(8deg);opacity:.25}
+              50%{transform:translateX(38%) translateY(10%) rotate(8deg);opacity:.50}
+              100%{transform:translateX(-38%) translateY(-12%) rotate(8deg);opacity:.25}
+            }
+
+      # --- Mould badge ------------------------------------------------------
+      - type: custom:button-card
+        entity: sensor.worst_room_mould_risk
+        name: Mould
+        icon: mdi:mushroom-outline
+        show_name: true
+        show_state: true
+        show_label: false
+        state_display: |
+          [[[
+            const r = entity.state;
+            if (!r || r === 'unknown' || r === 'unavailable') return '—';
+            return r;
+          ]]]
+        tap_action:
+          action: more-info
+        styles:
+          card:
+            - width: |
+                [[[
+                  const w = window.innerWidth || 390;
+                  return (w >= 760) ? '122px' : '88px';
+                ]]]
+            - height: |
+                [[[
+                  const w = window.innerWidth || 390;
+                  return (w >= 760) ? '122px' : '88px';
+                ]]]
+            - border-radius: 50%
+            - padding: |
+                [[[
+                  const w = window.innerWidth || 390;
+                  return (w >= 760) ? '10px' : '7px';
+                ]]]
+            - overflow: hidden
+            - background: rgba(10,12,16,0.62)
+            - border: |
+                [[[
+                  const r = entity.state;
+                  const c =
+                    r === 'Danger' ? 'rgba(239,68,68,0.80)' :
+                    r === 'Risk'   ? 'rgba(250,204,21,0.75)' :
+                    r === 'Watch'  ? 'rgba(125,211,252,0.75)' :
+                    'rgba(148,163,184,0.22)';
+                  return `2px solid ${c}`;
+                ]]]
+            - box-shadow: |
+                [[[
+                  const r = entity.state;
+                  return r === 'Danger' ? '0 0 22px rgba(239,68,68,0.40)' :
+                         r === 'Risk'   ? '0 0 20px rgba(250,204,21,0.28)' :
+                         r === 'Watch'  ? '0 0 20px rgba(125,211,252,0.25)' :
+                         '0 0 16px rgba(148,163,184,0.18)';
+                ]]]
+          grid:
+            - grid-template-areas: "\"i\" \"n\" \"s\""
+            - grid-template-columns: 1fr
+            - grid-template-rows: 34px min-content min-content
+            - row-gap: 2px
+            - justify-items: center
+            - align-items: center
+          icon:
+            - width: |
+                [[[
+                  const w = window.innerWidth || 390;
+                  return (w >= 760) ? '32px' : '24px';
+                ]]]
+            - color: |
+                [[[
+                  const r = entity.state;
+                  if (r === 'Danger') return '#ef4444';
+                  if (r === 'Risk')   return '#facc15';
+                  if (r === 'Watch')  return '#7dd3fc';
+                  return '#94a3b8';
+                ]]]
+          name:
+            - font-size: |
+                [[[
+                  const w = window.innerWidth || 390;
+                  return (w >= 760) ? '12px' : '10px';
+                ]]]
+            - font-weight: 900
+            - opacity: 0.95
+          state:
+            - font-size: |
+                [[[
+                  const w = window.innerWidth || 390;
+                  return (w >= 760) ? '18px' : '14px';
+                ]]]
+            - font-weight: 900
+            - color: |
+                [[[
+                  const r = entity.state;
+                  if (r === 'Danger') return '#ef4444';
+                  if (r === 'Risk')   return '#facc15';
+                  if (r === 'Watch')  return '#7dd3fc';
+                  return '#94a3b8';
+                ]]]
+        card_mod:
+          style: >
+            ha-card { position: relative; backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px); }
+
+            ha-card::before {
+              content:""; position:absolute; inset:-45%;
+              background: linear-gradient(120deg, rgba(255,255,255,0) 40%, rgba(255,255,255,0.10) 48%, rgba(255,255,255,0) 58%);
+              transform: translateX(-30%) translateY(-10%) rotate(8deg);
+              animation: cvShimmer 8s ease-in-out infinite;
+              pointer-events:none; opacity:0.45;
+            }
+
+            ha-card::after {
+              content:""; position:absolute; inset:0; border-radius:50%;
+              background: radial-gradient(circle at 30% 25%, rgba(255,255,255,0.10), rgba(255,255,255,0) 55%);
+              pointer-events:none; opacity:0.45;
+            }
+
+            @keyframes cvShimmer {
+              0%{transform:translateX(-38%) translateY(-12%) rotate(8deg);opacity:.25}
+              50%{transform:translateX(38%) translateY(10%) rotate(8deg);opacity:.50}
+              100%{transform:translateX(-38%) translateY(-12%) rotate(8deg);opacity:.25}
+            }
+
+      # --- Drift badge ------------------------------------------------------
+      - type: custom:button-card
+        entity: sensor.house_humidity_drift_7d
+        name: Drift
+        icon: mdi:chart-line-variant
+        show_name: true
+        show_state: true
+        show_label: false
+        state_display: |
+          [[[
+            const d = parseFloat(entity.state);
+            if (isNaN(d)) return '—';
+            return `${d > 0 ? '+' : ''}${d.toFixed(1)}%`;
+          ]]]
+        tap_action:
+          action: more-info
+        styles:
+          card:
+            - width: |
+                [[[
+                  const w = window.innerWidth || 390;
+                  return (w >= 760) ? '122px' : '88px';
+                ]]]
+            - height: |
+                [[[
+                  const w = window.innerWidth || 390;
+                  return (w >= 760) ? '122px' : '88px';
+                ]]]
+            - border-radius: 50%
+            - padding: |
+                [[[
+                  const w = window.innerWidth || 390;
+                  return (w >= 760) ? '10px' : '7px';
+                ]]]
+            - overflow: hidden
+            - background: rgba(10,12,16,0.62)
+            - border: |
+                [[[
+                  const d = parseFloat(entity.state);
+                  if (isNaN(d)) return '2px solid rgba(148,163,184,0.22)';
+                  if (Math.abs(d) >= 5.0) return '2px solid rgba(239,68,68,0.85)';
+                  if (Math.abs(d) < 0.6) return '2px solid rgba(148,163,184,0.35)';
+                  if (d > 0) return '2px solid rgba(250,204,21,0.75)';
+                  return '2px solid rgba(125,211,252,0.75)';
+                ]]]
+            - box-shadow: |
+                [[[
+                  const d = parseFloat(entity.state);
+                  if (isNaN(d)) return '0 0 16px rgba(148,163,184,0.18)';
+                  if (Math.abs(d) >= 5.0) return '0 0 22px rgba(239,68,68,0.40)';
+                  if (Math.abs(d) < 0.6) return '0 0 18px rgba(148,163,184,0.20)';
+                  if (d > 0) return '0 0 20px rgba(250,204,21,0.28)';
+                  return '0 0 20px rgba(125,211,252,0.25)';
+                ]]]
+          grid:
+            - grid-template-areas: "\"i\" \"n\" \"s\""
+            - grid-template-columns: 1fr
+            - grid-template-rows: 34px min-content min-content
+            - row-gap: 2px
+            - justify-items: center
+            - align-items: center
+          icon:
+            - width: |
+                [[[
+                  const w = window.innerWidth || 390;
+                  return (w >= 760) ? '32px' : '24px';
+                ]]]
+            - color: |
+                [[[
+                  const d = parseFloat(entity.state);
+                  if (isNaN(d)) return '#94a3b8';
+                  if (Math.abs(d) >= 5.0) return '#ef4444';
+                  if (Math.abs(d) < 0.6) return '#94a3b8';
+                  if (d > 0) return '#facc15';
+                  return '#7dd3fc';
+                ]]]
+          name:
+            - font-size: |
+                [[[
+                  const w = window.innerWidth || 390;
+                  return (w >= 760) ? '12px' : '10px';
+                ]]]
+            - font-weight: 900
+            - opacity: 0.95
+          state:
+            - font-size: |
+                [[[
+                  const w = window.innerWidth || 390;
+                  return (w >= 760) ? '18px' : '14px';
+                ]]]
+            - font-weight: 900
+            - color: |
+                [[[
+                  const d = parseFloat(entity.state);
+                  if (isNaN(d)) return '#94a3b8';
+                  if (Math.abs(d) >= 5.0) return '#ef4444';
+                  if (Math.abs(d) < 0.6) return '#94a3b8';
+                  if (d > 0) return '#facc15';
+                  return '#7dd3fc';
+                ]]]
+        card_mod:
+          style: >
+            ha-card { position: relative; backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px); }
+
+            ha-card::before {
+              content:""; position:absolute; inset:-45%;
+              background: linear-gradient(120deg, rgba(255,255,255,0) 45%, rgba(255,255,255,0.10) 49%, rgba(255,255,255,0) 58%);
+              transform: translateX(-30%) translateY(-10%) rotate(8deg);
+              animation: cvShimmer 8s ease-in-out infinite;
+              pointer-events:none; opacity:0.45;
+            }
+
+            ha-card::after {
+              content:""; position:absolute; inset:0; border-radius:50%;
+              background: radial-gradient(circle at 30% 25%, rgba(255,255,255,0.10), rgba(255,255,255,0) 55%);
+              pointer-events:none; opacity:0.45;
+            }
+
+            @keyframes cvShimmer {
+              0%{transform:translateX(-38%) translateY(-12%) rotate(8deg);opacity:.25}
+              50%{transform:translateX(38%) translateY(10%) rotate(8deg);opacity:.50}
+              100%{transform:translateX(-38%) translateY(-12%) rotate(8deg);opacity:.25}
+            }
+
+  ###########################################################################
+  # Comfort Band – with floating chevron controlling humidity_constellation
+  ###########################################################################
+  - type: custom:button-card
+    entity: input_boolean.humidity_constellation_expanded
+    name: Comfort Band
+    icon: mdi:shield-check-outline
+    show_icon: true
+    show_state: false
+    show_label: true
+    tap_action:
+      action: toggle
+    hold_action:
+      action: more-info
+
+    custom_fields:
+      chevron: |
+        [[[
+          const expanded =
+            states['input_boolean.humidity_constellation_expanded']?.state === 'on';
+          const icon = expanded ? 'mdi:chevron-up' : 'mdi:chevron-down';
+          return `<ha-icon icon="${icon}"></ha-icon>`;
+        ]]]
+
+    label: |
+      [[[
+        const lowEnt   = states['sensor.house_humidity_target_low'];
+        const highEnt  = states['sensor.house_humidity_target_high'];
+        const hEnt     = states['sensor.house_average_humidity'];
+
+        const low  = lowEnt  ? parseFloat(lowEnt.state)  : NaN;
+        const high = highEnt ? parseFloat(highEnt.state) : NaN;
+        const h    = hEnt    ? parseFloat(hEnt.state)    : NaN;
+
+        const bandTxt = (isNaN(low) || isNaN(high))
+          ? 'Target humidity: —'
+          : `Target humidity: ${low.toFixed(0)}–${high.toFixed(0)}%`;
+
+        let comfort = 'Comfort: —';
+        if (!isNaN(h) && !isNaN(low) && !isNaN(high)) {
+          if (h < low) {
+            comfort = 'Comfort: A bit dry — humidify / reduce extraction.';
+          } else if (h <= high) {
+            comfort = 'Comfort: In the sweet spot — keep steady.';
+          } else {
+            comfort = 'Comfort: High — ventilate / extract for 10–20 min.';
+          }
+        }
+
+        const condEnt   = states['sensor.worst_room_condensation'];
+        const mouldEnt  = states['sensor.worst_room_mould'];
+
+        const condRoom  = condEnt  ? condEnt.state  : null;
+        const condRisk  = states['sensor.worst_room_condensation']?.attributes?.risk;
+        const mouldRoom = mouldEnt ? mouldEnt.state : null;
+        const mouldRisk = states['sensor.worst_room_mould']?.attributes?.risk;
+
+        let condLine = 'Condensation: —';
+        if (condRisk && condRisk !== 'Unknown' && condRoom && condRoom !== 'Unknown') {
+          condLine = `Condensation: ${condRisk} in ${condRoom}`;
+        }
+
+        let mouldLine = 'Mould: —';
+        if (mouldRisk && mouldRisk !== 'Unknown' && mouldRoom && mouldRoom !== 'Unknown') {
+          mouldLine = `Mould: ${mouldRisk} in ${mouldRoom}`;
+        }
+
+        return `${bandTxt}\n${comfort}\n${condLine}\n${mouldLine}`;
+      ]]]
+
+    styles:
+      card:
+        - position: relative
+        - border-radius: 22px
+        - padding: 12px 14px
+        - background: rgba(10,12,16,0.62)
+        - border: 2px solid rgba(148,163,184,0.18)
+        - box-shadow: 0 0 18px rgba(148,163,184,0.18)
+        - overflow: hidden
+      grid:
+        - grid-template-areas: "\"i n\" \"l l\""
+        - grid-template-columns: 22px 1fr
+        - column-gap: 10px
+        - row-gap: 6px
+        - align-items: center
+      icon:
+        - width: 18px
+        - color: "#94a3b8"
+      name:
+        - font-size: 15px
+        - font-weight: 900
+        - letter-spacing: 0.2px
+      label:
+        - white-space: pre-line
+        - font-size: 13px
+        - line-height: 1.35
+        - opacity: 0.95
+        - text-align: left
+      custom_fields:
+        chevron:
+          - position: absolute
+          - left: 10px
+          - bottom: 8px
+          - width: 24px
+          - height: 24px
+          - display: flex
+          - align-items: center
+          - justify-content: center
+          - border-radius: 999px
+          - background: rgba(15,23,42,0.85)
+          - box-shadow: 0 0 12px rgba(148,163,184,0.55)
+          - color: |
+              [[[
+                const expanded =
+                  states['input_boolean.humidity_constellation_expanded']?.state === 'on';
+                return expanded ? '#4ade80' : '#94a3b8';
+              ]]]
+          - opacity: 0.95
+          - pointer-events: none
+
+  ###########################################################################
+  # Humidity Constellation – dropdown panel (24h chart)
+  ###########################################################################
+  - type: conditional
+    conditions:
+      - entity: input_boolean.humidity_constellation_expanded
+        state: "on"
+    card:
+      type: custom:apexcharts-card
+      header:
+        show: true
+        title: Humidity Constellation (24h)
+        show_states: false
+      graph_span: 24h
+      span:
+        start: day
+      apex_config:
+        chart:
+          height: 260px
+          toolbar:
+            show: false
+        grid:
+          borderColor: rgba(255,255,255,0.08)
+          strokeDashArray: 3
+        stroke:
+          curve: smooth
+          width: 2.5
+        legend:
+          show: true
+          position: bottom
+          fontSize: 12px
+          labels:
+            colors: "#e5e7eb"
+        xaxis:
+          labels:
+            style:
+              colors: "#9ca3af"
+        yaxis:
+          labels:
+            style:
+              colors: "#9ca3af"
+        annotations:
+          yaxis:
+            - "y": ${states['sensor.house_humidity_target_low']?.state}
+              y2: ${states['sensor.house_humidity_target_high']?.state}
+              borderColor: rgba(74,222,128,0.10)
+              fillColor: rgba(74,222,128,0.10)
+              opacity: 0.12
+              label:
+                text: Target band
+                style:
+                  color: "#e5e7eb"
+                  background: rgba(74,222,128,0.20)
+      yaxis:
+        - min: 30
+          max: 90
+          decimals: 0
+      series:
+        - entity: sensor.living_room_humidity
+          name: Living room
+          type: line
+          color: "#4ade80"
+          group_by:
+            func: avg
+            duration: 15min
+        - entity: sensor.kitchen_humidity
+          name: Kitchen
+          type: line
+          color: "#38bdf8"
+          group_by:
+            func: avg
+            duration: 15min
+        - entity: sensor.hallway_humidity
+          name: Hallway
+          type: line
+          color: "#818cf8"
+          group_by:
+            func: avg
+            duration: 15min
+        - entity: sensor.bedroom_humidity
+          name: Bedroom
+          type: line
+          color: "#f472b6"
+          group_by:
+            func: avg
+            duration: 15min
+        - entity: sensor.kids_room_humidity
+          name: Kids room
+          type: line
+          color: "#facc15"
+          group_by:
+            func: avg
+            duration: 15min
+        - entity: sensor.bathroom_humidity
+          name: Bathroom
+          type: line
+          color: "#22d3ee"
+          group_by:
+            func: avg
+            duration: 15min
+        - entity: sensor.toilet_humidity
+          name: Toilet
+          type: line
+          color: "#10b981"
+          group_by:
+            func: avg
+            duration: 15min
