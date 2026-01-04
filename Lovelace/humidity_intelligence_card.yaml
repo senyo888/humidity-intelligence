@@ -1,7 +1,7 @@
 type: vertical-stack
 cards:
   ###########################################################################
-  # Top row – Humidity, Condensation, Mould, Drift badges v1.0.1
+  # Top row – Humidity, Condensation, Mould, Drift badges
   ###########################################################################
   - type: horizontal-stack
     cards:
@@ -570,9 +570,9 @@ cards:
 
     label: |
       [[[
-        const lowEnt   = states['sensor.house_humidity_target_low'];
-        const highEnt  = states['sensor.house_humidity_target_high'];
-        const hEnt     = states['sensor.house_average_humidity'];
+        const lowEnt    = states['sensor.house_humidity_target_low'];
+        const highEnt   = states['sensor.house_humidity_target_high'];
+        const hEnt      = states['sensor.house_average_humidity'];
 
         const low  = lowEnt  ? parseFloat(lowEnt.state)  : NaN;
         const high = highEnt ? parseFloat(highEnt.state) : NaN;
@@ -593,13 +593,13 @@ cards:
           }
         }
 
-        const condEnt   = states['sensor.worst_room_condensation'];
-        const mouldEnt  = states['sensor.worst_room_mould'];
+        const condEnt    = states['sensor.worst_room_condensation'];
+        const mouldEnt   = states['sensor.worst_room_mould'];
 
-        const condRoom  = condEnt  ? condEnt.state  : null;
-        const condRisk  = states['sensor.worst_room_condensation']?.attributes?.risk;
-        const mouldRoom = mouldEnt ? mouldEnt.state : null;
-        const mouldRisk = states['sensor.worst_room_mould']?.attributes?.risk;
+        const condRoom   = condEnt  ? condEnt.state  : null;
+        const condRisk   = states['sensor.worst_room_condensation']?.attributes?.risk;
+        const mouldRoom  = mouldEnt ? mouldEnt.state : null;
+        const mouldRisk  = states['sensor.worst_room_mould']?.attributes?.risk;
 
         let condLine = 'Condensation: —';
         if (condRisk && condRisk !== 'Unknown' && condRoom && condRoom !== 'Unknown') {
@@ -664,110 +664,53 @@ cards:
           - opacity: 0.95
           - pointer-events: none
 
-  ###########################################################################
+###########################################################################
   # Humidity Constellation – dropdown panel (24h chart)
-  ###########################################################################
+###########################################################################
   - type: conditional
     conditions:
       - entity: input_boolean.humidity_constellation_expanded
         state: "on"
     card:
-      type: custom:apexcharts-card
-      header:
-        show: true
-        title: Humidity Constellation (24h)
-        show_states: false
-      graph_span: 24h
-      span:
-        start: day
-      apex_config:
-        chart:
-          height: 260px
-          toolbar:
-            show: false
-        grid:
-          borderColor: rgba(255,255,255,0.08)
-          strokeDashArray: 3
-        stroke:
-          curve: smooth
-          width: 2.5
-        legend:
+      type: custom:config-template-card
+      entities:
+        - sensor.humidity_constellation_series
+      card:
+        type: custom:apexcharts-card
+        header:
           show: true
-          position: bottom
-          fontSize: 12px
-          labels:
-            colors: "#e5e7eb"
-        xaxis:
-          labels:
-            style:
-              colors: "#9ca3af"
-        yaxis:
-          labels:
-            style:
-              colors: "#9ca3af"
-        annotations:
+          title: Humidity Constellation (24h)
+          show_states: false
+        graph_span: 24h
+        span:
+          start: day
+        apex_config:
+          chart:
+            height: 260px
+            toolbar:
+              show: false
+          grid:
+            borderColor: rgba(255,255,255,0.08)
+            strokeDashArray: 3
+          stroke:
+            curve: smooth
+            width: 2.5
+          legend:
+            show: true
+            position: bottom
+            fontSize: 12px
+            labels:
+              colors: "#e5e7eb"
+          xaxis:
+            labels:
+              style:
+                colors: "#9ca3af"
           yaxis:
-            - "y": ${states['sensor.house_humidity_target_low']?.state}
-              y2: ${states['sensor.house_humidity_target_high']?.state}
-              borderColor: rgba(74,222,128,0.10)
-              fillColor: rgba(74,222,128,0.10)
-              opacity: 0.12
-              label:
-                text: Target band
-                style:
-                  color: "#e5e7eb"
-                  background: rgba(74,222,128,0.20)
-      yaxis:
-        - min: 30
-          max: 90
-          decimals: 0
-      series:
-        - entity: sensor.living_room_humidity
-          name: Living room
-          type: line
-          color: "#4ade80"
-          group_by:
-            func: avg
-            duration: 15min
-        - entity: sensor.kitchen_humidity
-          name: Kitchen
-          type: line
-          color: "#38bdf8"
-          group_by:
-            func: avg
-            duration: 15min
-        - entity: sensor.hallway_humidity
-          name: Hallway
-          type: line
-          color: "#818cf8"
-          group_by:
-            func: avg
-            duration: 15min
-        - entity: sensor.bedroom_humidity
-          name: Bedroom
-          type: line
-          color: "#f472b6"
-          group_by:
-            func: avg
-            duration: 15min
-        - entity: sensor.kids_room_humidity
-          name: Kids room
-          type: line
-          color: "#facc15"
-          group_by:
-            func: avg
-            duration: 15min
-        - entity: sensor.bathroom_humidity
-          name: Bathroom
-          type: line
-          color: "#22d3ee"
-          group_by:
-            func: avg
-            duration: 15min
-        - entity: sensor.toilet_humidity
-          name: Toilet
-          type: line
-          color: "#10b981"
-          group_by:
-            func: avg
-            duration: 15min
+            labels:
+              style:
+                colors: "#9ca3af"
+        yaxis:
+          - min: 30
+            max: 90
+            decimals: 0
+        series: ${states['sensor.humidity_constellation_series'].attributes.series}

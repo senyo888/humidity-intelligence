@@ -1,6 +1,6 @@
 ###############################################################################
 # Package: humidity_intelligence.yaml
-# Versions:v1.0.1
+# Versions:v1.1.0
 # Humidity Intelligence – core backend
 # - House average humidity + comfort band
 # - 7-day drift
@@ -34,6 +34,43 @@ sensor:
 template:
   - sensor:
       #########################################################################
+      # CONFIGURATION - Define ALL potential rooms here.
+      # The logic below is dynamic: if a sensor listed here doesn't exist 
+      # or is unavailable, it will be automatically ignored.
+      #########################################################################
+      - name: Humidity Intelligence Config
+        unique_id: humidity_intelligence_config
+        state: "Active"
+        attributes:
+          room_map: >
+            {# >>> MAP COMMON ROOMS TO DEFAULT SENSOR NAMES <<< #}
+            {{ {
+              'Living Room':    'sensor.living_room_humidity',
+              'Kitchen':        'sensor.kitchen_humidity',
+              'Dining Room':    'sensor.dining_room_humidity',
+              'Master Bedroom': 'sensor.master_bedroom_humidity',
+              'Bedroom 1':      'sensor.bedroom_1_humidity',
+              'Bedroom 2':      'sensor.bedroom_2_humidity',
+              'Kids Room':      'sensor.kids_room_humidity',
+              'Guest Room':     'sensor.guest_room_humidity',
+              'Office':         'sensor.office_humidity',
+              'Study':          'sensor.study_humidity',
+              'Main Bathroom':  'sensor.main_bathroom_humidity',
+              'Ensuite':        'sensor.ensuite_humidity',
+              'Toilet':         'sensor.toilet_humidity',
+              'Laundry Room':   'sensor.laundry_room_humidity',
+              'Hallway':        'sensor.hallway_humidity',
+              'Entrance':       'sensor.entrance_humidity',
+              'Mudroom':        'sensor.mudroom_humidity',
+              'Playroom':       'sensor.playroom_humidity',
+              'Garage':         'sensor.garage_humidity',
+              'Basement':       'sensor.basement_humidity',
+              'Attic':          'sensor.attic_humidity',
+              'Pantry':         'sensor.pantry_humidity',
+              'Sunroom':        'sensor.sunroom_humidity'
+            } }}
+
+      #########################################################################
       # House average humidity
       #########################################################################
       - name: House Average Humidity
@@ -42,26 +79,20 @@ template:
         device_class: humidity
         state_class: measurement
         state: >
-          {# >>> EDIT THESE ENTITY IDS TO MATCH YOUR SENSORS <<< #}
-          {% set rooms = [
-            'sensor.living_room_humidity',
-            'sensor.kitchen_humidity',
-            'sensor.hallway_humidity',
-            'sensor.bedroom_humidity',
-            'sensor.kids_room_humidity',
-            'sensor.bathroom_humidity',
-            'sensor.toilet_humidity'
-          ] %}
+          {# Retrieve the map from the config sensor #}
+          {% set room_map = state_attr('sensor.humidity_intelligence_config', 'room_map') %}
+          
+          {# DYNAMIC FILTER: Get values only from sensors that actually exist and have data #}
+          {% set entities = room_map.values() | select('has_value') | list %}
 
-          {% set vals = [] %}
-          {% for e in rooms %}
-            {% set s = states(e) %}
-            {% if s not in ['unknown', 'unavailable', 'none', ''] %}
-              {% set vals = vals + [ s|float ] %}
-            {% endif %}
-          {% endfor %}
+          {# Filter usable numbers and convert to a list of floats #}
+          {% set vals = expand(entities) 
+                        | map(attribute='state') 
+                        | select('is_number') 
+                        | map('float') 
+                        | list %}
 
-          {% if vals|length == 0 %}
+          {% if vals | length == 0 %}
             {# No usable data yet – reuse last numeric value (or 0 on first boot) #}
             {{ states(this.entity_id) | float(0) }}
           {% else %}
@@ -100,42 +131,36 @@ template:
       - name: Worst Room Condensation
         unique_id: humidity_intelligence_worst_condensation_room
         state: >
-          {% set rooms = {
-            'Living room': states('sensor.living_room_humidity')|float(0),
-            'Kitchen':     states('sensor.kitchen_humidity')|float(0),
-            'Hallway':     states('sensor.hallway_humidity')|float(0),
-            'Bedroom':     states('sensor.bedroom_humidity')|float(0),
-            'Kids room':   states('sensor.kids_room_humidity')|float(0),
-            'Bathroom':    states('sensor.bathroom_humidity')|float(0),
-            'Toilet':      states('sensor.toilet_humidity')|float(0)
-          } %}
-          {% set max_room = 'Unknown' %}
-          {% set max_val = 0 %}
-          {% for name, val in rooms.items() %}
-            {% if val > max_val %}
-              {% set max_val = val %}
-              {% set max_room = name %}
+          {# Retrieve the map from the config sensor #}
+          {% set rooms = state_attr('sensor.humidity_intelligence_config', 'room_map') %}
+          {# Initialize a namespace to persist data outside the loop #}
+          {% set ns = namespace(max_room='Unknown', max_val=0) %}
+          
+          {% for name, entity_id in rooms.items() %}
+            {# DYNAMIC CHECK: Skip if sensor is missing or unavailable #}
+            {% if has_value(entity_id) %}
+              {% set val = states(entity_id)|float(0) %}
+              {% if val > ns.max_val %}
+                {% set ns.max_val = val %}
+                {% set ns.max_room = name %}
+              {% endif %}
             {% endif %}
           {% endfor %}
-          {{ max_room }}
+          {{ ns.max_room }}
         attributes:
           humidity: >
-            {% set rooms = {
-              'Living room': states('sensor.living_room_humidity')|float(0),
-              'Kitchen':     states('sensor.kitchen_humidity')|float(0),
-              'Hallway':     states('sensor.hallway_humidity')|float(0),
-              'Bedroom':     states('sensor.bedroom_humidity')|float(0),
-              'Kids room':   states('sensor.kids_room_humidity')|float(0),
-              'Bathroom':    states('sensor.bathroom_humidity')|float(0),
-              'Toilet':      states('sensor.toilet_humidity')|float(0)
-            } %}
-            {% set max_val = 0 %}
-            {% for name, val in rooms.items() %}
-              {% if val > max_val %}
-                {% set max_val = val %}
+            {% set rooms = state_attr('sensor.humidity_intelligence_config', 'room_map') %}
+            {% set ns = namespace(max_val=0) %}
+            
+            {% for name, entity_id in rooms.items() %}
+              {% if has_value(entity_id) %}
+                {% set val = states(entity_id)|float(0) %}
+                {% if val > ns.max_val %}
+                  {% set ns.max_val = val %}
+                {% endif %}
               {% endif %}
             {% endfor %}
-            {{ max_val|round(1) }}
+            {{ ns.max_val|round(1) }}
           risk: >
             {% set h = state_attr('sensor.worst_room_condensation', 'humidity')|float(0) %}
             {% if h >= 80 %}
@@ -161,42 +186,33 @@ template:
       - name: Worst Room Mould
         unique_id: humidity_intelligence_worst_mould_room
         state: >
-          {% set rooms = {
-            'Living room': states('sensor.living_room_humidity')|float(0),
-            'Kitchen':     states('sensor.kitchen_humidity')|float(0),
-            'Hallway':     states('sensor.hallway_humidity')|float(0),
-            'Bedroom':     states('sensor.bedroom_humidity')|float(0),
-            'Kids room':   states('sensor.kids_room_humidity')|float(0),
-            'Bathroom':    states('sensor.bathroom_humidity')|float(0),
-            'Toilet':      states('sensor.toilet_humidity')|float(0)
-          } %}
-          {% set max_room = 'Unknown' %}
-          {% set max_val = 0 %}
-          {% for name, val in rooms.items() %}
-            {% if val > max_val %}
-              {% set max_val = val %}
-              {% set max_room = name %}
+          {% set rooms = state_attr('sensor.humidity_intelligence_config', 'room_map') %}
+          {% set ns = namespace(max_room='Unknown', max_val=0) %}
+          
+          {% for name, entity_id in rooms.items() %}
+            {% if has_value(entity_id) %}
+              {% set val = states(entity_id)|float(0) %}
+              {% if val > ns.max_val %}
+                {% set ns.max_val = val %}
+                {% set ns.max_room = name %}
+              {% endif %}
             {% endif %}
           {% endfor %}
-          {{ max_room }}
+          {{ ns.max_room }}
         attributes:
           humidity: >
-            {% set rooms = {
-              'Living room': states('sensor.living_room_humidity')|float(0),
-              'Kitchen':     states('sensor.kitchen_humidity')|float(0),
-              'Hallway':     states('sensor.hallway_humidity')|float(0),
-              'Bedroom':     states('sensor.bedroom_humidity')|float(0),
-              'Kids room':   states('sensor.kids_room_humidity')|float(0),
-              'Bathroom':    states('sensor.bathroom_humidity')|float(0),
-              'Toilet':      states('sensor.toilet_humidity')|float(0)
-            } %}
-            {% set max_val = 0 %}
-            {% for name, val in rooms.items() %}
-              {% if val > max_val %}
-                {% set max_val = val %}
+            {% set rooms = state_attr('sensor.humidity_intelligence_config', 'room_map') %}
+            {% set ns = namespace(max_val=0) %}
+            
+            {% for name, entity_id in rooms.items() %}
+              {% if has_value(entity_id) %}
+                {% set val = states(entity_id)|float(0) %}
+                {% if val > ns.max_val %}
+                  {% set ns.max_val = val %}
+                {% endif %}
               {% endif %}
             {% endfor %}
-            {{ max_val|round(1) }}
+            {{ ns.max_val|round(1) }}
           risk: >
             {% set h = state_attr('sensor.worst_room_mould', 'humidity')|float(0) %}
             {% if h >= 75 %}
@@ -242,3 +258,32 @@ template:
         state: >
           {% set risk = state_attr('sensor.worst_room_mould', 'risk') %}
           {{ risk in ['Risk', 'Danger'] }}
+
+  - sensor:
+      #########################################################################
+      # Series used to populate Humidity Constellation Card
+      #########################################################################
+      - name: "Humidity Constellation Series"
+        state: "ok"
+        attributes:
+          series: >
+            {% set rooms = state_attr('sensor.humidity_intelligence_config', 'room_map') %}
+            {% set ns = namespace(result=[]) %}
+            {% if rooms %}
+              {% for name, entity in rooms.items() %}
+                {% if has_value(entity) %}
+                  {% set ns.result = ns.result + [{
+                    'entity': entity,
+                    'name': name,
+                    'type': 'line',
+                    'curve': 'smooth',
+                    'stroke_width': 2,
+                    'group_by': {
+                      'func': 'avg',
+                      'duration': '15min'
+                    }
+                  }] %}
+                {% endif %}
+              {% endfor %}
+            {% endif %}
+            {{ ns.result }}

@@ -2,7 +2,7 @@
 
 Smart humidity intelligence for Home Assistant – badges, comfort band and 24-hour multi-room chart.
 
-> Version: **v1.0.1**
+> Version: **v1.1.1**
 
 ![IMG_5368](https://github.com/user-attachments/assets/8ce3f56c-f232-4be6-a941-5b31a2983387) 
 
@@ -56,6 +56,7 @@ Smart humidity intelligence for Home Assistant – badges, comfort band and 24-h
   - [`button-card`](https://github.com/custom-cards/button-card)
   - [`apexcharts-card`](https://github.com/RomRider/apexcharts-card)
   - [`card-mod`](https://github.com/thomasloven/lovelace-card-mod)
+  - [`auto-entities`](https://github.com/thomasloven/lovelace-auto-entities)
 
 ---
 
@@ -106,6 +107,7 @@ Install via **HACS → Frontend**:
    * **button-card**
    * **apexcharts-card**
    * **card-mod**
+   * **auto-entities**
 2. Restart Home Assistant after all three are installed.
 
 ---
@@ -121,16 +123,32 @@ Install via **HACS → Frontend**:
 2. Open the file and **edit the room humidity entities** under this block:
 
    ```jinja2
-   # >>> EDIT THESE ENTITY IDS TO MATCH YOUR SENSORS <<<
-   {% set rooms = [
-     'sensor.living_room_humidity',
-     'sensor.kitchen_humidity',
-     'sensor.hallway_humidity',
-     'sensor.bedroom_humidity',
-     'sensor.kids_room_humidity',
-     'sensor.bathroom_humidity',
-     'sensor.toilet_humidity'
-   ] %}
+      {# >>> EDIT THESE ENTITY IDS TO MATCH YOUR SENSORS <<< #}
+      {{ {
+        'Living Room':    'sensor.living_room_humidity',
+        'Kitchen':        'sensor.kitchen_humidity',
+        'Dining Room':    'sensor.dining_room_humidity',
+        'Master Bedroom': 'sensor.master_bedroom_humidity',
+        'Bedroom 1':      'sensor.bedroom_1_humidity',
+        'Bedroom 2':      'sensor.bedroom_2_humidity',
+        'Kids Room':      'sensor.kids_room_humidity',
+        'Guest Room':     'sensor.guest_room_humidity',
+        'Office':         'sensor.office_humidity',
+        'Study':          'sensor.study_humidity',
+        'Main Bathroom':  'sensor.main_bathroom_humidity',
+        'Ensuite':        'sensor.ensuite_humidity',
+        'Toilet':         'sensor.toilet_humidity',
+        'Laundry Room':   'sensor.laundry_room_humidity',
+        'Hallway':        'sensor.hallway_humidity',
+        'Entrance':       'sensor.entrance_humidity',
+        'Mudroom':        'sensor.mudroom_humidity',
+        'Playroom':       'sensor.playroom_humidity',
+        'Garage':         'sensor.garage_humidity',
+        'Basement':       'sensor.basement_humidity',
+        'Attic':          'sensor.attic_humidity',
+        'Pantry':         'sensor.pantry_humidity',
+        'Sunroom':        'sensor.sunroom_humidity'
+      } }}
    ```
 
    Replace these with your own humidity sensor entity IDs.
@@ -214,15 +232,32 @@ If you like to keep your Lovelace in files:
 In `humidity_intelligence.yaml`, find the `House Average Humidity` sensor and **replace the example entities** with your actual humidity sensors:
 
 ```yaml
-{% set rooms = [
-  'sensor.living_room_humidity',      # ← change to your entity IDs
-  'sensor.kitchen_humidity',
-  'sensor.hallway_humidity',
-  'sensor.bedroom_humidity',
-  'sensor.kids_room_humidity',
-  'sensor.bathroom_humidity',
-  'sensor.toilet_humidity'
-] %}
+  {# >>> EDIT THESE ENTITY IDS TO MATCH YOUR SENSORS <<< #}
+  {{ {
+    'Living Room':    'sensor.living_room_humidity',
+    'Kitchen':        'sensor.kitchen_humidity',
+    'Dining Room':    'sensor.dining_room_humidity',
+    'Master Bedroom': 'sensor.master_bedroom_humidity',
+    'Bedroom 1':      'sensor.bedroom_1_humidity',
+    'Bedroom 2':      'sensor.bedroom_2_humidity',
+    'Kids Room':      'sensor.kids_room_humidity',
+    'Guest Room':     'sensor.guest_room_humidity',
+    'Office':         'sensor.office_humidity',
+    'Study':          'sensor.study_humidity',
+    'Main Bathroom':  'sensor.main_bathroom_humidity',
+    'Ensuite':        'sensor.ensuite_humidity',
+    'Toilet':         'sensor.toilet_humidity',
+    'Laundry Room':   'sensor.laundry_room_humidity',
+    'Hallway':        'sensor.hallway_humidity',
+    'Entrance':       'sensor.entrance_humidity',
+    'Mudroom':        'sensor.mudroom_humidity',
+    'Playroom':       'sensor.playroom_humidity',
+    'Garage':         'sensor.garage_humidity',
+    'Basement':       'sensor.basement_humidity',
+    'Attic':          'sensor.attic_humidity',
+    'Pantry':         'sensor.pantry_humidity',
+    'Sunroom':        'sensor.sunroom_humidity'
+  } }}
 
 ```
 If you don’t change these, the package will still load, but
