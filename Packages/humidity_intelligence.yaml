@@ -264,6 +264,7 @@ template:
       # Series used to populate Humidity Constellation Card
       #########################################################################
       - name: "Humidity Constellation Series"
+        unique_id: humidity_constellation_series
         state: "ok"
         attributes:
           series: >
