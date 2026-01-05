@@ -1,7 +1,6 @@
 # Humidity-Intelligence
 
 Smart humidity intelligence for Home Assistant – badges, comfort band and 24-hour multi-room chart.
-
 > Version: **v1.1.0**
 
 ![IMG_5368](https://github.com/user-attachments/assets/8ce3f56c-f232-4be6-a941-5b31a2983387) 

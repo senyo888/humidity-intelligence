@@ -96,7 +96,7 @@ template:
             {# No usable data yet – reuse last numeric value (or 0 on first boot) #}
             {{ states(this.entity_id) | float(0) }}
           {% else %}
-            {{ (vals | sum / vals | length) | round(1) }}
+            {{ (vals|sum / vals|length)|round(1) }}
           {% endif %}
 
       #########################################################################
