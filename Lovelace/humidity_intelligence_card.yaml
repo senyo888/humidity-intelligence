@@ -1,7 +1,7 @@
 type: vertical-stack
 cards:
   ###########################################################################
-  # Top row – Humidity, Condensation, Mould, Drift badges
+  # Top row - Humidity, Condensation, Mould, Drift badges
   ###########################################################################
   - type: horizontal-stack
     cards:
@@ -16,7 +16,7 @@ cards:
         state_display: |
           [[[
             const h = parseFloat(entity.state);
-            if (isNaN(h)) return '—%';
+            if (isNaN(h)) return '-';
             return `${Math.round(h)}%`;
           ]]]
         tap_action:
@@ -40,7 +40,13 @@ cards:
                   return (w >= 760) ? '10px' : '7px';
                 ]]]
             - overflow: hidden
-            - background: rgba(10,12,16,0.62)
+            # Theme-aware background (falls back gracefully)
+            - background: var(--ha-card-background, var(--card-background-color))
+            - background: >
+                color-mix(in srgb,
+                  var(--ha-card-background, var(--card-background-color)) 72%,
+                  transparent
+                )
             - border: |
                 [[[
                   const h = parseFloat(entity.state);
@@ -49,14 +55,14 @@ cards:
                     states['binary_sensor.condensation_danger']?.state === 'on' ||
                     states['binary_sensor.mould_danger']?.state === 'on';
 
-                  if (danger) return '2px solid rgba(239,68,68,0.85)';
-                  if (isNaN(h)) return '2px solid rgba(148,163,184,0.22)';
+                  if (danger) return '2px solid color-mix(in srgb, var(--error-color) 85%, transparent)';
+                  if (isNaN(h)) return '2px solid color-mix(in srgb, var(--divider-color) 55%, transparent)';
 
-                  if (h < 45) return '2px solid rgba(56,189,248,0.75)';
-                  if (h < 49) return '2px solid rgba(125,211,252,0.70)';
-                  if (h < 60) return '2px solid rgba(74,222,128,0.70)';
-                  if (h < 68) return '2px solid rgba(250,204,21,0.75)';
-                  return '2px solid rgba(239,68,68,0.85)';
+                  if (h < 45) return '2px solid color-mix(in srgb, var(--info-color) 80%, transparent)';
+                  if (h < 49) return '2px solid color-mix(in srgb, var(--info-color) 65%, transparent)';
+                  if (h < 60) return '2px solid color-mix(in srgb, var(--success-color) 70%, transparent)';
+                  if (h < 68) return '2px solid color-mix(in srgb, var(--warning-color) 75%, transparent)';
+                  return '2px solid color-mix(in srgb, var(--error-color) 85%, transparent)';
                 ]]]
             - box-shadow: |
                 [[[
@@ -66,14 +72,14 @@ cards:
                     states['binary_sensor.condensation_danger']?.state === 'on' ||
                     states['binary_sensor.mould_danger']?.state === 'on';
 
-                  if (danger) return '0 0 22px rgba(239,68,68,0.45)';
-                  if (isNaN(h)) return '0 0 16px rgba(148,163,184,0.18)';
+                  if (danger) return '0 0 22px color-mix(in srgb, var(--error-color) 45%, transparent)';
+                  if (isNaN(h)) return '0 0 16px color-mix(in srgb, var(--divider-color) 35%, transparent)';
 
-                  if (h < 45) return '0 0 20px rgba(56,189,248,0.30)';
-                  if (h < 49) return '0 0 20px rgba(125,211,252,0.26)';
-                  if (h < 60) return '0 0 20px rgba(74,222,128,0.26)';
-                  if (h < 68) return '0 0 20px rgba(250,204,21,0.28)';
-                  return '0 0 22px rgba(239,68,68,0.40)';
+                  if (h < 45) return '0 0 20px color-mix(in srgb, var(--info-color) 30%, transparent)';
+                  if (h < 49) return '0 0 20px color-mix(in srgb, var(--info-color) 26%, transparent)';
+                  if (h < 60) return '0 0 20px color-mix(in srgb, var(--success-color) 26%, transparent)';
+                  if (h < 68) return '0 0 20px color-mix(in srgb, var(--warning-color) 28%, transparent)';
+                  return '0 0 22px color-mix(in srgb, var(--error-color) 40%, transparent)';
                 ]]]
           grid:
             - grid-template-areas: "\"i\" \"n\" \"s\""
@@ -96,13 +102,13 @@ cards:
                     states['binary_sensor.condensation_danger']?.state === 'on' ||
                     states['binary_sensor.mould_danger']?.state === 'on';
 
-                  if (danger) return '#ef4444';
-                  if (isNaN(h)) return '#94a3b8';
-                  if (h < 45) return '#38bdf8';
-                  if (h < 49) return '#7dd3fc';
-                  if (h < 60) return '#4ade80';
-                  if (h < 68) return '#facc15';
-                  return '#ef4444';
+                  if (danger) return 'var(--error-color)';
+                  if (isNaN(h)) return 'var(--secondary-text-color)';
+                  if (h < 45) return 'var(--info-color)';
+                  if (h < 49) return 'var(--info-color)';
+                  if (h < 60) return 'var(--success-color)';
+                  if (h < 68) return 'var(--warning-color)';
+                  return 'var(--error-color)';
                 ]]]
           name:
             - font-size: |
@@ -112,6 +118,7 @@ cards:
                 ]]]
             - font-weight: 900
             - opacity: 0.95
+            - color: var(--primary-text-color)
           state:
             - font-size: |
                 [[[
@@ -128,13 +135,13 @@ cards:
                     states['binary_sensor.condensation_danger']?.state === 'on' ||
                     states['binary_sensor.mould_danger']?.state === 'on';
 
-                  if (danger) return '#ef4444';
-                  if (isNaN(h)) return '#94a3b8';
-                  if (h < 45) return '#38bdf8';
-                  if (h < 49) return '#7dd3fc';
-                  if (h < 60) return '#4ade80';
-                  if (h < 68) return '#facc15';
-                  return '#ef4444';
+                  if (danger) return 'var(--error-color)';
+                  if (isNaN(h)) return 'var(--secondary-text-color)';
+                  if (h < 45) return 'var(--info-color)';
+                  if (h < 49) return 'var(--info-color)';
+                  if (h < 60) return 'var(--success-color)';
+                  if (h < 68) return 'var(--warning-color)';
+                  return 'var(--error-color)';
                 ]]]
         card_mod:
           style: |
@@ -149,9 +156,9 @@ cards:
               inset: -45%;
               background: linear-gradient(
                 120deg,
-                rgba(255,255,255,0.00) 40%,
-                rgba(255,255,255,0.10) 48%,
-                rgba(255,255,255,0.00) 58%
+                color-mix(in srgb, var(--primary-text-color) 0%, transparent) 40%,
+                color-mix(in srgb, var(--primary-text-color) 12%, transparent) 48%,
+                color-mix(in srgb, var(--primary-text-color) 0%, transparent) 58%
               );
               transform: translateX(-30%) translateY(-10%) rotate(8deg);
               animation: cvShimmer 8s ease-in-out infinite;
@@ -163,7 +170,11 @@ cards:
               position: absolute;
               inset: 0;
               border-radius: 50%;
-              background: radial-gradient(circle at 30% 25%, rgba(255,255,255,0.10), rgba(255,255,255,0.00) 55%);
+              background: radial-gradient(
+                circle at 30% 25%,
+                color-mix(in srgb, var(--primary-text-color) 12%, transparent),
+                transparent 55%
+              );
               pointer-events: none;
               opacity: 0.45;
             }
@@ -184,7 +195,7 @@ cards:
         state_display: |
           [[[
             const r = entity.state;
-            if (!r || r === 'unknown' || r === 'unavailable') return '—';
+            if (!r || r === 'unknown' || r === 'unavailable') return '-';
             return r;
           ]]]
         tap_action:
@@ -208,24 +219,35 @@ cards:
                   return (w >= 760) ? '10px' : '7px';
                 ]]]
             - overflow: hidden
-            - background: rgba(10,12,16,0.62)
+            - background: var(--ha-card-background, var(--card-background-color))
+            - background: >
+                color-mix(in srgb,
+                  var(--ha-card-background, var(--card-background-color)) 72%,
+                  transparent
+                )
             - border: |
                 [[[
                   const r = entity.state;
                   const c =
-                    r === 'Danger' ? 'rgba(239,68,68,0.80)' :
-                    r === 'Risk'   ? 'rgba(250,204,21,0.75)' :
-                    r === 'Watch'  ? 'rgba(125,211,252,0.75)' :
-                    'rgba(148,163,184,0.22)';
-                  return `2px solid ${c}`;
+                    r === 'Danger' ? 'var(--error-color)' :
+                    r === 'Risk'   ? 'var(--warning-color)' :
+                    r === 'Watch'  ? 'var(--info-color)' :
+                    'var(--divider-color)';
+                  return `2px solid color-mix(in srgb, ${c} 75%, transparent)`;
                 ]]]
             - box-shadow: |
                 [[[
                   const r = entity.state;
-                  return r === 'Danger' ? '0 0 22px rgba(239,68,68,0.40)' :
-                         r === 'Risk'   ? '0 0 20px rgba(250,204,21,0.28)' :
-                         r === 'Watch'  ? '0 0 20px rgba(125,211,252,0.25)' :
-                         '0 0 16px rgba(148,163,184,0.18)';
+                  const c =
+                    r === 'Danger' ? 'var(--error-color)' :
+                    r === 'Risk'   ? 'var(--warning-color)' :
+                    r === 'Watch'  ? 'var(--info-color)' :
+                    'var(--divider-color)';
+                  const amt =
+                    r === 'Danger' ? 40 :
+                    r === 'Risk'   ? 28 :
+                    r === 'Watch'  ? 25 : 18;
+                  return `0 0 20px color-mix(in srgb, ${c} ${amt}%, transparent)`;
                 ]]]
           grid:
             - grid-template-areas: "\"i\" \"n\" \"s\""
@@ -243,10 +265,10 @@ cards:
             - color: |
                 [[[
                   const r = entity.state;
-                  if (r === 'Danger') return '#ef4444';
-                  if (r === 'Risk')   return '#facc15';
-                  if (r === 'Watch')  return '#7dd3fc';
-                  return '#94a3b8';
+                  if (r === 'Danger') return 'var(--error-color)';
+                  if (r === 'Risk')   return 'var(--warning-color)';
+                  if (r === 'Watch')  return 'var(--info-color)';
+                  return 'var(--secondary-text-color)';
                 ]]]
           name:
             - font-size: |
@@ -256,6 +278,7 @@ cards:
                 ]]]
             - font-weight: 900
             - opacity: 0.95
+            - color: var(--primary-text-color)
           state:
             - font-size: |
                 [[[
@@ -266,30 +289,34 @@ cards:
             - color: |
                 [[[
                   const r = entity.state;
-                  if (r === 'Danger') return '#ef4444';
-                  if (r === 'Risk')   return '#facc15';
-                  if (r === 'Watch')  return '#7dd3fc';
-                  return '#94a3b8';
+                  if (r === 'Danger') return 'var(--error-color)';
+                  if (r === 'Risk')   return 'var(--warning-color)';
+                  if (r === 'Watch')  return 'var(--info-color)';
+                  return 'var(--secondary-text-color)';
                 ]]]
         card_mod:
-          style: >
-            ha-card { position: relative; backdrop-filter: blur(10px);
-            -webkit-backdrop-filter: blur(10px); }
-
+          style: |
+            ha-card { position: relative; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
             ha-card::before {
               content:""; position:absolute; inset:-45%;
-              background: linear-gradient(120deg, rgba(255,255,255,0) 40%, rgba(255,255,255,0.10) 48%, rgba(255,255,255,0) 58%);
+              background: linear-gradient(
+                120deg,
+                color-mix(in srgb, var(--primary-text-color) 0%, transparent) 40%,
+                color-mix(in srgb, var(--primary-text-color) 12%, transparent) 48%,
+                color-mix(in srgb, var(--primary-text-color) 0%, transparent) 58%
+              );
               transform: translateX(-30%) translateY(-10%) rotate(8deg);
               animation: cvShimmer 8s ease-in-out infinite;
               pointer-events:none; opacity:0.45;
             }
-
             ha-card::after {
               content:""; position:absolute; inset:0; border-radius:50%;
-              background: radial-gradient(circle at 30% 25%, rgba(255,255,255,0.10), rgba(255,255,255,0) 55%);
+              background: radial-gradient(circle at 30% 25%,
+                color-mix(in srgb, var(--primary-text-color) 12%, transparent),
+                transparent 55%
+              );
               pointer-events:none; opacity:0.45;
             }
-
             @keyframes cvShimmer {
               0%{transform:translateX(-38%) translateY(-12%) rotate(8deg);opacity:.25}
               50%{transform:translateX(38%) translateY(10%) rotate(8deg);opacity:.50}
@@ -307,7 +334,7 @@ cards:
         state_display: |
           [[[
             const r = entity.state;
-            if (!r || r === 'unknown' || r === 'unavailable') return '—';
+            if (!r || r === 'unknown' || r === 'unavailable') return '-';
             return r;
           ]]]
         tap_action:
@@ -331,24 +358,35 @@ cards:
                   return (w >= 760) ? '10px' : '7px';
                 ]]]
             - overflow: hidden
-            - background: rgba(10,12,16,0.62)
+            - background: var(--ha-card-background, var(--card-background-color))
+            - background: >
+                color-mix(in srgb,
+                  var(--ha-card-background, var(--card-background-color)) 72%,
+                  transparent
+                )
             - border: |
                 [[[
                   const r = entity.state;
                   const c =
-                    r === 'Danger' ? 'rgba(239,68,68,0.80)' :
-                    r === 'Risk'   ? 'rgba(250,204,21,0.75)' :
-                    r === 'Watch'  ? 'rgba(125,211,252,0.75)' :
-                    'rgba(148,163,184,0.22)';
-                  return `2px solid ${c}`;
+                    r === 'Danger' ? 'var(--error-color)' :
+                    r === 'Risk'   ? 'var(--warning-color)' :
+                    r === 'Watch'  ? 'var(--info-color)' :
+                    'var(--divider-color)';
+                  return `2px solid color-mix(in srgb, ${c} 75%, transparent)`;
                 ]]]
             - box-shadow: |
                 [[[
                   const r = entity.state;
-                  return r === 'Danger' ? '0 0 22px rgba(239,68,68,0.40)' :
-                         r === 'Risk'   ? '0 0 20px rgba(250,204,21,0.28)' :
-                         r === 'Watch'  ? '0 0 20px rgba(125,211,252,0.25)' :
-                         '0 0 16px rgba(148,163,184,0.18)';
+                  const c =
+                    r === 'Danger' ? 'var(--error-color)' :
+                    r === 'Risk'   ? 'var(--warning-color)' :
+                    r === 'Watch'  ? 'var(--info-color)' :
+                    'var(--divider-color)';
+                  const amt =
+                    r === 'Danger' ? 40 :
+                    r === 'Risk'   ? 28 :
+                    r === 'Watch'  ? 25 : 18;
+                  return `0 0 20px color-mix(in srgb, ${c} ${amt}%, transparent)`;
                 ]]]
           grid:
             - grid-template-areas: "\"i\" \"n\" \"s\""
@@ -366,10 +404,10 @@ cards:
             - color: |
                 [[[
                   const r = entity.state;
-                  if (r === 'Danger') return '#ef4444';
-                  if (r === 'Risk')   return '#facc15';
-                  if (r === 'Watch')  return '#7dd3fc';
-                  return '#94a3b8';
+                  if (r === 'Danger') return 'var(--error-color)';
+                  if (r === 'Risk')   return 'var(--warning-color)';
+                  if (r === 'Watch')  return 'var(--info-color)';
+                  return 'var(--secondary-text-color)';
                 ]]]
           name:
             - font-size: |
@@ -379,6 +417,7 @@ cards:
                 ]]]
             - font-weight: 900
             - opacity: 0.95
+            - color: var(--primary-text-color)
           state:
             - font-size: |
                 [[[
@@ -389,30 +428,34 @@ cards:
             - color: |
                 [[[
                   const r = entity.state;
-                  if (r === 'Danger') return '#ef4444';
-                  if (r === 'Risk')   return '#facc15';
-                  if (r === 'Watch')  return '#7dd3fc';
-                  return '#94a3b8';
+                  if (r === 'Danger') return 'var(--error-color)';
+                  if (r === 'Risk')   return 'var(--warning-color)';
+                  if (r === 'Watch')  return 'var(--info-color)';
+                  return 'var(--secondary-text-color)';
                 ]]]
         card_mod:
-          style: >
-            ha-card { position: relative; backdrop-filter: blur(10px);
-            -webkit-backdrop-filter: blur(10px); }
-
+          style: |
+            ha-card { position: relative; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
             ha-card::before {
               content:""; position:absolute; inset:-45%;
-              background: linear-gradient(120deg, rgba(255,255,255,0) 40%, rgba(255,255,255,0.10) 48%, rgba(255,255,255,0) 58%);
+              background: linear-gradient(
+                120deg,
+                color-mix(in srgb, var(--primary-text-color) 0%, transparent) 40%,
+                color-mix(in srgb, var(--primary-text-color) 12%, transparent) 48%,
+                color-mix(in srgb, var(--primary-text-color) 0%, transparent) 58%
+              );
               transform: translateX(-30%) translateY(-10%) rotate(8deg);
               animation: cvShimmer 8s ease-in-out infinite;
               pointer-events:none; opacity:0.45;
             }
-
             ha-card::after {
               content:""; position:absolute; inset:0; border-radius:50%;
-              background: radial-gradient(circle at 30% 25%, rgba(255,255,255,0.10), rgba(255,255,255,0) 55%);
+              background: radial-gradient(circle at 30% 25%,
+                color-mix(in srgb, var(--primary-text-color) 12%, transparent),
+                transparent 55%
+              );
               pointer-events:none; opacity:0.45;
             }
-
             @keyframes cvShimmer {
               0%{transform:translateX(-38%) translateY(-12%) rotate(8deg);opacity:.25}
               50%{transform:translateX(38%) translateY(10%) rotate(8deg);opacity:.50}
@@ -430,7 +473,7 @@ cards:
         state_display: |
           [[[
             const d = parseFloat(entity.state);
-            if (isNaN(d)) return '—';
+            if (isNaN(d)) return '-';
             return `${d > 0 ? '+' : ''}${d.toFixed(1)}%`;
           ]]]
         tap_action:
@@ -454,24 +497,29 @@ cards:
                   return (w >= 760) ? '10px' : '7px';
                 ]]]
             - overflow: hidden
-            - background: rgba(10,12,16,0.62)
+            - background: var(--ha-card-background, var(--card-background-color))
+            - background: >
+                color-mix(in srgb,
+                  var(--ha-card-background, var(--card-background-color)) 72%,
+                  transparent
+                )
             - border: |
                 [[[
                   const d = parseFloat(entity.state);
-                  if (isNaN(d)) return '2px solid rgba(148,163,184,0.22)';
-                  if (Math.abs(d) >= 5.0) return '2px solid rgba(239,68,68,0.85)';
-                  if (Math.abs(d) < 0.6) return '2px solid rgba(148,163,184,0.35)';
-                  if (d > 0) return '2px solid rgba(250,204,21,0.75)';
-                  return '2px solid rgba(125,211,252,0.75)';
+                  if (isNaN(d)) return '2px solid color-mix(in srgb, var(--divider-color) 55%, transparent)';
+                  if (Math.abs(d) >= 5.0) return '2px solid color-mix(in srgb, var(--error-color) 85%, transparent)';
+                  if (Math.abs(d) < 0.6) return '2px solid color-mix(in srgb, var(--divider-color) 75%, transparent)';
+                  if (d > 0) return '2px solid color-mix(in srgb, var(--warning-color) 75%, transparent)';
+                  return '2px solid color-mix(in srgb, var(--info-color) 75%, transparent)';
                 ]]]
             - box-shadow: |
                 [[[
                   const d = parseFloat(entity.state);
-                  if (isNaN(d)) return '0 0 16px rgba(148,163,184,0.18)';
-                  if (Math.abs(d) >= 5.0) return '0 0 22px rgba(239,68,68,0.40)';
-                  if (Math.abs(d) < 0.6) return '0 0 18px rgba(148,163,184,0.20)';
-                  if (d > 0) return '0 0 20px rgba(250,204,21,0.28)';
-                  return '0 0 20px rgba(125,211,252,0.25)';
+                  if (isNaN(d)) return '0 0 16px color-mix(in srgb, var(--divider-color) 35%, transparent)';
+                  if (Math.abs(d) >= 5.0) return '0 0 22px color-mix(in srgb, var(--error-color) 40%, transparent)';
+                  if (Math.abs(d) < 0.6) return '0 0 18px color-mix(in srgb, var(--divider-color) 35%, transparent)';
+                  if (d > 0) return '0 0 20px color-mix(in srgb, var(--warning-color) 28%, transparent)';
+                  return '0 0 20px color-mix(in srgb, var(--info-color) 25%, transparent)';
                 ]]]
           grid:
             - grid-template-areas: "\"i\" \"n\" \"s\""
@@ -489,11 +537,11 @@ cards:
             - color: |
                 [[[
                   const d = parseFloat(entity.state);
-                  if (isNaN(d)) return '#94a3b8';
-                  if (Math.abs(d) >= 5.0) return '#ef4444';
-                  if (Math.abs(d) < 0.6) return '#94a3b8';
-                  if (d > 0) return '#facc15';
-                  return '#7dd3fc';
+                  if (isNaN(d)) return 'var(--secondary-text-color)';
+                  if (Math.abs(d) >= 5.0) return 'var(--error-color)';
+                  if (Math.abs(d) < 0.6) return 'var(--secondary-text-color)';
+                  if (d > 0) return 'var(--warning-color)';
+                  return 'var(--info-color)';
                 ]]]
           name:
             - font-size: |
@@ -503,6 +551,7 @@ cards:
                 ]]]
             - font-weight: 900
             - opacity: 0.95
+            - color: var(--primary-text-color)
           state:
             - font-size: |
                 [[[
@@ -513,31 +562,35 @@ cards:
             - color: |
                 [[[
                   const d = parseFloat(entity.state);
-                  if (isNaN(d)) return '#94a3b8';
-                  if (Math.abs(d) >= 5.0) return '#ef4444';
-                  if (Math.abs(d) < 0.6) return '#94a3b8';
-                  if (d > 0) return '#facc15';
-                  return '#7dd3fc';
+                  if (isNaN(d)) return 'var(--secondary-text-color)';
+                  if (Math.abs(d) >= 5.0) return 'var(--error-color)';
+                  if (Math.abs(d) < 0.6) return 'var(--secondary-text-color)';
+                  if (d > 0) return 'var(--warning-color)';
+                  return 'var(--info-color)';
                 ]]]
         card_mod:
-          style: >
-            ha-card { position: relative; backdrop-filter: blur(10px);
-            -webkit-backdrop-filter: blur(10px); }
-
+          style: |
+            ha-card { position: relative; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
             ha-card::before {
               content:""; position:absolute; inset:-45%;
-              background: linear-gradient(120deg, rgba(255,255,255,0) 45%, rgba(255,255,255,0.10) 49%, rgba(255,255,255,0) 58%);
+              background: linear-gradient(
+                120deg,
+                color-mix(in srgb, var(--primary-text-color) 0%, transparent) 45%,
+                color-mix(in srgb, var(--primary-text-color) 12%, transparent) 49%,
+                color-mix(in srgb, var(--primary-text-color) 0%, transparent) 58%
+              );
               transform: translateX(-30%) translateY(-10%) rotate(8deg);
               animation: cvShimmer 8s ease-in-out infinite;
               pointer-events:none; opacity:0.45;
             }
-
             ha-card::after {
               content:""; position:absolute; inset:0; border-radius:50%;
-              background: radial-gradient(circle at 30% 25%, rgba(255,255,255,0.10), rgba(255,255,255,0) 55%);
+              background: radial-gradient(circle at 30% 25%,
+                color-mix(in srgb, var(--primary-text-color) 12%, transparent),
+                transparent 55%
+              );
               pointer-events:none; opacity:0.45;
             }
-
             @keyframes cvShimmer {
               0%{transform:translateX(-38%) translateY(-12%) rotate(8deg);opacity:.25}
               50%{transform:translateX(38%) translateY(10%) rotate(8deg);opacity:.50}
@@ -545,7 +598,7 @@ cards:
             }
 
   ###########################################################################
-  # Comfort Band – with floating chevron controlling humidity_constellation
+  # Comfort Band - with floating chevron controlling humidity_constellation
   ###########################################################################
   - type: custom:button-card
     entity: input_boolean.humidity_constellation_expanded
@@ -579,17 +632,17 @@ cards:
         const h    = hEnt    ? parseFloat(hEnt.state)    : NaN;
 
         const bandTxt = (isNaN(low) || isNaN(high))
-          ? 'Target humidity: —'
-          : `Target humidity: ${low.toFixed(0)}–${high.toFixed(0)}%`;
+          ? 'Target humidity: -'
+          : `Target humidity: ${low.toFixed(0)}-${high.toFixed(0)}%`;
 
-        let comfort = 'Comfort: —';
+        let comfort = 'Comfort: -';
         if (!isNaN(h) && !isNaN(low) && !isNaN(high)) {
           if (h < low) {
-            comfort = 'Comfort: A bit dry — humidify / reduce extraction.';
+            comfort = 'Comfort: A bit dry - humidify / reduce extraction.';
           } else if (h <= high) {
-            comfort = 'Comfort: In the sweet spot — keep steady.';
+            comfort = 'Comfort: In the sweet spot - keep steady.';
           } else {
-            comfort = 'Comfort: High — ventilate / extract for 10–20 min.';
+            comfort = 'Comfort: High - ventilate / extract for 10-20 min.';
           }
         }
 
@@ -601,12 +654,12 @@ cards:
         const mouldRoom  = mouldEnt ? mouldEnt.state : null;
         const mouldRisk  = states['sensor.worst_room_mould']?.attributes?.risk;
 
-        let condLine = 'Condensation: —';
+        let condLine = 'Condensation: -';
         if (condRisk && condRisk !== 'Unknown' && condRoom && condRoom !== 'Unknown') {
           condLine = `Condensation: ${condRisk} in ${condRoom}`;
         }
 
-        let mouldLine = 'Mould: —';
+        let mouldLine = 'Mould: -';
         if (mouldRisk && mouldRisk !== 'Unknown' && mouldRoom && mouldRoom !== 'Unknown') {
           mouldLine = `Mould: ${mouldRisk} in ${mouldRoom}`;
         }
@@ -619,10 +672,15 @@ cards:
         - position: relative
         - border-radius: 22px
         - padding: 12px 14px
-        - background: rgba(10,12,16,0.62)
-        - border: 2px solid rgba(148,163,184,0.18)
-        - box-shadow: 0 0 18px rgba(148,163,184,0.18)
         - overflow: hidden
+        - background: var(--ha-card-background, var(--card-background-color))
+        - background: >
+            color-mix(in srgb,
+              var(--ha-card-background, var(--card-background-color)) 75%,
+              transparent
+            )
+        - border: 2px solid color-mix(in srgb, var(--divider-color) 60%, transparent)
+        - box-shadow: 0 0 18px color-mix(in srgb, var(--divider-color) 35%, transparent)
       grid:
         - grid-template-areas: "\"i n\" \"l l\""
         - grid-template-columns: 22px 1fr
@@ -631,17 +689,19 @@ cards:
         - align-items: center
       icon:
         - width: 18px
-        - color: "#94a3b8"
+        - color: var(--secondary-text-color)
       name:
         - font-size: 15px
         - font-weight: 900
         - letter-spacing: 0.2px
+        - color: var(--primary-text-color)
       label:
         - white-space: pre-line
         - font-size: 13px
         - line-height: 1.35
         - opacity: 0.95
         - text-align: left
+        - color: var(--primary-text-color)
       custom_fields:
         chevron:
           - position: absolute
@@ -653,20 +713,25 @@ cards:
           - align-items: center
           - justify-content: center
           - border-radius: 999px
-          - background: rgba(15,23,42,0.85)
-          - box-shadow: 0 0 12px rgba(148,163,184,0.55)
+          - background: >
+              color-mix(in srgb,
+                var(--ha-card-background, var(--card-background-color)) 85%,
+                transparent
+              )
+          - border: 1px solid color-mix(in srgb, var(--divider-color) 70%, transparent)
+          - box-shadow: 0 0 12px color-mix(in srgb, var(--divider-color) 55%, transparent)
           - color: |
               [[[
                 const expanded =
                   states['input_boolean.humidity_constellation_expanded']?.state === 'on';
-                return expanded ? '#4ade80' : '#94a3b8';
+                return expanded ? 'var(--success-color)' : 'var(--secondary-text-color)';
               ]]]
           - opacity: 0.95
           - pointer-events: none
 
-###########################################################################
-  # Humidity Constellation – dropdown panel (24h chart)
-###########################################################################
+  ###########################################################################
+  # Humidity Constellation - dropdown panel (24h chart)
+  ###########################################################################
   - type: conditional
     conditions:
       - entity: input_boolean.humidity_constellation_expanded
@@ -689,8 +754,9 @@ cards:
             height: 260px
             toolbar:
               show: false
+            foreColor: var(--primary-text-color)
           grid:
-            borderColor: rgba(255,255,255,0.08)
+            borderColor: color-mix(in srgb, var(--divider-color) 60%, transparent)
             strokeDashArray: 3
           stroke:
             curve: smooth
@@ -700,15 +766,15 @@ cards:
             position: bottom
             fontSize: 12px
             labels:
-              colors: "#e5e7eb"
+              colors: var(--primary-text-color)
           xaxis:
             labels:
               style:
-                colors: "#9ca3af"
+                colors: var(--secondary-text-color)
           yaxis:
             labels:
               style:
-                colors: "#9ca3af"
+                colors: var(--secondary-text-color)
         yaxis:
           - min: 30
             max: 90
