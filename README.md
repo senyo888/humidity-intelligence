@@ -55,6 +55,7 @@ Smart humidity intelligence for Home Assistant – badges, comfort band and 24-h
   - [`button-card`](https://github.com/custom-cards/button-card)
   - [`apexcharts-card`](https://github.com/RomRider/apexcharts-card)
   - [`card-mod`](https://github.com/thomasloven/lovelace-card-mod)
+  - [`config-template-card`](https://github.com/iantrich/config-template-card)
 
 ---
 
@@ -105,6 +106,7 @@ Install via **HACS → Frontend**:
    * **button-card**
    * **apexcharts-card**
    * **card-mod**
+   * **config-template-card**
    
 2. Restart Home Assistant after all three are installed.
 
