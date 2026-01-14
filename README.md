@@ -75,12 +75,12 @@ It’s an **analysis engine with a clean public API**.
 
 ### Frontend (optional, for the full UI)
 
-Install via **HACS → Frontend**:
-
-* `button-card`
-* `apexcharts-card`
-* `card-mod`
-* `config-template-card`
+- [HACS](https://hacs.xyz) (recommended) for easy frontend installation
+- Frontend cards:
+  - [`button-card`](https://github.com/custom-cards/button-card)
+  - [`apexcharts-card`](https://github.com/RomRider/apexcharts-card)
+  - [`card-mod`](https://github.com/thomasloven/lovelace-card-mod)
+  * `config-template-card`
 
 > The **backend works without these**.
 > The provided UI and Constellation chart require them.
