@@ -111,9 +111,8 @@ HACS uses the `.jinja` file as the install source. You control where and how it 
 
 * HACS → **Integrations**
 * ⋮ → **Custom repositories**
-* Add this repo as **Template**
+* Add this repo as **Template** ['Humidity Intelligence'](https://github.com/senyo888/Humidity-Intelligence)
 * Install
-
 ---
 
 ### 2️⃣ Enable packages (once)
