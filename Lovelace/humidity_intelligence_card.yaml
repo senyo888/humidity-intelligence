@@ -1,7 +1,17 @@
+# Lovelace UI for Humidity‑Intelligence
+#
+# This card provides a responsive dashboard containing four circular badges
+# (house humidity, condensation risk, mould risk and 7‑day drift), a Comfort
+# Band panel with guidance and a collapsible 24‑hour multi‑room chart.  It is
+# designed to work seamlessly with both the baseline v1.0.2 package and the
+# advanced v1.1.0 package contained in this repository.  See the README for
+# installation instructions and dependency requirements (button‑card,
+# apexcharts‑card and card‑mod via HACS).
+
 type: vertical-stack
 cards:
   ###########################################################################
-  # Top row – Humidity, Condensation, Mould, Drift badges v1.0.1
+  # Top row – Humidity, Condensation, Mould, Drift badges
   ###########################################################################
   - type: horizontal-stack
     cards:

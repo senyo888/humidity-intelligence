@@ -1,332 +1,311 @@
-# Humidity-Intelligence
+# Humidity Intelligence Advanced HACS - Edition
 
-Smart humidity intelligence for Home Assistant – badges, comfort band and 24-hour multi-room chart.
+**Smart humidity intelligence for Home Assistant — insights, not just numbers.**
 
-> Version: **v1.0.2** reverted back to original code as v1.0.1 was too unstable.
+<img width="1536" height="1024" alt="banner" src="https://github.com/user-attachments/assets/72d0ce73-e8a4-412d-a3c1-570b1048d740" />
 
-![IMG_5368](https://github.com/user-attachments/assets/8ce3f56c-f232-4be6-a941-5b31a2983387) 
 
-> **TL;DR:**  
-> Drop one package file into `/config/packages/`, paste one Lovelace card, change your room sensor IDs, and you get:
-> - Live house-average humidity  
-> - Condensation & mould risk badges  
-> - 7-day humidity drift  
-> - A Comfort Band panel with actionable guidance  
-> - A dropdown 24-hour multi-room humidity chart
+Humidity Intelligence is an opinionated Home Assistant package that transforms raw humidity and temperature readings into **actionable building insight**.
 
----
+It doesn’t just show percentages — it answers the real questions:
 
-## Features
+> **Am I heading toward condensation or mould?
+> Where is the risk coming from?
+> And what should I actually do right now?**
 
-- **Four badges across the top**
-  - **Humidity** – live house average with dynamic colour + glow
-  - **Condensation** – worst-room risk (“Watch / Risk / Danger”)
-  - **Mould** – worst-room risk (“Watch / Risk / Danger”)
-  - **Drift** – 7-day difference vs historical mean (up/down trend)
+This Advanced Edition reflects the system I run at home and is designed to be:
 
-- **Comfort Band panel**
-  - Shows **target band** (default 45–55 %)
-  - Plain-language comfort text: dry / sweet spot / high
-  - Worst-room **condensation** + **mould** summary lines
-  - Tapping anywhere on the card toggles an **expansion chevron**
-
-- **Humidity Constellation (24 h)**
-  - ApexCharts line chart of all your key rooms
-  - Target band rendered as a shaded zone
-  - 24-hour, group-by-15-minutes smoothing
-  - Hidden by default; opened by the Comfort Band chevron
-
-- **Backend intelligence (no automations required)**
-  - House average humidity
-  - 7-day mean and drift
-  - Worst-room condensation and mould with simple thresholds
-  - Binary “danger” flags to drive the badge styling
-
-- **Responsive UI**
-  - Circular badges scale between phone and tablet widths
-  - Works as a single stack or dropped into a larger dashboard
+* Vendor-agnostic
+* Sensor-driven
+* UI-friendly
+* Automation-ready
 
 ---
 
-## Requirements
+## ✨ What it does
 
-- Home Assistant 20251203.3 (tested on recent installs)
+Humidity Intelligence builds a **decision-making layer** on top of your existing room sensors.
+
+### House-level intelligence
+
+* Dynamic **house average humidity**
+* **Season-aware comfort band**
+* 7-day humidity **drift** (current vs historical mean)
+* Plain-language **ventilation suggestion**
+* Binary danger flags for automations
+
+### Per-room analysis
+
+For every mapped room:
+
+* Dew point calculation (Magnus formula)
+* Condensation spread (°C above dew point)
+* Condensation risk: **OK / Watch / Risk / Danger**
+* Mould risk (humidity + spread scoring)
+* 7-day room-level drift
+
+### Smart summaries
+
+* Worst room for condensation
+* Worst room for mould
+* Worst-case risk levels exposed as sensors
+
+### Dashboard-ready outputs
+
+* Stable `sensor.*` and `binary_sensor.*` entities
+* ApexCharts-ready **Humidity Constellation** series
+* Designed to power badge-based and dropdown-mod UIs
+
+This is not a graph pack.
+It’s an **analysis engine with a clean public API**.
+
+---
+
+## 📦 Requirements
+
+### Home Assistant
+
+* Home Assistant **2024.x+**
+* YAML mode or package support enabled
+
+### Core integrations (built-in)
+
+* `template`
+* `statistics`
+
+### Frontend (optional, for the full UI)
+
 - [HACS](https://hacs.xyz) (recommended) for easy frontend installation
 - Frontend cards:
   - [`button-card`](https://github.com/custom-cards/button-card)
   - [`apexcharts-card`](https://github.com/RomRider/apexcharts-card)
   - [`card-mod`](https://github.com/thomasloven/lovelace-card-mod)
+  * `config-template-card`
+
+> The **backend works without these**.
+> The provided UI and Constellation chart require them.
 
 ---
 
-## Set-up Instructions
+## 📁 Repository structure
+
+This repository follows the HACS **custom template** layout:
+
+| Path                          | Purpose                            |
+| ----------------------------- | ---------------------------------- |
+| `humidity_intelligence.jinja` | Core package (all sensors & logic) |
+| `lovelace/`                   | Optional prebuilt dashboard card   |
+| `assets/`                     | README assets                      |
+| `hacs.json`                   | HACS metadata                      |
+| `LICENSE`                     | MIT licence                        |
+
+HACS uses the `.jinja` file as the install source. You control where and how it is included.
 
 ---
 
+## 🚀 Installation
 
-* `packages/humidity_intelligence.yaml`
-  All backend logic: helpers, template sensors, statistics, risk flags.
+### 1️⃣ Add repository to HACS
 
-* `lovelace/humidity_intelligence_card.yaml`
-  The UI card: badges, Comfort Band + chevron, Humidity Constellation chart.
-
-The README assumes this structure, but you can rename folders if you like.
-
----
-
-## 1. Enable packages (once per HA instance)
-
-If you already use packages, you can skip this step.
-
-1. Create a folder called `packages` inside your Home Assistant config folder:
-
-   ```text
-   /config/packages/
-   ```
-
-2. Open `configuration.yaml` and add (or extend) the `homeassistant:` block:
-
-   ```yaml
-   homeassistant:
-     packages: !include_dir_merge_named packages/
-   ```
-
-3. Go to **Settings → System → Developer tools → Check configuration**.
-
-4. If valid, restart Home Assistant.
+* HACS → **Integrations**
+* ⋮ → **Custom repositories**
+* Add this repo as **Template**
+* Install
 
 ---
 
-## 2. Install frontend dependencies
+### 2️⃣ Enable packages (once)
 
-Install via **HACS → Frontend**:
-
-1. Search for and install:
-
-   * **button-card**
-   * **apexcharts-card**
-   * **card-mod**
-2. Restart Home Assistant after all three are installed.
-
----
-
-## 3. Add the backend package
-
-1. Copy `packages/humidity_intelligence.yaml` from this repo into:
-
-   ```text
-   /config/packages/humidity_intelligence.yaml
-   ```
-
-2. Open the file and **edit the room humidity entities** under this block:
-
-   ```jinja2
-   # >>> EDIT THESE ENTITY IDS TO MATCH YOUR SENSORS <<<
-   {% set rooms = [
-     'sensor.living_room_humidity',
-     'sensor.kitchen_humidity',
-     'sensor.hallway_humidity',
-     'sensor.bedroom_humidity',
-     'sensor.kids_room_humidity',
-     'sensor.bathroom_humidity',
-     'sensor.toilet_humidity'
-   ] %}
-   ```
-
-   Replace these with your own humidity sensor entity IDs.
-   You can safely remove rooms you don’t have, or add more.
-
-3. (Optional) Adjust the **comfort band** thresholds:
-
-   ```jinja2
-   - name: House Humidity Target Low
-     state: 45        # change to your preferred lower limit
-
-   - name: House Humidity Target High
-     state: 55        # change to your preferred upper limit
-   ```
-
-4. Go to **Developer tools → Check configuration**.
-
-5. Restart Home Assistant.
-
-After restart you should see (under **Developer tools → States**):
-
-* `sensor.house_average_humidity`
-* `sensor.house_humidity_mean_7d`
-* `sensor.house_humidity_drift_7d`
-* `sensor.worst_room_condensation`
-* `sensor.worst_room_condensation_risk`
-* `sensor.worst_room_mould`
-* `sensor.worst_room_mould_risk`
-* `binary_sensor.humidity_danger`
-* `binary_sensor.condensation_danger`
-* `binary_sensor.mould_danger`
-* `input_boolean.humidity_constellation_expanded`
-
-If any of these are missing, re-check that the package is loaded and your YAML syntax is valid.
-
----
-
-## 4. Add the Lovelace card
-
-You can either import the card file or paste the YAML manually.
-
-### Option A – “Manual” card (simplest)
-
-1. Go to the dashboard where you want the card.
-2. Click **⋮ → Edit dashboard → + Add card → Manual**.
-3. Paste the contents of `lovelace/humidity_intelligence_card.yaml`.
-4. Save.
-
-The card will show:
-
-* 4 badges on the first row
-* Comfort Band panel
-* Tapping the Comfort Band toggles the **chevron** and reveals/hides the 24-hour chart.
-
-### Option B – Re-use across dashboards (include file)
-
-If you like to keep your Lovelace in files:
-
-1. Save the UI card as:
-
-   ```text
-   /config/lovelace/humidity_intelligence_card.yaml
-   ```
-
-2. In your view definition (raw YAML mode), use an include:
-
-   ```yaml
-   views:
-     - title: Climate
-       path: climate
-       cards:
-         - !include /config/lovelace/humidity_intelligence_card.yaml
-   ```
-
-3. Save and reload the dashboard.
-
----
-
-## 5. Customisation
-
-In `humidity_intelligence.yaml`, find the `House Average Humidity` sensor and **replace the example entities** with your actual humidity sensors:
+In `configuration.yaml`:
 
 ```yaml
-{% set rooms = [
-  'sensor.living_room_humidity',      # ← change to your entity IDs
-  'sensor.kitchen_humidity',
-  'sensor.hallway_humidity',
-  'sensor.bedroom_humidity',
-  'sensor.kids_room_humidity',
-  'sensor.bathroom_humidity',
-  'sensor.toilet_humidity'
-] %}
-
+homeassistant:
+  packages: !include_dir_merge_named packages
 ```
-If you don’t change these, the package will still load, but
-sensor.house_average_humidity will see them as unknown and will throw a numeric value error.### Colour thresholds and glow
+
+Restart Home Assistant.
 
 ---
 
-The badge borders and glows are driven by inline JavaScript in `button-card` styles.
-If you want to change the thresholds (e.g. what counts as “Danger” or “Watch”), edit the relevant `if` blocks in the card YAML.
+### 3️⃣ Deploy the package
 
-Example (humidity badge border):
+Choose **one** approach:
 
-```js
-if (h < 45) return '2px solid rgba(56,189,248,0.75)';
-if (h < 49) return '2px solid rgba(125,211,252,0.70)';
-if (h < 60) return '2px solid rgba(74,222,128,0.70)';
-if (h < 68) return '2px solid rgba(250,204,21,0.75)';
-return '2px solid rgba(239,68,68,0.85)';
+**Option A — Copy**
+
+```text
+/config/packages/humidity_intelligence.yaml
 ```
 
-### Condensation / mould risk thresholds
+Copy the full contents of `humidity_intelligence.jinja` into it.
 
-These are set in the package file:
+**Option B — Include**
+
+```yaml
+packages:
+  humidity_intelligence: !include jinja/humidity_intelligence.jinja
+```
+
+Restart Home Assistant again.
+
+---
+
+## 🔧 Configuration (the only part you must edit)
+
+All defaults are **placeholders**.
+
+You only need to map your real sensors.
+
+### 1️⃣ Room map (humidity)
+
+Edit the `Humidity Intelligence Config` block:
+
+```yaml
+'Living Room': 'sensor.living_room_humidity'
+'Kitchen':     'sensor.kitchen_humidity'
+```
+
+* Replace entity IDs with your real humidity sensors
+* Add or remove rooms freely
+* Invalid or unavailable sensors are ignored automatically
+
+This map drives:
+
+* House averages
+* Constellation chart
+* Worst-room logic
+
+---
+
+### 2️⃣ 7-day statistics (drift)
+
+Each room has a statistics sensor:
+
+```yaml
+entity_id: sensor.living_room_humidity
+```
+
+Change **only** the `entity_id`.
+
+Do not rename the statistics sensors unless you also update downstream templates.
+
+---
+
+### 3️⃣ Dew point inputs (temp + humidity)
+
+For each room:
 
 ```jinja2
-{% if h >= 80 %}
-  Danger
-{% elif h >= 70 %}
-  Risk
-{% elif h >= 60 %}
-  Watch
-{% else %}
-  Low
-{% endif %}
+sensor.living_room_temperature
+sensor.living_room_humidity
 ```
 
-Adjust the cut-offs to fit your building and climate.
-
-### Target band in the chart
-
-The ApexCharts annotations use the same `House Humidity Target Low/High` sensors, so if you tweak the targets in the package, the shaded **Target band** in the chart will track automatically.
+Once mapped, **everything else is automatic**.
 
 ---
 
-## 6. Troubleshooting
+## 🚫 Public entity API (do not rename)
 
-**The card loads but shows `unknown` everywhere**
+These entity IDs are intentionally stable and used by the UI:
 
-* Check your entity IDs in the package file.
-* Make sure each room sensor is actually reporting a numeric humidity value.
-* `statistics` sensors need some history to produce a mean; the 7-day drift may show `0` or `unknown` right after a restart until enough samples are collected.
+```
+sensor.house_average_humidity
+sensor.house_humidity_mean_7d
+sensor.house_humidity_drift_7d
 
-**The chevron doesn’t open the chart**
+sensor.worst_room_condensation
+sensor.worst_room_condensation_risk
+sensor.worst_room_mould
+sensor.worst_room_mould_risk
 
-* Confirm `input_boolean.humidity_constellation_expanded` exists and is `on`/`off`.
-* Check the `entity` for the Comfort Band button: it should be that input_boolean.
-* The chart is wrapped in a `conditional` card that only shows when the boolean is `on`.
+sensor.humidity_constellation_series
 
-**YAML error when restarting**
+binary_sensor.humidity_danger
+binary_sensor.condensation_danger
+binary_sensor.mould_danger
 
-* Almost always a spacing or copy/paste issue.
-* Run the built-in **Check configuration** and read the line number it points to.
-* Make sure the `homeassistant: packages:` line in `configuration.yaml` has the correct indentation.
+input_boolean.humidity_constellation_expanded
+```
 
----
-
-## 7. Roadmap
-
-* Per-room detail view / drill-down
-* Optional “winter vs summer” target presets
-* Temperature + humidity combined view
-* HACS-ready structure & auto-release
-
-If you have ideas, open an issue or start a discussion.
+Think of these as the **public interface**.
 
 ---
 
-## 8. Contributing
+## 🎛️ UI & dropdown-mod support
 
-Issues, ideas and pull requests are welcome:
+The package is designed to pair with a **badge-first dashboard**:
 
-* Tweak the thresholds, try it in different climates and report back.
-* Share screenshots and alternative colour themes.
-* Help test on mobile vs tablet dashboards.
+* Four circular badges (Humidity / Condensation / Mould / Drift)
+* Comfort Band card
+* Dropdown-mod **24-hour Humidity Constellation**
 
-When submitting a PR, please:
-
-* Keep personal entity names out of the default config.
-* Stick to standard Home Assistant practices (packages, includes, etc.).
-* Aim for zero console errors in the browser.
+The Constellation chart is auto-generated — no manual series editing required.
 
 ---
 
-## 9. License
+## 🧠 How the intelligence works (brief)
 
-This project is released under the **MIT License**.
-You’re free to use, modify and share it in your own dashboards and automations.
+* Dew point calculated per room
+* Condensation risk derived from **spread**
+* Mould risk combines **humidity + spread**
+* Seasonal comfort band adjusts thresholds
+* Ventilation guidance is intentionally conservative
+
+This biases toward **early warning**, not late alarm.
 
 ---
 
-## 10. Credits
+## 🧭 Roadmap
 
-Humidity Intelligence was built for Home Assistant users who want more than a single humidity number – they want a **story**: where the moisture is going, which room is getting risky, and whether it’s time to ventilate or relax.
+**1.2.x**
 
-If you use this card in your setup, a star on the repo and a screenshot in the issues/discussions are always appreciated 💧
+* More logic driven from the dynamic room map
+* Optional outdoor reference inputs
+* Easier onboarding
+* Compact more UI variant
+
+**Future**
+
+* Predictive condensation warnings
+* Energy-aware ventilation hints
+* Automation hooks
+* Seasonal humidity health reports
+
+---
+
+## 🛠️ Troubleshooting
+
+**Values show `unknown`**
+
+* Check entity IDs exist and are numeric
+* Drift sensors need history (up to 7 days)
+
+**Constellation chart blank**
+
+* Inspect `sensor.humidity_constellation_series`
+* One or more room entities are invalid
+
+**Ventilation feels aggressive**
+
+* This is intentional
+* Tune thresholds if your building behaves differently
+
+---
+
+## ❤️ Intent
+
+Humidity Intelligence exists because:
+
+> “65% isn’t helpful.
+> Tell me if it’s bad **here**, **now**, and **what to do**.”
+
+If it helps you understand your building better, a ⭐ or a screenshot in Discussions is always appreciated.
+
+---
+
+
+Just say the word.
+
+
 
 

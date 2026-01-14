@@ -1,241 +1,881 @@
 ###############################################################################
-# Package: humidity_intelligence.yaml
-# Version: v1.0.2
-# Humidity Intelligence – core backend
-# - House average humidity + comfort band
-# - 7-day drift
-# - Worst-room condensation + mould with risk levels
+# Advanced – Humidity Intelligence Stack (Complete Package)
+# File: /config/packages/humidity_intelligence.yaml
+# Version: v1.1.0 – Advanced Intelligence Edition
+#
+# - Dynamic room map for humidity (Humidity Intelligence Config)
+# - House average humidity + seasonal comfort band
+# - 7-day drift (house + per-room)
+# - Dew point, condensation spread, mould risk per room
+# - Worst-room condensation + mould (advanced scoring)
+# - Ventilation suggestion (“what should I do now?”)
 # - Danger binary_sensors for badge highlighting
-# - Helper for expanding the "Humidity Constellation" chart
+# - Humidity Constellation series generator for ApexCharts + dropdown-mod UI
+#
+# HOW TO ADAPT TO YOUR HOUSE
+# 1. Pick your humidity / temperature entities per room.
+# 2. Update:
+#    - The statistics block (source humidity sensors).
+#    - The room_map in sensor.humidity_intelligence_config.
+#    - The per-room dew-point / spread / mould sensors (temperature + humidity).
+# 3. Leave the public entities as-is:
+#      sensor.house_average_humidity
+#      sensor.house_humidity_mean_7d
+#      sensor.house_humidity_drift_7d
+#      sensor.worst_room_condensation
+#      sensor.worst_room_condensation_risk
+#      sensor.worst_room_mould
+#      sensor.worst_room_mould_risk
+#      sensor.humidity_constellation_series
+#      binary_sensor.humidity_danger
+#      binary_sensor.condensation_danger
+#      binary_sensor.mould_danger
 ###############################################################################
 
-########################################
-# Helpers
-########################################
+###############################################################################
+# Helper – dropdown-mod control for the "Humidity Constellation" panel
+###############################################################################
 input_boolean:
   humidity_constellation_expanded:
     name: Humidity Constellation Expanded
     icon: mdi:chevron-down-circle
 
-########################################
-# Statistics – 7-day mean of house humidity
-########################################
+###############################################################################
+# 7-day statistics (mean) – used for drift
+#
+# IMPORTANT:
+# - entity_id here is the *source* humidity sensor per room.
+# - The statistics integration automatically creates new entities such as:
+#     sensor.house_humidity_mean_7d
+#     sensor.living_room_humidity_mean_7d
+#   The drift sensors below assume those default ids. If you rename them in
+#   the UI, update the drift templates to match.
+###############################################################################
 sensor:
   - platform: statistics
-    name: House Humidity Mean 7d
-    entity_id: sensor.house_average_humidity
+    name: "House Humidity Mean 7d"
+    entity_id: sensor.house_average_humidity        # ← derived below, do NOT change
     state_characteristic: mean
     max_age:
       days: 7
 
-########################################
-# Template sensors + binary sensors
-########################################
+  - platform: statistics
+    name: "Living Room Humidity Mean 7d"
+    entity_id: sensor.living_room_humidity          # ← CHANGE to your Living Room humidity sensor
+    state_characteristic: mean
+    max_age:
+      days: 7
+
+  - platform: statistics
+    name: "Kitchen Humidity Mean 7d"
+    entity_id: sensor.kitchen_humidity              # ← CHANGE to your Kitchen humidity sensor
+    state_characteristic: mean
+    max_age:
+      days: 7
+
+  - platform: statistics
+    name: "Hallway Humidity Mean 7d"
+    entity_id: sensor.hallway_humidity              # ← CHANGE to your Hallway humidity sensor
+    state_characteristic: mean
+    max_age:
+      days: 7
+
+  - platform: statistics
+    name: "Bedroom Humidity Mean 7d"
+    entity_id: sensor.bedroom_humidity              # ← CHANGE to your main Bedroom humidity sensor
+    state_characteristic: mean
+    max_age:
+      days: 7
+
+  - platform: statistics
+    name: "Kids Room Humidity Mean 7d"
+    entity_id: sensor.kids_room_humidity            # ← CHANGE to your kids room / second bedroom humidity sensor
+    state_characteristic: mean
+    max_age:
+      days: 7
+
+  - platform: statistics
+    name: "Bathroom Humidity Mean 7d"
+    entity_id: sensor.bathroom_humidity             # ← CHANGE to your Bathroom humidity sensor
+    state_characteristic: mean
+    max_age:
+      days: 7
+
+  - platform: statistics
+    name: "Toilet Humidity Mean 7d"
+    entity_id: sensor.toilet_humidity               # ← CHANGE to your Toilet / WC humidity sensor
+    state_characteristic: mean
+    max_age:
+      days: 7
+
+###############################################################################
+# Templates – config, averages, dew point, risks, drift, worst room, suggestions
+###############################################################################
 template:
   - sensor:
       #########################################################################
-      # House average humidity
+      # A) CONFIG – Dynamic room map for humidity
+      #
+      # This attribute holds a ROOM → HUMIDITY SENSOR map.
+      # It is used by:
+      #   - House Average Humidity
+      #   - Humidity Constellation Series (ApexCharts + dropdown-mod)
+      #
+      # >>> EDIT HERE <<<
+      # Replace each example entity_id with your own humidity sensor for that
+      # room. Remove rooms you don’t have, or add more entries if needed.
       #########################################################################
-      - name: House Average Humidity
-        unique_id: humidity_intelligence_house_average
+      - name: "Humidity Intelligence Config"
+        unique_id: humidity_intelligence_config
+        state: "Active"
+        attributes:
+          room_map: >
+            {{ {
+              'Living Room': 'sensor.living_room_humidity',   # ← CHANGE
+              'Kitchen':     'sensor.kitchen_humidity',       # ← CHANGE
+              'Hallway':     'sensor.hallway_humidity',       # ← CHANGE
+              'Bedroom':     'sensor.bedroom_humidity',       # ← CHANGE
+              'Kids Room':   'sensor.kids_room_humidity',     # ← CHANGE
+              'Bathroom':    'sensor.bathroom_humidity',      # ← CHANGE
+              'Toilet':      'sensor.toilet_humidity'         # ← CHANGE
+            } }}
+
+      #########################################################################
+      # B) House averages (humidity + temperature)
+      #
+      # House humidity uses the dynamic room_map above and automatically
+      # ignores missing/unavailable sensors.
+      #
+      # House temperature uses a fixed list of temperature entities.
+      # >>> EDIT THE temperature entity_ids to match your setup <<<
+      #########################################################################
+      - name: "House Average Humidity"
+        unique_id: house_average_humidity
         unit_of_measurement: "%"
-        device_class: humidity
+        state_class: measurement
+        icon: mdi:water-percent
+        state: >
+          {% set room_map = state_attr('sensor.humidity_intelligence_config', 'room_map') or {} %}
+          {% set entities = room_map.values() | select('has_value') | list %}
+          {% set vals = expand(entities)
+                        | map(attribute='state')
+                        | select('is_number')
+                        | map('float')
+                        | list %}
+          {% if vals | length == 0 %}
+            {{ states(this.entity_id) | float(0) }}
+          {% else %}
+            {{ (vals | sum / vals | length) | round(1) }}
+          {% endif %}
+
+      - name: "House Average Temperature"
+        unique_id: house_average_temperature
+        unit_of_measurement: "°C"
+        device_class: temperature
         state_class: measurement
         state: >
-          {# >>> EDIT THESE ENTITY IDS TO MATCH YOUR SENSORS <<< #}
-          {% set rooms = [
-            'sensor.living_room_humidity',
-            'sensor.kitchen_humidity',
-            'sensor.hallway_humidity',
-            'sensor.bedroom_humidity',
-            'sensor.kids_room_humidity',
-            'sensor.bathroom_humidity',
-            'sensor.toilet_humidity'
+          {# >>> EDIT THESE TEMPERATURE SENSORS TO MATCH YOUR ROOMS <<< #}
+          {% set sensors = [
+            'sensor.living_room_temperature',   # ← CHANGE
+            'sensor.kitchen_temperature',       # ← CHANGE
+            'sensor.hallway_temperature',       # ← CHANGE
+            'sensor.bedroom_temperature',       # ← CHANGE
+            'sensor.kids_room_temperature',     # ← CHANGE
+            'sensor.bathroom_temperature',      # ← CHANGE
+            'sensor.toilet_temperature'         # ← CHANGE
           ] %}
-          {% set vals = [] %}
-          {% for e in rooms %}
-            {% set s = states(e) %}
-            {% if s not in ['unknown', 'unavailable', 'none', ''] %}
-              {% set vals = vals + [ s|float ] %}
-            {% endif %}
-          {% endfor %}
-          {% if vals|length == 0 %}
-            unknown
-          {% else %}
-            {{ (vals|sum / vals|length)|round(1) }}
+          {% set values = sensors
+              | map('states')
+              | map('float', default=none)
+              | select('number')
+              | list %}
+          {{ (values | average) | round(1) if values | length > 0 else 'unknown' }}
+
+      #########################################################################
+      # C) Seasonal target band (UK-friendly defaults)
+      #
+      # Feeds:
+      #   - Comfort copy in the UI
+      #   - Ventilation Suggestion
+      #
+      # Adjust the numeric values if your building/climate differ.
+      #########################################################################
+      - name: "House Humidity Target Low"
+        unique_id: house_humidity_target_low
+        unit_of_measurement: "%"
+        state: >
+          {% set m = now().month %}
+          {% if m in [11,12,1,2,3] %} 45
+          {% elif m in [6,7,8] %} 51
+          {% else %} 47
+          {% endif %}
+
+      - name: "House Humidity Target High"
+        unique_id: house_humidity_target_high
+        unit_of_measurement: "%"
+        state: >
+          {% set m = now().month %}
+          {% if m in [11,12,1,2,3] %} 55
+          {% elif m in [6,7,8] %} 60
+          {% else %} 58
           {% endif %}
 
       #########################################################################
-      # Comfort band targets – adjust if you prefer different limits
+      # D) 7-day drift (current minus 7d mean)
+      #
+      # Shows whether each room is trending wetter or drier compared to its
+      # own 7-day history.
       #########################################################################
-      - name: House Humidity Target Low
-        unique_id: humidity_intelligence_target_low
-        unit_of_measurement: "%"
-        state: 45
-
-      - name: House Humidity Target High
-        unique_id: humidity_intelligence_target_high
-        unit_of_measurement: "%"
-        state: 55
-
-      #########################################################################
-      # 7-day drift: current average vs 7-day mean
-      #########################################################################
-      - name: House Humidity Drift 7d
-        unique_id: humidity_intelligence_drift_7d
+      - name: "House Humidity Drift 7d"
+        unique_id: house_humidity_drift_7d
         unit_of_measurement: "%"
         state: >
-          {% set current = states('sensor.house_average_humidity')|float(0) %}
-          {% set mean = states('sensor.house_humidity_mean_7d')|float(0) %}
-          {{ (current - mean)|round(1) }}
+          {% set nowv = states('sensor.house_average_humidity') | float(none) %}
+          {% set mean = states('sensor.house_humidity_mean_7d') | float(none) %}
+          {{ (nowv - mean) | round(1) if nowv is not none and mean is not none else 'unknown' }}
+
+      - name: "Living Room Humidity Drift 7d"
+        unique_id: living_room_humidity_drift_7d
+        unit_of_measurement: "%"
+        state: >
+          {% set nowv = states('sensor.living_room_humidity') | float(none) %}
+          {% set mean = states('sensor.living_room_humidity_mean_7d') | float(none) %}
+          {{ (nowv - mean) | round(1) if nowv is not none and mean is not none else 'unknown' }}
+
+      - name: "Kitchen Humidity Drift 7d"
+        unique_id: kitchen_humidity_drift_7d
+        unit_of_measurement: "%"
+        state: >
+          {% set nowv = states('sensor.kitchen_humidity') | float(none) %}
+          {% set mean = states('sensor.kitchen_humidity_mean_7d') | float(none) %}
+          {{ (nowv - mean) | round(1) if nowv is not none and mean is not none else 'unknown' }}
+
+      - name: "Hallway Humidity Drift 7d"
+        unique_id: hallway_humidity_drift_7d
+        unit_of_measurement: "%"
+        state: >
+          {% set nowv = states('sensor.hallway_humidity') | float(none) %}
+          {% set mean = states('sensor.hallway_humidity_mean_7d') | float(none) %}
+          {{ (nowv - mean) | round(1) if nowv is not none and mean is not none else 'unknown' }}
+
+      - name: "Bedroom Humidity Drift 7d"
+        unique_id: bedroom_humidity_drift_7d
+        unit_of_measurement: "%"
+        state: >
+          {% set nowv = states('sensor.bedroom_humidity') | float(none) %}
+          {% set mean = states('sensor.bedroom_humidity_mean_7d') | float(none) %}
+          {{ (nowv - mean) | round(1) if nowv is not none and mean is not none else 'unknown' }}
+
+      - name: "Kids Room Humidity Drift 7d"
+        unique_id: kids_room_humidity_drift_7d
+        unit_of_measurement: "%"
+        state: >
+          {% set nowv = states('sensor.kids_room_humidity') | float(none) %}
+          {% set mean = states('sensor.kids_room_humidity_mean_7d') | float(none) %}
+          {{ (nowv - mean) | round(1) if nowv is not none and mean is not none else 'unknown' }}
+
+      - name: "Bathroom Humidity Drift 7d"
+        unique_id: bathroom_humidity_drift_7d
+        unit_of_measurement: "%"
+        state: >
+          {% set nowv = states('sensor.bathroom_humidity') | float(none) %}
+          {% set mean = states('sensor.bathroom_humidity_mean_7d') | float(none) %}
+          {{ (nowv - mean) | round(1) if nowv is not none and mean is not none else 'unknown' }}
+
+      - name: "Toilet Humidity Drift 7d"
+        unique_id: toilet_humidity_drift_7d
+        unit_of_measurement: "%"
+        state: >
+          {% set nowv = states('sensor.toilet_humidity') | float(none) %}
+          {% set mean = states('sensor.toilet_humidity_mean_7d') | float(none) %}
+          {{ (nowv - mean) | round(1) if nowv is not none and mean is not none else 'unknown' }}
 
       #########################################################################
-      # Worst-room condensation
-      #   - state = room name
-      #   - attributes: humidity, risk
+      # E) Dew Point (Magnus) – per room
+      #
+      # Each dew point sensor uses a matching temperature + humidity pair.
+      # >>> If you change the humidity entity for a room, make sure the
+      # >>> temperature entity here points at the right sensor too.
       #########################################################################
-      - name: Worst Room Condensation
-        unique_id: humidity_intelligence_worst_condensation_room
+      - name: "Living Room Dew Point"
+        unique_id: living_room_dew_point
+        unit_of_measurement: "°C"
+        device_class: temperature
+        state_class: measurement
         state: >
-          {% set rooms = {
-            'Living room': states('sensor.living_room_humidity')|float(0),
-            'Kitchen':     states('sensor.kitchen_humidity')|float(0),
-            'Hallway':     states('sensor.hallway_humidity')|float(0),
-            'Bedroom':     states('sensor.bedroom_humidity')|float(0),
-            'Kids room':   states('sensor.kids_room_humidity')|float(0),
-            'Bathroom':    states('sensor.bathroom_humidity')|float(0),
-            'Toilet':      states('sensor.toilet_humidity')|float(0)
-          } %}
-          {% set max_room = 'Unknown' %}
-          {% set max_val = 0 %}
-          {% for name, val in rooms.items() %}
-            {% if val > max_val %}
-              {% set max_val = val %}
-              {% set max_room = name %}
+          {% set T  = states('sensor.living_room_temperature') | float(none) %}   # ← CHANGE
+          {% set RH = states('sensor.living_room_humidity')    | float(none) %}   # ← CHANGE
+          {% if T is none or RH is none or RH <= 0 %} unknown
+          {% else %}
+            {% set a = 17.62 %}
+            {% set b = 243.12 %}
+            {% set gamma = (a*T/(b+T)) + (RH/100) | log %}
+            {{ ((b*gamma)/(a-gamma)) | round(1) }}
+          {% endif %}
+
+      - name: "Kitchen Dew Point"
+        unique_id: kitchen_dew_point
+        unit_of_measurement: "°C"
+        device_class: temperature
+        state_class: measurement
+        state: >
+          {% set T  = states('sensor.kitchen_temperature') | float(none) %}       # ← CHANGE
+          {% set RH = states('sensor.kitchen_humidity')    | float(none) %}       # ← CHANGE
+          {% if T is none or RH is none or RH <= 0 %} unknown
+          {% else %}
+            {% set a = 17.62 %}
+            {% set b = 243.12 %}
+            {% set gamma = (a*T/(b+T)) + (RH/100) | log %}
+            {{ ((b*gamma)/(a-gamma)) | round(1) }}
+          {% endif %}
+
+      - name: "Hallway Dew Point"
+        unique_id: hallway_dew_point
+        unit_of_measurement: "°C"
+        device_class: temperature
+        state_class: measurement
+        state: >
+          {% set T  = states('sensor.hallway_temperature') | float(none) %}       # ← CHANGE
+          {% set RH = states('sensor.hallway_humidity')    | float(none) %}       # ← CHANGE
+          {% if T is none or RH is none or RH <= 0 %} unknown
+          {% else %}
+            {% set a = 17.62 %}
+            {% set b = 243.12 %}
+            {% set gamma = (a*T/(b+T)) + (RH/100) | log %}
+            {{ ((b*gamma)/(a-gamma)) | round(1) }}
+          {% endif %}
+
+      - name: "Bedroom Dew Point"
+        unique_id: bedroom_dew_point
+        unit_of_measurement: "°C"
+        device_class: temperature
+        state_class: measurement
+        state: >
+          {% set T  = states('sensor.bedroom_temperature') | float(none) %}       # ← CHANGE
+          {% set RH = states('sensor.bedroom_humidity')    | float(none) %}       # ← CHANGE
+          {% if T is none or RH is none or RH <= 0 %} unknown
+          {% else %}
+            {% set a = 17.62 %}
+            {% set b = 243.12 %}
+            {% set gamma = (a*T/(b+T)) + (RH/100) | log %}
+            {{ ((b*gamma)/(a-gamma)) | round(1) }}
+          {% endif %}
+
+      - name: "Kids Room Dew Point"
+        unique_id: kids_room_dew_point
+        unit_of_measurement: "°C"
+        device_class: temperature
+        state_class: measurement
+        state: >
+          {% set T  = states('sensor.kids_room_temperature') | float(none) %}     # ← CHANGE
+          {% set RH = states('sensor.kids_room_humidity')    | float(none) %}     # ← CHANGE
+          {% if T is none or RH is none or RH <= 0 %} unknown
+          {% else %}
+            {% set a = 17.62 %}
+            {% set b = 243.12 %}
+            {% set gamma = (a*T/(b+T)) + (RH/100) | log %}
+            {{ ((b*gamma)/(a-gamma)) | round(1) }}
+          {% endif %}
+
+      - name: "Bathroom Dew Point"
+        unique_id: bathroom_dew_point
+        unit_of_measurement: "°C"
+        device_class: temperature
+        state_class: measurement
+        state: >
+          {% set T  = states('sensor.bathroom_temperature') | float(none) %}      # ← CHANGE
+          {% set RH = states('sensor.bathroom_humidity')    | float(none) %}      # ← CHANGE
+          {% if T is none or RH is none or RH <= 0 %} unknown
+          {% else %}
+            {% set a = 17.62 %}
+            {% set b = 243.12 %}
+            {% set gamma = (a*T/(b+T)) + (RH/100) | log %}
+            {{ ((b*gamma)/(a-gamma)) | round(1) }}
+          {% endif %}
+
+      - name: "Toilet Dew Point"
+        unique_id: toilet_dew_point
+        unit_of_measurement: "°C"
+        device_class: temperature
+        state_class: measurement
+        state: >
+          {% set T  = states('sensor.toilet_temperature') | float(none) %}        # ← CHANGE
+          {% set RH = states('sensor.toilet_humidity')    | float(none) %}        # ← CHANGE
+          {% if T is none or RH is none or RH <= 0 %} unknown
+          {% else %}
+            {% set a = 17.62 %}
+            {% set b = 243.12 %}
+            {% set gamma = (a*T/(b+T)) + (RH/100) | log %}
+            {{ ((b*gamma)/(a-gamma)) | round(1) }}
+          {% endif %}
+
+      #########################################################################
+      # F) Condensation Spread = Temp - DewPoint (per room)
+      #
+      # Smaller spreads mean surfaces are close to dew point (higher risk).
+      #########################################################################
+      - name: "Living Room Condensation Spread"
+        unique_id: living_room_condensation_spread
+        unit_of_measurement: "°C"
+        state: >
+          {% set T  = states('sensor.living_room_temperature') | float(none) %}
+          {% set DP = states('sensor.living_room_dew_point')  | float(none) %}
+          {{ (T - DP) | round(1) if T is not none and DP is not none else 'unknown' }}
+
+      - name: "Kitchen Condensation Spread"
+        unique_id: kitchen_condensation_spread
+        unit_of_measurement: "°C"
+        state: >
+          {% set T  = states('sensor.kitchen_temperature') | float(none) %}
+          {% set DP = states('sensor.kitchen_dew_point')   | float(none) %}
+          {{ (T - DP) | round(1) if T is not none and DP is not none else 'unknown' }}
+
+      - name: "Hallway Condensation Spread"
+        unique_id: hallway_condensation_spread
+        unit_of_measurement: "°C"
+        state: >
+          {% set T  = states('sensor.hallway_temperature') | float(none) %}
+          {% set DP = states('sensor.hallway_dew_point')   | float(none) %}
+          {{ (T - DP) | round(1) if T is not none and DP is not none else 'unknown' }}
+
+      - name: "Bedroom Condensation Spread"
+        unique_id: bedroom_condensation_spread
+        unit_of_measurement: "°C"
+        state: >
+          {% set T  = states('sensor.bedroom_temperature') | float(none) %}
+          {% set DP = states('sensor.bedroom_dew_point')   | float(none) %}
+          {{ (T - DP) | round(1) if T is not none and DP is not none else 'unknown' }}
+
+      - name: "Kids Room Condensation Spread"
+        unique_id: kids_room_condensation_spread
+        unit_of_measurement: "°C"
+        state: >
+          {% set T  = states('sensor.kids_room_temperature') | float(none) %}
+          {% set DP = states('sensor.kids_room_dew_point')   | float(none) %}
+          {{ (T - DP) | round(1) if T is not none and DP is not none else 'unknown' }}
+
+      - name: "Bathroom Condensation Spread"
+        unique_id: bathroom_condensation_spread
+        unit_of_measurement: "°C"
+        state: >
+          {% set T  = states('sensor.bathroom_temperature') | float(none) %}
+          {% set DP = states('sensor.bathroom_dew_point')   | float(none) %}
+          {{ (T - DP) | round(1) if T is not none and DP is not none else 'unknown' }}
+
+      - name: "Toilet Condensation Spread"
+        unique_id: toilet_condensation_spread
+        unit_of_measurement: "°C"
+        state: >
+          {% set T  = states('sensor.toilet_temperature') | float(none) %}
+          {% set DP = states('sensor.toilet_dew_point')   | float(none) %}
+          {{ (T - DP) | round(1) if T is not none and DP is not none else 'unknown' }}
+
+      #########################################################################
+      # G) Condensation Risk (per room) – based on spread
+      #
+      # Thresholds:
+      #   <= 2°C  → Danger
+      #   <= 4°C  → Risk
+      #   <= 6°C  → Watch
+      #   else    → OK
+      #########################################################################
+      - name: "Living Room Condensation Risk"
+        unique_id: living_room_condensation_risk
+        state: >
+          {% set s = states('sensor.living_room_condensation_spread') | float(none) %}
+          {% if s is none %} Unknown
+          {% elif s <= 2 %} Danger
+          {% elif s <= 4 %} Risk
+          {% elif s <= 6 %} Watch
+          {% else %} OK
+          {% endif %}
+
+      - name: "Kitchen Condensation Risk"
+        unique_id: kitchen_condensation_risk
+        state: >
+          {% set s = states('sensor.kitchen_condensation_spread') | float(none) %}
+          {% if s is none %} Unknown
+          {% elif s <= 2 %} Danger
+          {% elif s <= 4 %} Risk
+          {% elif s <= 6 %} Watch
+          {% else %} OK
+          {% endif %}
+
+      - name: "Hallway Condensation Risk"
+        unique_id: hallway_condensation_risk
+        state: >
+          {% set s = states('sensor.hallway_condensation_spread') | float(none) %}
+          {% if s is none %} Unknown
+          {% elif s <= 2 %} Danger
+          {% elif s <= 4 %} Risk
+          {% elif s <= 6 %} Watch
+          {% else %} OK
+          {% endif %}
+
+      - name: "Bedroom Condensation Risk"
+        unique_id: bedroom_condensation_risk
+        state: >
+          {% set s = states('sensor.bedroom_condensation_spread') | float(none) %}
+          {% if s is none %} Unknown
+          {% elif s <= 2 %} Danger
+          {% elif s <= 4 %} Risk
+          {% elif s <= 6 %} Watch
+          {% else %} OK
+          {% endif %}
+
+      - name: "Kids Room Condensation Risk"
+        unique_id: kids_room_condensation_risk
+        state: >
+          {% set s = states('sensor.kids_room_condensation_spread') | float(none) %}
+          {% if s is none %} Unknown
+          {% elif s <= 2 %} Danger
+          {% elif s <= 4 %} Risk
+          {% elif s <= 6 %} Watch
+          {% else %} OK
+          {% endif %}
+
+      - name: "Bathroom Condensation Risk"
+        unique_id: bathroom_condensation_risk
+        state: >
+          {% set s = states('sensor.bathroom_condensation_spread') | float(none) %}
+          {% if s is none %} Unknown
+          {% elif s <= 2 %} Danger
+          {% elif s <= 4 %} Risk
+          {% elif s <= 6 %} Watch
+          {% else %} OK
+          {% endif %}
+
+      - name: "Toilet Condensation Risk"
+        unique_id: toilet_condensation_risk
+        state: >
+          {% set s = states('sensor.toilet_condensation_spread') | float(none) %}
+          {% if s is none %} Unknown
+          {% elif s <= 2 %} Danger
+          {% elif s <= 4 %} Risk
+          {% elif s <= 6 %} Watch
+          {% else %} OK
+          {% endif %}
+
+      #########################################################################
+      # H) Mould Risk (per room) – RH + condensation proxy
+      #
+      # Points:
+      #   RH >= 75%  → +2
+      #   RH >= 68%  → +1
+      #   Spread <= 2°C → +2
+      #   Spread <= 4°C → +1
+      # Score is clamped to 0..3 and mapped to OK / Watch / Risk / Danger.
+      #########################################################################
+      - name: "Living Room Mould Risk"
+        unique_id: living_room_mould_risk
+        state: >
+          {% set rh = states('sensor.living_room_humidity') | float(none) %}
+          {% set sp = states('sensor.living_room_condensation_spread') | float(none) %}
+          {% if rh is none or sp is none %} Unknown
+          {% else %}
+            {% set lvl = 0 %}
+            {% if rh >= 75 %}{% set lvl = lvl + 2 %}{% elif rh >= 68 %}{% set lvl = lvl + 1 %}{% endif %}
+            {% if sp <= 2 %}{% set lvl = lvl + 2 %}{% elif sp <= 4 %}{% set lvl = lvl + 1 %}{% endif %}
+            {% set lvl = [lvl, 3] | min %}
+            {% if      lvl >= 3 %} Danger
+            {% elif    lvl == 2 %} Risk
+            {% elif    lvl == 1 %} Watch
+            {% else %} OK
+            {% endif %}
+          {% endif %}
+
+      - name: "Kitchen Mould Risk"
+        unique_id: kitchen_mould_risk
+        state: >
+          {% set rh = states('sensor.kitchen_humidity') | float(none) %}
+          {% set sp = states('sensor.kitchen_condensation_spread') | float(none) %}
+          {% if rh is none or sp is none %} Unknown
+          {% else %}
+            {% set lvl = 0 %}
+            {% if rh >= 75 %}{% set lvl = lvl + 2 %}{% elif rh >= 68 %}{% set lvl = lvl + 1 %}{% endif %}
+            {% if sp <= 2 %}{% set lvl = lvl + 2 %}{% elif sp <= 4 %}{% set lvl = lvl + 1 %}{% endif %}
+            {% set lvl = [lvl, 3] | min %}
+            {% if      lvl >= 3 %} Danger
+            {% elif    lvl == 2 %} Risk
+            {% elif    lvl == 1 %} Watch
+            {% else %} OK
+            {% endif %}
+          {% endif %}
+
+      - name: "Hallway Mould Risk"
+        unique_id: hallway_mould_risk
+        state: >
+          {% set rh = states('sensor.hallway_humidity') | float(none) %}
+          {% set sp = states('sensor.hallway_condensation_spread') | float(none) %}
+          {% if rh is none or sp is none %} Unknown
+          {% else %}
+            {% set lvl = 0 %}
+            {% if rh >= 75 %}{% set lvl = lvl + 2 %}{% elif rh >= 68 %}{% set lvl = lvl + 1 %}{% endif %}
+            {% if sp <= 2 %}{% set lvl = lvl + 2 %}{% elif sp <= 4 %}{% set lvl = lvl + 1 %}{% endif %}
+            {% set lvl = [lvl, 3] | min %}
+            {% if      lvl >= 3 %} Danger
+            {% elif    lvl == 2 %} Risk
+            {% elif    lvl == 1 %} Watch
+            {% else %} OK
+            {% endif %}
+          {% endif %}
+
+      - name: "Bedroom Mould Risk"
+        unique_id: bedroom_mould_risk
+        state: >
+          {% set rh = states('sensor.bedroom_humidity') | float(none) %}
+          {% set sp = states('sensor.bedroom_condensation_spread') | float(none) %}
+          {% if rh is none or sp is none %} Unknown
+          {% else %}
+            {% set lvl = 0 %}
+            {% if rh >= 75 %}{% set lvl = lvl + 2 %}{% elif rh >= 68 %}{% set lvl = lvl + 1 %}{% endif %}
+            {% if sp <= 2 %}{% set lvl = lvl + 2 %}{% elif sp <= 4 %}{% set lvl = lvl + 1 %}{% endif %}
+            {% set lvl = [lvl, 3] | min %}
+            {% if      lvl >= 3 %} Danger
+            {% elif    lvl == 2 %} Risk
+            {% elif    lvl == 1 %} Watch
+            {% else %} OK
+            {% endif %}
+          {% endif %}
+
+      - name: "Kids Room Mould Risk"
+        unique_id: kids_room_mould_risk
+        state: >
+          {% set rh = states('sensor.kids_room_humidity') | float(none) %}
+          {% set sp = states('sensor.kids_room_condensation_spread') | float(none) %}
+          {% if rh is none or sp is none %} Unknown
+          {% else %}
+            {% set lvl = 0 %}
+            {% if rh >= 75 %}{% set lvl = lvl + 2 %}{% elif rh >= 68 %}{% set lvl = lvl + 1 %}{% endif %}
+            {% if sp <= 2 %}{% set lvl = lvl + 2 %}{% elif sp <= 4 %}{% set lvl = lvl + 1 %}{% endif %}
+            {% set lvl = [lvl, 3] | min %}
+            {% if      lvl >= 3 %} Danger
+            {% elif    lvl == 2 %} Risk
+            {% elif    lvl == 1 %} Watch
+            {% else %} OK
+            {% endif %}
+          {% endif %}
+
+      - name: "Bathroom Mould Risk"
+        unique_id: bathroom_mould_risk
+        state: >
+          {% set rh = states('sensor.bathroom_humidity') | float(none) %}
+          {% set sp = states('sensor.bathroom_condensation_spread') | float(none) %}
+          {% if rh is none or sp is none %} Unknown
+          {% else %}
+            {% set lvl = 0 %}
+            {% if rh >= 75 %}{% set lvl = lvl + 2 %}{% elif rh >= 68 %}{% set lvl = lvl + 1 %}{% endif %}
+            {% if sp <= 2 %}{% set lvl = lvl + 2 %}{% elif sp <= 4 %}{% set lvl = lvl + 1 %}{% endif %}
+            {% set lvl = [lvl, 3] | min %}
+            {% if      lvl >= 3 %} Danger
+            {% elif    lvl == 2 %} Risk
+            {% elif    lvl == 1 %} Watch
+            {% else %} OK
+            {% endif %}
+          {% endif %}
+
+      - name: "Toilet Mould Risk"
+        unique_id: toilet_mould_risk
+        state: >
+          {% set rh = states('sensor.toilet_humidity') | float(none) %}
+          {% set sp = states('sensor.toilet_condensation_spread') | float(none) %}
+          {% if rh is none or sp is none %} Unknown
+          {% else %}
+            {% set lvl = 0 %}
+            {% if rh >= 75 %}{% set lvl = lvl + 2 %}{% elif rh >= 68 %}{% set lvl = lvl + 1 %}{% endif %}
+            {% if sp <= 2 %}{% set lvl = lvl + 2 %}{% elif sp <= 4 %}{% set lvl = lvl + 1 %}{% endif %}
+            {% set lvl = [lvl, 3] | min %}
+            {% if      lvl >= 3 %} Danger
+            {% elif    lvl == 2 %} Risk
+            {% elif    lvl == 1 %} Watch
+            {% else %} OK
+            {% endif %}
+          {% endif %}
+
+      #########################################################################
+      # I) Worst-room summary (Risk level + Room name)
+      #
+      # These back the "Condensation" and "Mould" badges, plus the Comfort Band.
+      #########################################################################
+      - name: "Worst Room Condensation Risk"
+        unique_id: worst_room_condensation_risk
+        state: >
+          {% set risks = [
+            states('sensor.living_room_condensation_risk'),
+            states('sensor.kitchen_condensation_risk'),
+            states('sensor.hallway_condensation_risk'),
+            states('sensor.bedroom_condensation_risk'),
+            states('sensor.kids_room_condensation_risk'),
+            states('sensor.bathroom_condensation_risk'),
+            states('sensor.toilet_condensation_risk')
+          ] %}
+          {% set order = {'OK':0,'Watch':1,'Risk':2,'Danger':3} %}
+          {% set maxv = namespace(v=-1, s='Unknown') %}
+          {% for r in risks %}
+            {% set val = order.get(r, -1) %}
+            {% if val > maxv.v %}
+              {% set maxv.v = val %}
+              {% set maxv.s = r %}
             {% endif %}
           {% endfor %}
-          {{ max_room }}
-        attributes:
-          humidity: >
-            {% set rooms = {
-              'Living room': states('sensor.living_room_humidity')|float(0),
-              'Kitchen':     states('sensor.kitchen_humidity')|float(0),
-              'Hallway':     states('sensor.hallway_humidity')|float(0),
-              'Bedroom':     states('sensor.bedroom_humidity')|float(0),
-              'Kids room':   states('sensor.kids_room_humidity')|float(0),
-              'Bathroom':    states('sensor.bathroom_humidity')|float(0),
-              'Toilet':      states('sensor.toilet_humidity')|float(0)
-            } %}
-            {% set max_val = 0 %}
-            {% for name, val in rooms.items() %}
-              {% if val > max_val %}
-                {% set max_val = val %}
-              {% endif %}
-            {% endfor %}
-            {{ max_val|round(1) }}
-          risk: >
-            {% set h = state_attr('sensor.worst_room_condensation', 'humidity')|float(0) %}
-            {% if h >= 80 %}
-              Danger
-            {% elif h >= 70 %}
-              Risk
-            {% elif h >= 60 %}
-              Watch
-            {% else %}
-              Low
-            {% endif %}
+          {{ maxv.s if maxv.v >= 0 else 'Unknown' }}
 
-      - name: Worst Room Condensation Risk
-        unique_id: humidity_intelligence_worst_condensation_risk
+      - name: "Worst Room Condensation"
+        unique_id: worst_room_condensation
         state: >
-          {{ state_attr('sensor.worst_room_condensation', 'risk') or 'Unknown' }}
-
-      #########################################################################
-      # Worst-room mould
-      #   - state = room name
-      #   - attributes: humidity, risk
-      #########################################################################
-      - name: Worst Room Mould
-        unique_id: humidity_intelligence_worst_mould_room
-        state: >
-          {% set rooms = {
-            'Living room': states('sensor.living_room_humidity')|float(0),
-            'Kitchen':     states('sensor.kitchen_humidity')|float(0),
-            'Hallway':     states('sensor.hallway_humidity')|float(0),
-            'Bedroom':     states('sensor.bedroom_humidity')|float(0),
-            'Kids room':   states('sensor.kids_room_humidity')|float(0),
-            'Bathroom':    states('sensor.bathroom_humidity')|float(0),
-            'Toilet':      states('sensor.toilet_humidity')|float(0)
-          } %}
-          {% set max_room = 'Unknown' %}
-          {% set max_val = 0 %}
-          {% for name, val in rooms.items() %}
-            {% if val > max_val %}
-              {% set max_val = val %}
-              {% set max_room = name %}
+          {% set rooms = [
+            ('Living Room', 'sensor.living_room_condensation_risk'),
+            ('Kitchen',     'sensor.kitchen_condensation_risk'),
+            ('Hallway',     'sensor.hallway_condensation_risk'),
+            ('Bedroom',     'sensor.bedroom_condensation_risk'),
+            ('Kids Room',   'sensor.kids_room_condensation_risk'),
+            ('Bathroom',    'sensor.bathroom_condensation_risk'),
+            ('Toilet',      'sensor.toilet_condensation_risk')
+          ] %}
+          {% set order = {'OK':0,'Watch':1,'Risk':2,'Danger':3} %}
+          {% set best = namespace(v=-1, room='Unknown', risk='Unknown') %}
+          {% for name, ent in rooms %}
+            {% set risk = states(ent) %}
+            {% set val = order.get(risk, -1) %}
+            {% if val > best.v %}
+              {% set best.v = val %}
+              {% set best.room = name %}
+              {% set best.risk = risk %}
             {% endif %}
           {% endfor %}
-          {{ max_room }}
+          {{ best.room }}
         attributes:
-          humidity: >
-            {% set rooms = {
-              'Living room': states('sensor.living_room_humidity')|float(0),
-              'Kitchen':     states('sensor.kitchen_humidity')|float(0),
-              'Hallway':     states('sensor.hallway_humidity')|float(0),
-              'Bedroom':     states('sensor.bedroom_humidity')|float(0),
-              'Kids room':   states('sensor.kids_room_humidity')|float(0),
-              'Bathroom':    states('sensor.bathroom_humidity')|float(0),
-              'Toilet':      states('sensor.toilet_humidity')|float(0)
-            } %}
-            {% set max_val = 0 %}
-            {% for name, val in rooms.items() %}
-              {% if val > max_val %}
-                {% set max_val = val %}
+          risk: "{{ states('sensor.worst_room_condensation_risk') }}"
+
+      - name: "Worst Room Mould Risk"
+        unique_id: worst_room_mould_risk
+        state: >
+          {% set risks = [
+            states('sensor.living_room_mould_risk'),
+            states('sensor.kitchen_mould_risk'),
+            states('sensor.hallway_mould_risk'),
+            states('sensor.bedroom_mould_risk'),
+            states('sensor.kids_room_mould_risk'),
+            states('sensor.bathroom_mould_risk'),
+            states('sensor.toilet_mould_risk')
+          ] %}
+          {% set order = {'OK':0,'Watch':1,'Risk':2,'Danger':3} %}
+          {% set maxv = namespace(v=-1, s='Unknown') %}
+          {% for r in risks %}
+            {% set val = order.get(r, -1) %}
+            {% if val > maxv.v %}
+              {% set maxv.v = val %}
+              {% set maxv.s = r %}
+            {% endif %}
+          {% endfor %}
+          {{ maxv.s if maxv.v >= 0 else 'Unknown' }}
+
+      - name: "Worst Room Mould"
+        unique_id: worst_room_mould
+        state: >
+          {% set rooms = [
+            ('Living Room', 'sensor.living_room_mould_risk'),
+            ('Kitchen',     'sensor.kitchen_mould_risk'),
+            ('Hallway',     'sensor.hallway_mould_risk'),
+            ('Bedroom',     'sensor.bedroom_mould_risk'),
+            ('Kids Room',   'sensor.kids_room_mould_risk'),
+            ('Bathroom',    'sensor.bathroom_mould_risk'),
+            ('Toilet',      'sensor.toilet_mould_risk')
+          ] %}
+          {% set order = {'OK':0,'Watch':1,'Risk':2,'Danger':3} %}
+          {% set best = namespace(v=-1, room='Unknown', risk='Unknown') %}
+          {% for name, ent in rooms %}
+            {% set risk = states(ent) %}
+            {% set val = order.get(risk, -1) %}
+            {% if val > best.v %}
+              {% set best.v = val %}
+              {% set best.room = name %}
+              {% set best.risk = risk %}
+            {% endif %}
+          {% endfor %}
+          {{ best.room }}
+        attributes:
+          risk: "{{ states('sensor.worst_room_mould_risk') }}"
+
+      #########################################################################
+      # J) Ventilation suggestions – blunt & actionable
+      #########################################################################
+      - name: "Ventilation Suggestion"
+        unique_id: ventilation_suggestion
+        state: >
+          {% set low        = states('sensor.house_humidity_target_low')  | float(45) %}
+          {% set high       = states('sensor.house_humidity_target_high') | float(58) %}
+          {% set h          = states('sensor.house_average_humidity')     | float(none) %}
+          {% set cond_room  = states('sensor.worst_room_condensation') %}
+          {% set cond_risk  = state_attr('sensor.worst_room_condensation','risk') %}
+          {% set mould_room = states('sensor.worst_room_mould') %}
+          {% set mould_risk = state_attr('sensor.worst_room_mould','risk') %}
+
+          {% if h is none %}
+            Unknown – humidity average unavailable.
+          {% elif cond_risk in ['Risk','Danger'] %}
+            Condensation {{ cond_risk }} in {{ cond_room }}: purge-ventilate 5–10 min and run extraction. Wipe cold reveals if present.
+          {% elif mould_risk in ['Risk','Danger'] %}
+            Mould {{ mould_risk }} in {{ mould_room }}: run extraction 20 min after showers/cooking, keep doors shut, avoid indoor drying where possible.
+          {% elif h > high %}
+            Humid: 5–10 min purge ventilation. Prioritise kitchen/bathroom after moisture events.
+          {% elif h < low %}
+            On the dry side: avoid over-ventilating, shorten fan overruns, consider adding gentle moisture (plants, controlled drying).
+          {% else %}
+            Comfortable: normal trickle ventilation with short purges only after moisture events.
+          {% endif %}
+
+      #########################################################################
+      # K) Humidity Constellation series (for ApexCharts + dropdown-mod)
+      #
+      # Consumed by:
+      #   - config-template-card
+      #   - apexcharts-card
+      # to build the 24h multi-room “Humidity Constellation” chart.
+      #########################################################################
+      - name: "Humidity Constellation Series"
+        unique_id: humidity_constellation_series
+        state: "ok"
+        attributes:
+          series: >
+            {% set rooms = state_attr('sensor.humidity_intelligence_config', 'room_map') or {} %}
+            {% set ns = namespace(result = []) %}
+            {% for name, entity in rooms.items() %}
+              {% if has_value(entity) %}
+                {% set ns.result = ns.result + [{
+                  'entity': entity,
+                  'name': name,
+                  'type': 'line',
+                  'curve': 'smooth',
+                  'stroke_width': 2,
+                  'group_by': {
+                    'func': 'avg',
+                    'duration': '15min'
+                  }
+                }] %}
               {% endif %}
             {% endfor %}
-            {{ max_val|round(1) }}
-          risk: >
-            {% set h = state_attr('sensor.worst_room_mould', 'humidity')|float(0) %}
-            {% if h >= 75 %}
-              Danger
-            {% elif h >= 65 %}
-              Risk
-            {% elif h >= 55 %}
-              Watch
-            {% else %}
-              Low
-            {% endif %}
+            {{ ns.result }}
 
-      - name: Worst Room Mould Risk
-        unique_id: humidity_intelligence_worst_mould_risk
-        state: >
-          {{ state_attr('sensor.worst_room_mould', 'risk') or 'Unknown' }}
-
+  ###########################################################################
+  # L) Danger binary_sensors – used for badge highlighting / automations
+  ###########################################################################
   - binary_sensor:
-      #########################################################################
-      # Binary flags used to highlight badges
-      #########################################################################
-      - name: Humidity Danger
-        unique_id: humidity_intelligence_humidity_danger
+      - name: "Humidity Danger"
+        unique_id: humidity_danger
         device_class: problem
         state: >
-          {% set h = states('sensor.house_average_humidity')|float(0) %}
-          {% set low = states('sensor.house_humidity_target_low')|float(45) %}
-          {% set high = states('sensor.house_humidity_target_high')|float(55) %}
-          {% set cond_risk = state_attr('sensor.worst_room_condensation', 'risk') %}
-          {% set mould_risk = state_attr('sensor.worst_room_mould', 'risk') %}
-          {{ (h < low - 10) or (h > high + 10) or cond_risk == 'Danger' or mould_risk == 'Danger' }}
+          {% set h = states('sensor.house_average_humidity') | float(none) %}
+          {{ false if h is none else (h < 35 or h > 70) }}
 
-      - name: Condensation Danger
-        unique_id: humidity_intelligence_condensation_danger
+      - name: "Condensation Danger"
+        unique_id: condensation_danger
         device_class: problem
         state: >
-          {% set risk = state_attr('sensor.worst_room_condensation', 'risk') %}
-          {{ risk in ['Risk', 'Danger'] }}
+          {{ states('sensor.worst_room_condensation_risk') == 'Danger' }}
 
-      - name: Mould Danger
-        unique_id: humidity_intelligence_mould_danger
+      - name: "Mould Danger"
+        unique_id: mould_danger
         device_class: problem
         state: >
-          {% set risk = state_attr('sensor.worst_room_mould', 'risk') %}
-          {{ risk in ['Risk', 'Danger'] }}
+          {{ states('sensor.worst_room_mould_risk') == 'Danger' }}

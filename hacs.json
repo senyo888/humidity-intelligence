@@ -1,0 +1,9 @@
+{
+  "name": "Humidity Intelligence (Advanced)",
+  "content_in_root": true,
+  "filename": "humidity_intelligence.jinja",
+  "homeassistant": "2024.0.0",
+  "hacs": "1.3.0",
+  "country": ["GB"],
+  "description": "Advanced humidity intelligence for Home Assistant: per‑room dew point, condensation and mould risk, seasonal comfort band and ventilation guidance"
+}
