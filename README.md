@@ -4,9 +4,6 @@ Version v1.1.1
 
 **Smart humidity intelligence for Home Assistant — insights, not just numbers.**
 
-<img width="1536" height="1024" alt="banner" src="https://github.com/user-attachments/assets/72d0ce73-e8a4-412d-a3c1-570b1048d740" />
-
-
 Humidity Intelligence is an opinionated Home Assistant package that transforms raw humidity and temperature readings into **actionable building insight**.
 
 It doesn’t just show percentages — it answers the real questions:
