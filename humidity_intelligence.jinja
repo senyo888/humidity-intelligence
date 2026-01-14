@@ -1,0 +1,359 @@
+#
+# Advanced Humidity‑Intelligence – core backend
+#
+# This file implements the v1.1.0 release of the Humidity‑Intelligence
+# package.  It calculates per‑room dew point, condensation spread and
+# mould risk, exposes a house‑level average and drift, provides plain
+# language ventilation suggestions and surfaces summary sensors for use
+# in Lovelace.  To customise it for your installation you need to
+# provide the entity IDs of your humidity and temperature sensors
+# below under the “USER CONFIG” section.  See the README for
+# detailed instructions.
+#
+# Note: When installing via HACS this file must live in the root
+# of the repository and be referenced by `hacs.json` as the primary
+# file.  HACS treats `.jinja` files as templates and will copy them
+# verbatim into your Home Assistant configuration.
+
+###############################################################################
+# Helpers
+###############################################################################
+# Define an input_boolean used by the Lovelace UI to expand/collapse the
+# Humidity Constellation chart.  Without this entity the chevron on the
+# Comfort Band card will do nothing.  You can omit this block if you
+# already have an input_boolean with the same name.
+input_boolean:
+  humidity_constellation_expanded:
+    name: Humidity Constellation Expanded
+    icon: mdi:chevron-down-circle
+
+###############################################################################
+# 7‑day statistics (mean) – used for house drift only
+###############################################################################
+sensor:
+  - platform: statistics
+    name: "House Humidity Mean 7d"
+    entity_id: sensor.house_average_humidity
+    state_characteristic: mean
+    max_age:
+      days: 7
+
+###############################################################################
+# Templates – configuration, engine and headline sensors
+###############################################################################
+template:
+  - sensor:
+
+      #########################################################################
+      # A) USER CONFIG (EDIT THIS ONLY)
+      #########################################################################
+      #
+      # Map your rooms to humidity (rh) and temperature (t) sensors here.  Each
+      # entry is a dictionary with a human‑friendly name and the entity IDs of
+      # your sensors.  Feel free to remove or add rooms to match your home.
+      - name: "Humidity Intelligence Config"
+        unique_id: humidity_intelligence_config
+        state: "Active"
+        attributes:
+          rooms: >
+            {{ [
+              {'name':'Living Room', 'rh':'sensor.living_room_humidity', 't':'sensor.living_room_temperature'},
+              {'name':'Kitchen',     'rh':'sensor.kitchen_humidity',     't':'sensor.kitchen_temperature'},
+              {'name':'Hallway',     'rh':'sensor.hallway_humidity',     't':'sensor.hallway_temperature'},
+              {'name':'Bedroom',     'rh':'sensor.bedroom_humidity',     't':'sensor.bedroom_temperature'},
+              {'name':'Kids Room',   'rh':'sensor.kids_room_humidity',   't':'sensor.kids_room_temperature'},
+              {'name':'Bathroom',    'rh':'sensor.bathroom_humidity',    't':'sensor.bathroom_temperature'},
+              {'name':'Toilet',      'rh':'sensor.toilet_humidity',      't':'sensor.toilet_temperature'}
+            ] }}
+
+      #########################################################################
+      # B) ENGINE (computes per‑room metrics into attributes)
+      #########################################################################
+      #
+      # The engine reads the configuration from the sensor above and produces a
+      # list of per‑room metrics: humidity, temperature, dew point, spread
+      # (temperature minus dew point), condensation risk and mould risk.  It
+      # exposes these as a JSON array under its `rooms` attribute.  Two helper
+      # attributes `worst_condensation` and `worst_mould` return the name and
+      # risk level of the room with the highest condensation and mould risk.
+      - name: "Humidity Intelligence Engine"
+        unique_id: humidity_intelligence_engine
+        state: "ok"
+        attributes:
+          rooms: >
+            {% set rooms = state_attr('sensor.humidity_intelligence_config','rooms') or [] %}
+            {% set a = 17.62 %}
+            {% set b = 243.12 %}
+            {% set out = namespace(list=[]) %}
+
+            {% for r in rooms %}
+              {% set rh_e = r.rh %}
+              {% set t_e  = r.t %}
+              {% set rh = states(rh_e) | float(none) %}
+              {% set t  = states(t_e)  | float(none) %}
+
+              {# Dew point (Magnus formula) #}
+              {% set dp = none %}
+              {% if t is not none and rh is not none and rh > 0 %}
+                {% set gamma = (a*t/(b+t)) + ((rh/100) | log) %}
+                {% set dp = (b*gamma)/(a-gamma) %}
+              {% endif %}
+
+              {# Spread = temperature – dew point #}
+              {% set sp = none %}
+              {% if t is not none and dp is not none %}
+                {% set sp = t - dp %}
+              {% endif %}
+
+              {# Condensation risk by spread #}
+              {% set cond = 'Unknown' %}
+              {% if sp is not none %}
+                {% if sp <= 2 %}{% set cond = 'Danger' %}
+                {% elif sp <= 4 %}{% set cond = 'Risk' %}
+                {% elif sp <= 6 %}{% set cond = 'Watch' %}
+                {% else %}{% set cond = 'OK' %}
+                {% endif %}
+              {% endif %}
+
+              {# Mould risk: humidity + spread proxy (0..3) #}
+              {% set mould = 'Unknown' %}
+              {% if rh is not none and sp is not none %}
+                {% set lvl = 0 %}
+                {% if rh >= 75 %}{% set lvl = lvl + 2 %}
+                {% elif rh >= 68 %}{% set lvl = lvl + 1 %}
+                {% endif %}
+                {% if sp <= 2 %}{% set lvl = lvl + 2 %}
+                {% elif sp <= 4 %}{% set lvl = lvl + 1 %}
+                {% endif %}
+                {% set lvl = [lvl, 3] | min %}
+                {% if lvl >= 3 %}{% set mould = 'Danger' %}
+                {% elif lvl == 2 %}{% set mould = 'Risk' %}
+                {% elif lvl == 1 %}{% set mould = 'Watch' %}
+                {% else %}{% set mould = 'OK' %}
+                {% endif %}
+              {% endif %}
+
+              {% set out.list = out.list + [{
+                'name': r.name,
+                'rh_entity': rh_e,
+                't_entity': t_e,
+                'rh': (rh | round(1)) if rh is not none else none,
+                't':  (t  | round(1)) if t is not none else none,
+                'dew_point': (dp | round(1)) if dp is not none else none,
+                'spread': (sp | round(1)) if sp is not none else none,
+                'condensation_risk': cond,
+                'mould_risk': mould
+              }] %}
+            {% endfor %}
+            {{ out.list }}
+
+          worst_condensation: >
+            {# Find the room with the highest condensation risk #}
+            {% set order = {'OK':0,'Watch':1,'Risk':2,'Danger':3} %}
+            {% set rooms = state_attr('sensor.humidity_intelligence_engine','rooms') or [] %}
+            {% set best = namespace(v=-1, name='Unknown', risk='Unknown') %}
+            {% for r in rooms %}
+              {% set risk = r.condensation_risk %}
+              {% set v = order.get(risk, -1) %}
+              {% if v > best.v %}
+                {% set best.v = v %}
+                {% set best.name = r.name %}
+                {% set best.risk = risk %}
+              {% endif %}
+            {% endfor %}
+            {{ {'room': best.name, 'risk': best.risk} }}
+
+          worst_mould: >
+            {# Find the room with the highest mould risk #}
+            {% set order = {'OK':0,'Watch':1,'Risk':2,'Danger':3} %}
+            {% set rooms = state_attr('sensor.humidity_intelligence_engine','rooms') or [] %}
+            {% set best = namespace(v=-1, name='Unknown', risk='Unknown') %}
+            {% for r in rooms %}
+              {% set risk = r.mould_risk %}
+              {% set v = order.get(risk, -1) %}
+              {% if v > best.v %}
+                {% set best.v = v %}
+                {% set best.name = r.name %}
+                {% set best.risk = risk %}
+              {% endif %}
+            {% endfor %}
+            {{ {'room': best.name, 'risk': best.risk} }}
+
+          series: >
+            {# Build the series definition for ApexCharts – only humidity sensors #}
+            {% set rooms = state_attr('sensor.humidity_intelligence_engine','rooms') or [] %}
+            {% set ns = namespace(result=[]) %}
+            {% for r in rooms %}
+              {% if r.rh_entity and has_value(r.rh_entity) %}
+                {% set ns.result = ns.result + [{
+                  'entity': r.rh_entity,
+                  'name': r.name,
+                  'type': 'line',
+                  'curve': 'smooth',
+                  'stroke_width': 2,
+                  'group_by': {'func':'avg','duration':'15min'}
+                }] %}
+              {% endif %}
+            {% endfor %}
+            {{ ns.result }}
+
+      #########################################################################
+      # C) House averages derived from the config
+      #########################################################################
+      - name: "House Average Humidity"
+        unique_id: house_average_humidity
+        unit_of_measurement: "%"
+        state_class: measurement
+        icon: mdi:water-percent
+        state: >
+          {% set rooms = state_attr('sensor.humidity_intelligence_config','rooms') or [] %}
+          {% set entities = rooms | map(attribute='rh') | select('string') | list %}
+          {% set vals = expand(entities) | map(attribute='state') | select('is_number') | map('float') | list %}
+          {% if vals | length == 0 %}
+            {{ states(this.entity_id) | float(0) }}
+          {% else %}
+            {{ (vals | sum / (vals | length)) | round(1) }}
+          {% endif %}
+
+      - name: "House Average Temperature"
+        unique_id: house_average_temperature
+        unit_of_measurement: "°C"
+        device_class: temperature
+        state_class: measurement
+        state: >
+          {% set rooms = state_attr('sensor.humidity_intelligence_config','rooms') or [] %}
+          {% set entities = rooms | map(attribute='t') | select('string') | list %}
+          {% set vals = expand(entities) | map(attribute='state') | select('is_number') | map('float') | list %}
+          {{ (vals | average) | round(1) if vals | length > 0 else 'unknown' }}
+
+      #########################################################################
+      # D) Seasonal target band – UK‑friendly defaults
+      #########################################################################
+      - name: "House Humidity Target Low"
+        unique_id: house_humidity_target_low
+        unit_of_measurement: "%"
+        state: >
+          {% set m = now().month %}
+          {% if m in [11,12,1,2,3] %} 45
+          {% elif m in [6,7,8] %} 51
+          {% else %} 47
+          {% endif %}
+
+      - name: "House Humidity Target High"
+        unique_id: house_humidity_target_high
+        unit_of_measurement: "%"
+        state: >
+          {% set m = now().month %}
+          {% if m in [11,12,1,2,3] %} 55
+          {% elif m in [6,7,8] %} 60
+          {% else %} 58
+          {% endif %}
+
+      #########################################################################
+      # E) House drift 7‑day
+      #########################################################################
+      - name: "House Humidity Drift 7d"
+        unique_id: house_humidity_drift_7d
+        unit_of_measurement: "%"
+        state: >
+          {% set nowv = states('sensor.house_average_humidity') | float(none) %}
+          {% set mean = states('sensor.house_humidity_mean_7d') | float(none) %}
+          {{ (nowv - mean) | round(1) if nowv is not none and mean is not none else 'unknown' }}
+
+      #########################################################################
+      # F) Worst‑room headline sensors
+      #########################################################################
+      - name: "Worst Room Condensation"
+        unique_id: worst_room_condensation
+        state: >
+          {% set w = state_attr('sensor.humidity_intelligence_engine','worst_condensation') %}
+          {{ w.room if w is not none else 'Unknown' }}
+        attributes:
+          risk: >
+            {% set w = state_attr('sensor.humidity_intelligence_engine','worst_condensation') %}
+            {{ w.risk if w is not none else 'Unknown' }}
+
+      - name: "Worst Room Mould"
+        unique_id: worst_room_mould
+        state: >
+          {% set w = state_attr('sensor.humidity_intelligence_engine','worst_mould') %}
+          {{ w.room if w is not none else 'Unknown' }}
+        attributes:
+          risk: >
+            {% set w = state_attr('sensor.humidity_intelligence_engine','worst_mould') %}
+            {{ w.risk if w is not none else 'Unknown' }}
+
+      #########################################################################
+      # G) Condensation/mould risk sensors (for backwards compatibility)
+      #########################################################################
+      # These sensors simply expose the risk level attribute of the headline
+      # sensors.  They exist to maintain compatibility with the v1.0.2 UI
+      # without modifying the Lovelace card.  The state of each sensor is
+      # 'Danger', 'Risk', 'Watch', 'OK' or 'Unknown'.
+      - name: "Worst Room Condensation Risk"
+        unique_id: worst_room_condensation_risk
+        state: >
+          {{ state_attr('sensor.worst_room_condensation', 'risk') or 'Unknown' }}
+
+      - name: "Worst Room Mould Risk"
+        unique_id: worst_room_mould_risk
+        state: >
+          {{ state_attr('sensor.worst_room_mould', 'risk') or 'Unknown' }}
+
+      #########################################################################
+      # H) Ventilation suggestion (plain language guidance)
+      #########################################################################
+      - name: "Ventilation Suggestion"
+        unique_id: ventilation_suggestion
+        state: >
+          {% set low  = states('sensor.house_humidity_target_low') | float(45) %}
+          {% set high = states('sensor.house_humidity_target_high') | float(58) %}
+          {% set h = states('sensor.house_average_humidity') | float(none) %}
+
+          {% set cond_room = states('sensor.worst_room_condensation') %}
+          {% set cond_risk = state_attr('sensor.worst_room_condensation','risk') %}
+          {% set mould_room = states('sensor.worst_room_mould') %}
+          {% set mould_risk = state_attr('sensor.worst_room_mould','risk') %}
+
+          {% if h is none %}
+            Unknown – humidity average unavailable
+          {% elif cond_risk in ['Risk','Danger'] %}
+            Condensation {{ cond_risk }} in {{ cond_room }}: purge ventilate 5–10 min + run extract. Wipe cold reveals if present.
+          {% elif mould_risk in ['Risk','Danger'] %}
+            Mould {{ mould_risk }} in {{ mould_room }}: run extraction 20 min after showers/cooking, contain moisture (doors shut), avoid drying indoors.
+          {% elif h > high %}
+            Humid: 5–10 min purge ventilation. Prioritise Kitchen/Bathroom after moisture events.
+          {% elif h < low %}
+            Too dry: avoid over‑ventilating; reduce extractor overrun. Add moisture gently (bowls/plant/controlled drying).
+          {% else %}
+            Comfortable: normal trickle ventilation + short purge after moisture events only.
+          {% endif %}
+
+      #########################################################################
+      # I) ApexCharts series passthrough
+      #########################################################################
+      - name: "Humidity Constellation Series"
+        unique_id: humidity_constellation_series
+        state: "ok"
+        attributes:
+          series: "{{ state_attr('sensor.humidity_intelligence_engine','series') }}"
+
+  - binary_sensor:
+      #########################################################################
+      # J) Danger flags used for badge highlighting
+      #########################################################################
+      - name: "Humidity Danger"
+        unique_id: humidity_danger
+        state: >
+          {% set h = states('sensor.house_average_humidity') | float(none) %}
+          {{ false if h is none else (h < 35 or h > 70) }}
+
+      - name: "Condensation Danger"
+        unique_id: condensation_danger
+        state: >
+          {{ state_attr('sensor.worst_room_condensation','risk') == 'Danger' }}
+
+      - name: "Mould Danger"
+        unique_id: mould_danger
+        state: >
+          {{ state_attr('sensor.worst_room_mould','risk') == 'Danger' }}
