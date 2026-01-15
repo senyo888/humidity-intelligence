@@ -1,6 +1,7 @@
 # Humidity Intelligence Advanced HACS - Edition
 
 Version v1.1.1
+HACS submission branch
 
 **Smart humidity intelligence for Home Assistant — insights, not just numbers.**
 
