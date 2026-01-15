@@ -1,7 +1,6 @@
 {
   "name": "Humidity Intelligence (Advanced)",
-  "content_in_root": true,
   "render_readme": true,
-  "homeassistant": "2024.1.0",
-  "country": ["GB"]
+  "filename": "humidity_intelligence.jinja"
 }
+
