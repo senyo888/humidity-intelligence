@@ -1,9 +1,8 @@
 # Humidity Intelligence Advanced HACS - Edition
 
+Version v1.1.1
+
 **Smart humidity intelligence for Home Assistant — insights, not just numbers.**
-
-<img width="1536" height="1024" alt="banner" src="https://github.com/user-attachments/assets/72d0ce73-e8a4-412d-a3c1-570b1048d740" />
-
 
 Humidity Intelligence is an opinionated Home Assistant package that transforms raw humidity and temperature readings into **actionable building insight**.
 
@@ -109,9 +108,8 @@ HACS uses the `.jinja` file as the install source. You control where and how it 
 
 * HACS → **Integrations**
 * ⋮ → **Custom repositories**
-* Add this repo as **Template**
+* Add this repo as **Template** [`Humidity Intelligence`](https://github.com/senyo888/Humidity-Intelligence)
 * Install
-
 ---
 
 ### 2️⃣ Enable packages (once)
@@ -231,17 +229,108 @@ Think of these as the **public interface**.
 
 ---
 
-## 🎛️ UI & dropdown-mod support
+## 🎛️ Lovelace UI (optional)
 
-The package is designed to pair with a **badge-first dashboard**:
+Humidity Intelligence is **backend-first**.
 
-* Four circular badges (Humidity / Condensation / Mould / Drift)
-* Comfort Band card
-* Dropdown-mod **24-hour Humidity Constellation**
+The package exposes a stable set of sensors and binary sensors designed to be consumed by **any dashboard, automation, or card style you prefer**.
 
-The Constellation chart is auto-generated — no manual series editing required.
+This repository includes a **reference Lovelace UI** to demonstrate what the data *can* do — not what it *must* look like.
 
 ---
+
+### What the reference UI shows
+
+The included UI demonstrates:
+
+* A **badge-first overview** (Humidity / Condensation / Mould / Drift)
+* A contextual **Comfort Band** summary
+* A chevron-controlled **dropdown-mod**
+* A dynamic **24-hour Humidity Constellation** chart
+
+The chart and dropdown are fully driven by backend sensors — no room entities are hard-coded.
+
+---
+
+### Applying the UI
+
+The example Lovelace card is located in:
+
+```text
+lovelace/humidity_intelligence_card.yaml
+```
+
+To use it:
+
+1. Install the required frontend cards (see below)
+2. Add a **Manual card** to your dashboard
+3. Paste the YAML
+4. Save
+
+If you keep the public entity IDs unchanged, **you maybe required to edit entity ID for the humidity constelltion**.
+
+---
+
+### Frontend requirements (UI only)
+
+The reference UI uses the following custom cards:
+
+* `button-card`
+* `apexcharts-card`
+* `card-mod`
+* `config-template-card`
+
+> The backend works without any of these.
+> They are only required if you want the example UI.
+
+---
+
+### Dropdown-mod behaviour
+
+The Constellation chart is controlled by:
+
+```
+input_boolean.humidity_constellation_expanded
+```
+
+The Comfort Band card toggles this helper via a chevron.
+
+This pattern is deliberate and reusable — you can attach the same helper to any UI element you like.
+
+---
+
+### Customising the UI (encouraged)
+
+You are encouraged to:
+
+* Re-style the badges
+* Replace ApexCharts
+* Build mobile-first or wall-panel layouts
+* Skip dashboards entirely and use automations instead
+
+As long as you use the **public entity API**, the backend will support you.
+
+There is no canonical UI.
+
+---
+
+## 🖼️ UI Gallery (scaffold)
+
+Humidity Intelligence is designed to support **many visual interpretations**.
+
+This section is reserved for **community-built dashboards**, including:
+
+* Mobile layouts
+* Wall panels
+* Minimal or graph-heavy designs
+* Automation-centric views
+
+If you build something interesting, share it.
+
+See `CONTRIBUTING.md` for how to add your UI to the gallery.
+
+---
+
 
 ## 🧠 How the intelligence works (brief)
 
@@ -289,6 +378,7 @@ This biases toward **early warning**, not late alarm.
 
 * This is intentional
 * Tune thresholds if your building behaves differently
+* Remember to rename humidity_intelligence.jinja to .yaml
 
 ---
 
@@ -303,8 +393,17 @@ If it helps you understand your building better, a ⭐ or a screenshot in Discus
 
 ---
 
+# Humidity Intelligence Lovelace UI
 
-Just say the word.
+## Constellation Closed
+  
+![IMG_5368](https://github.com/user-attachments/assets/8cc1a546-2318-4f31-9d91-0cd2bf1c3437)
+
+
+## Constellation Open
+
+<img width="603" height="921" alt="IMG_5369" src="https://github.com/user-attachments/assets/07aad31a-01ad-4d19-a540-e52937901594" />
+
 
 
 
