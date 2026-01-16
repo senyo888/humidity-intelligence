@@ -54,7 +54,7 @@ dashboard.yaml
 README.md   (optional)
 ```
 
-3. Open a Pull Request titled:
+3. Open a Pull Request to the (develop) branch titled:
 
 > `UI Gallery: <short description>`
 
@@ -68,12 +68,13 @@ Please:
 * Document required custom cards
 * Avoid hard-coded personal entity IDs
 * Do not fork the backend for UI changes
-
+* only Pull request to the develop branch will be considered
+  
 ---
 
 ## 🧠 Design intent
 
-UIs should help answer:
+UIs should atleast help answer:
 
 * Where is the risk?
 * How serious is it?
