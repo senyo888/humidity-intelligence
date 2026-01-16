@@ -3,7 +3,7 @@ name: Gallery UI Feedback
 about: Tell us about your favourite UI
 title: ''
 labels: Gallery
-assignees: ''
+assignees: senyo888
 
 ---
 
