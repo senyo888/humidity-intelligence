@@ -9,4 +9,4 @@ Humidity Intelligence public sensor API.
   - Style: 4 badges-first, dropdown-mod, to open humidity constellation
   - Optimised for: Mobile/Tablet
   - Author: @senyo888
-  - → `/ui-gallery/default-ui-collapsed.png/`
+  - → `humidity-intelligence/ui-gallery/default-ui-collapsed.png/`
