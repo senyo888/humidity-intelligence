@@ -5,8 +5,8 @@ Humidity Intelligence public sensor API.
 
 ### Available layouts
 
-- **Constellation Dropdown (Tablet)**
-  - Style: badge-first, dropdown-mod
-  - Optimised for: tablets
+- **default ui**
+  - Style: 4 badges-first, dropdown-mod, to open humidity constellation
+  - Optimised for: Mobile/Tablet
   - Author: @senyo888
-  - → `/ui-gallery/tablet-constellation-dropdown/`
+  - → `/ui-gallery/default-ui-collapsed.png/`
