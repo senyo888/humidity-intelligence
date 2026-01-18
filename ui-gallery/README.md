@@ -5,9 +5,10 @@ Humidity Intelligence public sensor API.
 
 ### Available layouts
 
-- **default ui**
+ ### **DEFAULT UI**
   - Style: 4 badges-first, dropdown-mod, to open humidity constellation
   - Optimised for: Mobile/Tablet
   - Author: @senyo888
-  - → `humidity-intelligence/ui-gallery/default-ui-collapsed.png/`
-  - [![Collapsed UI Preview](ui-gallery/default-ui-collapsed.png)](ui-gallery/default-ui-collapsed.png)
+  - [![Collapsed UI Preview.png](default-ui-collapsed.png)](default-ui-collapsed.png)
+  - [View Expanded UI Preview.png](default-ui-collapsed.png)
+  - [Default Dashboard.yaml](default-dashboard.yaml)
