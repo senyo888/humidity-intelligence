@@ -10,3 +10,4 @@ Humidity Intelligence public sensor API.
   - Optimised for: Mobile/Tablet
   - Author: @senyo888
   - → `humidity-intelligence/ui-gallery/default-ui-collapsed.png/`
+  - [![Collapsed UI Preview](ui-gallery/default-ui-collapsed.png)](ui-gallery/default-ui-collapsed.png)
