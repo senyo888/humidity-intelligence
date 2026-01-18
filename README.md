@@ -28,6 +28,8 @@ This Advanced Edition reflects the system I run at home and is designed to be:
 
 Humidity Intelligence builds a **decision-making layer** on top of your existing room sensors.
 
+![IMG_5368](https://github.com/user-attachments/assets/8cc1a546-2318-4f31-9d91-0cd2bf1c3437)
+
 ### House-level intelligence
 
 * Dynamic **house average humidity**
