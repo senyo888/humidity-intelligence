@@ -10,5 +10,5 @@ Humidity Intelligence public sensor API.
   - Optimised for: Mobile/Tablet
   - Author: @senyo888
   - [![Collapsed UI Preview.png](default_ui_collapsed.png)](default_ui-_collapsed.png)
-  - [View Expanded UI Preview.png](default_ui_collapsed.png)
+  - [View Expanded UI Preview.png](default_ui_expanded.png)
   - [Default Dashboard.yaml](default_dashboard.yaml)
