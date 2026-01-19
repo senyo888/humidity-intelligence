@@ -2,7 +2,8 @@
 
 Version v1.1.1
 
-<img width="1536" height="1024" alt="ChatGPT Image Jan 16, 2026 at 11_56_36 AM" src="https://github.com/user-attachments/assets/2ef4fd46-f034-44e3-81f4-d7c13da6cfd7" />
+
+<img width="1536" height="1024" alt="Banner-4" src="https://github.com/user-attachments/assets/71a0714c-b20f-46da-868c-d52f28193416" />
 
 
 **Smart humidity intelligence for Home Assistant — insights, not just numbers.**
@@ -457,11 +458,6 @@ If it helps you understand your building better, a ⭐ or a screenshot in Discus
 ---
 
 # Humidity Intelligence Lovelace UI
-
-## Constellation Closed
-  
-![IMG_5368](https://github.com/user-attachments/assets/8cc1a546-2318-4f31-9d91-0cd2bf1c3437)
-
 
 ## Constellation Open
 
