@@ -24,3 +24,14 @@ Humidity Intelligence public sensor API.
   - [![UI Snapshot (Watch)](humidity-core-tablet-ui/snapshot-watch.png)](humidity-core-tablet-ui/snapshot-watch.png)
   - [View snapshot (Danger)](humidity-core-tablet-ui/snapshot-danger.png)
   - [Dashboard YAML](humidity-core-tablet-ui/humidity-core-tablet_dashboard.yaml)
+
+
+---
+
+ ### **HOUSE AVERAGE HUMIDITY BADGE (MOBILE)**
+  - Style: Single badge, comfort-band colours (HI backend), risk pulse on Danger
+  - Optimised for: Mobile
+  - Author: @senyo888
+  - [![Badge UI Preview.png](house-average-humidity-badge-mobile-ui/house-average-humidity-badge-mobile.png)](house-average-humidity-badge-mobile-ui/house-average-humidity-badge-mobile.png)
+  - [Badge UI Preview.png](house-average-humidity-badge-mobile-ui/house-average-humidity-badge-mobile.png)
+  - [Dashboard YAML](house-average-humidity-badge-mobile-ui/house-average-humidity-badge-mobile_dashboard.yaml)    
