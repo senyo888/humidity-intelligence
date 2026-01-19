@@ -41,7 +41,7 @@ Humidity Intelligence public sensor API.
 
   
   ### **HOUSE AVERAGE TEMPERATURE BADGE (MOBILE)**
-   - Style: Single badge, Cryptoville temperature thresholds (cv_t1..cv_t4)
+   - Style: Single badge, average temperature thresholds.
    - Optimised for: Mobile
    - Author: @senyo888
    - [![Badge UI Preview.png](house-average-temperature-badge-mobile-ui/house-average-temperature-badge-mobile.png)](house-average-temperature-badge-mobile-ui/house-average-humidity-badge-mobile.png)
