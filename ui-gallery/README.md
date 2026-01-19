@@ -28,10 +28,25 @@ Humidity Intelligence public sensor API.
 
 ---
 
+ 
  ### **HOUSE AVERAGE HUMIDITY BADGE (MOBILE)**
   - Style: Single badge, comfort-band colours (HI backend), risk pulse on Danger
   - Optimised for: Mobile
   - Author: @senyo888
   - [![Badge UI Preview.png](house-average-humidity-badge-mobile-ui/house-average-humidity-badge-mobile.png)](house-average-humidity-badge-mobile-ui/house-average-humidity-badge-mobile.png)
   - [Badge UI Preview.png](house-average-humidity-badge-mobile-ui/house-average-humidity-badge-mobile.png)
-  - [Dashboard YAML](house-average-humidity-badge-mobile-ui/house-average-humidity-badge-mobile_dashboard.yaml)    
+  - [Dashboard YAML](house-average-humidity-badge-mobile-ui/house-average-humidity-badge-mobile_dashboard.yaml)
+
+
+
+  
+  ### **HOUSE AVERAGE TEMPERATURE BADGE (MOBILE)**
+   - Style: Single badge, Cryptoville temperature thresholds (cv_t1..cv_t4)
+   - Optimised for: Mobile
+   - Author: @senyo888
+   - [![Badge UI Preview.png](house-average-temperature-badge-mobile-ui/house-average-temperature-badge-mobile.png)](house-average-temperature-badge-mobile-ui/house-average-humidity-badge-mobile.png)
+  - [Badge UI Preview.png](house-average-temperature-badge-mobile-ui/house-average-temperature-badge-mobile.png)
+  - [Dashboard YAML](house-average-temperature-badge-mobile-ui/house-average-temperature-badge-mobile_dashboard.yaml)
+
+
+ ---
