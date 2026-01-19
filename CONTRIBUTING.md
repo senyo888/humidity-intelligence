@@ -182,6 +182,5 @@ If your UI is inspired by existing work:
 Thank you for contributing.
 **Consistency enables scale.**
 
-```
 
 
