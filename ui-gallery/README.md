@@ -12,12 +12,15 @@ Humidity Intelligence public sensor API.
   - [![Collapsed UI Preview.png](default-lovelace-ui/default_ui_collapsed.png)](default-lovelace-ui/default_ui_collapsed.png)
   - [View Expanded UI Preview.png](default-lovelace-ui/default_ui_expanded.png)
   - [Default Dashboard.yaml](default-lovelace-ui/default_dashboard.yaml)
+    
+
+---
 
 
  ### **Humidity Core For Tablet**
   - Style: Tablet-friendly hero card + alert strips + 24h constellation chart
   - Optimised for: Tablet / wall display
   - Author: @senyo888
-  - [![UI Snapshot (Watch)](humidity-core-tablet/snapshot-watch.png)](humidity-core-tablet-ui/snapshot-watch.png)
-  - [View snapshot (Danger)](humidity-core-tablet/snapshot-danger.png)
-  - [Dashboard YAML](humidity-core-tablet/humidity-core-tablet_dashboard.yaml)
+  - [![UI Snapshot (Watch)](humidity-core-tablet-ui/snapshot-watch.png)](humidity-core-tablet-ui/snapshot-watch.png)
+  - [View snapshot (Danger)](humidity-core-tablet-ui/snapshot-danger.png)
+  - [Dashboard YAML](humidity-core-tablet-ui/humidity-core-tablet_dashboard.yaml)
