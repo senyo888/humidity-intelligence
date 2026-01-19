@@ -2,9 +2,16 @@
 # Humidity Intelligence — UI Gallery Example (Tablet)
 # Card ID: humidity-core-tablet
 #
-# WHAT THIS IS
-#   A tablet-friendly "Humidity Core" vertical stack + 24h constellation chart.
-#   Designed for a wall tablet / dashboard view (big typography, clear alerts).
+# UPDATE (Expander / Chevron sync)
+#   This version includes a bottom-left chevron that toggles a single expander
+#   helper entity. Set this helper to the SAME entity used by your Default UI
+#   so the chevron/expanded state stays consistent across variants.
+#
+# REQUIRED HELPER (create in HA Helpers UI or YAML)
+#   input_boolean.humidity_intelligence_expanded
+#
+#   If your Default UI uses a different expander entity, CHANGE the entity id
+#   everywhere you see: input_boolean.humidity_intelligence_expanded
 #
 # DEPENDENCIES (must be installed)
 #   - custom:button-card
@@ -28,7 +35,7 @@ type: vertical-stack
 cards:
 
   ###########################################################################
-  # HUMIDITY CORE (hero)
+  # HUMIDITY CORE (hero) + EXPANDER CHEVRON
   ###########################################################################
   - type: custom:button-card
     name: Humidity Core
@@ -75,6 +82,35 @@ cards:
     tap_action:
       action: more-info
 
+    #########################################################################
+    # CANONICAL EXPANDER ENTITY (MUST MATCH DEFAULT UI)
+    # Change this ONLY if your default UI uses a different helper.
+    #########################################################################
+    custom_fields:
+      chevron:
+        card:
+          type: custom:button-card
+          entity: input_boolean.humidity_intelligence_expanded
+          show_name: false
+          show_state: false
+          icon: |
+            [[[
+              return entity.state === 'on' ? 'mdi:chevron-up' : 'mdi:chevron-down';
+            ]]]
+          tap_action:
+            action: toggle
+          styles:
+            card:
+              - width: 56px
+              - height: 56px
+              - border-radius: 50%
+              - background: rgba(10,12,16,0.55)
+              - border: 2px solid rgba(148,163,184,0.22)
+              - box-shadow: 0 0 18px rgba(148,163,184,0.18)
+            icon:
+              - width: 30px
+              - color: rgba(148,163,184,0.95)
+
     styles:
       card:
         - border-radius: 22px
@@ -84,10 +120,6 @@ cards:
 
         #####################################################################
         # EDIT ME (optional) — DANGER FLAGS
-        # If you DON'T have these binary_sensors, you can:
-        #   A) Replace them with your own, OR
-        #   B) Remove the danger logic and rely on humidity thresholds only.
-        #
         # Expected CANONICAL names:
         #   binary_sensor.humidity_danger
         #   binary_sensor.condensation_danger
@@ -133,6 +165,12 @@ cards:
                 states['binary_sensor.mould_danger']?.state === 'on';
               return danger ? "cvPulse 1.8s ease-in-out infinite" : "none";
             ]]]
+
+      custom_fields:
+        chevron:
+          - position: absolute
+          - left: 14px
+          - bottom: 14px
 
       icon:
         - color: |
@@ -181,247 +219,231 @@ cards:
         }
 
   ###########################################################################
-  # CONDENSATION (worst-room risk)
+  # EXPANDED CONTENT (only visible when expander is ON)
   ###########################################################################
-  - type: custom:button-card
+  - type: conditional
+    conditions:
+      - entity: input_boolean.humidity_intelligence_expanded
+        state: "on"
+    card:
+      type: vertical-stack
+      cards:
 
-    #########################################################################
-    # EDIT ME — CONDENSATION RISK ENTITY
-    # Expected string states: OK / Watch / Risk / Danger
-    # CANONICAL default:
-    #   sensor.worst_room_condensation_risk
-    #########################################################################
-    entity: sensor.worst_room_condensation_risk
-
-    name: Condensation
-    icon: mdi:water-alert
-    show_state: true
-    show_label: true
-    label: |
-      [[[
-        // EDIT ME (optional) — worst-room display name sensor
-        const room = states['sensor.worst_room_condensation']?.state || '—';
-        const risk = entity.state || '—';
-        return `${room} • ${risk}`;
-      ]]]
-    styles:
-      icon:
-        - color: |
+        #######################################################################
+        # CONDENSATION (worst-room risk)
+        #######################################################################
+        - type: custom:button-card
+          entity: sensor.worst_room_condensation_risk
+          name: Condensation
+          icon: mdi:water-alert
+          show_state: true
+          show_label: true
+          label: |
             [[[
-              const r = entity.state;
-              if (r === 'Danger') return '#ef4444';
-              if (r === 'Risk')   return '#facc15';
-              if (r === 'Watch')  return '#7dd3fc';
-              if (r === 'OK')     return '#4ade80';
-              return '#94a3b8';
+              const room = states['sensor.worst_room_condensation']?.state || '—';
+              const risk = entity.state || '—';
+              return `${room} • ${risk}`;
             ]]]
-      card:
-        - border-radius: 18px
-        - padding: 10px 12px
-        - background: rgba(10,12,16,0.62)
-        - border: |
-            [[[
-              const r = entity.state;
-              const c =
-                r === 'Danger' ? 'rgba(239,68,68,0.70)' :
-                r === 'Risk'   ? 'rgba(250,204,21,0.65)' :
-                r === 'Watch'  ? 'rgba(56,189,248,0.55)' :
-                r === 'OK'     ? 'rgba(74,222,128,0.45)' :
-                'rgba(148,163,184,0.18)';
-              return `2px solid ${c}`;
-            ]]]
-        - box-shadow: |
-            [[[
-              const r = entity.state;
-              return r === 'Danger' ? '0 0 26px rgba(239,68,68,0.55)' :
-                     r === 'Risk'   ? '0 0 26px rgba(250,204,21,0.45)' :
-                     r === 'Watch'  ? '0 0 26px rgba(56,189,248,0.35)' :
-                     r === 'OK'     ? '0 0 22px rgba(74,222,128,0.25)' :
-                     '0 0 18px rgba(148,163,184,0.18)';
-            ]]]
-      grid:
-        - grid-template-areas: ""i n s" "i l l""
-        - grid-template-columns: 60px 1fr auto
-        - column-gap: 10px
-      name:
-        - font-weight: 700
-      state:
-        - font-weight: 800
-      label:
-        - opacity: 0.9
-        - font-size: 12px
-
-  ###########################################################################
-  # MOULD (worst-room risk)
-  ###########################################################################
-  - type: custom:button-card
-
-    #########################################################################
-    # EDIT ME — MOULD RISK ENTITY
-    # Expected string states: OK / Watch / Risk / Danger
-    # CANONICAL default:
-    #   sensor.worst_room_mould_risk
-    #########################################################################
-    entity: sensor.worst_room_mould_risk
-
-    name: Mould
-    icon: mdi:mushroom-outline
-    show_state: true
-    show_label: true
-    label: |
-      [[[
-        // EDIT ME (optional) — worst-room display name sensor
-        const room = states['sensor.worst_room_mould']?.state || '—';
-        const risk = entity.state || '—';
-        return `${room} • ${risk}`;
-      ]]]
-    styles:
-      icon:
-        - color: |
-            [[[
-              const r = entity.state;
-              if (r === 'Danger') return '#ef4444';
-              if (r === 'Risk')   return '#facc15';
-              if (r === 'Watch')  return '#7dd3fc';
-              if (r === 'OK')     return '#4ade80';
-              return '#94a3b8';
-            ]]]
-      card:
-        - border-radius: 18px
-        - padding: 10px 12px
-        - background: rgba(10,12,16,0.62)
-        - border: |
-            [[[
-              const r = entity.state;
-              const c =
-                r === 'Danger' ? 'rgba(239,68,68,0.70)' :
-                r === 'Risk'   ? 'rgba(250,204,21,0.65)' :
-                r === 'Watch'  ? 'rgba(56,189,248,0.55)' :
-                r === 'OK'     ? 'rgba(74,222,128,0.45)' :
-                'rgba(148,163,184,0.18)';
-              return `2px solid ${c}`;
-            ]]]
-        - box-shadow: |
-            [[[
-              const r = entity.state;
-              return r === 'Danger' ? '0 0 26px rgba(239,68,68,0.55)' :
-                     r === 'Risk'   ? '0 0 26px rgba(250,204,21,0.45)' :
-                     r === 'Watch'  ? '0 0 26px rgba(56,189,248,0.35)' :
-                     r === 'OK'     ? '0 0 22px rgba(74,222,128,0.25)' :
-                     '0 0 18px rgba(148,163,184,0.18)';
-            ]]]
-      grid:
-        - grid-template-areas: ""i n s" "i l l""
-        - grid-template-columns: 60px 1fr auto
-        - column-gap: 10px
-      name:
-        - font-weight: 700
-      state:
-        - font-weight: 800
-      label:
-        - opacity: 0.9
-        - font-size: 12px
-
-  ###########################################################################
-  # 24H HUMIDITY CONSTELLATION (tablet-friendly)
-  ###########################################################################
-  - type: custom:apexcharts-card
-    header:
-      show: true
-      title: Humidity Constellation (24h)
-      show_states: false
-
-    graph_span: 24h
-    span:
-      start: day
-
-    #########################################################################
-    # EDIT ME — TARGET BAND ANNOTATION
-    # ApexCharts annotations MUST be numeric, so we set 45–55 as a safe default.
-    # Change these to your comfort band (or remove the entire annotations block).
-    #########################################################################
-    apex_config:
-      chart:
-        height: 320px
-        toolbar:
-          show: false
-      grid:
-        borderColor: rgba(255,255,255,0.08)
-        strokeDashArray: 3
-      stroke:
-        curve: smooth
-        width: 2.5
-      legend:
-        show: true
-        position: bottom
-        fontSize: 12px
-        labels:
-          colors: "#e5e7eb"
-      xaxis:
-        labels:
-          style:
-            colors: "#9ca3af"
-      yaxis:
-        labels:
-          style:
-            colors: "#9ca3af"
-      annotations:
-        yaxis:
-          - y: 45
-            y2: 55
-            borderColor: rgba(74,222,128,0.10)
-            fillColor: rgba(74,222,128,0.10)
-            opacity: 0.12
+          styles:
+            icon:
+              - color: |
+                  [[[
+                    const r = entity.state;
+                    if (r === 'Danger') return '#ef4444';
+                    if (r === 'Risk')   return '#facc15';
+                    if (r === 'Watch')  return '#7dd3fc';
+                    if (r === 'OK')     return '#4ade80';
+                    return '#94a3b8';
+                  ]]]
+            card:
+              - border-radius: 18px
+              - padding: 10px 12px
+              - background: rgba(10,12,16,0.62)
+              - border: |
+                  [[[
+                    const r = entity.state;
+                    const c =
+                      r === 'Danger' ? 'rgba(239,68,68,0.70)' :
+                      r === 'Risk'   ? 'rgba(250,204,21,0.65)' :
+                      r === 'Watch'  ? 'rgba(56,189,248,0.55)' :
+                      r === 'OK'     ? 'rgba(74,222,128,0.45)' :
+                      'rgba(148,163,184,0.18)';
+                    return `2px solid ${c}`;
+                  ]]]
+              - box-shadow: |
+                  [[[
+                    const r = entity.state;
+                    return r === 'Danger' ? '0 0 26px rgba(239,68,68,0.55)' :
+                           r === 'Risk'   ? '0 0 26px rgba(250,204,21,0.45)' :
+                           r === 'Watch'  ? '0 0 26px rgba(56,189,248,0.35)' :
+                           r === 'OK'     ? '0 0 22px rgba(74,222,128,0.25)' :
+                           '0 0 18px rgba(148,163,184,0.18)';
+                  ]]]
+            grid:
+              - grid-template-areas: ""i n s" "i l l""
+              - grid-template-columns: 60px 1fr auto
+              - column-gap: 10px
+            name:
+              - font-weight: 700
+            state:
+              - font-weight: 800
             label:
-              text: Target band
-              style:
-                color: "#e5e7eb"
-                background: rgba(74,222,128,0.20)
+              - opacity: 0.9
+              - font-size: 12px
 
-    yaxis:
-      - min: 35
-        max: 90
-        decimals: 0
+        #######################################################################
+        # MOULD (worst-room risk)
+        #######################################################################
+        - type: custom:button-card
+          entity: sensor.worst_room_mould_risk
+          name: Mould
+          icon: mdi:mushroom-outline
+          show_state: true
+          show_label: true
+          label: |
+            [[[
+              const room = states['sensor.worst_room_mould']?.state || '—';
+              const risk = entity.state || '—';
+              return `${room} • ${risk}`;
+            ]]]
+          styles:
+            icon:
+              - color: |
+                  [[[
+                    const r = entity.state;
+                    if (r === 'Danger') return '#ef4444';
+                    if (r === 'Risk')   return '#facc15';
+                    if (r === 'Watch')  return '#7dd3fc';
+                    if (r === 'OK')     return '#4ade80';
+                    return '#94a3b8';
+                  ]]]
+            card:
+              - border-radius: 18px
+              - padding: 10px 12px
+              - background: rgba(10,12,16,0.62)
+              - border: |
+                  [[[
+                    const r = entity.state;
+                    const c =
+                      r === 'Danger' ? 'rgba(239,68,68,0.70)' :
+                      r === 'Risk'   ? 'rgba(250,204,21,0.65)' :
+                      r === 'Watch'  ? 'rgba(56,189,248,0.55)' :
+                      r === 'OK'     ? 'rgba(74,222,128,0.45)' :
+                      'rgba(148,163,184,0.18)';
+                    return `2px solid ${c}`;
+                  ]]]
+              - box-shadow: |
+                  [[[
+                    const r = entity.state;
+                    return r === 'Danger' ? '0 0 26px rgba(239,68,68,0.55)' :
+                           r === 'Risk'   ? '0 0 26px rgba(250,204,21,0.45)' :
+                           r === 'Watch'  ? '0 0 26px rgba(56,189,248,0.35)' :
+                           r === 'OK'     ? '0 0 22px rgba(74,222,128,0.25)' :
+                           '0 0 18px rgba(148,163,184,0.18)';
+                  ]]]
+            grid:
+              - grid-template-areas: ""i n s" "i l l""
+              - grid-template-columns: 60px 1fr auto
+              - column-gap: 10px
+            name:
+              - font-weight: 700
+            state:
+              - font-weight: 800
+            label:
+              - opacity: 0.9
+              - font-size: 12px
 
-    #########################################################################
-    # EDIT ME — ROOM HUMIDITY SENSORS (replace with your entities)
-    # Keep the series names consistent; add/remove rooms as needed.
-    #########################################################################
-    series:
-      - entity: sensor.room1_humidity
-        name: Livingroom
-        type: line
-        group_by: { func: avg, duration: 15min }
+        #######################################################################
+        # 24H HUMIDITY CONSTELLATION (tablet-friendly)
+        #######################################################################
+        - type: custom:apexcharts-card
+          header:
+            show: true
+            title: Humidity Constellation (24h)
+            show_states: false
+          graph_span: 24h
+          span:
+            start: day
+          apex_config:
+            chart:
+              height: 320px
+              toolbar:
+                show: false
+            grid:
+              borderColor: rgba(255,255,255,0.08)
+              strokeDashArray: 3
+            stroke:
+              curve: smooth
+              width: 2.5
+            legend:
+              show: true
+              position: bottom
+              fontSize: 12px
+              labels:
+                colors: "#e5e7eb"
+            xaxis:
+              labels:
+                style:
+                  colors: "#9ca3af"
+            yaxis:
+              labels:
+                style:
+                  colors: "#9ca3af"
+            annotations:
+              yaxis:
+                - y: 45
+                  y2: 55
+                  borderColor: rgba(74,222,128,0.10)
+                  fillColor: rgba(74,222,128,0.10)
+                  opacity: 0.12
+                  label:
+                    text: Target band
+                    style:
+                      color: "#e5e7eb"
+                      background: rgba(74,222,128,0.20)
+          yaxis:
+            - min: 35
+              max: 90
+              decimals: 0
 
-      - entity: sensor.room2_humidity
-        name: Kitchen
-        type: line
-        group_by: { func: avg, duration: 15min }
+          #####################################################################
+          # EDIT ME — ROOM HUMIDITY SENSORS (replace with your entities)
+          #####################################################################
+          series:
+            - entity: sensor.room1_humidity
+              name: Livingroom
+              type: line
+              group_by: { func: avg, duration: 15min }
 
-      - entity: sensor.room3_humidity
-        name: Hallway
-        type: line
-        group_by: { func: avg, duration: 15min }
+            - entity: sensor.room2_humidity
+              name: Kitchen
+              type: line
+              group_by: { func: avg, duration: 15min }
 
-      - entity: sensor.room4_humidity
-        name: Bedroom
-        type: line
-        group_by: { func: avg, duration: 15min }
+            - entity: sensor.room3_humidity
+              name: Hallway
+              type: line
+              group_by: { func: avg, duration: 15min }
 
-      - entity: sensor.room5_humidity
-        name: Kids Room
-        type: line
-        group_by: { func: avg, duration: 15min }
+            - entity: sensor.room4_humidity
+              name: Bedroom
+              type: line
+              group_by: { func: avg, duration: 15min }
 
-      - entity: sensor.room6_humidity
-        name: Bathroom
-        type: line
-        group_by: { func: avg, duration: 15min }
+            - entity: sensor.room5_humidity
+              name: Kids Room
+              type: line
+              group_by: { func: avg, duration: 15min }
 
-      - entity: sensor.room7_humidity
-        name: Toilet
-        type: line
-        group_by: { func: avg, duration: 15min }
+            - entity: sensor.room6_humidity
+              name: Bathroom
+              type: line
+              group_by: { func: avg, duration: 15min }
+
+            - entity: sensor.room7_humidity
+              name: Toilet
+              type: line
+              group_by: { func: avg, duration: 15min }
 
 grid_options:
   columns: full
