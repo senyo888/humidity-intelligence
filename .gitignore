@@ -1,0 +1,25 @@
+# --- OS ---
+.DS_Store
+Thumbs.db
+
+# --- Editors / IDEs ---
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# --- Home Assistant ---
+secrets.yaml
+*.log
+*.db
+.storage/
+__pycache__/
+
+# --- Temp / cache ---
+*.tmp
+*.bak
+*.old
+
+# --- Node / build (future-safe) ---
+node_modules/
+dist/
