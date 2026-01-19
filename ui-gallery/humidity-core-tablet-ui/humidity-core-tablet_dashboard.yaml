@@ -8,10 +8,10 @@
 #   so the chevron/expanded state stays consistent across variants.
 #
 # REQUIRED HELPER (create in HA Helpers UI or YAML)
-#   input_boolean.humidity_intelligence_expanded
+#   input_boolean.humidity_constellation_expanded
 #
 #   If your Default UI uses a different expander entity, CHANGE the entity id
-#   everywhere you see: input_boolean.humidity_intelligence_expanded
+#   everywhere you see: input_boolean.humidity_constellation_expanded
 #
 # DEPENDENCIES (must be installed)
 #   - custom:button-card
@@ -90,7 +90,7 @@ cards:
       chevron:
         card:
           type: custom:button-card
-          entity: input_boolean.humidity_intelligence_expanded
+          entity: input_boolean.humidity_constellation_expanded
           show_name: false
           show_state: false
           icon: |
@@ -223,7 +223,7 @@ cards:
   ###########################################################################
   - type: conditional
     conditions:
-      - entity: input_boolean.humidity_intelligence_expanded
+      - entity: input_boolean.humidity_constellation_expanded
         state: "on"
     card:
       type: vertical-stack
