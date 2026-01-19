@@ -1,3 +1,10 @@
-preview.png
-dashboard.yaml
-README.md
+### **<Card ID> UI**
+
+- **Style:** <brief description>
+- **Optimised for:** <devices>
+- **Author:** <handle>
+
+[![View snapshot](./snapshot.png)](./snapshot.png)
+
+- [View snapshot](./snapshot.png)
+- [Dashboard YAML](./<card-id>_dashboard.yaml)
