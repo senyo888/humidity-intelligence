@@ -1,8 +1,9 @@
 # Humidity Intelligence Advanced HACS - Edition
 
-Version v1.1.1
+Version v1.1.2
 
-<img width="1536" height="1024" alt="ChatGPT Image Jan 16, 2026 at 11_56_36 AM" src="https://github.com/user-attachments/assets/2ef4fd46-f034-44e3-81f4-d7c13da6cfd7" />
+
+<img width="1536" height="1024" alt="Banner-4" src="https://github.com/user-attachments/assets/71a0714c-b20f-46da-868c-d52f28193416" />
 
 
 **Smart humidity intelligence for Home Assistant — insights, not just numbers.**
@@ -319,20 +320,29 @@ There is no canonical UI.
 
 ---
 
-## 🖼️ UI Gallery (scaffold)
+## 🖼️ UI Gallery
 
 Humidity Intelligence is designed to support **many visual interpretations**.
 
-This section is reserved for **community-built dashboards**, including:
+The UI Gallery showcases ** defult & community-built dashboards, badges and cards** built on top of the
+Humidity Intelligence backend, including:
 
-* Mobile layouts
-* Wall panels
-* Minimal or graph-heavy designs
-* Automation-centric views
+- Mobile-first layouts
+- Tablet and wall-panel dashboards
+- Minimal or graph-heavy designs
+- Automation-centric or insight-driven views
 
-If you build something interesting, share it.
+All gallery submissions must follow the project’s **canonical UI rules**
+to ensure portability, clarity, and compatibility.
 
-See `CONTRIBUTING.md` for how to add your UI to the gallery.
+> Gallery entries are reviewed and validated before inclusion.
+
+👉 See `CONTRIBUTING.md` for:
+- required folder structure
+- preview image rules
+- canonical entity and helper usage
+- PR and review expectations
+
 
 ---
 
@@ -457,11 +467,6 @@ If it helps you understand your building better, a ⭐ or a screenshot in Discus
 ---
 
 # Humidity Intelligence Lovelace UI
-
-## Constellation Closed
-  
-![IMG_5368](https://github.com/user-attachments/assets/8cc1a546-2318-4f31-9d91-0cd2bf1c3437)
-
 
 ## Constellation Open
 

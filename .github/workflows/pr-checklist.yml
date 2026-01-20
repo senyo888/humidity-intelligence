@@ -1,0 +1,61 @@
+name: PR Checklist Enforcement
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+    branches: [develop]
+
+permissions:
+  pull-requests: read
+
+jobs:
+  checklist:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Enforce required PR checkboxes
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const pr = context.payload.pull_request;
+            const body = pr.body || "";
+
+            // Add or remove required checkbox labels here.
+            // These must match the text in your PR template exactly.
+            const required = [
+              "Folder name matches the **card-id**",
+              "All links are **relative**",
+              "Screenshots are `.png`",
+              "YAML is a **single, importable dashboard or card**",
+              "No private or personal entity IDs are used",
+              "Canonical semantics are preserved (`OK`, `Watch`, `Risk`, `Danger`)",
+              "Shared helpers (e.g. expanders) reuse canonical entities where applicable",
+              "Required custom cards are documented in the YAML",
+              "UI works when copied into a clean Home Assistant instance",
+              "Backend logic and sensors are **not modified**",
+              "PR targets the **`develop` branch**",
+              "PR title follows:"
+            ];
+
+            // Checkbox lines look like:
+            // - [ ] text
+            // - [x] text
+            const missing = [];
+
+            for (const item of required) {
+              const reChecked = new RegExp(`^- \\[x\\] .*${escapeRegExp(item)}.*$`, "mi");
+              if (!reChecked.test(body)) missing.push(item);
+            }
+
+            function escapeRegExp(s) {
+              return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+            }
+
+            if (missing.length) {
+              core.setFailed(
+                "Required PR checklist items are not checked:\n" +
+                missing.map(m => `- ${m}`).join("\n") +
+                "\n\nTick the boxes in the PR description to pass."
+              );
+            } else {
+              console.log("All required checklist items are checked.");
+            }

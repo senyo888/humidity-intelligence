@@ -1,0 +1,119 @@
+###############################################################################
+# Humidity Intelligence — UI Gallery Submission (Companion)
+# Card ID: house-average-temperature-badge-mobile
+#
+# What this is:
+# - Mobile-friendly "House Average Temperature" badge.
+# - Designed to be publishable: you can point it at ANY temperature entity.
+#
+# Requirements (custom cards):
+# - custom:button-card
+#
+# EDIT ME (required):
+# - entity: sensor.house_average_temperature   <-- replace with your temperature entity
+#
+# Optional:
+# - label uses entity.attributes.room_count (if present)
+###############################################################################
+
+type: vertical-stack
+cards:
+  - type: custom:button-card
+    entity: sensor.house_average_temperature
+    icon: mdi:home-thermometer
+    show_name: false
+    show_state: true
+    show_label: true
+    state_display: |
+      [[[
+        const t = parseFloat(entity?.state);
+        if (isNaN(t)) return '—';
+        return `${t.toFixed(1)}°C`;
+      ]]]
+    label: |
+      [[[
+        const n = entity?.attributes?.room_count;
+        if (n === undefined || n === null) return '';
+        return `Avg · ${n} rooms`;
+      ]]]
+    styles:
+      card:
+        - background: rgba(15, 23, 42, 0)
+        - border-radius: 18px
+        - padding: 12px 14px
+        - height: 88px
+        - min-width: 170px
+        - width: auto
+        - backdrop-filter: blur(6px)
+        - border: |
+            [[[
+              const t = parseFloat(entity?.state);
+              if (isNaN(t)) return '2px solid rgba(148,163,184,0.35)';
+              if (t < 19)   return '2px solid rgba(56,189,248,0.9)';
+              if (t < 19.5) return '2px solid rgba(125,211,252,0.9)';
+              if (t < 21.5) return '2px solid rgba(74,222,128,0.9)';
+              if (t < 22.5) return '2px solid rgba(250,204,21,0.9)';
+              return '2px solid rgba(239,68,68,0.9)';
+            ]]]
+        - box-shadow: |
+            [[[
+              const t = parseFloat(entity?.state);
+              if (isNaN(t)) return '0 0 20px rgba(148,163,184,0.35)';
+              if (t < 19)   return '0 0 10px rgba(56,189,248,0.65)';
+              if (t < 19.5) return '0 0 10px rgba(125,211,252,0.65)';
+              if (t < 21.5) return '0 0 10px rgba(74,222,128,0.65)';
+              if (t < 22.5) return '0 0 26px rgba(250,204,21,0.65)';
+              return '0 0 26px rgba(239,68,68,0.65)';
+            ]]]
+      grid:
+        - grid-template-areas: ""i s" "i l""
+        - grid-template-columns: 40px 1fr
+        - grid-template-rows: 1fr auto
+        - align-items: center
+      icon:
+        - width: 32px
+        - color: |
+            [[[
+              const t = parseFloat(entity?.state);
+              if (isNaN(t)) return '#94a3b8';
+              if (t < 19)   return '#38bdf8';
+              if (t < 19.5) return '#7dd3fc';
+              if (t < 21.5) return '#4ade80';
+              if (t < 22.5) return '#facc15';
+              return '#ef4444';
+            ]]]
+      state:
+        - font-size: 28px
+        - font-weight: 800
+        - letter-spacing: 0.4px
+        - line-height: 1
+        - color: |
+            [[[
+              const t = parseFloat(entity?.state);
+              if (isNaN(t)) return '#e5e7eb';
+              if (t < 19)   return '#bae6fd';
+              if (t < 19.5) return '#e0f2fe';
+              if (t < 21.5) return '#dcfce7';
+              if (t < 22.5) return '#fef9c3';
+              return '#fee2e2';
+            ]]]
+      label:
+        - justify-self: start
+        - font-size: 12px
+        - font-weight: 600
+        - opacity: 0.85
+        - letter-spacing: 0.2px
+        - color: |
+            [[[
+              const t = parseFloat(entity?.state);
+              if (isNaN(t)) return '#9ca3af';
+              if (t < 19)   return '#7dd3fc';
+              if (t < 19.5) return '#bae6fd';
+              if (t < 21.5) return '#86efac';
+              if (t < 22.5) return '#fde68a';
+              return '#fecaca';
+            ]]]
+    tap_action:
+      action: more-info
+    hold_action:
+      action: none
