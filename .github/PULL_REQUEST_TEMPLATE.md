@@ -26,31 +26,31 @@ Confirm your submission follows this structure:
 
 ```text
 /ui-gallery/<card-id>/
-├── <card-id>_collapsed.png
-├── <card-id>_expanded.png   (if applicable)
+├── <card-id>_ui.png          ← REQUIRED (minimum one)
 └── <card-id>_dashboard.yaml
 ````
 
-> ⚠️ Note: Nested folders must be created **locally** and committed.
-> GitHub’s web editor cannot reliably create gallery submissions.
+> ⚠️ Note: Gallery folders must be created **locally** and committed.
+> GitHub’s web editor cannot reliably create nested gallery submissions.
+
+Submissions without at least one `_ui.png` preview will be rejected.
 
 ---
 
 ## 🧾 README.md Entry (REQUIRED)
 
-Confirm you have added a compliant entry to `README.md`
+Confirm you have added a compliant entry to the gallery `README.md`
 using the **exact required format**.
 
 Example reference:
 
 ```md
 ### **DEFAULT UI**
-- Style: 4 badges-first, dropdown-mod, expands to humidity constellation
+- Style: 4 badges-first, dropdown-mod, opens humidity constellation
 - Optimised for: Mobile / Tablet
 - Author: @your-handle
-- [![Collapsed UI Preview.png](default-lovelace-ui/default_ui_collapsed.png)](default-lovelace-ui/default_ui_collapsed.png)
-- [View Expanded UI Preview.png](default-lovelace-ui/default_ui_expanded.png)
-- [Default Dashboard.yaml](default-lovelace-ui/default_dashboard.yaml)
+- [![UI Preview](default-lovelace-ui/default-lovelace_ui.png)](default-lovelace-ui/default-lovelace_ui.png)
+- [Default Dashboard.yaml](default-lovelace-ui/default-lovelace-ui_dashboard.yaml)
 ```
 
 ---
@@ -61,14 +61,15 @@ Please confirm all of the following:
 
 * [ ] Folder name matches the **card-id**
 * [ ] All links are **relative**
-* [ ] Screenshots are `.png`
+* [ ] At least one preview image ending in `_ui.png` is included
 * [ ] YAML is a **single, importable dashboard or card**
 * [ ] No private or personal entity IDs are used
 * [ ] Canonical semantics are preserved (`OK`, `Watch`, `Risk`, `Danger`)
-* [ ] Shared helpers (e.g. expanders) reuse canonical entities where applicable
-* [ ] Required custom cards are documented in the YAML
+* [ ] Canonical expander helper is used where applicable:
+  `input_boolean.humidity_constellation_expanded`
+* [ ] Required custom cards are documented in YAML comments
 * [ ] UI works when copied into a clean Home Assistant instance
-* [ ] Backend logic and sensors are **not modified**
+* [ ] Backend logic, helpers, and sensors are **not modified**
 
 Submissions that break canonical assumptions may be rejected,
 even if visually polished.
@@ -106,4 +107,3 @@ If this UI is inspired by existing work:
 
 Thank you for contributing.
 **Clarity, consistency, and intent matter more than polish.**
-
