@@ -1,6 +1,4 @@
 
-
-````md
 ## Contributing UI & Dashboards
 
 Thank you for your interest in contributing to **Humidity Intelligence**.
