@@ -1,13 +1,4 @@
-Here’s a **HACS-tightened version** of your `CONTRIBUTING.md` with:
 
-* Clear alignment to **HACS review expectations**
-* Less ambiguity, more enforcement
-* An explicit **PR checklist** reviewers (and contributors) can’t miss
-* Strong but fair language (no fluff, no surprises)
-
-This is drop-in ready.
-
----
 
 ````md
 ## Contributing UI & Dashboards
@@ -75,8 +66,8 @@ Example:
 3. Include the following files:
 
 ```text
-<card-id>_collapsed.png        (required)
-<card-id>_expanded.png         (if applicable)
+<card-id>_ui.png        (required)
+<card-id>_ui.png         (if applicable)
 <card-id>_dashboard.yaml       (required)
 ```
 
@@ -105,8 +96,8 @@ Example:
 - Style: 4 badges-first, dropdown-mod, expands to humidity constellation
 - Optimised for: Mobile / Tablet
 - Author: @senyo888
-- [![Collapsed UI Preview.png](default-lovelace-ui/default_ui_collapsed.png)](default-lovelace-ui/default_ui_collapsed.png)
-- [View Expanded UI Preview.png](default-lovelace-ui/default_ui_expanded.png)
+- [![Collapsed UI Preview.png](default-lovelace-ui/default_ui.png)](default-lovelace-ui/default_ui.png)
+- [View Expanded UI Preview.png](default-lovelace-ui/default_ui.png)
 - [Default Dashboard.yaml](default-lovelace-ui/default_dashboard.yaml)
 ```
 
