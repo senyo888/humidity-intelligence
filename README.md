@@ -108,42 +108,106 @@ HACS uses the `.jinja` file as the install source.
 
 ---
 
+
 ## 🚀 Installation
+
+Humidity Intelligence is distributed via **HACS as a managed template package**.
+
+This means:
+
+* HACS **does not write directly** to your `configuration.yaml` or `/packages/`
+* You explicitly decide **how** the package is deployed into your config
+* This keeps your setup predictable and update-safe
+
+Follow the steps below carefully.
+
+---
 
 ### 1️⃣ Add repository to HACS
 
-* HACS → **Integrations**
-* ⋮ → **Custom repositories**
-* Add this repo as **Template** [`Humidity Intelligence`](https://github.com/senyo888/Humidity-Intelligence)
-* Install
+1. Open **HACS**
+2. Go to **Integrations**
+3. Click **⋮ → Custom repositories**
+4. Add this repository as:
+
+   * **Category:** Template
+   * **Name:** Humidity Intelligence
+     [https://github.com/senyo888/Humidity-Intelligence](https://github.com/senyo888/Humidity-Intelligence)
+5. Install
+6. Restart Home Assistant
+
+After this step, HACS installs the managed source file here:
+
+```text
+/config/custom_templates/humidity_intelligence.jinja
+```
+
+⚠️ **Important:**
+This file is **owned by HACS** and **will be overwritten on every update**.
+
+Do **not** edit it directly.
+
 ---
 
-### 2️⃣ Enable packages (once)
+### 2️⃣ Enable packages (one-time setup)
 
-In `configuration.yaml`:
+If you are not already using packages, add the following to `configuration.yaml`:
 
 ```yaml
 homeassistant:
   packages: !include_dir_merge_named packages
 ```
+or
+
+```
+homeassistant:
+  packages: !include_dir_named packages
+```
 
 Restart Home Assistant.
 
+This only needs to be done once.
+
 ---
 
-### 3️⃣ Deploy the package
+### 3️⃣ Deploy the package (choose one approach)
 
-Choose **one** approach:
+At this point, nothing is active yet.
+You must now choose **how Humidity Intelligence is wired into your config**.
 
-**Option A — Copy**
+---
+
+#### 🅰️ Option A — Copy (static, user-owned)
+
+Create the file:
 
 ```text
 /config/packages/humidity_intelligence.yaml
 ```
 
-Copy the full contents of `humidity_intelligence.jinja` into it.
+Then copy the **entire contents** of:
 
-**Option B — Include**
+```text
+custom_templates/humidity_intelligence.jinja
+```
+
+into that file.
+
+**Use this option if you want:**
+
+* Full control over the YAML
+* To freely modify logic
+* To avoid changes on HACS update
+
+**Trade-off:**
+
+* You must manually update your copy when new versions are released
+
+---
+
+#### 🅱️ Option B — Include (recommended)
+
+Reference the HACS-managed file directly:
 
 ```yaml
 packages:
@@ -152,9 +216,49 @@ packages:
 
 Restart Home Assistant again.
 
+**This is the recommended approach.**
+
+**What this means:**
+
+* You receive fixes and improvements automatically via HACS
+* The backend remains canonical and consistent
+* You do **not** duplicate logic
+
+⚠️ **Important behaviour (read this):**
+
+> If you choose **Option B**, **any changes you make to entity IDs, names, or logic inside the package will be reset to the canonical defaults on every HACS update**.
+
+This is intentional.
+
+Option B treats Humidity Intelligence as a **library**, not user-owned config.
+
 ---
 
-## 🔧 Configuration (the only part you must edit)
+### 🔑 Which option should I choose?
+
+| If you want…                           | Choose   |
+| -------------------------------------- | -------- |
+| Automatic updates                      | Option B |
+| Canonical entity IDs                   | Option B |
+| Minimal maintenance                    | Option B |
+| To freely customise backend logic      | Option A |
+| No risk of updates overwriting changes | Option A |
+
+Most users should choose **Option B**.
+
+---
+
+### ✅ After deployment
+
+Once deployed:
+
+* Restart Home Assistant
+* Proceed to **Configuration** below to map your room sensors
+  (this is the *only* part you are expected to edit)
+
+---
+
+## 🔧 Configuration (the only part you should need to edit)
 
 All defaults are **placeholders**.
 
