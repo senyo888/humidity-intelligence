@@ -1,6 +1,10 @@
 # Humidity Intelligence Advanced HACS - Edition
 
-Version v1.1.1
+Version v1.1.2
+
+
+<img width="1536" height="1024" alt="Banner-4" src="https://github.com/user-attachments/assets/71a0714c-b20f-46da-868c-d52f28193416" />
+
 
 **Smart humidity intelligence for Home Assistant — insights, not just numbers.**
 
@@ -24,6 +28,8 @@ This Advanced Edition reflects the system I run at home and is designed to be:
 ## ✨ What it does
 
 Humidity Intelligence builds a **decision-making layer** on top of your existing room sensors.
+
+![IMG_5368](https://github.com/user-attachments/assets/8cc1a546-2318-4f31-9d91-0cd2bf1c3437)
 
 ### House-level intelligence
 
@@ -98,7 +104,7 @@ This repository follows the HACS **custom template** layout:
 | `hacs.json`                   | HACS metadata                      |
 | `LICENSE`                     | MIT licence                        |
 
-HACS uses the `.jinja` file as the install source. You control where and how it is included.
+HACS uses the `.jinja` file as the install source.
 
 ---
 
@@ -314,20 +320,29 @@ There is no canonical UI.
 
 ---
 
-## 🖼️ UI Gallery (scaffold)
+## 🖼️ UI Gallery
 
 Humidity Intelligence is designed to support **many visual interpretations**.
 
-This section is reserved for **community-built dashboards**, including:
+The UI Gallery showcases ** defult & community-built dashboards, badges and cards** built on top of the
+Humidity Intelligence backend, including:
 
-* Mobile layouts
-* Wall panels
-* Minimal or graph-heavy designs
-* Automation-centric views
+- Mobile-first layouts
+- Tablet and wall-panel dashboards
+- Minimal or graph-heavy designs
+- Automation-centric or insight-driven views
 
-If you build something interesting, share it.
+All gallery submissions must follow the project’s **canonical UI rules**
+to ensure portability, clarity, and compatibility.
 
-See `CONTRIBUTING.md` for how to add your UI to the gallery.
+> Gallery entries are reviewed and validated before inclusion.
+
+👉 See `CONTRIBUTING.md` for:
+- required folder structure
+- preview image rules
+- canonical entity and helper usage
+- PR and review expectations
+
 
 ---
 
@@ -380,6 +395,64 @@ This biases toward **early warning**, not late alarm.
 * Tune thresholds if your building behaves differently
 * Remember to rename humidity_intelligence.jinja to .yaml
 
+* Here’s a **clean, professional README addition** you can drop straight in. It addresses **both issues** you’re seeing, sets expectations clearly, and reassures users without sounding defensive.
+
+---
+
+## ⚠️ Notes on Editor Warnings & Known Issues
+
+### VS Code / YAML `patternWarning`
+
+Some users may see a warning similar to:
+
+```
+patternWarning yaml-schema: http://schemas.home-assistant.io/configuration
+```
+
+This typically appears in **VS Code** when using:
+
+```yaml
+homeassistant:
+  packages: !include_dir_merge_named packages
+```
+
+**Important:**
+This is **not a Home Assistant runtime error**.
+
+* `!include_dir_merge_named` is a **valid and supported** Home Assistant feature.
+* Home Assistant will start normally and the sensors will function as expected.
+* The warning comes from the **VS Code Home Assistant schema validator**, which does not fully understand all advanced YAML directives.
+
+✅ If Home Assistant starts and the Humidity Intelligence sensors appear, this warning can be safely ignored.
+
+---
+
+### House Average Humidity showing `unknown` (v1.0.2)
+
+In **v1.0.2**, there was a known issue in the *House Average Humidity* template caused by yaml variable scoping inside a loop.
+This could result in the sensor returning `unknown` even when valid humidity data existed.
+
+* This issue **only affects v1.0.2**
+* It has been fixed in later versions using a  `namespace()` approach
+* Upgrading resolves the problem
+
+If you encounter this behaviour, please confirm which version you are running before opening an issue.
+
+---
+
+### When reporting issues
+
+To help diagnose problems quickly, please include:
+
+* Humidity Intelligence version
+* Home Assistant version
+* Whether the issue is:
+
+  * a runtime error in Home Assistant **or**
+  * an editor/schema warning (e.g. VS Code)
+
+This helps distinguish real bugs from tooling limitations.
+
 ---
 
 ## ❤️ Intent
@@ -394,11 +467,6 @@ If it helps you understand your building better, a ⭐ or a screenshot in Discus
 ---
 
 # Humidity Intelligence Lovelace UI
-
-## Constellation Closed
-  
-![IMG_5368](https://github.com/user-attachments/assets/8cc1a546-2318-4f31-9d91-0cd2bf1c3437)
-
 
 ## Constellation Open
 
