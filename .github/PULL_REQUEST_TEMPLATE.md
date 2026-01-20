@@ -33,7 +33,7 @@ Confirm your submission follows this structure:
 > ⚠️ Note: Gallery folders must be created **locally** and committed.
 > GitHub’s web editor cannot reliably create nested gallery submissions.
 
-Submissions without at least one `_ui.png` preview will be rejected.
+Submissions without at least one `.png` preview will be rejected.
 
 ---
 
