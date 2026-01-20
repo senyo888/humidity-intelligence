@@ -55,6 +55,7 @@ Example reference:
 
 ---
 
+```text
 ## 🧩 Canonical Compatibility Checklist (MANDATORY)
 
 Please confirm all of the following:
@@ -81,7 +82,7 @@ even if visually polished.
 * [ ] PR targets the **`develop` branch**
 * [ ] PR title follows:
   `UI Gallery: <short description>`
-
+```
 PRs opened against `main` will be closed.
 
 ---
