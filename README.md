@@ -320,20 +320,29 @@ There is no canonical UI.
 
 ---
 
-## 🖼️ UI Gallery (scaffold)
+## 🖼️ UI Gallery
 
 Humidity Intelligence is designed to support **many visual interpretations**.
 
-This section is reserved for **community-built dashboards**, including:
+The UI Gallery showcases ** defult & community-built dashboards, badges and cards** built on top of the
+Humidity Intelligence backend, including:
 
-* Mobile layouts
-* Wall panels
-* Minimal or graph-heavy designs
-* Automation-centric views
+- Mobile-first layouts
+- Tablet and wall-panel dashboards
+- Minimal or graph-heavy designs
+- Automation-centric or insight-driven views
 
-If you build something interesting, share it.
+All gallery submissions must follow the project’s **canonical UI rules**
+to ensure portability, clarity, and compatibility.
 
-See `CONTRIBUTING.md` for how to add your UI to the gallery.
+> Gallery entries are reviewed and validated before inclusion.
+
+👉 See `CONTRIBUTING.md` for:
+- required folder structure
+- preview image rules
+- canonical entity and helper usage
+- PR and review expectations
+
 
 ---
 
