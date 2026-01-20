@@ -1,6 +1,6 @@
 # Humidity Intelligence Advanced HACS - Edition
 
-Version v1.1.1
+Version v1.1.2
 
 
 <img width="1536" height="1024" alt="Banner-4" src="https://github.com/user-attachments/assets/71a0714c-b20f-46da-868c-d52f28193416" />
