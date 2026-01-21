@@ -4,6 +4,8 @@ A **badge-first, responsive Lovelace UI** designed to visualise the **Humidity I
 
 This card presents **actionable building insight**, not raw numbers — prioritising *risk*, *trend*, and *what to do next*.
 
+![IMG_5368](https://github.com/user-attachments/assets/6ec37f47-19c4-4e2d-a29f-192cb78e4458)
+
 ---
 
 ## ✨ What this UI shows
@@ -178,4 +180,4 @@ If you adapt or extend this UI, attribution is appreciated.
 
 If it helps you see that faster, it’s doing its job.
 
-👉 See the **UI Gallery** for default and community-built dashboards and cards.
+👉 [See the **UI Gallery** for default and community-built dashboards and cards.](/ui-gallery)
