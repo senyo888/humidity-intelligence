@@ -108,42 +108,106 @@ HACS uses the `.jinja` file as the install source.
 
 ---
 
+
 ## 🚀 Installation
+
+Humidity Intelligence is distributed via **HACS as a managed template package**.
+
+This means:
+
+* HACS **does not write directly** to your `configuration.yaml` or `/packages/`
+* You explicitly decide **how** the package is deployed into your config
+* This keeps your setup predictable and update-safe
+
+Follow the steps below carefully.
+
+---
 
 ### 1️⃣ Add repository to HACS
 
-* HACS → **Integrations**
-* ⋮ → **Custom repositories**
-* Add this repo as **Template** [`Humidity Intelligence`](https://github.com/senyo888/Humidity-Intelligence)
-* Install
+1. Open **HACS**
+2. Go to **Integrations**
+3. Click **⋮ → Custom repositories**
+4. Add this repository as:
+
+   * **Category:** Template
+   * **Name:** Humidity Intelligence
+     [https://github.com/senyo888/Humidity-Intelligence](https://github.com/senyo888/Humidity-Intelligence)
+5. Install
+6. Restart Home Assistant
+
+After this step, HACS installs the managed source file here:
+
+```text
+/config/custom_templates/humidity_intelligence.jinja
+```
+
+⚠️ **Important:**
+This file is **owned by HACS** and **will be overwritten on every update**.
+
+Do **not** edit it directly.
+
 ---
 
-### 2️⃣ Enable packages (once)
+### 2️⃣ Enable packages (one-time setup)
 
-In `configuration.yaml`:
+If you are not already using packages, add the following to `configuration.yaml`:
 
 ```yaml
 homeassistant:
   packages: !include_dir_merge_named packages
 ```
+or
+
+```
+homeassistant:
+  packages: !include_dir_named packages
+```
 
 Restart Home Assistant.
 
+This only needs to be done once.
+
 ---
 
-### 3️⃣ Deploy the package
+### 3️⃣ Deploy the package (choose one approach)
 
-Choose **one** approach:
+At this point, nothing is active yet.
+You must now choose **how Humidity Intelligence is wired into your config**.
 
-**Option A — Copy**
+---
+
+#### 🅰️ Option A — Copy (static, user-owned)
+
+Create the file:
 
 ```text
 /config/packages/humidity_intelligence.yaml
 ```
 
-Copy the full contents of `humidity_intelligence.jinja` into it.
+Then copy the **entire contents** of:
 
-**Option B — Include**
+```text
+custom_templates/humidity_intelligence.jinja
+```
+
+into that file.
+
+**Use this option if you want:**
+
+* Full control over the YAML
+* To freely modify logic
+* To avoid possible changes on HACS update
+
+**Trade-off:**
+
+* You must manually update your copy when new versions are released
+
+---
+
+#### 🅱️ Option B — Include (recommended)
+
+Reference the HACS-managed file directly:
 
 ```yaml
 packages:
@@ -152,26 +216,82 @@ packages:
 
 Restart Home Assistant again.
 
+**This is the recommended approach.**
+
+**What this means:**
+
+* You receive fixes and improvements automatically via HACS
+* The backend remains canonical and consistent
+* You do **not** duplicate logic
+
+⚠️ **Important behaviour (read this):**
+
+> If you choose **Option B**, **any changes you make to entity IDs, names, or logic inside the package could be reset to the canonical defaults on some HACS update**.
+
+This is intentional.
+
+Option B treats Humidity Intelligence as a **library**, not user-owned config.
+
 ---
 
-## 🔧 Configuration (the only part you must edit)
+### 🔑 Which option should I choose?
+
+| If you want…                           | Choose   |
+| -------------------------------------- | -------- |
+| Automatic updates                      | Option B |
+| Canonical entity IDs                   | Option B |
+| Minimal maintenance                    | Option B |
+| To freely customise backend logic      | Option A |
+| No risk of updates overwriting changes | Option A |
+
+Most users should choose **Option B**.
+
+---
+
+### ✅ After deployment
+
+Once deployed:
+
+* Restart Home Assistant
+* Proceed to **Configuration** below to map your room sensors
+  (this is the *only* part you are expected to edit)
+
+---
+
+
+
+## 🔧 Configuration (the only part you should need to edit)
 
 All defaults are **placeholders**.
 
-You only need to map your real sensors.
+Humidity Intelligence is built around a **stable public entity API** (see below).
+To connect your sensors, you have two supported approaches:
+
+### ✅ Recommended approach: Map your sensors (normal)
+
+You keep your existing entity IDs and just point Humidity Intelligence at them.
+
+### Optional approach: Align your entity IDs (zero-edit experience)
+
+If you want the **reference UI + gallery UIs** to work with minimal/no edits, you can choose to **align your entity naming** to the examples used here (e.g. `sensor.living_room_humidity`, `sensor.living_room_temperature`).
+This is optional — the backend works either way.
+
+> Practical tip: *alias/rename in your integrations where possible*, rather than creating lots of extra template sensors. Keep it tidy.
+
+---
 
 ### 1️⃣ Room map (humidity)
 
-Edit the `Humidity Intelligence Config` block:
+Edit the `Humidity Intelligence Config` room map:
 
 ```yaml
 'Living Room': 'sensor.living_room_humidity'
 'Kitchen':     'sensor.kitchen_humidity'
 ```
 
-* Replace entity IDs with your real humidity sensors
-* Add or remove rooms freely
-* Invalid or unavailable sensors are ignored automatically
+* Replace the entity IDs with your real humidity sensors
+* Add/remove rooms freely
+* Invalid/unavailable sensors are ignored automatically
 
 This map drives:
 
@@ -183,7 +303,7 @@ This map drives:
 
 ### 2️⃣ 7-day statistics (drift)
 
-Each room has a statistics sensor:
+Each room has a statistics sensor like:
 
 ```yaml
 entity_id: sensor.living_room_humidity
@@ -191,13 +311,13 @@ entity_id: sensor.living_room_humidity
 
 Change **only** the `entity_id`.
 
-Do not rename the statistics sensors unless you also update downstream templates.
+> Don’t rename the statistics sensors unless you also update downstream templates.
 
 ---
 
 ### 3️⃣ Dew point inputs (temp + humidity)
 
-For each room:
+For each room, the dew point logic expects:
 
 ```jinja2
 sensor.living_room_temperature
@@ -208,9 +328,22 @@ Once mapped, **everything else is automatic**.
 
 ---
 
+## ⚠️ Important note if you chose Option B (Include)
+
+If you installed using **Option B (Include)**, the source file is **managed by HACS** and could be overwritten on update.
+
+That means:
+
+* ✅ Changes you make to *your* sensor mapping (in your own config) persist
+* ❌ Changes you make inside the HACS-managed `.jinja` file do not persist
+
+If you need a fully editable copy you can change freely, use **Option A (Copy)** instead.
+
+---
+
 ## 🚫 Public entity API (do not rename)
 
-These entity IDs are intentionally stable and used by the UI:
+These entity IDs are intentionally stable and used by the UI and gallery submissions:
 
 ```
 sensor.house_average_humidity
@@ -232,8 +365,11 @@ input_boolean.humidity_constellation_expanded
 ```
 
 Think of these as the **public interface**.
+If you keep them unchanged, most UIs “just work”.
 
 ---
+
+
 
 ## 🎛️ Lovelace UI (optional)
 
@@ -393,9 +529,6 @@ This biases toward **early warning**, not late alarm.
 
 * This is intentional
 * Tune thresholds if your building behaves differently
-* Remember to rename humidity_intelligence.jinja to .yaml
-
-* Here’s a **clean, professional README addition** you can drop straight in. It addresses **both issues** you’re seeing, sets expectations clearly, and reassures users without sounding defensive.
 
 ---
 
