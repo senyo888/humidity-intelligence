@@ -1,0 +1,25 @@
+# Humidity Intelligence V2 UI control-state placeholders
+# Note: templates may reference input_boolean-style IDs while runtime mapping resolves
+# to generated switch entities where applicable.
+
+input_boolean.air_control_enabled
+input_boolean.air_control_manual_override
+input_boolean.air_control_output_expanded
+input_boolean.humidity_constellation_expanded
+input_boolean.toggle
+
+input_boolean.air_co_emergency_active
+input_boolean.air_alert_1_active
+input_boolean.air_alert_2_active
+input_boolean.air_alert_3_active
+input_boolean.air_alert_4_active
+input_boolean.air_alert_5_active
+
+input_boolean.air_aq_downstairs_active
+input_boolean.air_aq_upstairs_active
+
+input_boolean.air_downstairs_humidifier_active
+input_boolean.air_upstairs_humidifier_active
+
+input_boolean.air_isolate_fan_outputs
+input_boolean.air_isolate_humidifier_outputs
