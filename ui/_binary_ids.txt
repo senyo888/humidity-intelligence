@@ -1,0 +1,5 @@
+# Humidity Intelligence V2 UI binary sensor placeholders
+
+binary_sensor.condensation_danger
+binary_sensor.humidity_danger
+binary_sensor.mould_danger

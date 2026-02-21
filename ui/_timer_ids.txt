@@ -1,0 +1,7 @@
+# Humidity Intelligence V2 UI timer placeholders
+
+timer.air_aq_downstairs_run
+timer.air_aq_upstairs_run
+timer.air_bathroom_min_run
+timer.air_control_pause
+timer.air_cooking_min_run

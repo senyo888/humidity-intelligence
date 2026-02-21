@@ -1,0 +1,416 @@
+{
+  "title": "Humidity Intelligence",
+  "config": {
+    "step": {
+      "dependencies": {
+        "title": "Dependencies",
+        "description": "Optional custom cards used by the Humidity Intelligence dashboards.\n\n{dependencies}\n\nIf a status is Unknown, verify manually in HACS and Dashboard resources.\n\nThanks to Home Assistant, HACS, and the community developers that make these cards possible.",
+        "data": {
+          "skip": "Skip dependency checks and continue"
+        }
+      },
+      "gates": {
+        "title": "Global Gates",
+        "description": "Configure time and presence gates that apply to all automations.",
+        "data": {
+          "enable_time_gate": "Enable time gate",
+          "start_time": "Start time",
+          "end_time": "End time",
+          "outside_action": "Outside window action",
+          "engine_interval_minutes": "Control loop interval",
+          "enable_presence_gate": "Enable presence gate",
+          "presence_entities": "Presence entities (any helper/entity)"
+        }
+      },
+      "presence_states": {
+        "title": "Presence States",
+        "description": "Select which states mean someone is present. All other states (including unknown/unavailable) are treated as away.\n\nTip: open Developer Tools -> States to inspect the exact state values for your entities.",
+        "errors": {
+          "overlap": "A state cannot be both present and away."
+        },
+        "data": {
+          "present_states": "Present states",
+          "away_states": "Away states (optional)"
+        }
+      },
+      "telemetry": {
+        "title": "Telemetry Inputs",
+        "description": "Select humidity, temperature and air quality sensors. Add as many entities as possible now to improve accuracy and make later steps easier.\n\nExisting sensors:\n{existing}\n\nYou can manage/edit/delete existing sensors before continuing.\n\nYou do not need to add condensation or mould sensors; HI will generate these automatically.",
+        "data": {
+          "action": "Next action"
+        }
+      },
+      "telemetry_add": {
+        "title": "Add Sensor",
+        "description": "Add a humidity, temperature or air-quality sensor.\n\nExisting sensors:\n{existing}",
+        "errors": {
+          "duplicate_entity": "This sensor has already been added."
+        },
+        "data": {
+          "entity_id": "Sensor entity",
+          "sensor_type": "Sensor type",
+          "friendly_name": "Friendly name (optional)",
+          "level": "Level",
+          "room": "Room"
+        }
+      },
+      "telemetry_manage": {
+        "title": "Manage Sensors",
+        "description": "Edit or delete an existing sensor.\n\nExisting sensors:\n{existing}",
+        "data": {
+          "selection": "Sensor",
+          "action": "Action"
+        }
+      },
+      "telemetry_edit": {
+        "title": "Edit Sensor",
+        "description": "Update the selected sensor entry.",
+        "errors": {
+          "duplicate_entity": "This sensor has already been added."
+        },
+        "data": {
+          "entity_id": "Sensor entity",
+          "sensor_type": "Sensor type",
+          "friendly_name": "Friendly name (optional)",
+          "level": "Level",
+          "room": "Room"
+        }
+      },
+      "slope": {
+        "title": "Temperature Slope",
+        "description": "Choose how slope sensors are handled.",
+        "data": {
+          "slope_mode": "Slope mode",
+          "slope_sources": "Temperature sensors for HI slope",
+          "slope_sensors": "Existing slope sensors"
+        }
+      },
+      "zones": {
+        "title": "Zones",
+        "description": "Define up to two extractor/purifier zones.\n\nConfigured zones:\n{configured_zones}",
+        "menu_options": {
+          "zone1": "Configure Zone 1",
+          "zone2": "Configure Zone 2",
+          "zones_done": "Continue",
+          "zones_back": "Back"
+        }
+      },
+      "zone1": {
+        "title": "Zone 1",
+        "description": "Configure Zone 1 automation settings.",
+        "data": {
+          "enabled": "Enable zone",
+          "level": "Level",
+          "rooms": "Rooms",
+          "triggers": "Triggers",
+          "outputs": "Outputs",
+          "output_level": "Normal fan run level (Auto/33/66/100)",
+          "boost_output_level": "Boost fan run level (Auto/33/66/100)",
+          "ui_label": "Current Air Control label for Zone 1"
+        }
+      },
+      "zone2": {
+        "title": "Zone 2",
+        "description": "Configure Zone 2 automation settings.",
+        "data": {
+          "enabled": "Enable zone",
+          "level": "Level",
+          "rooms": "Rooms",
+          "triggers": "Triggers",
+          "outputs": "Outputs",
+          "output_level": "Normal fan run level (Auto/33/66/100)",
+          "boost_output_level": "Boost fan run level (Auto/33/66/100)",
+          "ui_label": "Current Air Control label for Zone 2"
+        }
+      },
+      "zone_thresholds": {
+        "title": "Zone Thresholds",
+        "description": "Tune thresholds for selected triggers.\n\nHumidity above house average uses the selected rooms' average humidity compared to the whole-house average. The threshold is the delta in % points.\n\nCondensation risk uses dew-point spread:\nspread = temperature - dew_point\nLower spread = higher risk (air is closer to saturation).\nThe threshold is in degC of spread:\n2 degC = Danger\n4 degC = Risk\n6 degC = Watch\n\nMould risk is derived from humidity + dew-point spread and normalized to levels:\nLevel 1 = Watch\nLevel 2 = Risk\nLevel 3 = Danger\nSo a threshold of 2 triggers when risk reaches Risk or Danger.",
+        "data": {
+          "humidity_high": "Humidity above house avg (delta %)",
+          "condensation_risk": "Condensation risk (dew-point spread degC)",
+          "mould_risk": "Mould risk level (1-3)",
+          "air_quality_bad": "Air quality bad (IAQ)"
+        }
+      },
+      "humidifiers": {
+        "title": "Humidifiers",
+        "description": "Configure humidifiers per level.",
+        "menu_options": {
+          "humidifier_level1": "Configure Level 1",
+          "humidifier_level2": "Configure Level 2",
+          "humidifiers_done": "Continue",
+          "humidifiers_back": "Back"
+        }
+      },
+      "humidifier_level1": {
+        "title": "Level 1 Humidifier",
+        "description": "Target band entities: {target_low} / {target_high}\nBand adjustment shifts both targets up or down by the selected percent.",
+        "data": {
+          "enabled": "Enable humidifier",
+          "band_adjust": "Band adjustment",
+          "outputs": "Humidifier outputs"
+        }
+      },
+      "humidifier_level2": {
+        "title": "Level 2 Humidifier",
+        "description": "Target band entities: {target_low} / {target_high}\nBand adjustment shifts both targets up or down by the selected percent.",
+        "data": {
+          "enabled": "Enable humidifier",
+          "band_adjust": "Band adjustment",
+          "outputs": "Humidifier outputs"
+        }
+      },
+      "aq": {
+        "title": "Air Quality",
+        "description": "Configure air quality actions.",
+        "menu_options": {
+          "aq_level1": "Configure Level 1",
+          "aq_level2": "Configure Level 2",
+          "aq_done": "Continue",
+          "aq_back": "Back"
+        }
+      },
+      "aq_skip": {
+        "title": "Air Quality",
+        "description": "Air quality lane not configured.",
+        "data": {
+          "skip": "Skip air quality setup"
+        }
+      },
+      "aq_level1": {
+        "title": "Level 1 Air Quality",
+        "description": "Configure air quality automation for Level 1.",
+        "data": {
+          "enabled": "Enable AQ automation",
+          "triggers": "Triggers",
+          "outputs": "Outputs",
+          "run_duration": "Run duration",
+          "output_level": "Fan run level (Auto/33/66/100)"
+        }
+      },
+      "aq_level2": {
+        "title": "Level 2 Air Quality",
+        "description": "Configure air quality automation for Level 2.",
+        "data": {
+          "enabled": "Enable AQ automation",
+          "triggers": "Triggers",
+          "outputs": "Outputs",
+          "run_duration": "Run duration",
+          "output_level": "Fan run level (Auto/33/66/100)"
+        }
+      },
+      "aq_thresholds": {
+        "title": "AQ Thresholds",
+        "description": "Tune thresholds for selected AQ triggers."
+      },
+      "alerts": {
+        "title": "Alerts and Emergencies",
+        "description": "Define high-priority alerts with flashing lights.\n\nConfigured alerts:\n{configured_alerts}",
+        "menu_options": {
+          "alert_add": "Add alert",
+          "alerts_done": "Finish",
+          "alerts_back": "Back"
+        }
+      },
+      "alert_add": {
+        "title": "Add Alert",
+        "description": "Configure a high-priority alert automation.\n\nCondensation and mould danger entities are provided by Humidity Intelligence. You do not need custom binary sensors for those triggers, but you may optionally provide one for the Custom trigger type.",
+        "data": {
+          "enabled": "Enable alert",
+          "trigger_type": "Trigger type",
+          "custom_trigger": "Custom binary sensor",
+          "threshold": "Threshold",
+          "lights": "Lights to flash",
+          "outputs": "CO output devices (optional)",
+          "power_entity": "Power entity (optional)",
+          "flash_mode": "Flash mode",
+          "duration": "Duration"
+        }
+      },
+      "ui_install": {
+        "title": "UI Cards",
+        "description": "Select which UI layouts to export now. HI will write one file per layout to /config/humidity_intelligence_cards_<layout>.yaml and post a notification with the file path.\n\nConfigured alerts:\n{configured_alerts}\n\nWarning: The backend logic will work without UI dependencies, but the UI cards may render incorrectly unless the required custom cards are installed (card-mod, button-card, mod-card, apexcharts-card).\n\nTo load a card: open File Editor → /config/humidity_intelligence_cards_<layout>.yaml → copy the YAML → Dashboard → Edit → Add card → Manual → paste YAML.",
+        "data": {
+          "ui_layouts": "UI layouts to export"
+        }
+      }
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Options",
+        "menu_options": {
+          "options_sensors": "Sensors",
+          "options_gates": "Global Gates",
+          "options_telemetry": "Sensors",
+          "options_zones": "Zones",
+          "options_humidifiers": "Humidifiers",
+          "options_aq": "Air Quality",
+          "options_alerts": "Alerts",
+          "options_slope": "Temperature Slope",
+          "options_done": "Finish"
+        }
+      },
+      "options_gates": {
+        "title": "Global Gates Options",
+        "description": "Edit global time and presence gates. Presence can use person, device_tracker, alarm panel, or helper entities.",
+        "data": {
+          "enable_time_gate": "Enable time gate",
+          "start_time": "Start time",
+          "end_time": "End time",
+          "outside_action": "Outside window action",
+          "engine_interval_minutes": "Control loop interval",
+          "enable_presence_gate": "Enable presence gate",
+          "presence_entities": "Presence/alarm entities"
+        }
+      },
+      "options_presence_states": {
+        "title": "Presence States Options",
+        "description": "Set which states mean Present vs Away for selected presence/alarm entities.\n\nTip: use Developer Tools -> States to confirm exact state values.",
+        "errors": {
+          "overlap": "A state cannot be both present and away."
+        },
+        "data": {
+          "present_states": "Present states",
+          "away_states": "Away states (optional)"
+        }
+      },
+      "options_telemetry": {
+        "title": "Telemetry Options",
+        "description": "Add, edit, or delete telemetry sensors.\n\nConfigured telemetry:\n{telemetry_summary}",
+        "data": {
+          "action": "Sensor action"
+        }
+      },
+      "options_telemetry_add": {
+        "title": "Add Telemetry Sensor",
+        "description": "Add a sensor and knit it into HI telemetry.\n\nConfigured telemetry:\n{telemetry_summary}",
+        "errors": {
+          "duplicate_entity": "This sensor has already been added."
+        },
+        "data": {
+          "entity_id": "Sensor entity",
+          "sensor_type": "Sensor type",
+          "friendly_name": "Friendly name (display only)",
+          "level": "Level",
+          "room": "Room"
+        }
+      },
+      "options_telemetry_manage": {
+        "title": "Manage Telemetry Sensors",
+        "description": "Edit or delete an existing telemetry sensor.\n\nConfigured telemetry:\n{telemetry_summary}",
+        "data": {
+          "selection": "Sensor",
+          "action": "Action"
+        }
+      },
+      "options_telemetry_edit": {
+        "title": "Edit Telemetry Sensor",
+        "description": "Editing sensor {sensor_position} of {sensor_total}.\n\n{selected_sensor}",
+        "data": {
+          "entity_id": "Sensor entity",
+          "friendly_name": "Friendly name (display only)",
+          "level": "Level",
+          "room": "Room"
+        }
+      },
+      "options_zones": {
+        "title": "Zone Options",
+        "description": "Select a zone to edit.\n\nConfigured zones:\n{configured_zones}",
+        "data": {
+          "action": "Zone to edit"
+        }
+      },
+      "options_zone_edit": {
+        "title": "Edit Zone",
+        "description": "Editing {zone_label}.",
+        "data": {
+          "enabled": "Enable zone",
+          "level": "Level",
+          "rooms": "Rooms",
+          "triggers": "Zone triggers",
+          "outputs": "Output devices",
+          "output_level": "Normal fan run level (Auto/33/66/100)",
+          "boost_output_level": "Boost fan run level (Auto/33/66/100)",
+          "ui_label": "Current Air Control label",
+          "threshold_humidity_high": "Humidity above house average (delta %)",
+          "threshold_condensation_risk": "Condensation risk threshold (dew-point spread degC)",
+          "threshold_mould_risk": "Mould risk threshold (level 1-3)",
+          "threshold_air_quality_bad": "Air quality bad threshold (IAQ)"
+        }
+      },
+      "options_humidifiers": {
+        "title": "Humidifier Options",
+        "description": "Select a humidifier lane to edit.\n\nConfigured humidifier lanes:\n{configured_humidifiers}",
+        "data": {
+          "action": "Humidifier lane"
+        }
+      },
+      "options_humidifier_edit": {
+        "title": "Edit Humidifier Lane",
+        "description": "Editing {level_label}.",
+        "data": {
+          "enabled": "Enable humidifier lane",
+          "band_adjust": "Target band adjustment",
+          "outputs": "Humidifier outputs"
+        }
+      },
+      "options_aq": {
+        "title": "Air Quality Options",
+        "description": "Select an AQ lane to edit.\n\nConfigured AQ lanes:\n{configured_aq}",
+        "data": {
+          "action": "AQ lane"
+        }
+      },
+      "options_aq_edit": {
+        "title": "Edit Air Quality Lane",
+        "description": "Editing {level_label}.",
+        "data": {
+          "enabled": "Enable AQ lane",
+          "triggers": "AQ triggers",
+          "outputs": "AQ output devices",
+          "run_duration": "Run duration",
+          "output_level": "Fan run level (Auto/33/66/100)",
+          "threshold_iaq_bad": "IAQ bad threshold",
+          "threshold_pm25_high": "PM2.5 high threshold",
+          "threshold_voc_bad": "VOC bad threshold",
+          "threshold_co2_high": "CO2 high threshold",
+          "threshold_co_warning": "CO warning threshold"
+        }
+      },
+      "options_alerts": {
+        "title": "Alert Options",
+        "description": "Select an alert to edit.\n\nConfigured alerts:\n{configured_alerts}",
+        "data": {
+          "action": "Alert to edit"
+        }
+      },
+      "options_alert_edit": {
+        "title": "Edit Alert",
+        "description": "Editing {alert_label}.",
+        "data": {
+          "enabled": "Enable alert",
+          "trigger_type": "Trigger type",
+          "custom_trigger": "Custom trigger entity (optional)",
+          "threshold": "Threshold",
+          "lights": "Target lights",
+          "outputs": "CO output devices (optional)",
+          "power_entity": "Power entity (optional)",
+          "flash_mode": "Flash mode",
+          "duration": "Flash duration"
+        }
+      },
+      "options_slope": {
+        "title": "Temperature Slope Options",
+        "description": "Edit how HI handles temperature slope entities.\n\nCurrent slope configuration:\n{configured_slope}",
+        "data": {
+          "slope_mode": "Slope mode",
+          "slope_sources": "Temperature sensors used as slope sources",
+          "slope_sensors": "Provided slope sensor entities"
+        }
+      }
+    }
+  }
+}

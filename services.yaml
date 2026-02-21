@@ -1,0 +1,175 @@
+flash_lights:
+  name: Flash lights
+  description: Flash selected lights for an alert
+  fields:
+    power_entity:
+      name: Optional power entity
+      description: Optional switch or light that powers the circuit
+      selector:
+        entity:
+          domain: [switch, light]
+    lights:
+      name: Lights to flash
+      description: One or more lights to flash
+      required: true
+      selector:
+        entity:
+          domain: light
+          multiple: true
+    color:
+      name: Flash color
+      description: RGB color for flashing lights
+      selector:
+        color_rgb: {}
+    duration:
+      name: Duration in seconds
+      description: Total flash duration
+      selector:
+        number:
+          min: 1
+          max: 120
+          step: 1
+          mode: slider
+          unit_of_measurement: s
+    flash_count:
+      name: Number of flashes
+      description: Override flash count (optional)
+      selector:
+        number:
+          min: 1
+          max: 200
+          step: 1
+          mode: slider
+refresh_ui:
+  name: Refresh UI Mapping
+  description: Rebuild entity mapping and re-render dashboard YAML cards
+  fields:
+    entry_id:
+      name: Entry ID
+      description: Optional config entry ID to refresh; omit to refresh all
+      selector:
+        text: {}
+dump_diagnostics:
+  name: Dump Diagnostics
+  description: Write diagnostics (config, options, mapping, cards) to a JSON file in the Home Assistant config folder
+  fields:
+    entry_id:
+      name: Entry ID
+      description: Optional config entry ID to dump; omit to dump all
+      selector:
+        text: {}
+    filename:
+      name: Filename
+      description: Output filename in the HA config folder
+      selector:
+        text: {}
+self_check:
+  name: Self Check
+  description: Validate entity mapping, dependencies, and telemetry setup
+  fields:
+    entry_id:
+      name: Entry ID
+      description: Optional config entry ID to check; omit to check all
+      selector:
+        text: {}
+dump_cards:
+  name: Dump Cards
+  description: Write rendered card YAML to a text file in the Home Assistant config folder
+  fields:
+    entry_id:
+      name: Entry ID
+      description: Optional config entry ID to dump; omit to dump all
+      selector:
+        text: {}
+    filename:
+      name: Filename
+      description: Optional base filename (defaults to humidity_intelligence_cards)
+      selector:
+        text: {}
+    layout:
+      name: Layout (optional)
+      description: Dump a single layout (v2_mobile, v2_tablet, v1_mobile, view_cards_button)
+      selector:
+        text: {}
+create_dashboard:
+  name: Create Dashboard
+  description: Create a new Lovelace dashboard from the rendered card YAML
+  fields:
+    entry_id:
+      name: Entry ID
+      description: Optional config entry ID to use; omit to use the first entry
+      selector:
+        text: {}
+    layout:
+      name: Layout
+      description: Card layout key (v2_mobile or v2_tablet)
+      selector:
+        select:
+          options:
+            - v2_mobile
+            - v2_tablet
+    title:
+      name: Dashboard title
+      description: Name shown in the sidebar
+      selector:
+        text: {}
+    url_path:
+      name: URL path
+      description: Sidebar URL path (no slashes)
+      selector:
+        text: {}
+view_cards:
+  name: View Cards
+  description: Dump cards to file and post a notification with the file path
+  fields:
+    entry_id:
+      name: Entry ID
+      description: Optional config entry ID to use; omit to use all
+      selector:
+        text: {}
+    filename:
+      name: Filename
+      description: Optional base filename (defaults to humidity_intelligence_cards)
+      selector:
+        text: {}
+    layout:
+      name: Layout (optional)
+      description: Dump a single layout (v2_mobile, v2_tablet, v1_mobile, view_cards_button)
+      selector:
+        text: {}
+purge_files:
+  name: Purge Files
+  description: Delete all generated Humidity Intelligence files (cards, diagnostics, self-check) and attempt dashboard cleanup
+  fields:
+    entry_id:
+      name: Entry ID
+      description: Optional config entry ID to purge; omit to purge all
+      selector:
+        text: {}
+pause_control:
+  name: Pause Control
+  description: Pause the automation engine for a number of minutes (default 60)
+  fields:
+    entry_id:
+      name: Entry ID
+      description: Optional config entry ID to pause; omit to pause all
+      selector:
+        text: {}
+    minutes:
+      name: Minutes
+      description: Pause duration in minutes
+      selector:
+        number:
+          min: 1
+          max: 1440
+          step: 1
+          mode: box
+resume_control:
+  name: Resume Control
+  description: Resume the automation engine immediately by clearing the pause timer
+  fields:
+    entry_id:
+      name: Entry ID
+      description: Optional config entry ID to resume; omit to resume all
+      selector:
+        text: {}

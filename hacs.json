@@ -1,6 +1,8 @@
 {
-  "name": "Humidity Intelligence (Advanced)",
+  "name": "Humidity Intelligence",
   "render_readme": true,
-  "filename": "humidity_intelligence.jinja"
+  "content_in_root": true,
+  "domains": ["sensor", "binary_sensor"],
+  "country": "GB"
 }
 

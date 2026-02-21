@@ -1,0 +1,13 @@
+{
+  "domain": "humidity_intelligence",
+  "name": "Humidity Intelligence",
+  "icon": "mdi:water-percent",
+  "version": "0.3.6",
+  "documentation": "https://github.com/senyo888/humidity-intelligence",
+  "issue_tracker": "https://github.com/senyo888/humidity-intelligence/issues",
+  "config_flow": true,
+  "requirements": [],
+  "codeowners": ["@senyo888"],
+  "iot_class": "calculated",
+  "import_executor": true
+}
