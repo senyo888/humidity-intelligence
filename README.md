@@ -1,10 +1,14 @@
-# Humidity Intelligence V2
+<!-- Logo and Banner -->
+
+![Humidity Intelligence banner](assets/header.png)
+
+# Humidity Intelligence – v2 integration
 
 ## Deterministic Environmental Control for Home Assistant
 
 [![Latest Release](https://img.shields.io/github/v/release/senyo888/Humidity-Intelligence?display_name=tag&sort=semver)](https://github.com/senyo888/Humidity-Intelligence/releases)
 [![HACS](https://img.shields.io/badge/HACS-Integration-orange)](https://hacs.xyz)
-[![Home Assistant](https://img.shields.io/badge/Home%20Assistant-2026.x%2B-blue)](https://www.home-assistant.io/)
+[![Home Assistant](https://img.shields.io/badge/Home%20Assistant-2026.2.3%2B-blue)](https://www.home-assistant.io/)
 [![License](https://img.shields.io/github/license/senyo888/Humidity-Intelligence)](LICENSE)
 
 ---
