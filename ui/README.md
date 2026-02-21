@@ -1,5 +1,8 @@
 # Humidity Intelligence V2 UI
 
+<img src="../assets/readme/ui_v2_mobile_aq.png" width="320" alt="HI v2 mobile AQ UI preview">
+
+
 ## Canonical Runtime Presentation Layer
 
 ---
@@ -42,19 +45,6 @@ Difference:
 - tablet: squared top badges
 
 Feature parity is maintained.
-
----
-
-## UI Preview
-
-### v1 Mobile (Legacy-Compatible Skin)
-<img src="../assets/readme/ui_v1_mobile.png" width="320" alt="HI v1 mobile UI preview">
-
-### v2 Mobile (AQ State Example)
-<img src="../assets/readme/ui_v2_mobile_aq.png" width="320" alt="HI v2 mobile AQ UI preview">
-
-### v2 Tablet (Zone State Example)
-<img src="../assets/readme/ui_v2_tablet_zone_2.png" width="320" alt="HI v2 tablet zone UI preview">
 
 ---
 
@@ -164,6 +154,21 @@ It does not reintroduce:
 
 Backend must be fully removed before using V2 runtime
 
+---
+
+## UI Preview
+
+### v1 Mobile (Legacy-Compatible Skin)
+<img src="../assets/readme/ui_v1_mobile.png" width="320" alt="HI v1 mobile UI preview">
+
+### v2 Mobile (AQ State Example)
+<img src="../assets/readme/ui_v2_mobile_aq.png" width="320" alt="HI v2 mobile AQ UI preview">
+
+### v2 Tablet (Zone State Example)
+<img src="../assets/readme/ui_v2_tablet_zone_2.png" width="320" alt="HI v2 tablet zone UI preview">
+
+---
+
 
 ```
 
@@ -178,5 +183,4 @@ Backend must be fully removed before using V2 runtime
 - reason text remains readable
 
 Humidity Intelligence V2 UI a structured runtime interface for a deterministic environmental engine.
-
 
