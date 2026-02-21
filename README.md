@@ -7,6 +7,7 @@
 ## Deterministic Environmental Control for Home Assistant
 
 ![Humidity Intelligence logo](assets/logo.png)
+
 [![Latest Release](https://img.shields.io/github/v/release/senyo888/Humidity-Intelligence?display_name=tag&sort=semver)](https://github.com/senyo888/Humidity-Intelligence/releases)
 [![HACS](https://img.shields.io/badge/HACS-Integration-orange)](https://hacs.xyz)
 [![Home Assistant](https://img.shields.io/badge/Home%20Assistant-2026.2.3%2B-blue)](https://www.home-assistant.io/)
@@ -454,6 +455,17 @@ Notes:
 - `entry_id` is optional for most services. If omitted, HI uses all entries or first valid entry based on service behavior.
 - File outputs are written into your HA config folder.
 
+
+## V1 UI
+![Humidity Intelligence V1 UI](assets/ui_v1_mobile.png)
+
+
+## V2 UI Mobile
+![Humidity Intelligence V2 UI_mobile](assets/ui_v2_mobile_aq.png)
+
+## V2 UI Tablet
+![Humidity Intelligence V2 UI_tablet](assets/ui_v2_tablet_zone_2.png)
+  
 ### `create_dashboard`
 Purpose:
 - create a Lovelace dashboard from a rendered HI layout.
