@@ -49,7 +49,7 @@ class ControllerPackageTests(unittest.TestCase):
             self.assertEqual(first_summary, second_summary)
             self.assertEqual("public_patch_1", first_summary["source_profile"])
             self.assertEqual("hi-package-public-v20-conventional-1", first_summary["contract_id"])
-            self.assertEqual(52, first_summary["file_count"])
+            self.assertEqual(53, first_summary["file_count"])
 
             first_files = {
                 path.relative_to(first).as_posix(): path.read_bytes()
@@ -62,13 +62,13 @@ class ControllerPackageTests(unittest.TestCase):
                 if path.is_file()
             }
             self.assertEqual(first_files, second_files)
-            self.assertEqual(53, len(first_files))
+            self.assertEqual(54, len(first_files))
 
             manifest = json.loads(first_files["artifact-manifest.json"])
             self.assertEqual(first_summary["package_hash"], manifest["package_hash"])
             self.assertEqual(first_summary["commit"], manifest["commit"])
             self.assertEqual(first_summary["tree_hash"], manifest["tree_hash"])
-            self.assertEqual(52, len(manifest["files"]))
+            self.assertEqual(53, len(manifest["files"]))
 
             digest = hashlib.sha256()
             for item in sorted(manifest["files"], key=lambda value: value["relative_path"]):

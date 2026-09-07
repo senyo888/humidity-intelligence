@@ -42,6 +42,17 @@ surface degraded context, and continue explainably.
 
 Humidifier lanes remain independent from ventilation lane resolution.
 
+Manual override is a complete handover of ordinary output ownership. While Manual is
+active, HI cancels or neutralizes pending non-CO alert, AQ, and humidifier work, clears
+its active-lane helper/timer truth, and sends no ordinary fan, switch, humidifier, or
+visual-alert command. Existing physical output states remain untouched and are
+reported only as Home Assistant-observed truth; HI must not describe them as selected
+or commanded. Humidifier reconciliation uses the explicit additive `manual_hold`
+state rather than desired-off, stopping, or isolated truth. CO emergency remains the
+sole exception and may force only its configured ventilation outputs to 100%. Turning
+Manual off requests a fresh evaluation so normal deterministic AUTO ownership can
+resume immediately.
+
 Humidifier control has separate truth layers:
 
 - effective lane demand after runtime gates and before humidifier-output isolation

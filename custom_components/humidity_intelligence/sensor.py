@@ -258,6 +258,7 @@ def _compact_diagnostics_summary(summary: dict) -> dict:
         if isinstance(item, dict)
     ]
     return {
+        "runtime_control": summary.get("runtime_control", {}),
         "target_profile": summary.get("target_profile", {}),
         "temperature_comfort": summary.get("temperature_comfort", {}),
         "level_labels": summary.get("level_labels", {}),
@@ -297,6 +298,7 @@ def _compact_humidifier_reconciliation(value: dict) -> dict:
                 "degraded_outputs",
                 "unknown_outputs",
                 "isolated_outputs",
+                "manual_hold_outputs",
                 "ownership_conflicts",
             )
         },

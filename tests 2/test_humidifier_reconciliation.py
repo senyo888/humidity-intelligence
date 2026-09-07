@@ -1726,7 +1726,6 @@ def test_global_gates_alert_and_co_move_active_output_to_desired_off_truth():
         engine_mod, _register_mod = _load_target_modules()
         for scenario in (
             "control_disabled",
-            "manual_override",
             "pause",
             "presence_gate",
             "time_gate",
@@ -1758,10 +1757,6 @@ def test_global_gates_alert_and_co_move_active_output_to_desired_off_truth():
 
             if scenario == "control_disabled":
                 runtime["hi_input_booleans"]["air_control_enabled"].is_on = False
-            elif scenario == "manual_override":
-                runtime["hi_input_booleans"][
-                    "air_control_manual_override"
-                ].is_on = True
             elif scenario == "pause":
                 runtime["hi_timers"]["air_control_pause"].native_value = "active"
             elif scenario == "presence_gate":
@@ -1830,6 +1825,166 @@ def test_global_gates_alert_and_co_move_active_output_to_desired_off_truth():
                 assert "humidifier.level1" not in display_text, scenario
             finally:
                 await engine.async_stop()
+
+    asyncio.run(run())
+
+
+def test_manual_override_holds_observed_humidifier_truth_without_dispatch_and_auto_resumes():
+    async def run():
+        engine_mod, _register_mod = _load_target_modules()
+        entry = _entry_with_humidifiers(
+            {
+                "level1": {
+                    "enabled": True,
+                    "outputs": ["humidifier.level1"],
+                    "band_adjust": 0,
+                },
+                "level2": {
+                    "enabled": True,
+                    "outputs": ["humidifier.level1"],
+                    "band_adjust": 0,
+                },
+            }
+        )
+        hass = _FakeHass(
+            entry,
+            _states(outputs={"humidifier.level1": _FakeState("on")}),
+        )
+        runtime = hass.data["humidity_intelligence"][ENTRY_ID]
+        runtime["hi_input_booleans"][
+            "air_isolate_humidifier_outputs"
+        ].is_on = False
+        manual = runtime["hi_input_booleans"]["air_control_manual_override"]
+        manual.is_on = True
+        manual.entity_id = "switch.hi_air_control_manual_override"
+        engine = engine_mod.HIAutomationEngine(hass, entry)
+        assert manual.entity_id in engine._evaluation_sources()
+
+        record = engine._new_humidifier_output_record()
+        engine._humidifier_output_records["humidifier.level1"] = record
+        engine._schedule_humidifier_retry(
+            "humidifier.level1",
+            engine._monotonic() + 120,
+        )
+        pending_retry = engine._humidifier_retry_tasks["humidifier.level1"]
+
+        try:
+            await engine._evaluate()
+            await engine._evaluate()
+            await asyncio.sleep(0)
+
+            assert pending_retry.cancelled()
+            assert engine._humidifier_retry_tasks == {}
+            assert _humidifier_calls(hass) == []
+            assert runtime["runtime_mode"] == "manual_override"
+            assert runtime["runtime_mode_display"] == "MANUAL OVERRIDE"
+            output = runtime["humidifier_reconciliation"]["outputs"]["output_1"]
+            assert output["desired"] == "manual"
+            assert output["observed"] == "on"
+            assert output["reconciliation"] == "manual_hold"
+            assert output["configured_owners"] == ["level1", "level2"]
+            assert output["last_command_intent"] == "none"
+            assert output["dispatch_result"] == "not_requested"
+            assert output["attempts"] == 0
+            assert runtime["humidifier_reconciliation"]["summary"][
+                "manual_hold_outputs"
+            ] == 1
+            assert runtime["humidifier_status"]["overall"] == "manual_hold"
+            assert not runtime["hi_input_booleans"][
+                "air_downstairs_humidifier_active"
+            ].is_on
+            display_text = " ".join(
+                [runtime["runtime_display_reason"]["headline"]]
+                + [
+                    line["text"]
+                    for line in runtime["runtime_display_reason"]["lines"]
+                ]
+            )
+            assert "sent no new ordinary output commands" in display_text
+            assert "Manual or external automation remains responsible" in display_text
+            assert "released HI ownership" in display_text
+            assert "holding HI ownership" not in display_text
+            assert "selected" not in display_text.lower()
+
+            attempted, result = await engine._dispatch_humidifier_output(
+                "humidifier.level1",
+                False,
+            )
+            assert (attempted, result) == (False, "manual_override")
+            assert _humidifier_calls(hass) == []
+
+            manual.is_on = False
+            hass.states._values["humidifier.level1"] = _FakeState("off")
+            await engine.async_request_evaluate()
+            assert runtime["runtime_mode"] == "normal"
+            assert len(
+                _humidifier_calls(
+                    hass,
+                    entity_id="humidifier.level1",
+                    service="turn_on",
+                )
+            ) == 1
+        finally:
+            await engine.async_stop()
+
+    asyncio.run(run())
+
+
+def test_manual_plus_co_forces_ventilation_only_and_preserves_humidifier():
+    async def run():
+        engine_mod, _register_mod = _load_target_modules()
+        entry = _entry_with_humidifiers(
+            {
+                "level1": {
+                    "enabled": True,
+                    "outputs": ["humidifier.level1"],
+                    "band_adjust": 0,
+                }
+            }
+        )
+        entry.data["zones"] = {
+            "zone1": {
+                "enabled": True,
+                "outputs": ["fan.co_ventilation"],
+            }
+        }
+        hass = _FakeHass(
+            entry,
+            _states(
+                outputs={
+                    "fan.co_ventilation": _FakeState(
+                        "off",
+                        {"percentage": 0, "preset_mode": "manual"},
+                    ),
+                    "humidifier.level1": _FakeState("on"),
+                }
+            ),
+        )
+        runtime = hass.data["humidity_intelligence"][ENTRY_ID]
+        runtime["hi_input_booleans"]["air_isolate_fan_outputs"].is_on = False
+        runtime["hi_input_booleans"][
+            "air_isolate_humidifier_outputs"
+        ].is_on = False
+        runtime["hi_input_booleans"]["air_control_manual_override"].is_on = True
+        engine = engine_mod.HIAutomationEngine(hass, entry)
+        engine._co_emergency_triggered = lambda: True
+
+        try:
+            await engine._evaluate()
+            assert runtime["runtime_mode"] == "co_emergency"
+            fan_calls = [call for call in hass.services.calls if call[0] == "fan"]
+            assert [call[1] for call in fan_calls] == ["turn_on", "set_percentage"]
+            assert fan_calls[-1][2]["percentage"] == 100
+            assert _humidifier_calls(
+                hass,
+                entity_id="humidifier.level1",
+            ) == []
+            output = runtime["humidifier_reconciliation"]["outputs"]["output_1"]
+            assert output["desired"] == "manual"
+            assert output["observed"] == "on"
+            assert output["reconciliation"] == "manual_hold"
+        finally:
+            await engine.async_stop()
 
     asyncio.run(run())
 
@@ -2526,6 +2681,7 @@ def test_sanitized_support_truth_drops_entity_ids_and_preserves_categories():
             "faulted_outputs": 1,
             "degraded_outputs": 0,
             "unknown_outputs": 0,
+            "manual_hold_outputs": 1,
         },
         "outputs": {
             "output_1": {
@@ -2548,6 +2704,7 @@ def test_sanitized_support_truth_drops_entity_ids_and_preserves_categories():
     sanitized = services_mod._support_humidifier_reconciliation_summary(value)
 
     assert sanitized["summary"]["requested_lanes"] == 1
+    assert sanitized["summary"]["manual_hold_outputs"] == 1
     assert sanitized["outputs"]["output_1"]["reconciliation"] == "fault_latched"
     assert "private_bedroom" not in str(sanitized)
     assert "physical moisture production" in sanitized["truth_boundary"]
@@ -2633,6 +2790,36 @@ def test_release_check_warns_when_enabled_humidifier_truth_is_not_available():
     assert check["status"] == "warn"
     assert check["details"]["status"] == "not_available"
     assert "not available yet" in check["message"]
+
+
+def test_release_check_reports_manual_runtime_control_as_backend_truth():
+    services_mod = _load_services_module()
+    entry = _entry_with_humidifiers({})
+    hass = _FakeHass(entry, _states())
+    report = services_mod._build_v205_release_check_entry_report(
+        hass,
+        entry,
+        {
+            "cards": {},
+            "entity_map": {},
+            "runtime_mode": "manual_override",
+            "runtime_mode_display": "MANUAL OVERRIDE",
+            "runtime_reason": "Manual override is enabled.",
+        },
+        manifest_version="2.0.12-beta.2",
+        frontend_dependencies={"status": "not_inspectable"},
+    )
+    check = {
+        item["id"]: item
+        for item in report["checks"]
+    }["runtime_control_truth"]
+
+    assert check["status"] == "pass"
+    assert check["details"] == {
+        "mode": "manual_override",
+        "display": "MANUAL OVERRIDE",
+        "reason_available": True,
+    }
 
 
 def test_v2_templates_and_gallery_use_backend_humidifier_and_reason_truth():

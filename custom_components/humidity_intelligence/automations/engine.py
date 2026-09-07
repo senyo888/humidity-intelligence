@@ -344,6 +344,18 @@ class HIAutomationEngine:
                 return
             await self._set_bool("air_co_emergency_active", self._co_emergency_active)
 
+            if self._manual_override_active():
+                await self._stand_down_for_manual_override()
+                await self._set_runtime_reason(
+                    self._with_isolation_notice(
+                        "Manual override is enabled. HI sent no new ordinary output commands during this evaluation, and existing physical output states were left unchanged. Manual or external automation remains responsible until automatic control is restored."
+                    ),
+                    display_facts_factory=lambda: self._control_lock_display_facts(
+                        "manual_override"
+                    ),
+                )
+                return
+
             control_lock_kind, control_lock_reason = self._control_lock_status()
             if control_lock_reason:
                 await self._sync_visual_alert_tasks([])
@@ -527,6 +539,9 @@ class HIAutomationEngine:
     def _control_lock_reason(self) -> Optional[str]:
         return self._control_lock_status()[1]
 
+    def _manual_override_active(self) -> bool:
+        return self._bool_is_on("air_control_manual_override")
+
     def _gate_status(self) -> Tuple[bool, Optional[str]]:
         status = self._gate_evaluation()
         return status.allowed, status.technical_reason
@@ -690,13 +705,22 @@ class HIAutomationEngine:
     async def _apply_co_emergency(self) -> None:
         _, _, outputs = self._co_emergency_settings()
         await self._deactivate_aq_activity(set_fan_auto=False)
-        await self._deactivate_humidifier_activity(turn_off_outputs=True)
+        manual_override = self._manual_override_active()
+        if manual_override:
+            await self._hold_humidifier_activity_for_manual_override()
+        else:
+            await self._deactivate_humidifier_activity(turn_off_outputs=True)
         await self._clear_alert_runtime_state()
         await self._set_bool("air_co_emergency_active", True)
-        all_outputs = self._all_fan_outputs()
-        outputs_to_auto = [entity_id for entity_id in all_outputs if entity_id not in outputs]
-        await self._set_fan_outputs_auto(outputs_to_auto)
-        await self._set_fan_outputs_level(outputs, "100")
+        if not manual_override:
+            all_outputs = self._all_fan_outputs()
+            outputs_to_auto = [entity_id for entity_id in all_outputs if entity_id not in outputs]
+            await self._set_fan_outputs_auto(outputs_to_auto)
+        await self._set_fan_outputs_level(
+            outputs,
+            "100",
+            allow_manual_override=True,
+        )
         await self._set_runtime_mode("co_emergency", "CO EMERGENCY")
 
     async def _handle_alerts(self) -> Tuple[bool, List[Dict[str, Any]]]:
@@ -1014,10 +1038,15 @@ class HIAutomationEngine:
             if self._visual_alert_configured(detail)
         }
         self._visual_alert_active = active_identities
+        cancelled_tasks: List[asyncio.Task[Any]] = []
         for identity, task in list(self._visual_alert_tasks.items()):
             if identity not in active_identities:
-                task.cancel()
+                if task is not asyncio.current_task() and not task.done():
+                    task.cancel()
+                    cancelled_tasks.append(task)
                 self._visual_alert_tasks.pop(identity, None)
+        if cancelled_tasks:
+            await asyncio.gather(*cancelled_tasks, return_exceptions=True)
         for detail in active_details:
             if not self._visual_alert_configured(detail):
                 if detail.get("trigger_type") in _BUILT_IN_ZONE_ALERT_TRIGGERS:
@@ -1045,6 +1074,8 @@ class HIAutomationEngine:
     ) -> None:
         try:
             while identity in self._visual_alert_active:
+                if self._manual_override_active():
+                    return
                 visual = detail.get("visual_alert") or {}
                 lights = list(visual.get("lights") or [])
                 if not lights:
@@ -1058,6 +1089,8 @@ class HIAutomationEngine:
                 power_entity = visual.get("power_entity")
                 if power_entity:
                     flash_payload["power_entity"] = power_entity
+                if self._manual_override_active():
+                    return
                 try:
                     await async_flash_lights_for_alert(
                         self.hass,
@@ -1335,6 +1368,8 @@ class HIAutomationEngine:
         return self._aq_trigger_evaluation(level, cfg)[0]
 
     async def _start_aq(self, level: str, cfg: Dict[str, Any]) -> None:
+        if self._manual_override_active():
+            return
         outputs = cfg.get("outputs", [])
         output_level = _normalize_fan_level(
             cfg.get("output_level", ZONE_OUTPUT_LEVEL_DEFAULT),
@@ -1349,17 +1384,22 @@ class HIAutomationEngine:
             task.cancel()
 
         async def _timer() -> None:
-            await asyncio.sleep(duration)
-            if self._aq_trigger_details(level, cfg):
-                await self._start_aq(level, cfg)
-            else:
-                reserved = self._aq_outputs_reserved_by_other_levels(level)
-                outputs_to_auto = [entity_id for entity_id in outputs if entity_id not in reserved]
-                await self._set_fan_outputs_auto(outputs_to_auto)
-                await self._set_aq_level_active(level, False)
-                await self._clear_aq_level_timer(level)
-                self._aq_trigger_active[level] = False
-                await self.async_request_evaluate()
+            try:
+                await asyncio.sleep(duration)
+                if self._manual_override_active():
+                    return
+                if self._aq_trigger_details(level, cfg):
+                    await self._start_aq(level, cfg)
+                else:
+                    reserved = self._aq_outputs_reserved_by_other_levels(level)
+                    outputs_to_auto = [entity_id for entity_id in outputs if entity_id not in reserved]
+                    await self._set_fan_outputs_auto(outputs_to_auto)
+                    await self._set_aq_level_active(level, False)
+                    await self._clear_aq_level_timer(level)
+                    self._aq_trigger_active[level] = False
+                    await self.async_request_evaluate()
+            except asyncio.CancelledError:
+                return
 
         self._aq_tasks[level] = asyncio.create_task(_timer())
 
@@ -1531,6 +1571,94 @@ class HIAutomationEngine:
                 "All lanes are idle, so outputs have returned to normal automatic behavior."
             )
         )
+
+    async def _stand_down_for_manual_override(self) -> None:
+        """Release ordinary HI ownership without changing physical outputs."""
+        await self._sync_visual_alert_tasks([])
+        await self._clear_alert_runtime_state()
+        await self._deactivate_aq_activity(set_fan_auto=False)
+        await self._hold_humidifier_activity_for_manual_override()
+        await self._set_runtime_mode("manual_override", "MANUAL OVERRIDE")
+
+    async def _hold_humidifier_activity_for_manual_override(self) -> None:
+        """Publish observed humidifier truth while Manual owns physical outputs."""
+        lane_details: Dict[str, Dict[str, Any]] = {}
+        configured_owners: Dict[str, set[str]] = {}
+        cancelled_retry_tasks = [
+            task
+            for task in self._humidifier_retry_tasks.values()
+            if task is not asyncio.current_task() and not task.done()
+        ]
+        for entity_id in list(self._humidifier_retry_tasks):
+            self._cancel_humidifier_retry(entity_id)
+        if cancelled_retry_tasks:
+            await asyncio.gather(*cancelled_retry_tasks, return_exceptions=True)
+        for level in ("level1", "level2"):
+            cfg = self.humidifiers.get(level)
+            outputs: List[str] = []
+            if isinstance(cfg, dict):
+                outputs = sorted(
+                    {
+                        str(entity_id).strip()
+                        for entity_id in cfg.get("outputs", []) or []
+                        if str(entity_id).strip()
+                    }
+                )
+            for entity_id in outputs:
+                configured_owners.setdefault(entity_id, set()).add(level)
+            self._humidifier_lane_demand[level] = False
+            await self._set_bool(self._humidifier_active_key(level), False)
+            lane_details[level] = {
+                "level": level,
+                "lane": "downstairs" if level == "level1" else "upstairs",
+                "outputs": outputs,
+                "demand": False,
+                "status": "manual_hold",
+                "environmental_state": "manual_hold",
+            }
+
+        for entity_id in set(self._humidifier_output_records) - set(configured_owners):
+            self._cancel_humidifier_retry(entity_id)
+            self._humidifier_output_records.pop(entity_id, None)
+
+        now = self._monotonic()
+        output_status: Dict[str, Dict[str, Any]] = {}
+        for entity_id in sorted(configured_owners):
+            self._cancel_humidifier_retry(entity_id)
+            record = self._humidifier_output_records.setdefault(
+                entity_id,
+                self._new_humidifier_output_record(),
+            )
+            observed, platform_action = self._humidifier_observed_state(entity_id)
+            record["generation"] = int(record.get("generation", 0)) + 1
+            record["desired_on"] = None
+            record["owners"] = []
+            record["configured_owners"] = sorted(configured_owners[entity_id])
+            record["domain"] = entity_id.partition(".")[0]
+            record["observed"] = observed
+            record["platform_action"] = platform_action
+            record["on_attempts"] = 0
+            record["off_attempts"] = 0
+            record["settling_until"] = 0.0
+            record["next_allowed_at"] = 0.0
+            record["mismatch_started"] = None
+            record["last_command_intent"] = "none"
+            record["last_dispatch_result"] = "not_requested"
+            record["last_dispatch_utc"] = None
+            record["failure_category"] = None
+            record["fault_latched"] = False
+            record["ownership_conflict"] = self._humidifier_ownership_conflict(
+                entity_id
+            )
+            self._set_humidifier_reconciliation_state(
+                record,
+                "manual_hold",
+                "manual_handover",
+            )
+            output_status[entity_id] = self._humidifier_output_status(record, now)
+
+        self._apply_humidifier_output_truth_to_lanes(lane_details, output_status)
+        self._publish_humidifier_truth(lane_details, output_status)
 
     async def _deactivate_non_alert_activity(self, exclude_zone_outputs: Optional[List[str]] = None) -> None:
         await self._deactivate_aq_activity(
@@ -1845,6 +1973,8 @@ class HIAutomationEngine:
         entity_id: str,
         on: bool,
     ) -> Tuple[bool, str]:
+        if self._manual_override_active():
+            return False, "manual_override"
         domain, separator, _object_id = entity_id.partition(".")
         if not separator or domain not in _HUMIDIFIER_OUTPUT_DOMAINS:
             return False, "unsupported_domain"
@@ -2013,10 +2143,17 @@ class HIAutomationEngine:
         event: str,
     ) -> None:
         history = record.setdefault("history", [])
+        desired_on = record.get("desired_on")
         history.append(
             {
                 "event": str(event),
-                "desired": "on" if record.get("desired_on") else "off",
+                "desired": (
+                    "manual"
+                    if desired_on is None
+                    else "on"
+                    if desired_on
+                    else "off"
+                ),
                 "observed": str(record.get("observed") or "missing"),
                 "attempts": int(
                     record.get(
@@ -2086,12 +2223,19 @@ class HIAutomationEngine:
         mismatch_age = None
         if isinstance(mismatch_started, (int, float)):
             mismatch_age = max(0, int(now - mismatch_started))
-        attempts_key = "on_attempts" if record.get("desired_on") else "off_attempts"
+        desired_on = record.get("desired_on")
+        attempts_key = "on_attempts" if desired_on else "off_attempts"
         return {
             "domain": record.get("domain"),
             "owners": list(record.get("owners") or []),
             "configured_owners": list(record.get("configured_owners") or []),
-            "desired": "on" if record.get("desired_on") else "off",
+            "desired": (
+                "manual"
+                if desired_on is None
+                else "on"
+                if desired_on
+                else "off"
+            ),
             "observed": record.get("observed"),
             "platform_action": record.get("platform_action"),
             "reconciliation": record.get("reconciliation"),
@@ -2117,12 +2261,13 @@ class HIAutomationEngine:
             "degraded": 1,
             "unknown": 2,
             "isolated": 3,
-            "retrying": 4,
-            "stopping": 5,
-            "requested": 6,
-            "platform_idle": 7,
-            "output_on": 8,
-            "matched_off": 9,
+            "manual_hold": 4,
+            "retrying": 5,
+            "stopping": 6,
+            "requested": 7,
+            "platform_idle": 8,
+            "output_on": 9,
+            "matched_off": 10,
         }
         for detail in lane_details.values():
             outputs = detail.get("outputs", []) or []
@@ -2191,13 +2336,20 @@ class HIAutomationEngine:
             str(lane.get("reconciliation") or "inactive")
             for lane in public_lanes.values()
             if lane.get("demand") == "requested"
-            or lane.get("reconciliation") in {"stopping", "fault_latched", "degraded", "unknown"}
+            or lane.get("reconciliation") in {
+                "stopping",
+                "fault_latched",
+                "degraded",
+                "unknown",
+                "manual_hold",
+            }
         ]
         overall_priority = (
             "fault_latched",
             "degraded",
             "unknown",
             "isolated",
+            "manual_hold",
             "retrying",
             "stopping",
             "requested",
@@ -2259,6 +2411,10 @@ class HIAutomationEngine:
                     output.get("reconciliation") == "isolated"
                     for output in public_outputs.values()
                 ),
+                "manual_hold_outputs": sum(
+                    output.get("reconciliation") == "manual_hold"
+                    for output in public_outputs.values()
+                ),
                 "ownership_conflicts": sum(
                     bool(output.get("ownership_conflict"))
                     for output in public_outputs.values()
@@ -2274,10 +2430,18 @@ class HIAutomationEngine:
         exclude_outputs: Optional[List[str]] = None,
     ) -> None:
         excluded = set(exclude_outputs or [])
+        cancelled_tasks: List[asyncio.Task[Any]] = []
         for level, task in list(self._aq_tasks.items()):
-            if task and not task.done():
+            if (
+                task
+                and not task.done()
+                and task is not asyncio.current_task()
+            ):
                 task.cancel()
+                cancelled_tasks.append(task)
             self._aq_tasks.pop(level, None)
+        if cancelled_tasks:
+            await asyncio.gather(*cancelled_tasks, return_exceptions=True)
 
         for cfg in self.aq.values():
             outputs = cfg.get("outputs", [])
@@ -2591,7 +2755,14 @@ class HIAutomationEngine:
                     "system",
                     "control.manual_override_active",
                     "blocked",
-                    "HI is not making automatic control decisions.",
+                    "HI sent no new ordinary output commands, and existing physical output states were left unchanged.",
+                ),
+                ReasonLine(
+                    "action",
+                    "system",
+                    "control.manual_authority",
+                    "blocked",
+                    "Manual or external automation remains responsible until automatic control is restored.",
                 ),
             ]
         else:
@@ -3396,6 +3567,7 @@ class HIAutomationEngine:
                 "fault_latched",
                 "inactive_shared_output",
                 "isolated",
+                "manual_hold",
                 "output_on",
                 "platform_idle",
                 "requested",
@@ -3526,6 +3698,13 @@ class HIAutomationEngine:
                     "humidifier commands to Home Assistant."
                 )
                 truth = "blocked"
+            elif reconciliation == "manual_hold":
+                environment_text = None
+                response_text = (
+                    "Manual override has released HI ownership. Home Assistant's "
+                    "observed output state is reported without selecting or commanding it."
+                )
+                truth = "observed"
             elif reconciliation == "unknown":
                 response_text = (
                     "Home Assistant is not reporting the output state, so HI cannot "
@@ -4112,6 +4291,11 @@ class HIAutomationEngine:
                 segments.append(
                     f"{level}: humidifier-output isolation is suppressing commands."
                 )
+            elif reconciliation == "manual_hold":
+                segments.append(
+                    f"{level}: Manual override owns the output; HI is reporting only "
+                    "the state observed by Home Assistant."
+                )
             elif reconciliation in {"unknown", "degraded"}:
                 segments.append(
                     f"{level}: output state is unknown or degraded, so HI is not claiming activity."
@@ -4250,15 +4434,43 @@ class HIAutomationEngine:
     def _humidifier_outputs_isolated(self) -> bool:
         return self._bool_is_on("air_isolate_humidifier_outputs")
 
-    async def _set_fan_outputs_level(self, outputs: List[str], level: Any) -> None:
+    async def _set_fan_outputs_level(
+        self,
+        outputs: List[str],
+        level: Any,
+        *,
+        allow_manual_override: bool = False,
+    ) -> None:
         if self._fan_outputs_isolated():
             return
-        await _apply_fan_level(self.hass, outputs, level)
+        if self._manual_override_active() and not allow_manual_override:
+            return
+        await _apply_fan_level(
+            self.hass,
+            outputs,
+            level,
+            should_abort=(
+                None if allow_manual_override else self._manual_override_active
+            ),
+        )
 
-    async def _set_fan_outputs_auto(self, outputs: List[str]) -> None:
+    async def _set_fan_outputs_auto(
+        self,
+        outputs: List[str],
+        *,
+        allow_manual_override: bool = False,
+    ) -> None:
         if self._fan_outputs_isolated():
             return
-        await _set_fan_auto(self.hass, outputs)
+        if self._manual_override_active() and not allow_manual_override:
+            return
+        await _set_fan_auto(
+            self.hass,
+            outputs,
+            should_abort=(
+                None if allow_manual_override else self._manual_override_active
+            ),
+        )
 
     def _aq_outputs_reserved_by_other_levels(self, level: str) -> set[str]:
         reserved: set[str] = set()
@@ -4656,12 +4868,23 @@ def _alert_source_summary(
     return " · ".join(part for part in parts if part)
 
 
-async def _apply_fan_level(hass: HomeAssistant, entities: List[str], level: Any) -> None:
+async def _apply_fan_level(
+    hass: HomeAssistant,
+    entities: List[str],
+    level: Any,
+    *,
+    should_abort: Optional[Callable[[], bool]] = None,
+) -> None:
     normalized = _normalize_fan_level(level, ZONE_OUTPUT_LEVEL_DEFAULT)
     if normalized == FAN_OUTPUT_LEVEL_AUTO:
-        await _set_fan_auto(hass, entities)
+        await _set_fan_auto(hass, entities, should_abort=should_abort)
         return
-    await _set_fan_percentage(hass, entities, int(normalized))
+    await _set_fan_percentage(
+        hass,
+        entities,
+        int(normalized),
+        should_abort=should_abort,
+    )
 
 
 def _coerce_fan_percentage(value: Any) -> int:
@@ -4673,9 +4896,17 @@ def _coerce_fan_percentage(value: Any) -> int:
     return min(FAN_OUTPUT_LEVEL_STEPS, key=lambda step: abs(step - pct))
 
 
-async def _set_fan_percentage(hass: HomeAssistant, entities: List[str], pct: int) -> None:
+async def _set_fan_percentage(
+    hass: HomeAssistant,
+    entities: List[str],
+    pct: int,
+    *,
+    should_abort: Optional[Callable[[], bool]] = None,
+) -> None:
     pct = _coerce_fan_percentage(pct)
     for entity_id in entities:
+        if should_abort and should_abort():
+            return
         domain = entity_id.split(".")[0]
         state = hass.states.get(entity_id)
         if domain == "fan":
@@ -4691,7 +4922,11 @@ async def _set_fan_percentage(hass: HomeAssistant, entities: List[str], pct: int
                     pass
             try:
                 if not state or state.state != "on":
+                    if should_abort and should_abort():
+                        return
                     await hass.services.async_call("fan", "turn_on", {"entity_id": entity_id}, blocking=False)
+                if should_abort and should_abort():
+                    return
                 await hass.services.async_call(
                     "fan",
                     "set_percentage",
@@ -4708,13 +4943,22 @@ async def _set_fan_percentage(hass: HomeAssistant, entities: List[str], pct: int
             if state and ((pct > 0 and state.state == "on") or (pct <= 0 and state.state == "off")):
                 continue
             try:
+                if should_abort and should_abort():
+                    return
                 await hass.services.async_call("switch", service, {"entity_id": entity_id}, blocking=False)
             except Exception:
                 _LOGGER.exception("Failed to set switch %s via %s", entity_id, service)
 
 
-async def _set_fan_auto(hass: HomeAssistant, entities: List[str]) -> None:
+async def _set_fan_auto(
+    hass: HomeAssistant,
+    entities: List[str],
+    *,
+    should_abort: Optional[Callable[[], bool]] = None,
+) -> None:
     for entity_id in entities:
+        if should_abort and should_abort():
+            return
         domain = entity_id.split(".")[0]
         state = hass.states.get(entity_id)
         if domain == "fan":
@@ -4725,6 +4969,8 @@ async def _set_fan_auto(hass: HomeAssistant, entities: List[str]) -> None:
             if preset_mode == "auto":
                 continue
             try:
+                if should_abort and should_abort():
+                    return
                 await hass.services.async_call(
                     "fan",
                     "set_preset_mode",
@@ -4740,6 +4986,8 @@ async def _set_fan_auto(hass: HomeAssistant, entities: List[str]) -> None:
             if state and state.state == "off":
                 continue
             try:
+                if should_abort and should_abort():
+                    return
                 await hass.services.async_call("switch", "turn_off", {"entity_id": entity_id}, blocking=False)
             except Exception:
                 _LOGGER.exception("Failed to turn off switch %s", entity_id)

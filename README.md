@@ -365,6 +365,15 @@ Boost settings should normally be higher than the standard zone fan level. Zone 
 
 Humidifier lanes operate independently where safe.
 
+Manual override hands ordinary output ownership to the user or external automation.
+HI cancels pending non-CO control work and leaves existing fan, switch, humidifier,
+and visual-alert output states unchanged. Its mode and reason surfaces report that
+handover directly, while humidifier diagnostics retain observed state as
+`manual_hold` without claiming HI selected it. CO emergency remains the only
+exception and can still force its configured ventilation outputs to 100%. Turning
+Manual off triggers a fresh deterministic evaluation and restores normal AUTO
+ownership. This does not add temporary manual operation while AUTO remains enabled.
+
 Humidifier demand and output truth are intentionally separate. The existing
 downstairs/upstairs humidifier-active helpers mean HI is requesting humidification
 after global, pause, presence/time, telemetry, manual-override, and alert gates have

@@ -316,6 +316,11 @@ def test_native_diagnostics_payload_contains_support_sections():
     assert payload["configuration"]["selected_entity_summary"]["telemetry"]["count"] == 1
     assert payload["configuration"]["enabled_feature_areas"]["zone_control"] is True
     assert payload["runtime"]["active_lane"] == "alert"
+    assert payload["diagnostics_summary"]["runtime_control"] == {
+        "mode": "alert",
+        "display": "ALERT",
+        "reason_available": True,
+    }
     assert payload["runtime"]["current_state"]["display_reason"] == {
         "status": "valid",
         "schema": "hi.reason.v1",
@@ -330,6 +335,27 @@ def test_native_diagnostics_payload_contains_support_sections():
     assert payload["runtime"]["output_states"]["fan_outputs"]["by_status"]["unavailable"] == 1
     assert payload["frontend"]["dependency_status"]
     assert payload["generated_ui"]["cached_layouts"] == ["v2_mobile", "v2_tablet"]
+
+
+def test_native_diagnostics_runtime_control_uses_canonical_non_private_display():
+    diagnostics = _load_diagnostics_module()
+    hass = _sample_hass()
+    runtime = hass.data["humidity_intelligence"]["entry123"]
+    runtime["runtime_mode"] = "cooking"
+    runtime["runtime_mode_display"] = "PRIVATE FIXTURE LABEL"
+    runtime["runtime_reason"] = "Zone response is active."
+
+    payload = asyncio.run(
+        diagnostics.async_get_config_entry_diagnostics(hass, _sample_entry())
+    )
+    rendered = json.dumps(payload["diagnostics_summary"], sort_keys=True)
+
+    assert payload["diagnostics_summary"]["runtime_control"] == {
+        "mode": "cooking",
+        "display": "COOKING",
+        "reason_available": True,
+    }
+    assert "PRIVATE FIXTURE LABEL" not in rendered
 
 
 def test_entity_status_summary_treats_blank_state_as_unknown():

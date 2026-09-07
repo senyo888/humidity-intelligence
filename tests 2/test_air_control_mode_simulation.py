@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from types import SimpleNamespace
 
 from hi_runtime_fixtures import (
@@ -739,6 +740,206 @@ def test_co_emergency_pressure_is_opt_in_and_overrides_manual_gate():
     text = " ".join(line["text"] for line in display["lines"])
     assert "at or above the 15 ppm threshold" in text
     assert "must remain below 10 ppm for two minutes" in text
+
+
+def test_manual_override_leaves_active_switch_and_manual_fans_unchanged():
+    result = run_air_control_simulation(
+        state_overrides={
+            "switch.hi_fixture_zone1": "on",
+            "fan.hi_fixture_zone2": _FakeState(
+                "on",
+                {"percentage": 66, "preset_mode": "manual"},
+            ),
+            "fan.hi_fixture_aq": _FakeState(
+                "on",
+                {"percentage": 66, "preset_mode": "manual"},
+            ),
+        },
+        config_overrides={
+            "zones": {
+                "zone1": {"outputs": ["switch.hi_fixture_zone1"]},
+                "zone2": {"outputs": ["fan.hi_fixture_zone2"]},
+            }
+        },
+        boolean_overrides={
+            "air_control_manual_override": True,
+            "air_isolate_fan_outputs": False,
+            "air_isolate_humidifier_outputs": False,
+        },
+    )
+
+    _assert_mode(
+        result,
+        "manual_override",
+        "MANUAL OVERRIDE",
+        "sent no new ordinary output commands",
+    )
+    assert result.lower_lane_trace == []
+    assert result.fan_service_calls == []
+    assert result.all_service_calls == []
+    display_text = " ".join(
+        line["text"] for line in result.reason_sensor_attrs["display_reason"]["lines"]
+    )
+    assert "existing physical output states were left unchanged" in display_text
+    assert "Manual or external automation remains responsible" in display_text
+
+
+def test_manual_override_remains_authoritative_with_other_non_co_gates():
+    scenarios = (
+        {
+            "boolean_overrides": {
+                "air_control_enabled": False,
+                "air_control_manual_override": True,
+                "air_isolate_fan_outputs": False,
+            }
+        },
+        {
+            "boolean_overrides": {
+                "air_control_manual_override": True,
+                "air_isolate_fan_outputs": False,
+            },
+            "timer_overrides": {"air_control_pause": "active"},
+        },
+        {
+            "boolean_overrides": {
+                "air_control_manual_override": True,
+                "air_isolate_fan_outputs": False,
+            },
+            "config_overrides": {
+                "presence_gate": {
+                    "enabled": True,
+                    "entities": ["binary_sensor.hi_fixture_presence"],
+                    "present_states": ["on"],
+                    "away_states": ["off"],
+                }
+            },
+            "state_overrides": {"binary_sensor.hi_fixture_presence": "off"},
+        },
+    )
+
+    for kwargs in scenarios:
+        result = run_air_control_simulation(**kwargs)
+        _assert_mode(
+            result,
+            "manual_override",
+            "MANUAL OVERRIDE",
+            "sent no new ordinary output commands",
+        )
+        assert result.lower_lane_trace == []
+        assert result.fan_service_calls == []
+
+
+def test_normal_auto_still_reclaims_an_active_configured_switch():
+    result = run_air_control_simulation(
+        state_overrides={"switch.hi_fixture_zone1": "on"},
+        config_overrides={
+            "zones": {
+                "zone1": {"outputs": ["switch.hi_fixture_zone1"]},
+            }
+        },
+        boolean_overrides={"air_isolate_fan_outputs": False},
+    )
+
+    _assert_mode(result, "normal", "NORMAL", "no lane currently needs to run")
+    assert (
+        (
+            "switch",
+            "turn_off",
+            {"entity_id": "switch.hi_fixture_zone1"},
+            False,
+        )
+        in result.fan_service_calls
+    )
+
+
+def test_manual_handover_is_current_aq_task_safe_and_blocks_late_dispatch():
+    async def run():
+        engine_mod, _core_mod = _load_target_modules()
+        data = _base_entry_data()
+        data["alert_handling_enabled"] = False
+        data["alerts"] = []
+        data["humidifiers"] = {}
+        data["zones"] = {
+            "zone1": {
+                "enabled": True,
+                "outputs": ["fan.manual_zone"],
+            }
+        }
+        data["aq"] = {
+            "level1": {
+                "enabled": True,
+                "outputs": ["fan.manual_aq"],
+                "triggers": [],
+                "run_duration": 10,
+            }
+        }
+        entry = SimpleNamespace(entry_id=RUNTIME_ENTRY_ID, data=data, options={})
+        baseline_by_type = {
+            "humidity": 50,
+            "temperature": 21,
+            "iaq": 90,
+            "pm25": 5,
+            "co": 0,
+        }
+        states = {
+            item["entity_id"]: _FakeState(
+                baseline_by_type.get(item["sensor_type"], 0)
+            )
+            for item in data["telemetry"]
+        }
+        states.update(
+            {
+                "fan.manual_zone": _FakeState(
+                    "on",
+                    {"percentage": 66, "preset_mode": "manual"},
+                ),
+                "fan.manual_aq": _FakeState(
+                    "on",
+                    {"percentage": 66, "preset_mode": "manual"},
+                ),
+            }
+        )
+        hass = _FakeHass(entry, states)
+        runtime = hass.data["humidity_intelligence"][RUNTIME_ENTRY_ID]
+        runtime["hi_input_booleans"]["air_control_manual_override"].is_on = True
+        runtime["hi_input_booleans"]["air_isolate_fan_outputs"].is_on = False
+        engine = engine_mod.HIAutomationEngine(hass, entry)
+
+        visual_task = asyncio.create_task(asyncio.sleep(120))
+        engine._visual_alert_tasks[("alert", "room", "zone")] = visual_task
+        engine._visual_alert_active = {("alert", "room", "zone")}
+        pending_aq_task = asyncio.create_task(asyncio.sleep(120))
+        engine._aq_tasks["level2"] = pending_aq_task
+
+        async def aq_wake_evaluation():
+            engine._aq_tasks["level1"] = asyncio.current_task()
+            await engine._evaluate()
+
+        current_aq_task = asyncio.create_task(aq_wake_evaluation())
+        try:
+            await current_aq_task
+            await asyncio.sleep(0)
+            assert not current_aq_task.cancelled()
+            assert visual_task.cancelled()
+            assert pending_aq_task.cancelled()
+            assert engine._aq_tasks == {}
+            assert engine._visual_alert_tasks == {}
+            assert runtime["runtime_mode"] == "manual_override"
+
+            await engine._set_fan_outputs_auto(
+                ["fan.manual_zone", "fan.manual_aq"]
+            )
+            await engine._set_fan_outputs_level(
+                ["fan.manual_zone", "fan.manual_aq"],
+                100,
+            )
+            await engine._start_aq("level1", data["aq"]["level1"])
+            await engine._evaluate()
+            assert hass.services.calls == []
+        finally:
+            await engine.async_stop()
+
+    asyncio.run(run())
 
 
 if __name__ == "__main__":

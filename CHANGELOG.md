@@ -10,6 +10,17 @@ This project follows a practical changelog format for Home Assistant and HACS us
 
 ![Humidity Intelligence v2.0.12 release header celebrating repository-level HACS inclusion](assets/release_banner/v2.0.12_release.png)
 
+- Fixed Manual override so it performs a complete non-CO output handover: pending
+  alert, AQ, and humidifier retry work is neutralized; existing fan, switch, and
+  humidifier states are left unchanged; raw runtime mode/reason and diagnostics report
+  Manual truth; and humidifier observation uses additive `manual_hold` reconciliation
+  without claiming an HI command. Native diagnostics, the recorder-safe diagnostics
+  entity, support dumps, and the release check expose bounded runtime-control truth.
+  The shared privacy-safe runtime-control helper increases the tracked installable
+  component payload from 52 files to 53; package paths otherwise remain unchanged.
+  CO emergency still forces only its configured
+  ventilation outputs to 100%, and normal AUTO persistence resumes after Manual is
+  turned off. This does not add temporary manual operation while AUTO remains enabled.
 - Advanced development identity to `2.0.12-beta.2` so the Home Assistant 2026.9
   alignment remains distinct from the earlier beta.1 testing bytes. This candidate
   is not a published GitHub Release or an HACS-offered v2.0.12 package.

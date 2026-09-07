@@ -31,6 +31,7 @@ from .helpers.frontend_dependencies import (
 from .helpers.level_labels import resolve_level_label_details
 from .helpers.local_versions import async_local_version_status, cached_local_version_status
 from .helpers.reason_presentation import display_reason_metadata
+from .helpers.runtime_control import runtime_control_summary
 from .helpers.seasonal import resolve_target_profile, resolve_temperature_comfort_profile
 from .helpers.setup_assist import (
     diagnostics_setup_assist_summary,
@@ -443,6 +444,7 @@ def _diagnostics_summary(
         warnings.append("One or more humidifier outputs have a conflicting configured output owner.")
 
     return {
+        "runtime_control": runtime_control_summary(runtime_data),
         "target_profile": {
             "mode": config.get("target_profile", config.get("target_profile_mode", "auto")),
             "active_profile": target_profile.key,
@@ -500,6 +502,7 @@ def _humidifier_reconciliation_summary(runtime_data: dict[str, Any]) -> dict[str
         "degraded_outputs",
         "unknown_outputs",
         "isolated_outputs",
+        "manual_hold_outputs",
         "ownership_conflicts",
     )
     summary = {

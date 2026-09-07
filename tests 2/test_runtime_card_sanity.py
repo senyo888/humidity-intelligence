@@ -420,6 +420,29 @@ def _load_services_module():
     return _load_module(f"{PKG}.services", INTEGRATION_ROOT / "services.py")
 
 
+def _load_sensor_platform_module():
+    services_mod = _load_services_module()
+
+    drift_repairs_mod = types.ModuleType(f"{PKG}.helpers.drift_repairs")
+
+    async def async_noop(*_args, **_kwargs):
+        return None
+
+    drift_repairs_mod.async_update_humidity_drift_repair_issue = async_noop
+    sys.modules[f"{PKG}.helpers.drift_repairs"] = drift_repairs_mod
+
+    core_mod = types.ModuleType(f"{PKG}.sensors.core")
+    core_mod.build_entities = lambda *_args, **_kwargs: ([], [], [])
+    sys.modules[f"{PKG}.sensors.core"] = core_mod
+
+    slope_mod = types.ModuleType(f"{PKG}.sensors.slope")
+    slope_mod.build_slope_entities = lambda *_args, **_kwargs: ([], [], {})
+    sys.modules[f"{PKG}.sensors.slope"] = slope_mod
+
+    sys.modules[f"{PKG}.services"] = services_mod
+    return _load_module(f"{PKG}.sensor", INTEGRATION_ROOT / "sensor.py")
+
+
 def _load_integration_init_module():
     _install_homeassistant_stubs()
     _install_package_scaffold()
@@ -4595,12 +4618,17 @@ def test_diagnostics_summary_can_surface_shared_frontend_dependency_status_witho
         "card-mod": {"detected": False},
     }
 
+    runtime_data = {
+        "runtime_mode": "manual_override",
+        "runtime_mode_display": "MANUAL OVERRIDE",
+        "runtime_reason": "Manual override is enabled.",
+    }
     full_summary = services_mod._build_diagnostics_summary(
         hass,
         entry.data,
         {},
         {},
-        {},
+        runtime_data,
         frontend_dependencies=frontend_status,
     )
     live_summary = services_mod._build_diagnostics_summary(
@@ -4608,11 +4636,21 @@ def test_diagnostics_summary_can_surface_shared_frontend_dependency_status_witho
         entry.data,
         {},
         {},
-        {},
+        runtime_data,
     )
 
     assert full_summary["frontend_dependency_resources"] == frontend_status
     assert "frontend_dependency_resources" not in live_summary
+    assert full_summary["runtime_control"] == {
+        "mode": "manual_override",
+        "display": "MANUAL OVERRIDE",
+        "reason_available": True,
+    }
+    support_summary = services_mod._support_safe_diagnostics_summary(full_summary)
+    assert support_summary["runtime_control"] == full_summary["runtime_control"]
+    sensor_mod = _load_sensor_platform_module()
+    compact = sensor_mod._compact_diagnostics_summary(full_summary)
+    assert compact["runtime_control"] == full_summary["runtime_control"]
 
 
 def test_support_diagnostics_summary_uses_canonical_level_label_source():
