@@ -210,7 +210,7 @@ def test_disabled_and_manual_gates_dominate_lower_lane_pressure():
     assert disabled.reason_sensor_attrs["display_reason"]["family"] == "disabled"
     assert manual.mode_sensor_state == "manual_override"
     assert manual.mode_sensor_attrs["display"] == "MANUAL OVERRIDE"
-    assert "Manual override is enabled" in manual.reason_sensor_state
+    assert "Manual control is active" in manual.reason_sensor_state
     assert manual.lower_lane_trace == []
     assert manual.reason_sensor_attrs["display_reason"]["family"] == "manual"
 
@@ -772,16 +772,33 @@ def test_manual_override_leaves_active_switch_and_manual_fans_unchanged():
         result,
         "manual_override",
         "MANUAL OVERRIDE",
-        "sent no new ordinary output commands",
+        "Manual control is active",
     )
     assert result.lower_lane_trace == []
     assert result.fan_service_calls == []
     assert result.all_service_calls == []
+    assert "HI leaves fans, switches, humidifiers, and alert lights as they are" in (
+        result.reason_sensor_state
+    )
+    assert "Control stays with you or another automation" in result.reason_sensor_state
+    assert "until Manual is turned off" in result.reason_sensor_state
+    assert (
+        "CO emergency protection can still run configured ventilation at full speed"
+        in result.reason_sensor_state
+    )
     display_text = " ".join(
         line["text"] for line in result.reason_sensor_attrs["display_reason"]["lines"]
     )
-    assert "existing physical output states were left unchanged" in display_text
-    assert "Manual or external automation remains responsible" in display_text
+    assert (
+        "HI leaves fans, switches, humidifiers, and alert lights as they are"
+        in display_text
+    )
+    assert "Control stays with you or another automation" in display_text
+    assert "until Manual is turned off" in display_text
+    assert (
+        "CO emergency protection can still run configured ventilation at full speed"
+        in display_text
+    )
 
 
 def test_manual_override_remains_authoritative_with_other_non_co_gates():
@@ -823,7 +840,7 @@ def test_manual_override_remains_authoritative_with_other_non_co_gates():
             result,
             "manual_override",
             "MANUAL OVERRIDE",
-            "sent no new ordinary output commands",
+            "Manual control is active",
         )
         assert result.lower_lane_trace == []
         assert result.fan_service_calls == []

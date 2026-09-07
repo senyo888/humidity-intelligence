@@ -4072,11 +4072,11 @@ def test_v2012_public_release_surfaces_track_candidate_and_v2011_stable_truth():
     normalized_changelog = " ".join(changelog_source.split())
     normalized_governance = " ".join(release_governance.split())
 
-    assert "Current development manifest version: **v2.0.12-beta.3**" in normalized_readme
+    assert "Current development manifest version: **v2.0.12-beta.4**" in normalized_readme
     assert "It is not a published release" in normalized_readme
     assert "current published Stable GitHub Release and tag are **v2.0.11**" in normalized_readme
     assert "included in the HACS default repository" in normalized_readme
-    assert "carries development manifest identity `2.0.12-beta.3`" in normalized_visible_notes
+    assert "carries development manifest identity `2.0.12-beta.4`" in normalized_visible_notes
     assert "not a published GitHub Release or an HACS-offered v2.0.12 package" in normalized_visible_notes
     assert "Manual override a complete handover" in normalized_visible_notes
     assert "observed-only `manual_hold`" in normalized_visible_notes
@@ -4087,6 +4087,7 @@ def test_v2012_public_release_surfaces_track_candidate_and_v2011_stable_truth():
     assert "## 2.0.11 - 2026-08-11" in changelog_source
     assert "Advanced development identity to `2.0.12-beta.2`" in normalized_changelog
     assert "Advanced the development identity to `2.0.12-beta.3`" in normalized_changelog
+    assert "Advanced the development identity to `2.0.12-beta.4`" in normalized_changelog
     assert "Published Stable is `2.0.11`" in normalized_governance
     assert "Manual override output-handover repair" in normalized_governance
     assert "Manual ownership/reconciliation/diagnostic truth" in normalized_governance
@@ -4397,6 +4398,7 @@ def test_v205_release_check_report_verifies_export_contract_and_ui_visibility():
         "2.0.12-beta.1",
         "2.0.12-beta.2",
         "2.0.12-beta.3",
+        "2.0.12-beta.4",
         "2.0.12-rc.1",
         "2.0.12",
     ):
@@ -5902,7 +5904,7 @@ def test_v205_release_check_service_is_documented_and_registered():
     assert "write_test_exports" in services_yaml
     assert "humidity_intelligence.v205_release_check" in readme_source
     assert "humidity_intelligence_v205_release_check.json" in readme_source
-    assert manifest["version"] == "2.0.12-beta.3"
+    assert manifest["version"] == "2.0.12-beta.4"
 
 
 def test_owned_ui_path_discovery_and_legacy_cleanup_guidance_is_explicit():

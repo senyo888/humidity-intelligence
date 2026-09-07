@@ -1900,11 +1900,27 @@ def test_manual_override_holds_observed_humidifier_truth_without_dispatch_and_au
                     for line in runtime["runtime_display_reason"]["lines"]
                 ]
             )
-            assert "sent no new ordinary output commands" in display_text
-            assert "Manual or external automation remains responsible" in display_text
-            assert "released HI ownership" in display_text
+            assert "Manual control is active" in display_text
+            assert (
+                "HI leaves fans, switches, humidifiers, and alert lights as they are"
+                in display_text
+            )
+            assert "Control stays with you or another automation" in display_text
+            assert "until Manual is turned off" in display_text
+            assert (
+                "CO emergency protection can still run configured ventilation at full speed"
+                in display_text
+            )
+            assert "released HI ownership" not in display_text
             assert "holding HI ownership" not in display_text
             assert "selected" not in display_text.lower()
+            humidifier_text = " ".join(
+                line.text for line in engine._humidifier_display_lines([])
+            )
+            assert (
+                "while Manual is on, HI shows the humidifier state reported by Home Assistant without changing it"
+                in humidifier_text
+            )
 
             attempted, result = await engine._dispatch_humidifier_output(
                 "humidifier.level1",

@@ -8,8 +8,10 @@ testing and validation branches.
 - `2.0.12-beta.1`: initial testing build.
 - `2.0.12-beta.2`: prior testing build with the Home Assistant 2026.9 child-device
   Area inheritance alignment.
-- `2.0.12-beta.3`: current testing build with the Manual override output-handover
-  repair and bounded runtime-control diagnostics.
+- `2.0.12-beta.3`: prior testing build with the Manual override output-handover repair
+  and bounded runtime-control diagnostics.
+- `2.0.12-beta.4`: current testing build with the same Manual handover behavior and a
+  coherent plain-language reason-field explanation.
 - `2.0.12-rc.1`: release-candidate build.
 - `2.0.12`: stable version label. On `senyo888-patch-1`, `develop`, or `main`,
   stable metadata may be staged or promoted through the governed release path.
@@ -27,7 +29,7 @@ published GitHub Release/tag.
 Published Stable is `2.0.11`, released on 2026-08-11 from exact commit
 `0dd3e68ab9f35608641dc64efc4b2c4bfacb06ce`. Humidity Intelligence was subsequently
 included in the HACS default integration repository. The current development candidate
-uses `2.0.12-beta.3` metadata on the governed release-preparation lane. A branch or
+uses `2.0.12-beta.4` metadata on the governed release-preparation lane. A branch or
 merge containing that metadata is not by itself a publication. Public release status
 comes from GitHub Releases and the version offered through HACS, while
 release readiness must be established through public-safe validation summaries,

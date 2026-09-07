@@ -348,7 +348,7 @@ class HIAutomationEngine:
                 await self._stand_down_for_manual_override()
                 await self._set_runtime_reason(
                     self._with_isolation_notice(
-                        "Manual override is enabled. HI sent no new ordinary output commands during this evaluation, and existing physical output states were left unchanged. Manual or external automation remains responsible until automatic control is restored."
+                        "Manual control is active. HI leaves fans, switches, humidifiers, and alert lights as they are. Control stays with you or another automation until Manual is turned off. CO emergency protection can still run configured ventilation at full speed."
                     ),
                     display_facts_factory=lambda: self._control_lock_display_facts(
                         "manual_override"
@@ -533,7 +533,7 @@ class HIAutomationEngine:
         if booleans.get("air_control_enabled") and not booleans["air_control_enabled"].is_on:
             return "disabled", "System control is disabled, so all automation lanes are idle."
         if booleans.get("air_control_manual_override") and booleans["air_control_manual_override"].is_on:
-            return "manual_override", "Manual override is enabled, so HI automation is standing down."
+            return "manual_override", "Manual control is active, so HI leaves ordinary outputs as they are unless CO emergency protection needs to run configured ventilation at full speed."
         return None, None
 
     def _control_lock_reason(self) -> Optional[str]:
@@ -2746,7 +2746,7 @@ class HIAutomationEngine:
 
     def _control_lock_display_facts(self, kind: str) -> ReasonFacts:
         if kind == "manual_override":
-            headline = "Manual override active"
+            headline = "Manual control is active"
             family = "manual"
             variant = "manual_override"
             lines = [
@@ -2755,14 +2755,14 @@ class HIAutomationEngine:
                     "system",
                     "control.manual_override_active",
                     "blocked",
-                    "HI sent no new ordinary output commands, and existing physical output states were left unchanged.",
+                    "HI leaves fans, switches, humidifiers, and alert lights as they are.",
                 ),
                 ReasonLine(
                     "action",
                     "system",
                     "control.manual_authority",
                     "blocked",
-                    "Manual or external automation remains responsible until automatic control is restored.",
+                    "Control stays with you or another automation until Manual is turned off. CO emergency protection can still run configured ventilation at full speed.",
                 ),
             ]
         else:
@@ -3701,8 +3701,8 @@ class HIAutomationEngine:
             elif reconciliation == "manual_hold":
                 environment_text = None
                 response_text = (
-                    "Manual override has released HI ownership. Home Assistant's "
-                    "observed output state is reported without selecting or commanding it."
+                    "While Manual is on, HI shows the humidifier state reported by "
+                    "Home Assistant without changing it."
                 )
                 truth = "observed"
             elif reconciliation == "unknown":
@@ -4293,8 +4293,8 @@ class HIAutomationEngine:
                 )
             elif reconciliation == "manual_hold":
                 segments.append(
-                    f"{level}: Manual override owns the output; HI is reporting only "
-                    "the state observed by Home Assistant."
+                    f"{level}: While Manual is on, HI reports the humidifier state "
+                    "observed by Home Assistant without changing it."
                 )
             elif reconciliation in {"unknown", "degraded"}:
                 segments.append(

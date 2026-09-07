@@ -10,6 +10,15 @@ This project follows a practical changelog format for Home Assistant and HACS us
 
 ![Humidity Intelligence v2.0.12 release header celebrating repository-level HACS inclusion](assets/release_banner/v2.0.12_release.png)
 
+- Humanised the Manual reason field into one coherent explanation of the active mode,
+  the ordinary outputs HI will leave unchanged, who remains in control, how to return
+  to AUTO, and the continuing CO emergency exception. This is a presentation-only
+  change; Manual authority, output behavior, lane order, and safety behavior are
+  unchanged.
+- Advanced the development identity to `2.0.12-beta.4` so the humanised Manual reason
+  wording has a distinct package identity for Home Assistant validation. Earlier
+  beta.3 validation remains historical evidence for its exact package and does not
+  transfer to beta.4.
 - Fixed Manual override so it performs a complete non-CO output handover: pending
   alert, AQ, and humidifier retry work is neutralized; existing fan, switch, and
   humidifier states are left unchanged; raw runtime mode/reason and diagnostics report

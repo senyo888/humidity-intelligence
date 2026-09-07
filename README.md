@@ -57,11 +57,12 @@ It gives you:
 - native Home Assistant diagnostics for support and triage
 - services for dashboard export, self-check, diagnostics, pause/resume, and release validation
 
-Current development manifest version: **v2.0.12-beta.3**. This candidate corrects the
+Current development manifest version: **v2.0.12-beta.4**. This candidate corrects the
 configured time gate to use Home Assistant local time, makes timer countdown updates
 lifecycle-safe, aligns setup assistance with Home Assistant 2026.9 child-device Area
-inheritance, and makes Manual override a complete non-CO output handover. It is not a
-published release. The current published Stable GitHub Release and tag are
+inheritance, makes Manual override a complete non-CO output handover, and presents
+that handover as one clear explanation in the reason field. It is not a published
+release. The current published Stable GitHub Release and tag are
 **v2.0.11**, published on 11 August 2026. Humidity Intelligence is included in the
 HACS default repository and is available directly in HACS; HACS still installs only a
 published GitHub Release version.
@@ -454,12 +455,13 @@ must be reviewable from tracked repository files.
 
 ## Current Release Highlights
 
-- the `2.0.12-beta.3` maintenance candidate uses Home Assistant local time for the
+- the `2.0.12-beta.4` maintenance candidate uses Home Assistant local time for the
   configured time gate and gives HI timer entities lifecycle-owned, at-most-once-per-
   minute countdown updates without changing their IDs or `active`/`idle` states; it
   also aligns setup assistance with Home Assistant 2026.9 child-device Area inheritance
   and releases ordinary fan, switch, humidifier, and visual-alert ownership while
-  Manual override is active, with CO emergency retained as the sole exception
+  Manual override is active, with a clearer reason-field explanation and CO emergency
+  retained as the sole exception
 - the published `2.0.11` Stable release restores the established centred, passive
   Stability preview badge and six-second breathing treatment without calculating a
   score in the card or changing control behaviour
@@ -1225,7 +1227,7 @@ CO emergency pressure. Details are in
 
 ![Humidity Intelligence v2.0.12 release header celebrating repository-level HACS inclusion](assets/release_banner/v2.0.12_release.png)
 
-- carries development manifest identity `2.0.12-beta.3`; this is release preparation,
+- carries development manifest identity `2.0.12-beta.4`; this is release preparation,
   not a published GitHub Release or an HACS-offered v2.0.12 package
 - celebrates completed inclusion of Humidity Intelligence in the HACS default
   integration repository; the button opens the repository in HACS and the user still
@@ -1251,6 +1253,9 @@ CO emergency pressure. Details are in
   runtime-control diagnostics report the handover without claiming an HI command; CO
   remains the sole ventilation exception and normal AUTO ownership resumes after
   Manual is released
+- presents that Manual handover in one plain-language reason: what Manual means, what
+  HI will leave unchanged, who remains in control, how to return to AUTO, and the CO
+  emergency exception; runtime behavior and authority boundaries are unchanged
 - preserves CO-first canonical lane order, normal non-Manual AUTO ownership,
   humidifier-lane independence, output configuration, stored data, generated-card
   bytes, and Stability behavior
