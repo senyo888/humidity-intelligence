@@ -310,7 +310,7 @@ def test_native_diagnostics_payload_contains_support_sections():
     )
 
     assert payload["integration"]["domain"] == "humidity_intelligence"
-    assert payload["integration"]["integration_version"] == "2.0.12-beta.2"
+    assert payload["integration"]["integration_version"] == "2.0.12-beta.3"
     assert payload["integration"]["diagnostics_schema"] == 1
     assert payload["integration"]["home_assistant_version"] == "2026.5.2"
     assert payload["configuration"]["selected_entity_summary"]["telemetry"]["count"] == 1

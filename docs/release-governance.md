@@ -6,8 +6,10 @@ testing and validation branches.
 ## Canonical Version Model
 
 - `2.0.12-beta.1`: initial testing build.
-- `2.0.12-beta.2`: current testing build with the Home Assistant 2026.9
-  child-device Area inheritance alignment.
+- `2.0.12-beta.2`: prior testing build with the Home Assistant 2026.9 child-device
+  Area inheritance alignment.
+- `2.0.12-beta.3`: current testing build with the Manual override output-handover
+  repair and bounded runtime-control diagnostics.
 - `2.0.12-rc.1`: release-candidate build.
 - `2.0.12`: stable version label. On `senyo888-patch-1`, `develop`, or `main`,
   stable metadata may be staged or promoted through the governed release path.
@@ -25,7 +27,7 @@ published GitHub Release/tag.
 Published Stable is `2.0.11`, released on 2026-08-11 from exact commit
 `0dd3e68ab9f35608641dc64efc4b2c4bfacb06ce`. Humidity Intelligence was subsequently
 included in the HACS default integration repository. The current development candidate
-uses `2.0.12-beta.2` metadata on the governed release-preparation lane. A branch or
+uses `2.0.12-beta.3` metadata on the governed release-preparation lane. A branch or
 merge containing that metadata is not by itself a publication. Public release status
 comes from GitHub Releases and the version offered through HACS, while
 release readiness must be established through public-safe validation summaries,
@@ -51,14 +53,17 @@ does not alter the release tag or package bytes.
 The v2.0.12 maintenance candidate is bounded to HACS/release-documentation coherence,
 Home Assistant-local time-gate evaluation, lifecycle-safe timer countdown publication,
 Home Assistant 2026.9 child-device Area inheritance in setup assistance, and the
-existing `v205_release_check` service's accepted manifest range. It changes timer
-`remaining` publication cadence, the release-check compatibility claim, and reviewed
-setup-assist defaults, while preserving entity IDs, primary `active`/`idle` states,
-service name/schema/admin gate, lane order, outputs, configuration, stored data, native
-diagnostics schema, and generated-card bytes. A full Home Assistant restart is required
-after package installation. No Manual-card re-export or stored-data/config/entity/
-dashboard migration is required. Before tag or publication, the exact package still
-requires the hard gates below plus the v2.0.12 checklist.
+existing `v205_release_check` service's accepted manifest range, plus the Manual
+override output-handover repair and bounded runtime-control diagnostics. It changes
+timer `remaining` publication cadence, the release-check compatibility claim, reviewed
+setup-assist defaults, and Manual ownership/reconciliation/diagnostic truth. It
+preserves entity IDs, primary `active`/`idle` states, service and configuration
+schemas, deterministic lane order, configured output mappings, normal non-Manual AUTO
+semantics, stored data, native diagnostics schema, and generated-card bytes. A full
+Home Assistant restart is required after package installation. No Manual-card
+re-export or stored-data/config/entity/dashboard migration is required. Before tag or
+publication, the exact package still requires the hard gates below plus the v2.0.12
+checklist.
 
 The former v2.0.8 candidate moved through `senyo888-patch-1`, `develop`, and `main`
 before publication. Stable metadata on a staging or review branch was not release

@@ -2806,7 +2806,7 @@ def test_release_check_reports_manual_runtime_control_as_backend_truth():
             "runtime_mode_display": "MANUAL OVERRIDE",
             "runtime_reason": "Manual override is enabled.",
         },
-        manifest_version="2.0.12-beta.2",
+        manifest_version="2.0.12-beta.3",
         frontend_dependencies={"status": "not_inspectable"},
     )
     check = {

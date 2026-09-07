@@ -44,7 +44,7 @@
     "diagnostics_schema": 1,
     "domain": "humidity_intelligence",
     "home_assistant_version": "2026.5.2",
-    "integration_version": "2.0.12-beta.2",
+    "integration_version": "2.0.12-beta.3",
     "native_home_assistant_diagnostics": true,
     "runtime_control_changed_by_diagnostics": false
   },

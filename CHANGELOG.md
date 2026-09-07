@@ -21,6 +21,10 @@ This project follows a practical changelog format for Home Assistant and HACS us
   CO emergency still forces only its configured
   ventilation outputs to 100%, and normal AUTO persistence resumes after Manual is
   turned off. This does not add temporary manual operation while AUTO remains enabled.
+- Advanced the development identity to `2.0.12-beta.3` so the Manual override repair
+  and its runtime-control diagnostics have a distinct package identity for Home
+  Assistant validation. Earlier beta.2 evidence remains historical evidence for its
+  exact package and does not transfer to beta.3.
 - Advanced development identity to `2.0.12-beta.2` so the Home Assistant 2026.9
   alignment remains distinct from the earlier beta.1 testing bytes. This candidate
   is not a published GitHub Release or an HACS-offered v2.0.12 package.
