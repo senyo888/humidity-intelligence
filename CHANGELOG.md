@@ -6,23 +6,114 @@ All notable changes to Humidity Intelligence will be documented in this file.
 
 This project follows a practical changelog format for Home Assistant and HACS users. Add new entries under a fresh `Unreleased` section before publishing a future release.
 
-## Unreleased
+## 2.0.12
+
+For publication dates and available downloads, see [GitHub Releases](https://github.com/senyo888/Humidity-Intelligence/releases).
+
+![Humidity Intelligence v2.0.12 release header celebrating repository-level HACS inclusion](assets/release_banner/v2.0.12_release.png)
+
+- Reorganised the README into independent expandable sections after the open
+  introduction and support section, retaining safety, installation and migration
+  guidance. Version-specific notes link to the published release record.
+- Replaced the release header's central glass droplet with the official HI logo,
+  retaining the wording and overall composition. Integration branding and generated
+  dashboard assets are unchanged.
+- Prepared `2.0.12` Stable metadata on the develop-based release lane after RC
+  promotion. The RC-to-Stable component delta is the manifest version only;
+  documentation and matching tests distinguish preparation from publication.
+  The exact final package subsequently registered after one completed restart in
+  the validated beta.4-to-Stable update, with diagnostics and release checks passing.
+- Advanced the development identity to `2.0.12-rc.1` for the forward promotion from
+  `senyo888-patch-1` to `develop`, then `main`. The beta.4-to-RC delta changes only
+  manifest identity, release documentation, and associated tests. Beta.4 live
+  validation remains bound to its tested package; the RC is a new package digest.
+- Recorded the two completed restarts used for beta.4 candidate validation, with
+  separate loaded-identity and registration checks. This is not an established
+  installation rule for final v2.0.12: its exact package registered after one
+  completed restart in the validated beta.4-to-Stable update. Keep rollback copies
+  outside `custom_components` so duplicate domains cannot interfere with discovery.
+- Humanised the Manual reason field into one coherent explanation of the active mode,
+  the ordinary outputs HI will leave unchanged, who remains in control, how to return
+  to AUTO, and the continuing CO emergency exception. This is a presentation-only
+  change; Manual authority, output behavior, lane order, and safety behavior are
+  unchanged.
+- Advanced the development identity to `2.0.12-beta.4` so the humanised Manual reason
+  wording has a distinct package identity for Home Assistant validation. Earlier
+  beta.3 validation remains historical evidence for its exact package and does not
+  transfer to beta.4.
+- Fixed Manual override so it performs a complete non-CO output handover: pending
+  alert, AQ, and humidifier retry work is neutralized; existing fan, switch, and
+  humidifier states are left unchanged; raw runtime mode/reason and diagnostics report
+  Manual truth; and humidifier observation uses additive `manual_hold` reconciliation
+  without claiming an HI command. Native diagnostics, the recorder-safe diagnostics
+  entity, support dumps, and the release check expose bounded runtime-control truth.
+  The shared privacy-safe runtime-control helper increases the tracked installable
+  component payload from 52 files to 53; package paths otherwise remain unchanged.
+  CO emergency still forces only its configured
+  ventilation outputs to 100%, and normal AUTO persistence resumes after Manual is
+  turned off. This does not add temporary manual operation while AUTO remains enabled.
+- Advanced the development identity to `2.0.12-beta.3` so the Manual override repair
+  and its runtime-control diagnostics have a distinct package identity for Home
+  Assistant validation. Earlier beta.2 evidence remains historical evidence for its
+  exact package and does not transfer to beta.3.
+- Advanced development identity to `2.0.12-beta.2` so the Home Assistant 2026.9
+  alignment remains distinct from the earlier beta.1 testing bytes. This was a validation candidate, distinct from the final v2.0.12 package.
+- Recorded completed inclusion in the HACS default integration repository, added the
+  official My Home Assistant repository button, and replaced normal first-install
+  custom-repository instructions with the default-store search and download path.
+  Historical V1-to-V2 repository-type migration guidance remains available for users
+  who need it.
+- Corrected the configured time gate to use Home Assistant local time instead of the
+  host or container wall clock. Same-day, inclusive boundary, overnight, spring-
+  forward, and both autumn-fold cases are covered without changing lane order, CO
+  priority, output ownership, or gate actions.
+- Replaced `HITimerSensor` raw sleeper tasks with lifecycle-owned Home Assistant
+  one-shot callbacks, aware UTC duration arithmetic, generation invalidation, exact
+  expiry, and bounded `remaining` publication no more than once per minute. Timer
+  unique IDs, entity IDs, `active`/`idle` states, and reset-to-idle restart behavior
+  remain unchanged.
+- Prevented pause-timer `active` to `active` countdown-only state events from starting
+  a full engine cycle, while retaining immediate evaluation for primary-state changes.
+- Extended the backward-compatible `v205_release_check` manifest range and result
+  wording through v2.0.12 beta/rc/stable. The service name, schema, admin gate, owned
+  report path, runtime/device-read-only side effects, and physical-output limitation
+  remain unchanged.
+- Kept native diagnostics schema `1`, redaction, aggregate mapped-entity privacy, and
+  Inspector compatibility unchanged. The installed integration version continues to
+  come from `manifest.json` after the updated package is loaded.
+- Aligned setup assistance with Home Assistant 2026.9 child-device Area inheritance:
+  it now uses the supported Area Registry lookup and inherits a parent device's Area
+  when the child has no Area of its own. Missing, broken, nested, cyclic, or incomplete
+  parent metadata produces no inherited Area suggestion, and manual HI mapping remains
+  authoritative.
+- Added the v2.0.12 release header and aligned README, Pages source, release/user
+  checklists, support diagnostics guidance, and issue forms with current HACS and
+  v2.0.11 publication truth. Generated-card, gallery-card, and Stability bytes
+  remain unchanged.
+- A full Home Assistant restart is required after installing changed Python and
+  service code. No config-entry, entity-registry, stored-data, threshold, lane-order,
+  service-name, or dashboard migration is required, and v2.0.12 requires no Manual-
+  card re-export.
+- Added a `senyo888-patch-1`-only deterministic package workflow for the separately
+  governed HI Lab Controller. It builds from exact tracked Git blobs, emits a strict
+  file/hash manifest, reproduces the package before upload, retains the immutable
+  Actions artifact for seven days, and attaches GitHub provenance to the manifest.
+  This adds no Humidity Intelligence runtime, entity, service, dashboard, HACS,
+  version, installation, deployment, rollback, tag, release, or Stable behavior.
+
+## 2.0.11 - 2026-08-11
 
 ![Humidity Intelligence v2.0.11 Poetic Justice release banner](assets/release_banner/v2.0.11_release.png)
 
 [![Latest Release](https://img.shields.io/github/v/release/senyo888/Humidity-Intelligence?display_name=tag&sort=semver)](https://github.com/senyo888/Humidity-Intelligence/releases) [![Project Site](https://img.shields.io/badge/Project%20Site-GitHub%20Pages-5aa8d6)](https://senyo888.github.io/humidity-intelligence/) [![License](https://img.shields.io/github/license/senyo888/Humidity-Intelligence)](LICENSE) [![Sponsor](https://img.shields.io/badge/Sponsor-GitHub%20Sponsors-ea4aaa?logo=githubsponsors&logoColor=white)](https://github.com/sponsors/senyo888) [![Star Humidity Intelligence](https://img.shields.io/badge/Star%20%2F%20Support-Humidity%20Intelligence-2ea44f?logo=github&logoColor=white)](https://github.com/senyo888/humidity-intelligence)
 
-- Prepared **Poetic Justice**, stable maintenance identity `2.0.11`, for the bounded
-  post-v2.0.10
-  Stability badge correction and extended the existing `v205_release_check`
-  compatibility range through v2.0.11 beta/rc/stable versions. This is release
-  preparation only: the v2.0.11 release source is now on `main`, but it must not be
-  tagged or published until exact-package identity and restart validation, generated
-  release-check review, fresh Mobile and Tablet export validation, independent or
-  maintainer adjudication of PR `#109`'s missing approving review, Bella verification,
-  AetherCore governance verification, release-sanity validation, and maintainer README
-  approval are complete. v2.0.10 remains the published Stable release until the
-  v2.0.11 tag, GitHub Release, and HACS publication are complete.
+- Published **Poetic Justice**, stable identity `2.0.11`, on 11 August 2026 as a
+  non-prerelease GitHub Release and immutable tag from exact commit
+  `0dd3e68ab9f35608641dc64efc4b2c4bfacb06ce`. The release contains the bounded
+  post-v2.0.10 Stability badge correction and extends the existing
+  `v205_release_check` range through v2.0.11 beta/rc/stable. Humidity Intelligence was
+  subsequently included in the HACS default integration repository; that distribution
+  milestone does not rewrite the v2.0.11 tag or package bytes.
 - Restored the established Stability preview badge treatment in generated V2 cards:
   the name's `grid-area` is now the quoted string `'n'`, preventing Home Assistant's
   YAML parser from coercing it to Boolean `false` and creating an implicit second

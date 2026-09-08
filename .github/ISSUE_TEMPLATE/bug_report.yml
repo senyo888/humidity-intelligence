@@ -30,7 +30,7 @@ body:
     attributes:
       label: Humidity Intelligence version (fallback)
       description: Optional if diagnostics are attached.
-      placeholder: "2.0.6 or current HACS version"
+      placeholder: "Installed HI version shown after restart"
   - type: input
     id: ha-version
     attributes:

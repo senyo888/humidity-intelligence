@@ -3,13 +3,19 @@
 from __future__ import annotations
 
 import logging
-from homeassistant.core import HomeAssistant
-from homeassistant.config_entries import ConfigEntry
-from homeassistant.helpers.event import async_track_state_change_event
-import asyncio
 from datetime import datetime, timedelta
+from functools import partial
+from math import ceil
+from typing import Callable
 
 from homeassistant.components.sensor import SensorEntity
+from homeassistant.config_entries import ConfigEntry
+from homeassistant.core import HomeAssistant, callback
+from homeassistant.helpers.event import (
+    async_track_point_in_utc_time,
+    async_track_state_change_event,
+)
+from homeassistant.util import dt as dt_util
 
 from .const import DOMAIN
 from .helpers.drift_repairs import async_update_humidity_drift_repair_issue
@@ -129,7 +135,9 @@ class HITimerSensor(SensorEntity):
         self._entry_id = entry_id
         self._key = key
         self._end: datetime | None = None
-        self._task: asyncio.Task | None = None
+        self._cancel_scheduled_update: Callable[[], None] | None = None
+        self._generation = 0
+        self._removed = False
         self._attr_name = f"HI {key.replace('_', ' ').title()}"
         self._attr_unique_id = f"hi_{entry_id}_timer_{key}"
         self._attr_icon = "mdi:timer-outline"
@@ -145,7 +153,7 @@ class HITimerSensor(SensorEntity):
 
     @property
     def native_value(self) -> str:
-        return "active" if self._end and datetime.now() < self._end else "idle"
+        return "active" if self._end and dt_util.utcnow() < self._end else "idle"
 
     @property
     def extra_state_attributes(self) -> dict:
@@ -154,31 +162,70 @@ class HITimerSensor(SensorEntity):
     def _remaining_str(self) -> str:
         if not self._end:
             return "00:00:00"
-        remaining = max(self._end - datetime.now(), timedelta(0))
-        total = int(remaining.total_seconds())
+        remaining = max(self._end - dt_util.utcnow(), timedelta(0))
+        total = ceil(remaining.total_seconds())
         hours = total // 3600
         minutes = (total % 3600) // 60
         seconds = total % 60
         return f"{hours:02d}:{minutes:02d}:{seconds:02d}"
 
     async def async_start(self, duration: timedelta) -> None:
-        if self._task:
-            self._task.cancel()
-        self._end = datetime.now() + duration
-        self.async_write_ha_state()
-
-        async def _finish() -> None:
-            await asyncio.sleep(duration.total_seconds())
+        self._invalidate_schedule()
+        if self._removed:
+            return
+        now = dt_util.utcnow()
+        self._end = now + max(duration, timedelta(0))
+        if self._end <= now:
             self._end = None
-            self.async_write_ha_state()
-
-        self._task = asyncio.create_task(_finish())
+        self.async_write_ha_state()
+        if self._end:
+            self._schedule_update(now, self._generation)
 
     async def async_cancel(self) -> None:
-        if self._task:
-            self._task.cancel()
+        self._invalidate_schedule()
         self._end = None
+        if not self._removed:
+            self.async_write_ha_state()
+
+    async def async_will_remove_from_hass(self) -> None:
+        self._handle_remove()
+
+    def _handle_remove(self) -> None:
+        self._removed = True
+        self._invalidate_schedule()
+        self._end = None
+
+    def _invalidate_schedule(self) -> None:
+        self._generation += 1
+        if self._cancel_scheduled_update:
+            self._cancel_scheduled_update()
+            self._cancel_scheduled_update = None
+
+    def _schedule_update(self, now: datetime, generation: int) -> None:
+        if self._removed or self._end is None or generation != self._generation:
+            return
+        next_update = min(self._end, now + timedelta(seconds=60))
+        self._cancel_scheduled_update = async_track_point_in_utc_time(
+            self.hass,
+            partial(self._handle_scheduled_update, generation=generation),
+            next_update,
+        )
+
+    @callback
+    def _handle_scheduled_update(
+        self, _scheduled_now: datetime, generation: int
+    ) -> None:
+        if self._removed or self._end is None or generation != self._generation:
+            return
+        self._cancel_scheduled_update = None
+        now = dt_util.utcnow()
+        if now >= self._end:
+            self._end = None
+            self._generation += 1
+            self.async_write_ha_state()
+            return
         self.async_write_ha_state()
+        self._schedule_update(now, generation)
 
 
 def _sanitize_json(value):
@@ -211,6 +258,7 @@ def _compact_diagnostics_summary(summary: dict) -> dict:
         if isinstance(item, dict)
     ]
     return {
+        "runtime_control": summary.get("runtime_control", {}),
         "target_profile": summary.get("target_profile", {}),
         "temperature_comfort": summary.get("temperature_comfort", {}),
         "level_labels": summary.get("level_labels", {}),
@@ -250,6 +298,7 @@ def _compact_humidifier_reconciliation(value: dict) -> dict:
                 "degraded_outputs",
                 "unknown_outputs",
                 "isolated_outputs",
+                "manual_hold_outputs",
                 "ownership_conflicts",
             )
         },

@@ -119,6 +119,9 @@ class WorkflowConfigurationTests(unittest.TestCase):
         )
 
         self.assertIn(
+            'python "tests 2/test_controller_package.py"', workflow
+        )
+        self.assertIn(
             'node --test "tests 2/test_reason_card_renderer.mjs"', workflow
         )
         self.assertIn(
@@ -158,7 +161,7 @@ class WorkflowConfigurationTests(unittest.TestCase):
             ],
             cwd=ROOT,
         ).split(b"\0")
-        self.assertEqual(52, len([path for path in tracked_component_files if path]))
+        self.assertEqual(53, len([path for path in tracked_component_files if path]))
 
         for workflow_name in ("hassfest.yaml", "release.yml", "validate.yml"):
             workflow = (

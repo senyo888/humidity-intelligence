@@ -34,11 +34,18 @@ def _install_homeassistant_stubs() -> None:
         def async_get(self, key):
             return self._entries.get(key)
 
+    class _AreaRegistry:
+        def __init__(self, entries):
+            self._entries = dict(entries)
+
+        def async_get_area(self, key):
+            return self._entries.get(key)
+
     class _LabelRegistry(_Registry):
         pass
 
     core.HomeAssistant = HomeAssistant
-    area_registry.async_get = lambda hass: _Registry(getattr(hass, "areas", {}))
+    area_registry.async_get = lambda hass: _AreaRegistry(getattr(hass, "areas", {}))
     device_registry.async_get = lambda hass: _Registry(getattr(hass, "devices", {}))
     entity_registry.async_get = lambda hass: _Registry(getattr(hass, "entities", {}))
     label_registry.async_get = lambda hass: _LabelRegistry(getattr(hass, "labels", {}))
@@ -150,6 +157,173 @@ def test_setup_assist_prefers_entity_area_and_reports_conflicting_level_labels()
     assert suggestion.room == "Ground hall"
     assert suggestion.level == ""
     assert "conflicting_level_hints" in suggestion.warnings
+
+
+def test_setup_assist_inherits_parent_area_for_child_device():
+    setup_assist = _load_setup_assist_module()
+    hass = SimpleNamespace(
+        entities={
+            "sensor.example_humidity": SimpleNamespace(
+                area_id=None,
+                device_id="child-device",
+                labels=set(),
+            ),
+        },
+        devices={
+            "child-device": SimpleNamespace(
+                area_id=None,
+                parent_device_id="parent-device",
+                labels=set(),
+            ),
+            "parent-device": SimpleNamespace(
+                area_id="upstairs_bathroom",
+                labels=set(),
+            ),
+        },
+        areas={
+            "upstairs_bathroom": SimpleNamespace(
+                name="Upstairs bathroom",
+                labels=set(),
+            ),
+        },
+        labels={},
+    )
+
+    suggestion = setup_assist.setup_assist_suggestion(hass, "sensor.example_humidity")
+
+    assert suggestion.status == "available"
+    assert suggestion.area_id == "upstairs_bathroom"
+    assert suggestion.room == "Upstairs bathroom"
+    assert suggestion.level == "level2"
+    assert suggestion.runtime_authority is False
+    assert suggestion.save_payload == {}
+
+
+def test_setup_assist_parent_area_fallback_degrades_safely():
+    setup_assist = _load_setup_assist_module()
+    device_cases = (
+        {
+            "child-device": SimpleNamespace(
+                area_id=None,
+                parent_device_id="missing-parent",
+                labels=set(),
+            ),
+        },
+        {
+            "child-device": SimpleNamespace(
+                area_id=None,
+                parent_device_id="parent-device",
+                labels=set(),
+            ),
+            "parent-device": SimpleNamespace(
+                area_id=None,
+                labels=set(),
+            ),
+        },
+        {
+            "child-device": SimpleNamespace(
+                area_id=None,
+                parent_device_id="child-device",
+                labels=set(),
+            ),
+        },
+        {
+            "child-device": SimpleNamespace(
+                area_id=None,
+                parent_device_id="parent-device",
+                labels=set(),
+            ),
+            "parent-device": SimpleNamespace(
+                area_id="unexpected_area",
+                parent_device_id="child-device",
+                labels=set(),
+            ),
+        },
+        {
+            "child-device": SimpleNamespace(
+                area_id=None,
+                labels=set(),
+            ),
+        },
+    )
+
+    for devices in device_cases:
+        hass = SimpleNamespace(
+            entities={
+                "sensor.example_humidity": SimpleNamespace(
+                    area_id=None,
+                    device_id="child-device",
+                    labels=set(),
+                ),
+            },
+            devices=devices,
+            areas={
+                "unexpected_area": SimpleNamespace(
+                    name="Unexpected area",
+                    labels=set(),
+                ),
+            },
+            labels={},
+        )
+
+        suggestion = setup_assist.setup_assist_suggestion(
+            hass,
+            "sensor.example_humidity",
+        )
+
+        assert suggestion.status == "no_metadata"
+        assert suggestion.area_id == ""
+        assert suggestion.room == ""
+        assert suggestion.level == ""
+        assert suggestion.runtime_authority is False
+        assert suggestion.save_payload == {}
+
+
+def test_setup_assist_parent_device_lookup_failure_degrades_safely():
+    setup_assist = _load_setup_assist_module()
+
+    child_device = SimpleNamespace(
+        area_id=None,
+        parent_device_id="parent-device",
+        labels=set(),
+    )
+
+    class BrokenParentDeviceRegistry:
+        def async_get(self, device_id):
+            if device_id == "child-device":
+                return child_device
+            raise RuntimeError("parent lookup exploded")
+
+    hass = SimpleNamespace(
+        entities={
+            "sensor.example_humidity": SimpleNamespace(
+                area_id=None,
+                device_id="child-device",
+                labels=set(),
+            ),
+        },
+        areas={},
+        labels={},
+    )
+    with (
+        mock.patch.object(
+            setup_assist.dr,
+            "async_get",
+            return_value=BrokenParentDeviceRegistry(),
+        ),
+        mock.patch.object(setup_assist._LOGGER, "debug") as debug,
+    ):
+        suggestion = setup_assist.setup_assist_suggestion(
+            hass,
+            "sensor.example_humidity",
+        )
+
+    assert suggestion.status == "no_metadata"
+    assert suggestion.area_id == ""
+    assert suggestion.room == ""
+    assert suggestion.runtime_authority is False
+    assert suggestion.save_payload == {}
+    debug.assert_called()
 
 
 def test_setup_assist_degrades_when_metadata_is_missing_or_unsupported():

@@ -692,13 +692,19 @@ class _CoreComputations:
             )
         ):
             return "co_emergency", {"display": "CO EMERGENCY"}
+        if (
+            runtime_mode == "manual_override"
+            or (
+                booleans.get("air_control_manual_override")
+                and booleans["air_control_manual_override"].is_on
+            )
+        ):
+            return "manual_override", {"display": "MANUAL OVERRIDE"}
         pause_timer = timers.get("air_control_pause")
         if pause_timer and pause_timer.native_value == "active":
             return "paused", {"display": "PAUSED"}
         if booleans.get("air_control_enabled") and not booleans["air_control_enabled"].is_on:
             return "disabled", {"display": "DISABLED"}
-        if booleans.get("air_control_manual_override") and booleans["air_control_manual_override"].is_on:
-            return "manual_override", {"display": "MANUAL OVERRIDE"}
         if isinstance(runtime_mode, str) and runtime_mode:
             display = runtime_display or runtime_mode.replace("_", " ").upper()
             return runtime_mode, {"display": display}

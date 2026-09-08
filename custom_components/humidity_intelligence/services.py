@@ -52,6 +52,7 @@ from .helpers.report_exports import (
     write_owned_report,
     write_owned_ui_export,
 )
+from .helpers.runtime_control import runtime_control_summary
 from .helpers.seasonal import resolve_target_profile, resolve_temperature_comfort_profile
 from .helpers.zone_validation import (
     detect_zone_mapping_duplicates,
@@ -123,7 +124,7 @@ _SAFE_FILENAME_RE = re.compile(r"^[A-Za-z0-9._-]{1,128}$")
 _OWNED_REPORT_FILENAME_PREFIX = "humidity_intelligence_"
 _OWNED_REPORT_FILENAME_SUFFIX = ".json"
 _RELEASE_CHECK_MANIFEST_VERSION_RE = re.compile(
-    r"^2\.0\.(?:5|(?:[6-9]|1[01])(?:-(?:beta|rc)\.[1-9]\d*)?)$"
+    r"^2\.0\.(?:5|(?:[6-9]|1[0-2])(?:-(?:beta|rc)\.[1-9]\d*)?)$"
 )
 _SENSITIVE_ATTR_EXACT = {
     "access_token",
@@ -1127,7 +1128,17 @@ def _support_state_summary(hass: HomeAssistant, entity_ids) -> dict:
 def _support_safe_diagnostics_summary(summary: dict) -> dict:
     unavailable = summary.get("unavailable_or_unknown_entities") or []
     active_alerts = [item for item in summary.get("active_alert_resolution") or [] if isinstance(item, dict)]
+    runtime_control = (
+        summary.get("runtime_control")
+        if isinstance(summary.get("runtime_control"), dict)
+        else {}
+    )
     return {
+        "runtime_control": {
+            "mode": runtime_control.get("mode"),
+            "display": runtime_control.get("display"),
+            "reason_available": bool(runtime_control.get("reason_available")),
+        },
         "target_profile": summary.get("target_profile", {}),
         "temperature_comfort": summary.get("temperature_comfort", {}),
         "level_labels": summary.get("level_labels", {}),
@@ -1179,6 +1190,7 @@ def _support_humidifier_reconciliation_summary(value: dict) -> dict:
         "degraded_outputs",
         "unknown_outputs",
         "isolated_outputs",
+        "manual_hold_outputs",
         "ownership_conflicts",
     )
     summary = {
@@ -1359,6 +1371,7 @@ def _build_diagnostics_summary(
         warnings.append("One or more humidifier outputs have a conflicting configured output owner.")
 
     summary = {
+        "runtime_control": runtime_control_summary(runtime_data),
         "target_profile": {
             "mode": effective.get("target_profile", "auto"),
             "active_profile": profile.key,
@@ -1425,6 +1438,20 @@ def _build_v205_release_check_entry_report(
         "manifest_version",
         manifest_status,
         manifest_message,
+    )
+
+    runtime_control = runtime_control_summary(runtime_data)
+    runtime_mode_reported = runtime_control.get("mode") is not None
+    _add_check(
+        checks,
+        "runtime_control_truth",
+        "pass" if runtime_mode_reported else "skip",
+        (
+            "Runtime control mode and reason availability are reported from backend truth."
+            if runtime_mode_reported
+            else "Runtime control mode is not available yet."
+        ),
+        runtime_control,
     )
 
     show_output_details = bool(
@@ -1635,11 +1662,11 @@ def _release_check_manifest_status(manifest_version: Optional[str]) -> Tuple[str
     if manifest_version and _RELEASE_CHECK_MANIFEST_VERSION_RE.fullmatch(manifest_version):
         return (
             "pass",
-            f"Manifest version is {version}; release-check contract is valid for the v2.0.5-v2.0.11 line.",
+            f"Manifest version is {version}; release-check contract is valid for the v2.0.5-v2.0.12 line.",
         )
     return (
         "fail",
-        f"Manifest version is {version}; expected v2.0.5 or a v2.0.6-v2.0.11 beta/rc/stable version.",
+        f"Manifest version is {version}; expected v2.0.5 or a v2.0.6-v2.0.12 beta/rc/stable version.",
     )
 
 

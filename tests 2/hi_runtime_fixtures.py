@@ -10,6 +10,7 @@ import re
 import sys
 import types
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from enum import StrEnum
 from types import MethodType, SimpleNamespace
 from typing import Any, Dict, List, Optional
@@ -170,6 +171,7 @@ def _install_homeassistant_stubs() -> None:
     device_registry = types.ModuleType("homeassistant.helpers.device_registry")
     entity_helper = types.ModuleType("homeassistant.helpers.entity")
     util = types.ModuleType("homeassistant.util")
+    util_dt = types.ModuleType("homeassistant.util.dt")
     const = types.ModuleType("homeassistant.const")
 
     class HomeAssistant:
@@ -210,6 +212,9 @@ def _install_homeassistant_stubs() -> None:
     def async_track_time_interval(*_args, **_kwargs):
         return lambda: None
 
+    def async_track_point_in_utc_time(*_args, **_kwargs):
+        return lambda: None
+
     def slugify(value):
         return re.sub(r"^_+|_+$", "", re.sub(r"[^a-z0-9]+", "_", str(value or "").strip().lower()))
 
@@ -224,9 +229,13 @@ def _install_homeassistant_stubs() -> None:
     binary_sensor_mod.BinarySensorEntity = BinarySensorEntity
     event.async_track_state_change_event = async_track_state_change_event
     event.async_track_time_interval = async_track_time_interval
+    event.async_track_point_in_utc_time = async_track_point_in_utc_time
     device_registry.DeviceInfo = DeviceInfo
     entity_helper.Entity = Entity
     util.slugify = slugify
+    util_dt.now = lambda: datetime.now().astimezone()
+    util_dt.utcnow = lambda: datetime.now(timezone.utc)
+    util.dt = util_dt
 
     sys.modules["homeassistant"] = ha
     sys.modules["homeassistant.components"] = components
@@ -239,6 +248,7 @@ def _install_homeassistant_stubs() -> None:
     sys.modules["homeassistant.helpers.device_registry"] = device_registry
     sys.modules["homeassistant.helpers.entity"] = entity_helper
     sys.modules["homeassistant.util"] = util
+    sys.modules["homeassistant.util.dt"] = util_dt
     sys.modules["homeassistant.const"] = const
 
 

@@ -49,6 +49,13 @@ def _install_homeassistant_stubs() -> None:
         def async_get(self, key):
             return self._entries.get(key)
 
+    class _AreaRegistry:
+        def __init__(self, entries):
+            self._entries = dict(entries)
+
+        def async_get_area(self, key):
+            return self._entries.get(key)
+
     def async_redact_data(data, to_redact):
         redact = {str(item).lower() for item in to_redact}
 
@@ -70,7 +77,7 @@ def _install_homeassistant_stubs() -> None:
     const.__version__ = "2026.5.2"
     const.UnitOfTemperature = UnitOfTemperature
     lovelace_const.LOVELACE_DATA = "lovelace"
-    area_registry.async_get = lambda hass: _Registry(getattr(hass, "areas", {}))
+    area_registry.async_get = lambda hass: _AreaRegistry(getattr(hass, "areas", {}))
     device_registry.async_get = lambda hass: _Registry(getattr(hass, "devices", {}))
     entity_registry.async_get = lambda hass: _Registry(getattr(hass, "entities", {}))
     label_registry.async_get = lambda hass: _Registry(getattr(hass, "labels", {}))
@@ -303,10 +310,17 @@ def test_native_diagnostics_payload_contains_support_sections():
     )
 
     assert payload["integration"]["domain"] == "humidity_intelligence"
+    assert payload["integration"]["integration_version"] == "2.0.12"
+    assert payload["integration"]["diagnostics_schema"] == 1
     assert payload["integration"]["home_assistant_version"] == "2026.5.2"
     assert payload["configuration"]["selected_entity_summary"]["telemetry"]["count"] == 1
     assert payload["configuration"]["enabled_feature_areas"]["zone_control"] is True
     assert payload["runtime"]["active_lane"] == "alert"
+    assert payload["diagnostics_summary"]["runtime_control"] == {
+        "mode": "alert",
+        "display": "ALERT",
+        "reason_available": True,
+    }
     assert payload["runtime"]["current_state"]["display_reason"] == {
         "status": "valid",
         "schema": "hi.reason.v1",
@@ -321,6 +335,27 @@ def test_native_diagnostics_payload_contains_support_sections():
     assert payload["runtime"]["output_states"]["fan_outputs"]["by_status"]["unavailable"] == 1
     assert payload["frontend"]["dependency_status"]
     assert payload["generated_ui"]["cached_layouts"] == ["v2_mobile", "v2_tablet"]
+
+
+def test_native_diagnostics_runtime_control_uses_canonical_non_private_display():
+    diagnostics = _load_diagnostics_module()
+    hass = _sample_hass()
+    runtime = hass.data["humidity_intelligence"]["entry123"]
+    runtime["runtime_mode"] = "cooking"
+    runtime["runtime_mode_display"] = "PRIVATE FIXTURE LABEL"
+    runtime["runtime_reason"] = "Zone response is active."
+
+    payload = asyncio.run(
+        diagnostics.async_get_config_entry_diagnostics(hass, _sample_entry())
+    )
+    rendered = json.dumps(payload["diagnostics_summary"], sort_keys=True)
+
+    assert payload["diagnostics_summary"]["runtime_control"] == {
+        "mode": "cooking",
+        "display": "COOKING",
+        "reason_available": True,
+    }
+    assert "PRIVATE FIXTURE LABEL" not in rendered
 
 
 def test_entity_status_summary_treats_blank_state_as_unknown():

@@ -27,6 +27,7 @@ RELEASE_BANNER_FAMILY = (
     "v2.0.9_release.png",
     "v2.0.10_release.png",
     "v2.0.11_release.png",
+    "v2.0.12_release.png",
 )
 
 PUBLISHED_V208_BANNER_SHA256 = (
@@ -94,6 +95,9 @@ class DocumentationBannerTests(unittest.TestCase):
         v211_bytes = (release_banner_dir / "v2.0.11_release.png").read_bytes()
         self.assertEqual(struct.unpack(">II", v211_bytes[16:24]), (1672, 941))
 
+        v212_bytes = (release_banner_dir / "v2.0.12_release.png").read_bytes()
+        self.assertEqual(struct.unpack(">II", v212_bytes[16:24]), (1672, 941))
+
     def test_v209_release_docs_use_main_and_versioned_release_truth(self) -> None:
         readme = (ROOT / "README.md").read_text(encoding="utf-8")
         changelog = (ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
@@ -114,7 +118,7 @@ class DocumentationBannerTests(unittest.TestCase):
         )
         self.assertIn("## 2.0.9 - 2026-07-28", changelog)
         self.assertLess(
-            changelog.index("## Unreleased"),
+            changelog.index("## 2.0.12"),
             changelog.index("## 2.0.9 - 2026-07-28"),
         )
 

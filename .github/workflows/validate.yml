@@ -161,6 +161,9 @@ jobs:
       - name: Validate workflow configuration
         run: python -m unittest "tests 2/test_workflows.py"
 
+      - name: Validate deterministic controller package
+        run: python "tests 2/test_controller_package.py"
+
       - name: Validate generated-card renderers
         shell: bash
         run: |

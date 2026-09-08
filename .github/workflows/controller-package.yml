@@ -1,0 +1,125 @@
+name: Controller package artifact
+
+on:
+  push:
+    branches:
+      - senyo888-patch-1
+    paths:
+      - "custom_components/humidity_intelligence/**"
+      - "scripts/build_controller_package.py"
+      - "scripts/security/scan_secrets.sh"
+      - ".gitleaks.toml"
+      - "tests 2/test_controller_package.py"
+      - ".github/workflows/controller-package.yml"
+permissions: {}
+
+concurrency:
+  group: controller-package-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  package:
+    name: Build deterministic controller package
+    if: >-
+      github.repository == 'senyo888/humidity-intelligence' &&
+      github.ref == 'refs/heads/senyo888-patch-1'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+      artifact-metadata: write
+
+    steps:
+      - name: Check out exact source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Prove branch and commit identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF" = "refs/heads/senyo888-patch-1"
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+
+      - name: Install bounded secret scanner
+        shell: bash
+        run: |
+          set -euo pipefail
+          GITLEAKS_VERSION="8.29.1"
+          GITLEAKS_SHA256="e4eb209d04e20339d77122a3bdf9cd41351255cfb27ebcb75e85325e04f88924"
+          mkdir -p "$RUNNER_TEMP/gitleaks"
+          curl -fsSL \
+            "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz" \
+            -o "$RUNNER_TEMP/gitleaks.tar.gz"
+          echo "${GITLEAKS_SHA256}  $RUNNER_TEMP/gitleaks.tar.gz" | sha256sum -c -
+          tar -xzf "$RUNNER_TEMP/gitleaks.tar.gz" -C "$RUNNER_TEMP/gitleaks" gitleaks
+          echo "$RUNNER_TEMP/gitleaks" >> "$GITHUB_PATH"
+          "$RUNNER_TEMP/gitleaks/gitleaks" version
+
+      - name: Scan exact tracked source for secrets
+        shell: bash
+        run: scripts/security/scan_secrets.sh tracked
+
+      - name: Run package regression contract
+        env:
+          PYTHONDONTWRITEBYTECODE: "1"
+        run: python3 "tests 2/test_controller_package.py"
+
+      - name: Build tracked-blob package
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 scripts/build_controller_package.py \
+            --repository . \
+            --commit "$GITHUB_SHA" \
+            --output "$RUNNER_TEMP/controller-package" \
+            | tee "$RUNNER_TEMP/controller-package-summary.json"
+
+      - name: Validate package reproducibility
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 scripts/build_controller_package.py \
+            --repository . \
+            --commit "$GITHUB_SHA" \
+            --output "$RUNNER_TEMP/controller-package-reproduced" \
+            > "$RUNNER_TEMP/controller-package-reproduced-summary.json"
+          diff -ru \
+            "$RUNNER_TEMP/controller-package" \
+            "$RUNNER_TEMP/controller-package-reproduced"
+          cmp \
+            "$RUNNER_TEMP/controller-package-summary.json" \
+            "$RUNNER_TEMP/controller-package-reproduced-summary.json"
+
+      - name: Upload immutable package artifact
+        id: package-upload
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: humidity-intelligence-controller-package
+          path: ${{ runner.temp }}/controller-package/
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 9
+          overwrite: false
+          include-hidden-files: false
+
+      - name: Attest deterministic package manifest
+        uses: actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26 # v4.1.0
+        with:
+          subject-path: ${{ runner.temp }}/controller-package/artifact-manifest.json
+
+      - name: Record provider artifact identity
+        shell: bash
+        env:
+          ARTIFACT_ID: ${{ steps.package-upload.outputs.artifact-id }}
+          ARTIFACT_DIGEST: ${{ steps.package-upload.outputs.artifact-digest }}
+        run: |
+          set -euo pipefail
+          test -n "$ARTIFACT_ID"
+          test -n "$ARTIFACT_DIGEST"
+          printf 'Artifact ID: `%s`\n\nArtifact digest: `%s`\n' \
+            "$ARTIFACT_ID" "$ARTIFACT_DIGEST" >> "$GITHUB_STEP_SUMMARY"
