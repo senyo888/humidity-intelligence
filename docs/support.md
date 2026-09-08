@@ -63,9 +63,13 @@ Review the complete file before uploading it to a public issue.
 
 The v2.0.12 maintenance candidate keeps native diagnostics schema `1`, existing
 redaction, aggregate mapped-entity availability, and browser-local Inspector
-compatibility unchanged. Native diagnostics read the installed HI version from the
-package manifest after Home Assistant loads it; use that value to confirm the expected
-package is active after a full restart.
+compatibility unchanged. After a full restart, confirm loaded identity using Home
+Assistant's native diagnostics fields `custom_components.humidity_intelligence.version`
+and `integration_manifest.version`, then check entry setup and entity/service
+registration. HI's `data.integration.integration_version` rereads the on-disk manifest
+and does not independently prove which version is loaded. See
+[Candidate Registration Evidence](release-governance.md#candidate-registration-evidence)
+for the separate package, restart, and registration checks.
 
 The historical `v205_release_check` service name is unchanged. Its accepted manifest
 range and result wording now cover v2.0.5-v2.0.12 beta/rc/stable. The service remains
