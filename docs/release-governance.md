@@ -10,9 +10,9 @@ testing and validation branches.
   Area inheritance alignment.
 - `2.0.12-beta.3`: prior testing build with the Manual override output-handover repair
   and bounded runtime-control diagnostics.
-- `2.0.12-beta.4`: current testing build with the same Manual handover behavior and a
+- `2.0.12-beta.4`: tested beta build with the same Manual handover behavior and a
   coherent plain-language reason-field explanation.
-- `2.0.12-rc.1`: release-candidate build.
+- `2.0.12-rc.1`: current release-candidate build; metadata/docs/tests promotion of beta.4.
 - `2.0.12`: stable version label. On `senyo888-patch-1`, `develop`, or `main`,
   stable metadata may be staged or promoted through the governed release path.
   Published release status comes from release tags, GitHub release publication, and
@@ -29,7 +29,7 @@ published GitHub Release/tag.
 Published Stable is `2.0.11`, released on 2026-08-11 from exact commit
 `0dd3e68ab9f35608641dc64efc4b2c4bfacb06ce`. Humidity Intelligence was subsequently
 included in the HACS default integration repository. The current development candidate
-uses `2.0.12-beta.4` metadata on the governed release-preparation lane. A branch or
+uses `2.0.12-rc.1` metadata on the governed release-preparation lane. A branch or
 merge containing that metadata is not by itself a publication. Public release status
 comes from GitHub Releases and the version offered through HACS, while
 release readiness must be established through public-safe validation summaries,
@@ -43,6 +43,42 @@ artifact. Its presence, digest, or attestation does not create a tag, GitHub Rel
 HACS publication, install, deployment, rollback, Stable state, or release approval.
 See [Deterministic controller package artifact](controller-package-artifact.md) for
 its exact source, retention, content, provenance, and rollback boundaries.
+
+## Candidate Registration Evidence
+
+Beta.4 validation used two complete Home Assistant restarts, waiting for startup to
+finish and recording loaded identity and entity/service registration after each.
+The second restart was part of the approved candidate-validation procedure even
+though beta.4 registered after the first. A duplicate-domain rollback directory was
+moved intact outside `custom_components` before activation. This evidence does not
+establish that two restarts are inherently necessary for beta or Stable packages.
+
+Keep package-on-disk evidence, each restart's loaded identity, final registration,
+and subsequent runtime validation separate. In native diagnostics, use Home
+Assistant's `custom_components.humidity_intelligence.version` and
+`integration_manifest.version` as loader identity fields. HI's
+`data.integration.integration_version` rereads the loaded module's on-disk manifest;
+it is a disk-backed cross-check, not independent proof of loaded identity.
+Confirm the config entry is loaded and runtime entities/services are registered.
+The beta.4 component has 53 source files; a Lab controller may add its own provenance file. That deployment metadata
+is not part of the Stable/HACS payload. Do not manufacture Lab provenance on Stable.
+
+The beta.4-to-RC change is limited to manifest version, documentation, and tests;
+runtime Python, services, translations, entities, and generated-card bytes remain
+unchanged. The RC has a new package digest. Beta.4 Stable-instance validation and
+any advisory Lab observation remain historical evidence for the exact beta.4 bytes,
+not proof that RC or final Stable bytes were installed. This metadata-only promotion
+does not require another Stable deployment for RC source promotion. Final-package
+registration verification below remains separate. Broader runtime/UI changes require
+fresh scope-appropriate evidence and separate deployment authority.
+
+Before final v2.0.12 release guidance is approved, verify whether the exact final
+package needs two restarts. Record the installed digest, completed startup, loaded
+identity, registrations, and any discovery conflict or intervening package change.
+If two restarts are confirmed necessary, state that prominently in release notes and
+update instructions. Otherwise retain the candidate-validation label. Do not infer
+an extra restart requirement from an on-disk/loaded version mismatch alone or repeat
+restarts without diagnosing setup errors and retaining a recoverable predecessor.
 
 ## v2.0.11 Publication And v2.0.12 Maintenance Path
 
