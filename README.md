@@ -57,7 +57,7 @@ It gives you:
 - native Home Assistant diagnostics for support and triage
 - services for dashboard export, self-check, diagnostics, pause/resume, and release validation
 
-Current development manifest version: **v2.0.12-rc.1**. This candidate corrects the
+Current development manifest version: **v2.0.12**. This Stable preparation corrects the
 configured time gate to use Home Assistant local time, makes timer countdown updates
 lifecycle-safe, aligns setup assistance with Home Assistant 2026.9 child-device Area
 inheritance, makes Manual override a complete non-CO output handover, and presents
@@ -455,7 +455,7 @@ must be reviewable from tracked repository files.
 
 ## Current Release Highlights
 
-- the `2.0.12-rc.1` maintenance candidate uses Home Assistant local time for the
+- the `2.0.12` maintenance candidate uses Home Assistant local time for the
   configured time gate and gives HI timer entities lifecycle-owned, at-most-once-per-
   minute countdown updates without changing their IDs or `active`/`idle` states; it
   also aligns setup assistance with Home Assistant 2026.9 child-device Area inheritance
@@ -1234,7 +1234,7 @@ CO emergency pressure. Details are in
 
 ![Humidity Intelligence v2.0.12 release header celebrating repository-level HACS inclusion](assets/release_banner/v2.0.12_release.png)
 
-- carries development manifest identity `2.0.12-rc.1`; this is release preparation,
+- carries development manifest identity `2.0.12`; this is release preparation,
   not a published GitHub Release or an HACS-offered v2.0.12 package
 - celebrates completed inclusion of Humidity Intelligence in the HACS default
   integration repository; the button opens the repository in HACS and the user still
@@ -1269,8 +1269,9 @@ CO emergency pressure. Details are in
 - requires a full Home Assistant restart after package installation; it requires no
   config-entry, entity-registry, stored-data, threshold, lane-order, service-name, or
   dashboard migration, and no Manual-card re-export is required
-- advances beta.4 to RC through manifest identity, documentation, and matching tests
-  only; beta.4 live validation remains evidence for beta.4, not the RC package
+- advances the RC to Stable metadata through manifest identity, documentation, and
+  matching tests only; beta.4 live validation remains evidence for beta.4, not the
+  final Stable package
 - **Candidate validation:** beta.4 used two complete Home Assistant restarts, with
   startup and registration checked after each. This is a candidate-validation
   procedure; a two-restart requirement for final v2.0.12 is unverified. See

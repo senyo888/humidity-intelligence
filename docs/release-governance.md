@@ -12,7 +12,7 @@ testing and validation branches.
   and bounded runtime-control diagnostics.
 - `2.0.12-beta.4`: tested beta build with the same Manual handover behavior and a
   coherent plain-language reason-field explanation.
-- `2.0.12-rc.1`: current release-candidate build; metadata/docs/tests promotion of beta.4.
+- `2.0.12-rc.1`: prior release-candidate build; metadata/docs/tests promotion of beta.4.
 - `2.0.12`: stable version label. On `senyo888-patch-1`, `develop`, or `main`,
   stable metadata may be staged or promoted through the governed release path.
   Published release status comes from release tags, GitHub release publication, and
@@ -29,7 +29,7 @@ published GitHub Release/tag.
 Published Stable is `2.0.11`, released on 2026-08-11 from exact commit
 `0dd3e68ab9f35608641dc64efc4b2c4bfacb06ce`. Humidity Intelligence was subsequently
 included in the HACS default integration repository. The current development candidate
-uses `2.0.12-rc.1` metadata on the governed release-preparation lane. A branch or
+uses `2.0.12` Stable metadata on the governed release-preparation lane. A branch or
 merge containing that metadata is not by itself a publication. Public release status
 comes from GitHub Releases and the version offered through HACS, while
 release readiness must be established through public-safe validation summaries,
@@ -71,6 +71,10 @@ not proof that RC or final Stable bytes were installed. This metadata-only promo
 does not require another Stable deployment for RC source promotion. Final-package
 registration verification below remains separate. Broader runtime/UI changes require
 fresh scope-appropriate evidence and separate deployment authority.
+
+The RC-to-Stable preparation also changes only manifest identity, documentation,
+and matching tests. Its package digest is distinct; no exact-final-package live
+validation is implied by the metadata promotion.
 
 Before final v2.0.12 release guidance is approved, verify whether the exact final
 package needs two restarts. Record the installed digest, completed startup, loaded

@@ -10,6 +10,10 @@ This project follows a practical changelog format for Home Assistant and HACS us
 
 ![Humidity Intelligence v2.0.12 release header celebrating repository-level HACS inclusion](assets/release_banner/v2.0.12_release.png)
 
+- Prepared `2.0.12` Stable metadata on the develop-based release lane after RC
+  promotion. The RC-to-Stable component delta is the manifest version only;
+  documentation and matching tests distinguish preparation from publication.
+  Exact final-package registration and restart behavior remain to be verified.
 - Advanced the development identity to `2.0.12-rc.1` for the forward promotion from
   `senyo888-patch-1` to `develop`, then `main`. The beta.4-to-RC delta changes only
   manifest identity, release documentation, and associated tests. Beta.4 live
