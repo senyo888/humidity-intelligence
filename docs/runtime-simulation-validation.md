@@ -23,6 +23,9 @@ It covers:
 - distinct Kitchen, Hallway, and Bedroom room values for zone delta pressure
 - Level 1 IAQ pressure independent of zone pressure
 - disabled/manual/global gates
+- isolation-off Manual handover for switch, fan, AQ, and humidifier outputs, including
+  repeated evaluation, delayed-work cancellation, observed-only truth, AUTO resume,
+  and the CO-only ventilation exception
 - CO ppm defaulting clear at `0`
 - opt-in CO emergency pressure
 - per-run reset back to baseline telemetry
@@ -54,8 +57,8 @@ node "tests 2/test_reason_card_renderer.mjs"
 Expected local pass output:
 
 ```text
-24 air-control mode simulation checks passed.
-39 humidifier reconciliation checks passed.
+28 air-control mode simulation checks passed.
+42 humidifier reconciliation checks passed.
 14 reason-presentation contract checks passed.
 13 reason-card renderer checks passed.
 ```

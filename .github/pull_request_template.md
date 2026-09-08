@@ -50,9 +50,11 @@
 - [ ] Ran `humidity_intelligence.refresh_ui` or refreshed dashboards where UI output changed.
 - [ ] Docs/changelog updated where needed.
 - [ ] Support docs, diagnostics guidance, and issue templates updated where support flow changed.
+- [ ] Native diagnostics schema/redaction and aggregate mapped-entity privacy are unchanged or the approved contract change is explicit and tested.
+- [ ] `v205_release_check` compatibility, result wording, packaged service description, README, Wiki, and range tests agree where release support changed.
 - [ ] Wiki update status recorded as `updated`, `no-op`, or `blocked` where public support/manual guidance is affected.
 - [ ] No private entity IDs, secrets, addresses, or personal data included.
-- [ ] HACS/custom integration metadata still looks correct.
+- [ ] HACS default-list status, My Home Assistant link, package layout, and custom-integration metadata still look correct.
 - [ ] Deterministic lane ordering is preserved, or the PR explicitly explains an approved semantic change.
 - [ ] UI truth consistency is preserved; generated UI stays anchored to backend state.
 - [ ] Migration impact is documented, using "none" where appropriate.

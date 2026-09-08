@@ -47,6 +47,7 @@
           "degraded_outputs": 0,
           "faulted_outputs": 0,
           "isolated_outputs": 0,
+          "manual_hold_outputs": 0,
           "matched_outputs": 0,
           "ownership_conflicts": 0,
           "requested_lanes": 0,
@@ -97,6 +98,11 @@
         "blocked_reasons": [],
         "changed_count": 0,
         "status": "not_run"
+      },
+      "runtime_control": {
+        "display": null,
+        "mode": null,
+        "reason_available": false
       },
       "target_profile": {
         "active_profile": "winter",

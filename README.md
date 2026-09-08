@@ -8,7 +8,7 @@
 
 [![Latest Release](https://img.shields.io/github/v/release/senyo888/Humidity-Intelligence?display_name=tag&sort=semver)](https://github.com/senyo888/Humidity-Intelligence/releases)
 [![Project Site](https://img.shields.io/badge/Project%20Site-GitHub%20Pages-5aa8d6)](https://senyo888.github.io/humidity-intelligence/)
-[![HACS](https://img.shields.io/badge/HACS-Custom%20Integration-orange)](https://hacs.xyz)
+[![HACS — Available in HACS](https://img.shields.io/badge/HACS-Available%20in%20HACS-41BDF5?logo=home-assistant&logoColor=white)](https://my.home-assistant.io/redirect/hacs_repository/?owner=senyo888&repository=humidity-intelligence&category=integration)
 [![Manifest Version](https://img.shields.io/badge/dynamic/json?label=Manifest%20Version&query=%24.version&url=https%3A%2F%2Fraw.githubusercontent.com%2Fsenyo888%2FHumidity-Intelligence%2Fmain%2Fcustom_components%2Fhumidity_intelligence%2Fmanifest.json&color=blue)](https://github.com/senyo888/Humidity-Intelligence/blob/main/custom_components/humidity_intelligence/manifest.json)
 [![License](https://img.shields.io/github/license/senyo888/Humidity-Intelligence)](LICENSE)
 [![Sponsor](https://img.shields.io/badge/Sponsor-GitHub%20Sponsors-ea4aaa?logo=githubsponsors&logoColor=white)](https://github.com/sponsors/senyo888)
@@ -53,17 +53,19 @@ It gives you:
 - season-aware humidity targets
 - deterministic lane priority
 - safe degraded behavior when inputs are missing
-- generated Lovelace dashboards backed by runtime truth
+- exported Lovelace Manual-card YAML backed by runtime truth
 - native Home Assistant diagnostics for support and triage
 - services for dashboard export, self-check, diagnostics, pause/resume, and release validation
 
-Current maintenance-candidate manifest version: **v2.0.11**. The v2.0.11 release
-source is now on `main`, but it must not be tagged or published until exact-package
-identity and restart validation, generated release-check review, fresh Mobile and
-Tablet export validation, Bella verification, AetherCore governance verification,
-release-sanity validation, and maintainer README approval are complete. The published
-Stable GitHub Release and tag remain **v2.0.10** until the v2.0.11 tag, GitHub Release,
-and HACS availability are complete. Check HACS for installed-package availability.
+Current development manifest version: **v2.0.12-rc.1**. This candidate corrects the
+configured time gate to use Home Assistant local time, makes timer countdown updates
+lifecycle-safe, aligns setup assistance with Home Assistant 2026.9 child-device Area
+inheritance, makes Manual override a complete non-CO output handover, and presents
+that handover as one clear explanation in the reason field. It is not a published
+release. The current published Stable GitHub Release and tag are
+**v2.0.11**, published on 11 August 2026. Humidity Intelligence is included in the
+HACS default repository and is available directly in HACS; HACS still installs only a
+published GitHub Release version.
 
 Optional HA Lab evidence is advisory and does not block promotion, tagging, or
 publication.
@@ -308,7 +310,7 @@ The architectural preference is calm regulation over automation chaos:
 - CO emergency and alert hierarchy before comfort correction
 - humidifier lanes kept independent from ventilation resolution
 - global gates and overrides visible when they suppress control
-- generated dashboards aligned with backend truth only
+- exported Manual-card YAML aligned with backend truth only
 - safe degraded behavior before blind output writes
 
 The result should feel steady in a domestic environment: readable, conservative, and accountable when conditions change.
@@ -363,6 +365,15 @@ Custom trigger entities and custom binary sensors are not part of the alert flow
 Boost settings should normally be higher than the standard zone fan level. Zone control handles normal correction; boost is reserved for danger escalation such as condensation, mould risk, or humidity danger.
 
 Humidifier lanes operate independently where safe.
+
+Manual override hands ordinary output ownership to the user or external automation.
+HI cancels pending non-CO control work and leaves existing fan, switch, humidifier,
+and visual-alert output states unchanged. Its mode and reason surfaces report that
+handover directly, while humidifier diagnostics retain observed state as
+`manual_hold` without claiming HI selected it. CO emergency remains the only
+exception and can still force its configured ventilation outputs to 100%. Turning
+Manual off triggers a fresh deterministic evaluation and restores normal AUTO
+ownership. This does not add temporary manual operation while AUTO remains enabled.
 
 Humidifier demand and output truth are intentionally separate. The existing
 downstairs/upstairs humidifier-active helpers mean HI is requesting humidification
@@ -444,10 +455,17 @@ must be reviewable from tracked repository files.
 
 ## Current Release Highlights
 
-- the `2.0.11` maintenance candidate restores the established centred, passive
+- the `2.0.12-rc.1` maintenance candidate uses Home Assistant local time for the
+  configured time gate and gives HI timer entities lifecycle-owned, at-most-once-per-
+  minute countdown updates without changing their IDs or `active`/`idle` states; it
+  also aligns setup assistance with Home Assistant 2026.9 child-device Area inheritance
+  and releases ordinary fan, switch, humidifier, and visual-alert ownership while
+  Manual override is active, with a clearer reason-field explanation and CO emergency
+  retained as the sole exception
+- the published `2.0.11` Stable release restores the established centred, passive
   Stability preview badge and six-second breathing treatment without calculating a
   score in the card or changing control behaviour
-- the published `2.0.10` Stable release adds deterministic humidifier-output
+- the previous published `2.0.10` Stable release adds deterministic humidifier-output
   reconciliation and backend-authored `hi.reason.v1` explanations while preserving
   one selected ventilation lane, the existing lane order, thresholds, configuration,
   stored data, and entity identity
@@ -455,9 +473,9 @@ must be reviewable from tracked repository files.
   humidifier chips in one horizontally scrollable Current Air Control row;
   `On` and `Requested` are cyan; `Idle`, `Retrying`, `Stopping`, and `Isolated` are
   amber; `Fault` and `Degraded` are red; and `Unknown` is grey
-- the v2.0.10 GitHub Release and tag were published from exact `main` commit
-  `02b0f17291c7996aca793a8807a5830ede768013`; GitHub Releases and HACS remain the
-  authoritative publication and installed-package records
+- Humidity Intelligence is included in the HACS default integration repository; the
+  official My Home Assistant button below opens this repository in HACS, while GitHub
+  Releases and the installed Home Assistant package remain the version records
 - the browser-local
   [HI Support Bundle Inspector](https://senyo888.github.io/humidity-intelligence/inspector/)
   provides an optional inspect-before-sharing preflight: diagnostics content stays
@@ -507,30 +525,33 @@ must be reviewable from tracked repository files.
 - local issue-triage private report writing is confined through the private atomic
   writer, keeping public issue/support flows separate from local report output
 - the tracked secret scan now fails closed when no tracked files are selected
-- `v205_release_check` preserves its service name; the stable release source
+- `v205_release_check` preserves its service name; the v2.0.12 candidate
   extends its generated-card, humidifier-reconciliation, and release-validation
-  contract through the v2.0.11 beta/rc/stable line
+  contract through the v2.0.12 beta/rc/stable line
 - Home Assistant Area/Label setup assistance can suggest defaults from registry
   metadata, but saved HI telemetry, zone, AQ, humidifier, and alert mappings remain
   the only runtime truth
 - release-prep service usage: run `self_check` or `v205_release_check` for support
-  validation; use `refresh_ui` to rebuild the rendered in-memory cache, then
-  `dump_cards` or `view_cards` to write fresh YAML. Already-pasted Manual cards remain
-  static and must be re-copied from the latest export
+  validation. For releases that change generated-card bytes, use `refresh_ui` to
+  rebuild the rendered in-memory cache, then `dump_cards` or `view_cards` to write
+  fresh YAML and replace the already-pasted static Manual cards. v2.0.12 leaves
+  generated-card bytes unchanged, so no Manual-card re-export or replacement is required
 - runtime contract: deterministic lane ordering, output-writer boundaries, entity
   semantics, migration shape, and UI truth stay aligned with the existing backend
   model
 
-Upgrade note:
+v2.0.12 candidate update note:
 
 After installing a new HI version through HACS or replacing its files:
 
 1. Restart Home Assistant. A full restart loads the updated HI package and services.
-2. If you use generated Current Air Control, V2 control-row, or output-detail cards,
-   run `humidity_intelligence.dump_cards`.
-3. Open the dashboard in Home Assistant and replace the complete YAML of each existing
-   HI Manual card with the new export.
-4. Refresh the browser if the old layout or colours are still cached.
+2. Confirm native diagnostics report the expected HI version and schema `1`.
+3. Run `humidity_intelligence.v205_release_check` and review the generated report.
+4. Check an ordinary configured time-gate window and a timer start/cancel cycle.
+
+No Manual-card re-export is required for v2.0.12 because generated-card bytes are
+unchanged. If your installed version differs from the expected HACS version, resolve
+that package mismatch before treating runtime or diagnostics evidence as current.
 
 The exported YAML belongs inside a Manual card. Keep registered and YAML-mode
 dashboard files as they are; add a Manual card or replace the complete YAML inside an
@@ -556,21 +577,31 @@ option changes. `refresh_ui` updates HI's live card cache;
 
 Requires Home Assistant **2026.5.1** or newer.
 
+[![Open your Home Assistant instance and open Humidity Intelligence inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=senyo888&repository=humidity-intelligence&category=integration)
+
+The button opens Humidity Intelligence in HACS; it does not install automatically.
+Select **Download** in HACS, then continue with the restart and integration setup
+steps below.
+
 The repository uses the conventional HACS integration layout under
 `custom_components/humidity_intelligence/`. HACS installs that package directory only;
 repository documentation, tests, scripts, site files, legacy material, and UI Gallery
 examples are not included in the Home Assistant integration payload.
 
-1. Add custom repository:
-   `https://github.com/senyo888/Humidity-Intelligence`
-   Category: Integration
-2. Install **Humidity Intelligence**
-3. Restart Home Assistant
-4. Go to Settings -> Devices & Services -> Add Integration
-5. Search for **Humidity Intelligence**
-6. Begin configuration
+1. Open HACS in Home Assistant.
+2. Search for **Humidity Intelligence**, filtering by **Integration** if needed.
+3. Open the repository entry and select **Download**.
+4. Restart Home Assistant.
+5. Go to **Settings -> Devices & services -> Add integration**.
+6. Search for **Humidity Intelligence** and complete setup.
 
 ### Option B - Manual package upgrade
+
+Keep rollback copies **outside `custom_components`**. Another directory declaring the
+HI domain can interfere with integration discovery. After startup, verify Home
+Assistant's loaded integration version and confirm entities and services are available.
+Use the [loader identity fields](docs/release-governance.md#candidate-registration-evidence)
+in native diagnostics; HI's own disk-backed version field alone is insufficient.
 
 Use the exact contents of `custom_components/humidity_intelligence/` from the chosen
 release or candidate and replace the complete existing directory at:
@@ -589,7 +620,7 @@ package without `content_in_root` staging behavior.
 Back up the existing component directory, replace it as one coherent package, and
 fully restart Home Assistant. A config-entry reload alone cannot load changed Python
 or manifest metadata. Existing configuration entries and entities remain in place;
-no beta.7 data migration is required.
+no v2.0.12 data migration is required.
 
 ---
 
@@ -995,7 +1026,7 @@ Notes:
   remaining entry is re-exported with unqualified names; its superseded qualified
   files stay externally readable until an exact previewed purge.
 - `v205_release_check` is the backward-compatible validation service name. It accepts
-  the v2.0.5-v2.0.11 beta/rc/stable line and is runtime/device
+  the v2.0.5-v2.0.12 beta/rc/stable line and is runtime/device
   read-only: it writes its validation report, and `write_test_exports: true`
   additionally writes card-export test files.
 - `dump_diagnostics` and native diagnostics are support surfaces; support exports are
@@ -1036,7 +1067,7 @@ Common service groups:
 | `flash_lights` | admin-only test of configured visual alert behavior; runtime alerts use the trusted engine path |
 | `pause_control` / `resume_control` | admin-only pause or resume for one supplied entry or all entries |
 | `self_check` | admin-only fixed export of mapping, generated-card entity, telemetry, drift-helper, and frontend-dependency checks |
-| `v205_release_check` | admin-only runtime-safe v2.0.5-v2.0.11 generated-card, humidifier-reconciliation, and release-validation support checks |
+| `v205_release_check` | admin-only runtime-safe v2.0.5-v2.0.12 generated-card, humidifier-reconciliation, and release-validation support checks |
 | `create_local_backup` | admin-only creation of a package-local HI snapshot for advanced validation |
 | `list_saved_versions` | admin-only, read-only inspection of package-local HI snapshot metadata |
 | `dump_diagnostics` | admin-only export of fuller local diagnostics for maintainer/debug workflows |
@@ -1199,19 +1230,66 @@ CO emergency pressure. Details are in
 
 ## Release Notes
 
-### v2.0.11 — Poetic Justice (Maintenance candidate; not published)
+### v2.0.12 (Maintenance candidate; not published)
+
+![Humidity Intelligence v2.0.12 release header celebrating repository-level HACS inclusion](assets/release_banner/v2.0.12_release.png)
+
+- carries development manifest identity `2.0.12-rc.1`; this is release preparation,
+  not a published GitHub Release or an HACS-offered v2.0.12 package
+- celebrates completed inclusion of Humidity Intelligence in the HACS default
+  integration repository; the button opens the repository in HACS and the user still
+  selects **Download**
+- evaluates configured time-gate wall-clock windows using Home Assistant local time,
+  including same-day, overnight, spring-forward, and both autumn-fold cases, without
+  changing the existing inclusive window boundaries
+- replaces unowned timer sleepers with lifecycle-owned Home Assistant callbacks,
+  aware UTC duration arithmetic, invalidation guards, exact expiry, and at-most-once-
+  per-minute `remaining` updates; entity IDs and primary `active`/`idle` states remain
+  unchanged
+- suppresses only pause-timer `active` to `active` countdown events from full engine
+  evaluation while preserving immediate evaluation when the pause state changes
+- extends the backward-compatible `v205_release_check` accepted manifest range and
+  report wording through v2.0.12 beta/rc/stable; its name, schema, admin requirement,
+  report path, and runtime/device-read-only side effects remain unchanged
+- preserves native diagnostics schema `1`, redaction, aggregate mapping privacy, and
+  Inspector compatibility; after restart, native diagnostics report the installed
+  manifest version dynamically
+- makes Manual override a complete handover of ordinary fan, switch, humidifier, AQ,
+  and visual-alert ownership: pending non-CO work is cancelled, physical output states
+  are left unchanged, humidifier truth is observed-only `manual_hold`, and bounded
+  runtime-control diagnostics report the handover without claiming an HI command; CO
+  remains the sole ventilation exception and normal AUTO ownership resumes after
+  Manual is released
+- presents that Manual handover in one plain-language reason: what Manual means, what
+  HI will leave unchanged, who remains in control, how to return to AUTO, and the CO
+  emergency exception; runtime behavior and authority boundaries are unchanged
+- preserves CO-first canonical lane order, normal non-Manual AUTO ownership,
+  humidifier-lane independence, output configuration, stored data, generated-card
+  bytes, and Stability behavior
+- requires a full Home Assistant restart after package installation; it requires no
+  config-entry, entity-registry, stored-data, threshold, lane-order, service-name, or
+  dashboard migration, and no Manual-card re-export is required
+- advances beta.4 to RC through manifest identity, documentation, and matching tests
+  only; beta.4 live validation remains evidence for beta.4, not the RC package
+- **Candidate validation:** beta.4 used two complete Home Assistant restarts, with
+  startup and registration checked after each. This is a candidate-validation
+  procedure; a two-restart requirement for final v2.0.12 is unverified. See
+  [registration evidence](docs/release-governance.md#candidate-registration-evidence).
+- remains blocked from tag and publication until exact-package validation, required
+  reviews, release sanity, Content Harmony closeout, and final maintainer README and
+  release approval are complete
+
+### v2.0.11 — Poetic Justice (Current Published Stable)
 
 ![Humidity Intelligence v2.0.11 Poetic Justice release banner](assets/release_banner/v2.0.11_release.png)
 
 [![Latest Release](https://img.shields.io/github/v/release/senyo888/Humidity-Intelligence?display_name=tag&sort=semver)](https://github.com/senyo888/Humidity-Intelligence/releases) [![Project Site](https://img.shields.io/badge/Project%20Site-GitHub%20Pages-5aa8d6)](https://senyo888.github.io/humidity-intelligence/) [![License](https://img.shields.io/github/license/senyo888/Humidity-Intelligence)](LICENSE) [![Sponsor](https://img.shields.io/badge/Sponsor-GitHub%20Sponsors-ea4aaa?logo=githubsponsors&logoColor=white)](https://github.com/sponsors/senyo888) [![Star Humidity Intelligence](https://img.shields.io/badge/Star%20%2F%20Support-Humidity%20Intelligence-2ea44f?logo=github&logoColor=white)](https://github.com/senyo888/humidity-intelligence)
 
-- carries stable maintenance-candidate manifest identity `2.0.11`; its release source
-  is now on `main`, but it must not be tagged or published until exact-package identity
-  and restart validation, generated release-check review, fresh Mobile and Tablet
-  export validation, Bella verification, AetherCore governance verification,
-  release-sanity validation, and maintainer README approval are complete; published
-  Stable remains v2.0.10 until the v2.0.11 tag, GitHub Release, and HACS availability
-  are complete
+- was published on 11 August 2026 as a non-prerelease GitHub Release and immutable tag
+  from exact commit `0dd3e68ab9f35608641dc64efc4b2c4bfacb06ce`; it is the
+  current published Stable release
+- is now available through the existing HACS default integration listing; the later
+  HACS inclusion milestone does not alter the published v2.0.11 package bytes or tag
 - restores the established centred Stability Score preview across generated V2
   Mobile, V2 Tablet, and both canonical gallery cards by keeping the name's
   button-card grid area as the quoted string `'n'`
@@ -1233,7 +1311,7 @@ CO emergency pressure. Details are in
 - requires no config-entry, entity-registry, stored-data, threshold, lane-order,
   service-name, or dashboard-registration migration
 
-### v2.0.10 (Published Stable)
+### v2.0.10 (Previous Published Stable)
 
 ![Humidity Intelligence v2.0.10 release banner](assets/release_banner/v2.0.10_release.png)
 
@@ -1278,9 +1356,10 @@ CO emergency pressure. Details are in
   the installed beta.7 package; neither evidence class proves that the later stable
   package bytes were installed on that instance
 
-<!-- Canonical release-note structure: keep the current release source and current Published Stable
-summaries expanded above, then move displaced older summaries into this container as
-new releases are added. CHANGELOG.md remains the complete detailed history. -->
+<!-- Canonical release-note structure: keep the current candidate, current Published
+Stable, and immediately preceding Published Stable summaries expanded above. Move
+displaced older summaries into this container as new releases are added. CHANGELOG.md
+remains the complete detailed history. -->
 <details>
 <summary>Previous Releases</summary>
 

@@ -74,7 +74,7 @@ self_check:
         text: {}
 v205_release_check:
   name: Release Check
-  description: Admin-only action from an authenticated UI/API session; background calls without a user ID are rejected. Run a runtime/device-read-only v2.0.5-v2.0.11 validation check, including sanitized humidifier demand/output reconciliation truth, and write its report under the owned Home Assistant config/humidity_intelligence/exports directory. It cannot prove physical moisture production.
+  description: Admin-only action from an authenticated UI/API session; background calls without a user ID are rejected. Run a runtime/device-read-only v2.0.5-v2.0.12 validation check, including sanitized humidifier demand/output reconciliation truth, and write its report under the owned Home Assistant config/humidity_intelligence/exports directory. It cannot prove physical moisture production.
   fields:
     entry_id:
       name: Entry ID

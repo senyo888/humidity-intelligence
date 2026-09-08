@@ -125,6 +125,7 @@ class PagesSiteTests(unittest.TestCase):
     def test_pages_site_routes_to_canonical_public_sources(self) -> None:
         html, parser = parse_index()
         required_targets = {
+            "https://my.home-assistant.io/redirect/hacs_repository/?owner=senyo888&repository=humidity-intelligence&category=integration",
             "https://github.com/senyo888/Humidity-Intelligence#installation",
             "https://github.com/senyo888/Humidity-Intelligence/releases",
             "https://github.com/senyo888/Humidity-Intelligence/wiki",
@@ -149,15 +150,15 @@ class PagesSiteTests(unittest.TestCase):
 
         self.assertIn("assets/logo.png", parser.images)
         self.assertIn("assets/site/github-pages-hero.png", assets)
-        self.assertIn("assets/release_banner/v2.0.11_release.png", parser.images)
-        self.assertIn("Poetic Justice.", html)
-        self.assertIn("v2.0.11 maintenance candidate", html)
-        self.assertIn("v2.0.11 release source is now on main", normalized_html)
-        self.assertIn("required review", normalized_html)
-        self.assertIn("final maintainer approval", normalized_html)
-        self.assertIn("must not be tagged or published until", normalized_html)
-        self.assertNotIn("before promotion.", normalized_html)
-        self.assertIn("published release</span><span class=\"badge-value\">v2.0.10", html)
+        self.assertIn("assets/release_banner/v2.0.12_release.png", parser.images)
+        self.assertIn("A focused maintenance release.", html)
+        self.assertIn("v2.0.12 maintenance candidate", html)
+        self.assertIn("included in the HACS default integration repository", normalized_html)
+        self.assertIn("Published Stable remains v2.0.11", normalized_html)
+        self.assertIn("v2.0.12 is not available until", normalized_html)
+        self.assertNotIn("Install from GitHub", html)
+        self.assertIn("Open in HACS", html)
+        self.assertIn("published release</span><span class=\"badge-value\">v2.0.11", html)
 
         for asset in assets:
             with self.subTest(asset=asset):

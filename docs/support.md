@@ -59,6 +59,24 @@ names, Area names, Label names, entity maps, and state dumps. Selected mapping a
 local-name evidence is generally reduced, but user-configured display and level labels may remain.
 Review the complete file before uploading it to a public issue.
 
+## v2.0.12 Diagnostics And Release Check
+
+The v2.0.12 maintenance candidate keeps native diagnostics schema `1`, existing
+redaction, aggregate mapped-entity availability, and browser-local Inspector
+compatibility unchanged. After a full restart, confirm loaded identity using Home
+Assistant's native diagnostics fields `custom_components.humidity_intelligence.version`
+and `integration_manifest.version`, then check entry setup and entity/service
+registration. HI's `data.integration.integration_version` rereads the on-disk manifest
+and does not independently prove which version is loaded. See
+[Candidate Registration Evidence](release-governance.md#candidate-registration-evidence)
+for the separate package, restart, and registration checks.
+
+The historical `v205_release_check` service name is unchanged. Its accepted manifest
+range and result wording now cover v2.0.5-v2.0.12 beta/rc/stable. The service remains
+admin-only and runtime/device read-only, writes under
+`<config>/humidity_intelligence/exports/`, and cannot prove physical moisture output.
+Treat its entity-bearing report as local/private until reviewed or sanitized.
+
 ## Humidifier Demand/Output Troubleshooting
 
 The humidifier-active helper and V2 `Requested` chip mean HI currently has effective
@@ -74,6 +92,8 @@ Use the V2 chip/reason state and native diagnostics together:
   the bounded schedule
 - `Isolated`: demand remains visible but humidifier output service calls are
   intentionally suppressed
+- `Manual hold`: Manual override owns the output; HI reports the Home Assistant-
+  observed state without selecting it, dispatching a command, or scheduling a retry
 - `Unknown` or `Degraded`: state/service/domain/ownership evidence is not safe enough
   for a normal reconciliation claim
 - `Fault`: HI has used all configured confirmation attempts; inspect the device,
@@ -85,6 +105,10 @@ scrollable Current Air Control row. `On` and `Requested` use cyan; `Idle`, `Retr
 older pasted card still shows a separate humidifier row, run `refresh_ui`, export with
 `dump_cards` or `view_cards`, replace the complete Manual-card YAML, and refresh the
 frontend if its styling is cached.
+
+Manual hold is carried by the existing Manual mode badge and reason panel; it does
+not add a separate generated-card chip. Native diagnostics and support-safe aggregate
+truth expose `manual_hold` and `manual_hold_outputs` without configured output IDs.
 
 HI does not bypass a device-local target, idle mode, empty-water protection, safety
 timeout, or vendor fault. A later output state change, unavailable-to-available

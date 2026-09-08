@@ -9,6 +9,7 @@ on:
       - "assets/header.png"
       - "assets/release_banner/v2.0.10_release.png"
       - "assets/release_banner/v2.0.11_release.png"
+      - "assets/release_banner/v2.0.12_release.png"
       - "assets/site/github-pages-hero.png"
       - "assets/ui/v2.0.10-beta.7/**"
       - "scripts/build_hi_inspector.py"
@@ -47,6 +48,7 @@ jobs:
           cp assets/header.png _site/assets/header.png
           cp assets/release_banner/v2.0.10_release.png _site/assets/release_banner/v2.0.10_release.png
           cp assets/release_banner/v2.0.11_release.png _site/assets/release_banner/v2.0.11_release.png
+          cp assets/release_banner/v2.0.12_release.png _site/assets/release_banner/v2.0.12_release.png
           cp assets/site/github-pages-hero.png _site/assets/site/github-pages-hero.png
           cp assets/ui/v2.0.10-beta.7/mobile-aq-humidifier-retrying.png _site/assets/ui/v2.0.10-beta.7/mobile-aq-humidifier-retrying.png
           cp assets/ui/v2.0.10-beta.7/tablet-zone1-cooking-output-on.jpg _site/assets/ui/v2.0.10-beta.7/tablet-zone1-cooking-output-on.jpg

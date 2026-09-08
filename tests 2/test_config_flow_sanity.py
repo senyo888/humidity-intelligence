@@ -77,6 +77,13 @@ def _install_homeassistant_stubs() -> None:
         def async_get(self, key):
             return self._attr.get(key)
 
+    class _AreaRegistry:
+        def __init__(self, attr):
+            self._attr = attr
+
+        def async_get_area(self, key):
+            return self._attr.get(key)
+
     class _SchemaKey:
         def __init__(self, key, default=None):
             self.key = key
@@ -123,7 +130,7 @@ def _install_homeassistant_stubs() -> None:
     config_entries.ConfigFlow = ConfigFlow
     config_entries.OptionsFlow = OptionsFlow
     data_entry_flow.section = section
-    area_registry.async_get = lambda hass: _Registry(getattr(hass, "areas", {}))
+    area_registry.async_get = lambda hass: _AreaRegistry(getattr(hass, "areas", {}))
     device_registry.async_get = lambda hass: _Registry(getattr(hass, "devices", {}))
     entity_registry.async_get = lambda hass: _Registry(getattr(hass, "entities", {}))
     label_registry.async_get = lambda hass: _Registry(getattr(hass, "labels", {}))

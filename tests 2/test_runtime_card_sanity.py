@@ -10,7 +10,7 @@ import pathlib
 import sys
 import tempfile
 import types
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from enum import StrEnum
 from types import MethodType, SimpleNamespace
 
@@ -131,6 +131,7 @@ def _install_homeassistant_stubs(*, include_unit_ratio: bool = True) -> None:
     entity_helper = types.ModuleType("homeassistant.helpers.entity")
     entity_registry = types.ModuleType("homeassistant.helpers.entity_registry")
     util = types.ModuleType("homeassistant.util")
+    util_dt = types.ModuleType("homeassistant.util.dt")
     voluptuous = types.ModuleType("voluptuous")
 
     class HomeAssistant:
@@ -275,6 +276,9 @@ def _install_homeassistant_stubs(*, include_unit_ratio: bool = True) -> None:
     def async_track_time_interval(*args, **kwargs):
         return lambda: None
 
+    def async_track_point_in_utc_time(*args, **kwargs):
+        return lambda: None
+
     def async_redact_data(data, to_redact):
         redact = {str(item).lower() for item in to_redact}
 
@@ -312,6 +316,7 @@ def _install_homeassistant_stubs(*, include_unit_ratio: bool = True) -> None:
     config_validation.string = str
     event.async_track_state_change_event = async_track_state_change_event
     event.async_track_time_interval = async_track_time_interval
+    event.async_track_point_in_utc_time = async_track_point_in_utc_time
     device_registry.DeviceInfo = DeviceInfo
     entity_helper.Entity = Entity
     entity_helper.async_generate_entity_id = async_generate_entity_id
@@ -321,6 +326,9 @@ def _install_homeassistant_stubs(*, include_unit_ratio: bool = True) -> None:
     issue_registry.async_delete_issue = lambda *_args, **_kwargs: None
     helpers.issue_registry = issue_registry
     util.slugify = lambda value: str(value).lower().replace(" ", "_")
+    util_dt.now = lambda: datetime.now().astimezone()
+    util_dt.utcnow = lambda: datetime.now(timezone.utc)
+    util.dt = util_dt
     voluptuous.Schema = Schema
     voluptuous.Optional = _SchemaKey
     voluptuous.Required = _SchemaKey
@@ -351,6 +359,7 @@ def _install_homeassistant_stubs(*, include_unit_ratio: bool = True) -> None:
     sys.modules["homeassistant.helpers.entity"] = entity_helper
     sys.modules["homeassistant.helpers.entity_registry"] = entity_registry
     sys.modules["homeassistant.util"] = util
+    sys.modules["homeassistant.util.dt"] = util_dt
     sys.modules["voluptuous"] = voluptuous
 
 
@@ -409,6 +418,29 @@ def _load_services_module():
     if level_labels_path.exists():
         _load_module(f"{PKG}.helpers.level_labels", level_labels_path)
     return _load_module(f"{PKG}.services", INTEGRATION_ROOT / "services.py")
+
+
+def _load_sensor_platform_module():
+    services_mod = _load_services_module()
+
+    drift_repairs_mod = types.ModuleType(f"{PKG}.helpers.drift_repairs")
+
+    async def async_noop(*_args, **_kwargs):
+        return None
+
+    drift_repairs_mod.async_update_humidity_drift_repair_issue = async_noop
+    sys.modules[f"{PKG}.helpers.drift_repairs"] = drift_repairs_mod
+
+    core_mod = types.ModuleType(f"{PKG}.sensors.core")
+    core_mod.build_entities = lambda *_args, **_kwargs: ([], [], [])
+    sys.modules[f"{PKG}.sensors.core"] = core_mod
+
+    slope_mod = types.ModuleType(f"{PKG}.sensors.slope")
+    slope_mod.build_slope_entities = lambda *_args, **_kwargs: ([], [], {})
+    sys.modules[f"{PKG}.sensors.slope"] = slope_mod
+
+    sys.modules[f"{PKG}.services"] = services_mod
+    return _load_module(f"{PKG}.sensor", INTEGRATION_ROOT / "sensor.py")
 
 
 def _load_integration_init_module():
@@ -3991,13 +4023,15 @@ def test_readme_uses_manifest_version_badge_not_static_ha_compatibility_badge():
     assert "Home%20Assistant-2026.4.3%2B" not in readme_source
 
 
-def test_readme_keeps_candidate_and_published_stable_before_previous_releases():
+def test_readme_keeps_three_current_release_summaries_before_previous_releases():
     readme_source = (ROOT / "README.md").read_text()
     release_notes = readme_source.split("## Release Notes", 1)[1]
     visible_notes, previous_releases = release_notes.split("<details>", 1)
 
-    assert "### v2.0.11 — Poetic Justice (Maintenance candidate; not published)" in visible_notes
-    assert "### v2.0.10 (Published Stable)" in visible_notes
+    assert "### v2.0.12 (Maintenance candidate; not published)" in visible_notes
+    assert "### v2.0.11 — Poetic Justice (Current Published Stable)" in visible_notes
+    assert "### v2.0.10 (Previous Published Stable)" in visible_notes
+    assert "was published on 11 August 2026" in visible_notes
     assert "was published on 2026-08-10" in visible_notes
     assert "### v2.0.9" not in visible_notes
     assert "### v2.0.8" not in visible_notes
@@ -4014,10 +4048,20 @@ def test_readme_keeps_candidate_and_published_stable_before_previous_releases():
     assert (ROOT / "assets" / "release_banner" / "v2.0.11_release.png").read_bytes()[:8] == (
         b"\x89PNG\r\n\x1a\n"
     )
+    assert (ROOT / "assets" / "release_banner" / "v2.0.12_release.png").read_bytes()[:8] == (
+        b"\x89PNG\r\n\x1a\n"
+    )
     assert "<summary>Previous Releases</summary>" in previous_releases
+    assert "current candidate, current Published" in visible_notes
+    assert (
+        "https://my.home-assistant.io/redirect/hacs_repository/"
+        "?owner=senyo888&repository=humidity-intelligence&category=integration"
+        in readme_source
+    )
+    assert "it does not install automatically" in readme_source
 
 
-def test_v2011_public_release_surfaces_track_post_merge_prepublication_state():
+def test_v2012_public_release_surfaces_track_candidate_and_v2011_stable_truth():
     readme_source = (ROOT / "README.md").read_text()
     release_notes = readme_source.split("## Release Notes", 1)[1]
     visible_notes = release_notes.split("<details>", 1)[0]
@@ -4028,41 +4072,30 @@ def test_v2011_public_release_surfaces_track_post_merge_prepublication_state():
     normalized_changelog = " ".join(changelog_source.split())
     normalized_governance = " ".join(release_governance.split())
 
-    assert "v2.0.11 release source is now on `main`" in normalized_readme
-    assert "must not be tagged or published until exact-package" in normalized_readme
-    assert "generated release-check review" in normalized_readme
-    assert "Bella verification" in normalized_readme
-    assert "AetherCore governance verification" in normalized_readme
-    assert "release-sanity validation" in normalized_readme
-    assert "maintainer README approval" in normalized_readme
-    assert "its release source is now on `main`" in normalized_visible_notes
-    assert "promotion to `main`" not in normalized_visible_notes
-    assert "v2.0.11 release source is now on `main`" in normalized_changelog
-    assert "exact-package identity and restart validation" in normalized_changelog
-    assert (
-        "independent or maintainer adjudication of PR `#109`'s missing "
-        "approving review"
-        in normalized_changelog
-    )
-    assert (
-        "The release source is now on `main` after PR `#109`"
-        in normalized_governance
-    )
-    assert "GitHub Release draft is release preparation only" in normalized_governance
-    assert "merged without a recorded approving review" in normalized_governance
-    assert (
-        "review-gate exception also requires explicit independent or maintainer "
-        "adjudication before tag or publication"
-        in normalized_governance
-    )
-    assert (
-        "Bella verification, AetherCore governance verification, release-sanity "
-        "validation, and maintainer README approval remain hard pre-tag gates"
-        in normalized_governance
-    )
-    assert "until the separate v2.0.11 promotion" not in normalized_readme
-    assert "v2.0.11 promotion, tag, GitHub Release" not in normalized_changelog
-    assert "before `develop` to `main` promotion" not in normalized_governance
+    assert "Current development manifest version: **v2.0.12-rc.1**" in normalized_readme
+    assert "It is not a published release" in normalized_readme
+    assert "current published Stable GitHub Release and tag are **v2.0.11**" in normalized_readme
+    assert "included in the HACS default repository" in normalized_readme
+    assert "carries development manifest identity `2.0.12-rc.1`" in normalized_visible_notes
+    assert "not a published GitHub Release or an HACS-offered v2.0.12 package" in normalized_visible_notes
+    assert "Manual override a complete handover" in normalized_visible_notes
+    assert "observed-only `manual_hold`" in normalized_visible_notes
+    assert "normal non-Manual AUTO ownership" in normalized_visible_notes
+    assert "CO remains the sole ventilation exception" in normalized_visible_notes
+    assert "canonical lane order, output ownership" not in normalized_visible_notes
+    assert "0dd3e68ab9f35608641dc64efc4b2c4bfacb06ce" in normalized_visible_notes
+    assert "## 2.0.11 - 2026-08-11" in changelog_source
+    assert "Advanced development identity to `2.0.12-beta.2`" in normalized_changelog
+    assert "Advanced the development identity to `2.0.12-beta.3`" in normalized_changelog
+    assert "Advanced the development identity to `2.0.12-beta.4`" in normalized_changelog
+    assert "Published Stable is `2.0.11`" in normalized_governance
+    assert "Manual override output-handover repair" in normalized_governance
+    assert "Manual ownership/reconciliation/diagnostic truth" in normalized_governance
+    assert "normal non-Manual AUTO semantics" in normalized_governance
+    assert "## v2.0.12 Release Checklist" in release_governance
+    assert "No Manual-card re-export" in normalized_governance
+    assert "v2.0.11 release source is now on `main`" not in normalized_readme
+    assert "GitHub Release draft is release preparation only" not in normalized_governance
 
 
 def test_dump_cards_without_layout_exports_all_cached_layouts():
@@ -4362,6 +4395,12 @@ def test_v205_release_check_report_verifies_export_contract_and_ui_visibility():
         "2.0.11-beta.1",
         "2.0.11-rc.1",
         "2.0.11",
+        "2.0.12-beta.1",
+        "2.0.12-beta.2",
+        "2.0.12-beta.3",
+        "2.0.12-beta.4",
+        "2.0.12-rc.1",
+        "2.0.12",
     ):
         future_report = services_mod._build_v205_release_check_entry_report(
             hass,
@@ -4378,7 +4417,7 @@ def test_v205_release_check_report_verifies_export_contract_and_ui_visibility():
         hass,
         entry,
         runtime_data,
-        manifest_version="2.0.12-beta.1",
+        manifest_version="2.0.13-beta.1",
         frontend_dependencies={"status": "not_inspectable"},
     )
     out_of_range_checks = {
@@ -4591,12 +4630,17 @@ def test_diagnostics_summary_can_surface_shared_frontend_dependency_status_witho
         "card-mod": {"detected": False},
     }
 
+    runtime_data = {
+        "runtime_mode": "manual_override",
+        "runtime_mode_display": "MANUAL OVERRIDE",
+        "runtime_reason": "Manual override is enabled.",
+    }
     full_summary = services_mod._build_diagnostics_summary(
         hass,
         entry.data,
         {},
         {},
-        {},
+        runtime_data,
         frontend_dependencies=frontend_status,
     )
     live_summary = services_mod._build_diagnostics_summary(
@@ -4604,11 +4648,21 @@ def test_diagnostics_summary_can_surface_shared_frontend_dependency_status_witho
         entry.data,
         {},
         {},
-        {},
+        runtime_data,
     )
 
     assert full_summary["frontend_dependency_resources"] == frontend_status
     assert "frontend_dependency_resources" not in live_summary
+    assert full_summary["runtime_control"] == {
+        "mode": "manual_override",
+        "display": "MANUAL OVERRIDE",
+        "reason_available": True,
+    }
+    support_summary = services_mod._support_safe_diagnostics_summary(full_summary)
+    assert support_summary["runtime_control"] == full_summary["runtime_control"]
+    sensor_mod = _load_sensor_platform_module()
+    compact = sensor_mod._compact_diagnostics_summary(full_summary)
+    assert compact["runtime_control"] == full_summary["runtime_control"]
 
 
 def test_support_diagnostics_summary_uses_canonical_level_label_source():
@@ -5845,12 +5899,12 @@ def test_v205_release_check_service_is_documented_and_registered():
     assert "handle_v205_release_check" in services_source
     assert "SERVICE_V205_RELEASE_CHECK" in services_source.split("async_unregister_services", 1)[1]
     assert "v205_release_check:" in services_yaml
-    assert "v2.0.5-v2.0.11" in services_yaml
-    assert "v2.0.5-v2.0.11" in readme_source
+    assert "v2.0.5-v2.0.12" in services_yaml
+    assert "v2.0.5-v2.0.12" in readme_source
     assert "write_test_exports" in services_yaml
     assert "humidity_intelligence.v205_release_check" in readme_source
     assert "humidity_intelligence_v205_release_check.json" in readme_source
-    assert manifest["version"] == "2.0.11"
+    assert manifest["version"] == "2.0.12-rc.1"
 
 
 def test_owned_ui_path_discovery_and_legacy_cleanup_guidance_is_explicit():

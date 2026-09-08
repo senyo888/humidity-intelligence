@@ -13,7 +13,7 @@ authority unless their sanitized value is promoted into tracked documentation.
 
 Humidity Intelligence is a deterministic Home Assistant environmental control engine.
 It resolves one selected ventilation lane per evaluation cycle and exposes the reason
-through Home Assistant entities, diagnostics, and generated dashboards.
+through Home Assistant entities, diagnostics, and exported Manual-card YAML.
 
 Runtime behavior is owned by tracked integration code, tracked tests, tracked service
 schemas, tracked generated-card templates, and release documentation. Ignored local
@@ -41,6 +41,17 @@ candidate cannot be mapped safely, Humidity Intelligence must skip blind output 
 surface degraded context, and continue explainably.
 
 Humidifier lanes remain independent from ventilation lane resolution.
+
+Manual override is a complete handover of ordinary output ownership. While Manual is
+active, HI cancels or neutralizes pending non-CO alert, AQ, and humidifier work, clears
+its active-lane helper/timer truth, and sends no ordinary fan, switch, humidifier, or
+visual-alert command. Existing physical output states remain untouched and are
+reported only as Home Assistant-observed truth; HI must not describe them as selected
+or commanded. Humidifier reconciliation uses the explicit additive `manual_hold`
+state rather than desired-off, stopping, or isolated truth. CO emergency remains the
+sole exception and may force only its configured ventilation outputs to 100%. Turning
+Manual off requests a fresh evaluation so normal deterministic AUTO ownership can
+resume immediately.
 
 Humidifier control has separate truth layers:
 
@@ -239,6 +250,14 @@ Home Assistant runtime payload. Custom-integration branding is packaged only as
 that component. The repository-root `brand/` pair is the authoring source; the
 component pair is its byte-identical release/install mirror, not a second authoring
 location.
+
+The branch-bound controller package workflow is an external validation-artifact lane,
+not a second HI installation or release path. It may reproduce the exact tracked
+component from `senyo888-patch-1` with a strict manifest and short retention, but it
+cannot publish a GitHub Release, change HACS availability, install or deploy HI, define
+rollback, or transfer HI runtime and release authority to the external controller.
+The public repository, manifest, tag, GitHub Release, HACS package, and explicit
+maintainer gates retain their existing roles.
 
 ## Documentation And Release Boundaries
 

@@ -110,11 +110,19 @@ def setup_assist_suggestion(
     if entity_entry is None:
         return SetupAssistSuggestion(entity_id=clean_entity_id, status="not_found")
 
-    device_entry = _registry_get(device_reg, _clean_text(getattr(entity_entry, "device_id", "")))
+    device_id = _clean_text(getattr(entity_entry, "device_id", ""))
+    device_entry = _registry_get(device_reg, device_id)
     area_id = _clean_text(getattr(entity_entry, "area_id", "")) or _clean_text(
         getattr(device_entry, "area_id", "")
     )
-    area_entry = _registry_get(area_reg, area_id)
+    if not area_id:
+        # HA 2026.9 child devices inherit Area from their single-level parent.
+        parent_device_id = _clean_text(getattr(device_entry, "parent_device_id", ""))
+        if parent_device_id and parent_device_id != device_id:
+            parent_device_entry = _registry_get(device_reg, parent_device_id)
+            if not _clean_text(getattr(parent_device_entry, "parent_device_id", "")):
+                area_id = _clean_text(getattr(parent_device_entry, "area_id", ""))
+    area_entry = _area_registry_get(area_reg, area_id)
     area_name = _clean_text(getattr(area_entry, "name", ""))
     label_names = _label_names(label_reg, entity_entry, device_entry, area_entry)
     level, warnings = _suggest_level(area_name, label_names)
@@ -254,6 +262,16 @@ def _registry_get(registry: Any, key: str) -> Any:
         return registry.async_get(key)
     except Exception as err:
         _LOGGER.debug("Setup assist registry get failed for %s: %s", key, err)
+        return None
+
+
+def _area_registry_get(registry: Any, key: str) -> Any:
+    if registry is None or not key:
+        return None
+    try:
+        return registry.async_get_area(key)
+    except Exception as err:
+        _LOGGER.debug("Setup assist area registry get failed for %s: %s", key, err)
         return None
 
 
