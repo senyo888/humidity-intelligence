@@ -532,9 +532,10 @@ must be reviewable from tracked repository files.
   metadata, but saved HI telemetry, zone, AQ, humidifier, and alert mappings remain
   the only runtime truth
 - release-prep service usage: run `self_check` or `v205_release_check` for support
-  validation; use `refresh_ui` to rebuild the rendered in-memory cache, then
-  `dump_cards` or `view_cards` to write fresh YAML. Already-pasted Manual cards remain
-  static and must be re-copied from the latest export
+  validation. For releases that change generated-card bytes, use `refresh_ui` to
+  rebuild the rendered in-memory cache, then `dump_cards` or `view_cards` to write
+  fresh YAML and replace the already-pasted static Manual cards. v2.0.12 leaves
+  generated-card bytes unchanged, so no Manual-card re-export or replacement is required
 - runtime contract: deterministic lane ordering, output-writer boundaries, entity
   semantics, migration shape, and UI truth stay aligned with the existing backend
   model
