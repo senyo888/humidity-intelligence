@@ -20,8 +20,8 @@
 - [Project Site and Search Discovery](#project-site-and-search-discovery)
 - [Wiki and Support Manual](#wiki-and-support-manual)
 - [What Is Humidity Intelligence](#what-is-humidity-intelligence)
-- [V2 UI Example](#v2-ui-example)
 - [Support Humidity Intelligence](#support-humidity-intelligence)
+- [V2 UI Example](#v2-ui-example)
 - [Why Environmental Stability Matters](#why-environmental-stability-matters)
 - [Air Quality and Environmental Stability](#air-quality-and-environmental-stability)
 - [Season-Aware Environmental Control](#season-aware-environmental-control)
@@ -57,35 +57,11 @@ It gives you:
 - native Home Assistant diagnostics for support and triage
 - services for dashboard export, self-check, diagnostics, pause/resume, and release validation
 
-Current development manifest version: **v2.0.12**. This Stable preparation corrects the
-configured time gate to use Home Assistant local time, makes timer countdown updates
-lifecycle-safe, aligns setup assistance with Home Assistant 2026.9 child-device Area
-inheritance, makes Manual override a complete non-CO output handover, and presents
-that handover as one clear explanation in the reason field. It is not a published
-release. The current published Stable GitHub Release and tag are
-**v2.0.11**, published on 11 August 2026. Humidity Intelligence is included in the
-HACS default repository and is available directly in HACS; HACS still installs only a
-published GitHub Release version.
-
-Optional HA Lab evidence is advisory and does not block promotion, tagging, or
-publication.
-Canonical tests, review, CI, version governance, and explicit maintainer decisions
-remain the release authority.
-
-For publication status, installed packages, and release tags, use
-[GitHub Releases](https://github.com/senyo888/Humidity-Intelligence/releases) and
-HACS as the user-facing record.
-
-v2.0.9 completes the HI-owned runtime-artifact namespace: report JSON writes under
-`<config>/humidity_intelligence/exports/`, generated card YAML writes under
-`<config>/humidity_intelligence/ui/`, and protected external writer, mutation, and
-snapshot-inventory services require an authenticated admin context. GitHub Releases
-and HACS remain the authoritative publication and installed-package records.
-
-The deterministic runtime contract stays intact: one selected control lane per cycle,
-the same public entity meanings, and output writing only through the established
-runtime paths. No stored HI data migration is required, but external file consumers
-must be deliberately moved to the new owned-directory paths.
+The v2.0.12 package includes Manual output handover, Home Assistant local-time gates,
+lifecycle-safe timer updates, and child-device Area support. For the latest published
+Stable version, see [GitHub Releases](https://github.com/senyo888/Humidity-Intelligence/releases/latest)
+and the versions offered in HACS. Humidity Intelligence is included in the HACS
+default repository; select **Download** in HACS to install a published version.
 
 ---
 
@@ -156,13 +132,37 @@ The system works as a coordinated environmental control layer for everyday house
 - unstable overnight humidity can be corrected gradually to improve comfort and reduce moisture stress
 - dangerous conditions such as mould-risk humidity or carbon monoxide escalation can trigger higher-priority safety responses
 
+Certified carbon-monoxide alarms remain the primary detection and alerting system;
+Humidity Intelligence provides an additional Home Assistant awareness layer.
+
 Humidity Intelligence is intentionally deterministic. Every decision is based on visible telemetry, defined environmental rules, and priority logic rather than opaque AI behaviour or unpredictable automation chains. The goal is long-term environmental stability, comfort, and property protection rather than automation for its own sake.
 
 The project also places strong emphasis on transparency. Users can see why actions are happening, what environmental conditions triggered them, which zone is active, and what the system is trying to achieve at any given moment. Seasonal context, comfort targets, active alerts, and runtime reasoning are surfaced directly into the UI so the system feels understandable rather than mysterious.
 
 At its core, Humidity Intelligence is about creating a calmer, more stable living environment through continuous environmental awareness and accountable smart-home control.
 
-## V2 UI Example
+## Support Humidity Intelligence
+
+### Enjoying Humidity Intelligence?
+
+If you're finding Humidity Intelligence useful, insightful, or just interesting to explore, consider giving the repository a star.
+
+It helps others discover the project, supports ongoing development, and shows that this kind of deterministic, explainable approach to Home Assistant has community value.
+
+[⭐ Star Humidity Intelligence on GitHub](https://github.com/senyo888/Humidity-Intelligence)
+
+Optional sponsorship is also available through GitHub Sponsors:
+
+[Support the project on GitHub Sponsors](https://github.com/sponsors/senyo888)
+
+Sponsorship is optional and separate from support SLAs, private support obligations,
+feature guarantees, release commitments, and Home Assistant / HACS behavior.
+
+---
+
+<a id="v2-ui-example"></a>
+<details>
+<summary><h2>V2 UI Example</h2></summary>
 
 These are live `2.0.10-beta.7` dashboard captures. Home Assistant was restarted, the
 beta.7 cards were freshly exported, the complete Manual-card YAML was replaced, and
@@ -195,28 +195,11 @@ Additional screenshots and layout comparisons live in the Wiki so the front page
 
 </details>
 
----
+</details>
 
-## Support Humidity Intelligence
-
-### Enjoying Humidity Intelligence?
-
-If you're finding Humidity Intelligence useful, insightful, or just interesting to explore, consider giving the repository a star.
-
-It helps others discover the project, supports ongoing development, and shows that this kind of deterministic, explainable approach to Home Assistant has community value.
-
-[⭐ Star Humidity Intelligence on GitHub](https://github.com/senyo888/Humidity-Intelligence)
-
-Optional sponsorship is also available through GitHub Sponsors:
-
-[Support the project on GitHub Sponsors](https://github.com/sponsors/senyo888)
-
-Sponsorship is optional and separate from support SLAs, private support obligations,
-feature guarantees, release commitments, and Home Assistant / HACS behavior.
-
----
-
-## Why Environmental Stability Matters
+<a id="why-environmental-stability-matters"></a>
+<details>
+<summary><h2>Why Environmental Stability Matters</h2></summary>
 
 Homes rarely become damp, dry, stale, or uncomfortable because of one isolated reading. Problems usually build as patterns: a bathroom that stays wet too long, a bedroom that drifts away from the rest of the house, a winter profile that needs a lower humidity target, or an air-quality spike that lingers after cooking.
 
@@ -239,9 +222,11 @@ Humidity Intelligence is designed for that domestic rhythm. It can see rooms ris
 
 For the fuller explanation, including property impact, health comfort, sleep, night-time humidity sources, dry-air effects, plant health, and research context, see the Wiki guide: [Why Environmental Stability Matters](https://github.com/senyo888/humidity-intelligence/wiki/Why-Environmental-Stability-Matters).
 
----
+</details>
 
-## Air Quality and Environmental Stability
+<a id="air-quality-and-environmental-stability"></a>
+<details>
+<summary><h2>Air Quality and Environmental Stability</h2></summary>
 
 Humidity Intelligence is broader than humidity alone. It contributes to environmental stability by surfacing indoor air-quality signals from configured Home Assistant entities and, where users have configured suitable outputs, using available devices such as air purifiers or ventilation fans to respond to poor air-quality conditions.
 
@@ -258,9 +243,11 @@ Detailed AQ and CO guidance lives in the support manual:
 - [Air Quality and CO Safety](https://github.com/senyo888/humidity-intelligence/wiki/Air-Quality-and-CO-Safety)
 - [Understanding Control Decisions](https://github.com/senyo888/humidity-intelligence/wiki/Understanding-Control-Decisions)
 
----
+</details>
 
-## Season-Aware Environmental Control
+<a id="season-aware-environmental-control"></a>
+<details>
+<summary><h2>Season-Aware Environmental Control</h2></summary>
 
 `56%` can mean different things.
 
@@ -294,9 +281,11 @@ Default temperature comfort bands:
 - Summer: blue below `21°C`, green `21-24°C`, yellow `24-26.5°C`, red above `26.5°C`
 - Autumn: blue below `20°C`, green `20-21.5°C`, yellow `21.5-23°C`, red above `23°C`
 
----
+</details>
 
-## Design Philosophy
+<a id="design-philosophy"></a>
+<details>
+<summary><h2>Design Philosophy</h2></summary>
 
 Humidity Intelligence is built around a simple premise: a home works better with one visible environmental controller than with a loose pile of automations competing for control. That controller should read configured telemetry, apply a stable priority hierarchy, and resolve one explainable outcome per evaluation cycle.
 
@@ -315,9 +304,11 @@ The architectural preference is calm regulation over automation chaos:
 
 The result should feel steady in a domestic environment: readable, conservative, and accountable when conditions change.
 
----
+</details>
 
-## Architecture Overview
+<a id="architecture-overview"></a>
+<details>
+<summary><h2>Architecture Overview</h2></summary>
 
 Humidity Intelligence operates across three defined layers. Each layer has a clear job: turn readings into meaning, decide which lane has authority, and show the result without inventing extra logic.
 
@@ -442,7 +433,11 @@ Red control-row styling is reserved for a selected alert or CO response. Other
 environmental warnings remain visible in the reason text without being presented as
 the active control response.
 
-## Public Architecture Contract
+</details>
+
+<a id="public-architecture-contract"></a>
+<details>
+<summary><h2>Public Architecture Contract</h2></summary>
 
 The tracked public architecture contract lives in [ARCHITECTURE.md](ARCHITECTURE.md).
 It records the durable runtime, UI-truth, Home Assistant compatibility, and release
@@ -451,11 +446,13 @@ authority rules used for public review.
 Maintainer-only planning notes may exist locally, but public contributor correctness
 must be reviewable from tracked repository files.
 
----
+</details>
 
-## Current Release Highlights
+<a id="current-release-highlights"></a>
+<details>
+<summary><h2>Current Release Highlights</h2></summary>
 
-- the `2.0.12` maintenance candidate uses Home Assistant local time for the
+- the `2.0.12` maintenance update uses Home Assistant local time for the
   configured time gate and gives HI timer entities lifecycle-owned, at-most-once-per-
   minute countdown updates without changing their IDs or `active`/`idle` states; it
   also aligns setup assistance with Home Assistant 2026.9 child-device Area inheritance
@@ -465,7 +462,7 @@ must be reviewable from tracked repository files.
 - the published `2.0.11` Stable release restores the established centred, passive
   Stability preview badge and six-second breathing treatment without calculating a
   score in the card or changing control behaviour
-- the previous published `2.0.10` Stable release adds deterministic humidifier-output
+- the published `2.0.10` Stable release adds deterministic humidifier-output
   reconciliation and backend-authored `hi.reason.v1` explanations while preserving
   one selected ventilation lane, the existing lane order, thresholds, configuration,
   stored data, and entity identity
@@ -525,7 +522,7 @@ must be reviewable from tracked repository files.
 - local issue-triage private report writing is confined through the private atomic
   writer, keeping public issue/support flows separate from local report output
 - the tracked secret scan now fails closed when no tracked files are selected
-- `v205_release_check` preserves its service name; the v2.0.12 candidate
+- `v205_release_check` preserves its service name; the v2.0.12 update
   extends its generated-card, humidifier-reconciliation, and release-validation
   contract through the v2.0.12 beta/rc/stable line
 - Home Assistant Area/Label setup assistance can suggest defaults from registry
@@ -540,7 +537,7 @@ must be reviewable from tracked repository files.
   semantics, migration shape, and UI truth stay aligned with the existing backend
   model
 
-v2.0.12 candidate update note:
+v2.0.12 update note:
 
 After installing a new HI version through HACS or replacing its files:
 
@@ -574,9 +571,11 @@ After the updated integration code is loaded, a config-entry reload is enough fo
 option changes. `refresh_ui` updates HI's live card cache;
 `humidity_intelligence.dump_cards` creates fresh YAML you can paste.
 
----
+</details>
 
-## Installation
+<a id="installation"></a>
+<details>
+<summary><h2>Installation</h2></summary>
 
 ### Option A - HACS (Recommended)
 
@@ -627,9 +626,15 @@ fully restart Home Assistant. A config-entry reload alone cannot load changed Py
 or manifest metadata. Existing configuration entries and entities remain in place;
 no v2.0.12 data migration is required.
 
----
+For upgrades from before v2.0.9, external report/card file consumers must move to
+the HI-owned directories. See the [v2.0.9 migration notes](CHANGELOG.md#209---2026-07-28);
+stored HI data needs no migration.
 
-## Frontend Dependencies
+</details>
+
+<a id="frontend-dependencies"></a>
+<details>
+<summary><h2>Frontend Dependencies</h2></summary>
 
 Humidity Intelligence runs fully at the backend level. The richer dashboard experience depends on a small set of frontend cards.
 
@@ -692,10 +697,11 @@ This gives you a saved baseline before the configuration grows.
 Advanced: full setup. If your sensor layout is already mapped, add every sensor
 during first setup and continue through the whole flow in one pass.
 
+</details>
 
----
-
-## Migration Guide - v1 to v2
+<a id="migration-guide---v1-to-v2"></a>
+<details>
+<summary><h2>Migration Guide - v1 to v2</h2></summary>
 
 V1 was template-based.
 V2 is a structured integration with configuration flow and runtime validation.
@@ -850,10 +856,11 @@ service: humidity_intelligence.refresh_ui
 
 This keeps HACS updates, install location, and integration loading aligned with the V2 package layout.
 
+</details>
 
----
-
-## Full Configuration Flow
+<a id="full-configuration-flow"></a>
+<details>
+<summary><h2>Full Configuration Flow</h2></summary>
 
 First install follows a staged setup path. Essentials stay visible first; expert controls sit inside live **Show advanced tuning** sections so normal setup stays approachable.
 
@@ -903,9 +910,11 @@ Detailed manual:
 - [Air Quality and CO Safety](https://github.com/senyo888/humidity-intelligence/wiki/Air-Quality-and-CO-Safety)
 - [Generated Dashboards](https://github.com/senyo888/humidity-intelligence/wiki/Generated-Dashboards)
 
----
+</details>
 
-## UI Gallery
+<a id="ui-gallery"></a>
+<details>
+<summary><h2>UI Gallery</h2></summary>
 
 The browseable UI Gallery lives in the Wiki:
 
@@ -926,9 +935,11 @@ review.
 For new gallery submissions, open a repository pull request. Do not treat Wiki-only
 YAML as canonical install guidance.
 
----
+</details>
 
-## Post-Configuration Workflow
+<a id="post-configuration-workflow"></a>
+<details>
+<summary><h2>Post-Configuration Workflow</h2></summary>
 
 When modifying options:
 
@@ -954,9 +965,11 @@ Detailed manual:
 - [Generated Dashboards](https://github.com/senyo888/humidity-intelligence/wiki/Generated-Dashboards)
 - [Troubleshooting Generated UI](https://github.com/senyo888/humidity-intelligence/wiki/Troubleshooting-Generated-UI)
 
----
+</details>
 
-## How to Use Services
+<a id="how-to-use-services"></a>
+<details>
+<summary><h2>How to Use Services</h2></summary>
 
 Use Home Assistant Developer Tools:
 1. Go to **Developer Tools -> Actions**.
@@ -1158,9 +1171,11 @@ Detailed manual:
 - [Diagnostics and Support Bundle](https://github.com/senyo888/humidity-intelligence/wiki/Diagnostics-and-Support-Bundle)
 - [Release Validation for Users](https://github.com/senyo888/humidity-intelligence/wiki/Release-Validation-for-Users)
 
----
+</details>
 
-## Support, Diagnostics, and Issue Triage
+<a id="support-diagnostics-and-issue-triage"></a>
+<details>
+<summary><h2>Support, Diagnostics, and Issue Triage</h2></summary>
 
 When reporting a bug or asking for configuration help, attach the native Home Assistant diagnostics file where possible.
 
@@ -1211,9 +1226,11 @@ More detail:
 - [Support and diagnostics](docs/support.md)
 - [Issue triage workflow](docs/issue-triage.md)
 
----
+</details>
 
-## Runtime Simulation Validation
+<a id="runtime-simulation-validation"></a>
+<details>
+<summary><h2>Runtime Simulation Validation</h2></summary>
 
 Maintainer runtime validation includes a backend-consumed fake telemetry harness
 for `HI Air Control Mode` and `HI Air Control Reason` truth. It is test-only:
@@ -1231,16 +1248,25 @@ disabled/manual/global gates, baseline-clear CO telemetry, and explicit opt-in
 CO emergency pressure. Details are in
 [Runtime Simulation Validation](docs/runtime-simulation-validation.md).
 
----
+</details>
 
-## Release Notes
+<a id="release-notes"></a>
+<details>
+<summary><h2>Release Notes</h2></summary>
 
-### v2.0.12 (Maintenance candidate; not published)
+HA Lab evidence is optional advisory context and does not block promotion, tagging,
+or publication. Canonical validation, review and maintainer approval remain authoritative.
+
+<a id="v2012-maintenance-candidate-not-published"></a>
+
+### v2.0.12
 
 ![Humidity Intelligence v2.0.12 release header celebrating repository-level HACS inclusion](assets/release_banner/v2.0.12_release.png)
 
-- carries development manifest identity `2.0.12`; this is release preparation,
-  not a published GitHub Release or an HACS-offered v2.0.12 package
+These notes describe v2.0.12. [GitHub Releases](https://github.com/senyo888/Humidity-Intelligence/releases/latest)
+records published versions; the source manifest identifies this checkout. A branch
+merge alone does not establish publication.
+
 - celebrates completed inclusion of Humidity Intelligence in the HACS default
   integration repository; the button opens the repository in HACS and the user still
   selects **Download**
@@ -1282,19 +1308,19 @@ CO emergency pressure. Details are in
   procedure. The exact final v2.0.12 package registered after one completed restart
   in the validated beta.4-to-Stable update; a second restart was not needed. See
   [registration evidence](docs/release-governance.md#candidate-registration-evidence).
-- remains blocked from tag and publication until exact-package validation, required
-  reviews, release sanity, Content Harmony closeout, and final maintainer README and
-  release approval are complete
+- follows the [release governance and approval procedure](docs/release-governance.md)
+  for package validation, review, promotion, and publication
 
-### v2.0.11 — Poetic Justice (Current Published Stable)
+<a id="v2011--poetic-justice-current-published-stable"></a>
+
+### v2.0.11 — Poetic Justice
 
 ![Humidity Intelligence v2.0.11 Poetic Justice release banner](assets/release_banner/v2.0.11_release.png)
 
 [![Latest Release](https://img.shields.io/github/v/release/senyo888/Humidity-Intelligence?display_name=tag&sort=semver)](https://github.com/senyo888/Humidity-Intelligence/releases) [![Project Site](https://img.shields.io/badge/Project%20Site-GitHub%20Pages-5aa8d6)](https://senyo888.github.io/humidity-intelligence/) [![License](https://img.shields.io/github/license/senyo888/Humidity-Intelligence)](LICENSE) [![Sponsor](https://img.shields.io/badge/Sponsor-GitHub%20Sponsors-ea4aaa?logo=githubsponsors&logoColor=white)](https://github.com/sponsors/senyo888) [![Star Humidity Intelligence](https://img.shields.io/badge/Star%20%2F%20Support-Humidity%20Intelligence-2ea44f?logo=github&logoColor=white)](https://github.com/senyo888/humidity-intelligence)
 
 - was published on 11 August 2026 as a non-prerelease GitHub Release and immutable tag
-  from exact commit `0dd3e68ab9f35608641dc64efc4b2c4bfacb06ce`; it is the
-  current published Stable release
+  from exact commit `0dd3e68ab9f35608641dc64efc4b2c4bfacb06ce`
 - is now available through the existing HACS default integration listing; the later
   HACS inclusion milestone does not alter the published v2.0.11 package bytes or tag
 - restores the established centred Stability Score preview across generated V2
@@ -1318,7 +1344,9 @@ CO emergency pressure. Details are in
 - requires no config-entry, entity-registry, stored-data, threshold, lane-order,
   service-name, or dashboard-registration migration
 
-### v2.0.10 (Previous Published Stable)
+<a id="v2010-previous-published-stable"></a>
+
+### v2.0.10
 
 ![Humidity Intelligence v2.0.10 release banner](assets/release_banner/v2.0.10_release.png)
 
@@ -1364,7 +1392,8 @@ CO emergency pressure. Details are in
   package bytes were installed on that instance
 
 <!-- Canonical release-note structure: keep the current candidate, current Published
-Stable, and immediately preceding Published Stable summaries expanded above. Move
+Stable, and immediately preceding Published Stable summaries expanded within this
+Release Notes disclosure. Move
 displaced older summaries into this container as new releases are added. CHANGELOG.md
 remains the complete detailed history. -->
 <details>
@@ -1438,5 +1467,7 @@ remains the complete detailed history. -->
   those boundaries remain covered by local tests or require separate live evidence
 
 Release details for v2.0.1 through v2.0.8, including legacy migration notes, are maintained in [CHANGELOG.md](CHANGELOG.md).
+
+</details>
 
 </details>

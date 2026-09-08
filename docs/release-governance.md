@@ -26,10 +26,10 @@ must remain aligned with the
 `custom_components/humidity_intelligence/manifest.json` version contained in the
 published GitHub Release/tag.
 
-Published Stable is `2.0.11`, released on 2026-08-11 from exact commit
+Version `2.0.11` was published on 2026-08-11 from exact commit
 `0dd3e68ab9f35608641dc64efc4b2c4bfacb06ce`. Humidity Intelligence was subsequently
-included in the HACS default integration repository. The current development candidate
-uses `2.0.12` Stable metadata on the governed release-preparation lane. A branch or
+included in the HACS default integration repository. Version `2.0.12` uses
+Stable metadata on the governed release-preparation lane. A branch or
 merge containing that metadata is not by itself a publication. Public release status
 comes from GitHub Releases and the version offered through HACS, while
 release readiness must be established through public-safe validation summaries,
@@ -259,7 +259,8 @@ record:
 ## README Release-Note Structure
 
 The README keeps the current candidate, current Published Stable, and immediately
-preceding Published Stable summaries expanded. When a newer release displaces one of
+preceding Published Stable summaries expanded within Release Notes when opened.
+Release Notes itself may be a collapsed disclosure. When a newer release displaces one of
 those three positions, move the older summary into the collapsible `Previous Releases`
 container. Retain that container as the canonical older-release structure so
 successive releases follow the same visible chronology.

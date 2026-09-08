@@ -4025,12 +4025,12 @@ def test_readme_uses_manifest_version_badge_not_static_ha_compatibility_badge():
 
 def test_readme_keeps_three_current_release_summaries_before_previous_releases():
     readme_source = (ROOT / "README.md").read_text()
-    release_notes = readme_source.split("## Release Notes", 1)[1]
+    release_notes = readme_source.split("<summary><h2>Release Notes</h2></summary>", 1)[1]
     visible_notes, previous_releases = release_notes.split("<details>", 1)
 
-    assert "### v2.0.12 (Maintenance candidate; not published)" in visible_notes
-    assert "### v2.0.11 — Poetic Justice (Current Published Stable)" in visible_notes
-    assert "### v2.0.10 (Previous Published Stable)" in visible_notes
+    assert "### v2.0.12" in visible_notes
+    assert "### v2.0.11 — Poetic Justice" in visible_notes
+    assert "### v2.0.10" in visible_notes
     assert "was published on 11 August 2026" in visible_notes
     assert "was published on 2026-08-10" in visible_notes
     assert "### v2.0.9" not in visible_notes
@@ -4061,9 +4061,9 @@ def test_readme_keeps_three_current_release_summaries_before_previous_releases()
     assert "it does not install automatically" in readme_source
 
 
-def test_v2012_public_release_surfaces_track_candidate_and_v2011_stable_truth():
+def test_v2012_public_release_surfaces_distinguish_source_and_publication():
     readme_source = (ROOT / "README.md").read_text()
-    release_notes = readme_source.split("## Release Notes", 1)[1]
+    release_notes = readme_source.split("<summary><h2>Release Notes</h2></summary>", 1)[1]
     visible_notes = release_notes.split("<details>", 1)[0]
     changelog_source = (ROOT / "CHANGELOG.md").read_text()
     release_governance = (ROOT / "docs" / "release-governance.md").read_text()
@@ -4072,12 +4072,12 @@ def test_v2012_public_release_surfaces_track_candidate_and_v2011_stable_truth():
     normalized_changelog = " ".join(changelog_source.split())
     normalized_governance = " ".join(release_governance.split())
 
-    assert "Current development manifest version: **v2.0.12**" in normalized_readme
-    assert "It is not a published release" in normalized_readme
-    assert "current published Stable GitHub Release and tag are **v2.0.11**" in normalized_readme
+    assert "The v2.0.12 package includes" in normalized_readme
+    assert "releases/latest" in normalized_readme
+    assert "latest published Stable version" in normalized_readme
     assert "included in the HACS default repository" in normalized_readme
-    assert "carries development manifest identity `2.0.12`" in normalized_visible_notes
-    assert "not a published GitHub Release or an HACS-offered v2.0.12 package" in normalized_visible_notes
+    assert "These notes describe v2.0.12" in normalized_visible_notes
+    assert "A branch merge alone does not establish publication" in normalized_visible_notes
     assert "Manual override a complete handover" in normalized_visible_notes
     assert "observed-only `manual_hold`" in normalized_visible_notes
     assert "normal non-Manual AUTO ownership" in normalized_visible_notes
@@ -4088,7 +4088,7 @@ def test_v2012_public_release_surfaces_track_candidate_and_v2011_stable_truth():
     assert "Advanced development identity to `2.0.12-beta.2`" in normalized_changelog
     assert "Advanced the development identity to `2.0.12-beta.3`" in normalized_changelog
     assert "Advanced the development identity to `2.0.12-beta.4`" in normalized_changelog
-    assert "Published Stable is `2.0.11`" in normalized_governance
+    assert "Version `2.0.11` was published on 2026-08-11" in normalized_governance
     assert "Manual override output-handover repair" in normalized_governance
     assert "Manual ownership/reconciliation/diagnostic truth" in normalized_governance
     assert "normal non-Manual AUTO semantics" in normalized_governance

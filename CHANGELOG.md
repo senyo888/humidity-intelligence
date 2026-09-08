@@ -6,10 +6,15 @@ All notable changes to Humidity Intelligence will be documented in this file.
 
 This project follows a practical changelog format for Home Assistant and HACS users. Add new entries under a fresh `Unreleased` section before publishing a future release.
 
-## Unreleased
+## 2.0.12
+
+For publication dates and available downloads, see [GitHub Releases](https://github.com/senyo888/Humidity-Intelligence/releases).
 
 ![Humidity Intelligence v2.0.12 release header celebrating repository-level HACS inclusion](assets/release_banner/v2.0.12_release.png)
 
+- Reorganised the README into independent expandable sections after the open
+  introduction and support section, retaining safety, installation and migration
+  guidance. Version-specific notes link to the published release record.
 - Replaced the release header's central glass droplet with the official HI logo,
   retaining the wording and overall composition. Integration branding and generated
   dashboard assets are unchanged.
@@ -52,8 +57,7 @@ This project follows a practical changelog format for Home Assistant and HACS us
   Assistant validation. Earlier beta.2 evidence remains historical evidence for its
   exact package and does not transfer to beta.3.
 - Advanced development identity to `2.0.12-beta.2` so the Home Assistant 2026.9
-  alignment remains distinct from the earlier beta.1 testing bytes. This candidate
-  is not a published GitHub Release or an HACS-offered v2.0.12 package.
+  alignment remains distinct from the earlier beta.1 testing bytes. This was a validation candidate, distinct from the final v2.0.12 package.
 - Recorded completed inclusion in the HACS default integration repository, added the
   official My Home Assistant repository button, and replaced normal first-install
   custom-repository instructions with the default-store search and download path.
