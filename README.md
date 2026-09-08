@@ -160,7 +160,6 @@ feature guarantees, release commitments, and Home Assistant / HACS behavior.
 
 ---
 
-<a id="v2-ui-example"></a>
 <details>
 <summary><h2>V2 UI Example</h2></summary>
 
@@ -197,7 +196,6 @@ Additional screenshots and layout comparisons live in the Wiki so the front page
 
 </details>
 
-<a id="why-environmental-stability-matters"></a>
 <details>
 <summary><h2>Why Environmental Stability Matters</h2></summary>
 
@@ -224,7 +222,6 @@ For the fuller explanation, including property impact, health comfort, sleep, ni
 
 </details>
 
-<a id="air-quality-and-environmental-stability"></a>
 <details>
 <summary><h2>Air Quality and Environmental Stability</h2></summary>
 
@@ -245,7 +242,6 @@ Detailed AQ and CO guidance lives in the support manual:
 
 </details>
 
-<a id="season-aware-environmental-control"></a>
 <details>
 <summary><h2>Season-Aware Environmental Control</h2></summary>
 
@@ -283,7 +279,6 @@ Default temperature comfort bands:
 
 </details>
 
-<a id="design-philosophy"></a>
 <details>
 <summary><h2>Design Philosophy</h2></summary>
 
@@ -306,7 +301,6 @@ The result should feel steady in a domestic environment: readable, conservative,
 
 </details>
 
-<a id="architecture-overview"></a>
 <details>
 <summary><h2>Architecture Overview</h2></summary>
 
@@ -435,7 +429,6 @@ the active control response.
 
 </details>
 
-<a id="public-architecture-contract"></a>
 <details>
 <summary><h2>Public Architecture Contract</h2></summary>
 
@@ -448,7 +441,6 @@ must be reviewable from tracked repository files.
 
 </details>
 
-<a id="current-release-highlights"></a>
 <details>
 <summary><h2>Current Release Highlights</h2></summary>
 
@@ -573,7 +565,6 @@ option changes. `refresh_ui` updates HI's live card cache;
 
 </details>
 
-<a id="installation"></a>
 <details>
 <summary><h2>Installation</h2></summary>
 
@@ -632,7 +623,6 @@ stored HI data needs no migration.
 
 </details>
 
-<a id="frontend-dependencies"></a>
 <details>
 <summary><h2>Frontend Dependencies</h2></summary>
 
@@ -699,7 +689,6 @@ during first setup and continue through the whole flow in one pass.
 
 </details>
 
-<a id="migration-guide---v1-to-v2"></a>
 <details>
 <summary><h2>Migration Guide - v1 to v2</h2></summary>
 
@@ -858,7 +847,6 @@ This keeps HACS updates, install location, and integration loading aligned with 
 
 </details>
 
-<a id="full-configuration-flow"></a>
 <details>
 <summary><h2>Full Configuration Flow</h2></summary>
 
@@ -912,7 +900,6 @@ Detailed manual:
 
 </details>
 
-<a id="ui-gallery"></a>
 <details>
 <summary><h2>UI Gallery</h2></summary>
 
@@ -937,7 +924,6 @@ YAML as canonical install guidance.
 
 </details>
 
-<a id="post-configuration-workflow"></a>
 <details>
 <summary><h2>Post-Configuration Workflow</h2></summary>
 
@@ -967,7 +953,6 @@ Detailed manual:
 
 </details>
 
-<a id="how-to-use-services"></a>
 <details>
 <summary><h2>How to Use Services</h2></summary>
 
@@ -1173,7 +1158,6 @@ Detailed manual:
 
 </details>
 
-<a id="support-diagnostics-and-issue-triage"></a>
 <details>
 <summary><h2>Support, Diagnostics, and Issue Triage</h2></summary>
 
@@ -1228,7 +1212,6 @@ More detail:
 
 </details>
 
-<a id="runtime-simulation-validation"></a>
 <details>
 <summary><h2>Runtime Simulation Validation</h2></summary>
 
@@ -1250,7 +1233,6 @@ CO emergency pressure. Details are in
 
 </details>
 
-<a id="release-notes"></a>
 <details>
 <summary><h2>Release Notes</h2></summary>
 

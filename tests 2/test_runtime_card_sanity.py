@@ -7169,6 +7169,22 @@ def test_generated_v1_cards_escape_dynamic_html_text():
     assert sources[0] == sources[1]
 
 
+
+def test_readme_disclosure_headings_do_not_duplicate_github_anchors():
+    """GitHub emits a heading anchor even for an h2 inside a summary."""
+    import re
+
+    source = (ROOT / "README.md").read_text()
+    headings = re.findall(r"<summary><h2>(.*?)</h2></summary>", source)
+    assert len(headings) == 18
+    explicit = set(re.findall(r'<a id="([^"]+)"></a>', source))
+    contents = source.split("## Contents", 1)[1].split("\n---\n", 1)[0]
+    for heading in headings:
+        slug = re.sub(r"[^\w -]", "", heading.lower()).replace(" ", "-")
+        assert f"](#{slug})" in contents
+        assert slug not in explicit
+
+
 if __name__ == "__main__":
     tests = [
         (name, value)
