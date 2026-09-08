@@ -545,9 +545,14 @@ v2.0.12 candidate update note:
 After installing a new HI version through HACS or replacing its files:
 
 1. Restart Home Assistant. A full restart loads the updated HI package and services.
-2. Confirm native diagnostics report the expected HI version and schema `1`.
+2. Confirm the [loader identity fields](docs/release-governance.md#candidate-registration-evidence)
+   report the expected HI version, the entry is loaded, and entities/services are available.
 3. Run `humidity_intelligence.v205_release_check` and review the generated report.
 4. Check an ordinary configured time-gate window and a timer start/cancel cycle.
+
+The exact final v2.0.12 package registered after one completed restart in the
+validated beta.4-to-Stable update. A second restart was not needed. The two-restart
+beta procedure remains candidate-validation guidance, not a permanent Stable rule.
 
 No Manual-card re-export is required for v2.0.12 because generated-card bytes are
 unchanged. If your installed version differs from the expected HACS version, resolve
@@ -1274,7 +1279,8 @@ CO emergency pressure. Details are in
   final Stable package
 - **Candidate validation:** beta.4 used two complete Home Assistant restarts, with
   startup and registration checked after each. This is a candidate-validation
-  procedure; a two-restart requirement for final v2.0.12 is unverified. See
+  procedure. The exact final v2.0.12 package registered after one completed restart
+  in the validated beta.4-to-Stable update; a second restart was not needed. See
   [registration evidence](docs/release-governance.md#candidate-registration-evidence).
 - remains blocked from tag and publication until exact-package validation, required
   reviews, release sanity, Content Harmony closeout, and final maintainer README and

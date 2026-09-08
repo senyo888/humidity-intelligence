@@ -73,16 +73,23 @@ registration verification below remains separate. Broader runtime/UI changes req
 fresh scope-appropriate evidence and separate deployment authority.
 
 The RC-to-Stable preparation also changes only manifest identity, documentation,
-and matching tests. Its package digest is distinct; no exact-final-package live
-validation is implied by the metadata promotion.
+and matching tests. Its package digest is distinct; the final-package registration evidence below
+comes from a separate authorised installation, not from the metadata promotion.
 
-Before final v2.0.12 release guidance is approved, verify whether the exact final
-package needs two restarts. Record the installed digest, completed startup, loaded
-identity, registrations, and any discovery conflict or intervening package change.
-If two restarts are confirmed necessary, state that prominently in release notes and
-update instructions. Otherwise retain the candidate-validation label. Do not infer
-an extra restart requirement from an on-disk/loaded version mismatch alone or repeat
-restarts without diagnosing setup errors and retaining a recoverable predecessor.
+The exact final v2.0.12 component package
+`fcfa2c49f3d0e3282771aab575ab60e35aa31717b2565a77e792737ed557c278`
+was installed over verified beta.4 and registered after one completed Home Assistant
+restart. Both loader fields reported 2.0.12; the entry loaded, 95 mapped entities
+were available, 13 services registered, diagnostics reported ok, and all 16 release
+checks passed. The installed 53-file inventory remained exact after startup.
+A second restart was not needed. This establishes the observed beta.4-to-Stable
+update result, not a guarantee for every starting version or installation method.
+
+Keep the two-restart beta procedure labelled as candidate validation. For Stable,
+restart after installation, then verify loaded identity and registration. If setup
+is incomplete, inspect errors and duplicate-domain discovery before deciding on
+another restart. Keep recoverable predecessors outside `custom_components`; do not
+infer an extra restart requirement from the on-disk version or restart in a loop.
 
 ## v2.0.11 Publication And v2.0.12 Maintenance Path
 

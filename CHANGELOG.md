@@ -10,18 +10,22 @@ This project follows a practical changelog format for Home Assistant and HACS us
 
 ![Humidity Intelligence v2.0.12 release header celebrating repository-level HACS inclusion](assets/release_banner/v2.0.12_release.png)
 
+- Replaced the release header's central glass droplet with the official HI logo,
+  retaining the wording and overall composition. Integration branding and generated
+  dashboard assets are unchanged.
 - Prepared `2.0.12` Stable metadata on the develop-based release lane after RC
   promotion. The RC-to-Stable component delta is the manifest version only;
   documentation and matching tests distinguish preparation from publication.
-  Exact final-package registration and restart behavior remain to be verified.
+  The exact final package subsequently registered after one completed restart in
+  the validated beta.4-to-Stable update, with diagnostics and release checks passing.
 - Advanced the development identity to `2.0.12-rc.1` for the forward promotion from
   `senyo888-patch-1` to `develop`, then `main`. The beta.4-to-RC delta changes only
   manifest identity, release documentation, and associated tests. Beta.4 live
   validation remains bound to its tested package; the RC is a new package digest.
 - Recorded the two completed restarts used for beta.4 candidate validation, with
   separate loaded-identity and registration checks. This is not an established
-  installation rule for final v2.0.12. Verify the final package before stating such
-  a rule in Stable release notes or update instructions. Keep rollback copies
+  installation rule for final v2.0.12: its exact package registered after one
+  completed restart in the validated beta.4-to-Stable update. Keep rollback copies
   outside `custom_components` so duplicate domains cannot interfere with discovery.
 - Humanised the Manual reason field into one coherent explanation of the active mode,
   the ordinary outputs HI will leave unchanged, who remains in control, how to return
