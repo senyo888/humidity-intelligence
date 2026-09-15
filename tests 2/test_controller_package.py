@@ -17,7 +17,7 @@ ROOT = pathlib.Path(__file__).resolve().parents[1]
 BUILDER_PATH = ROOT / "scripts" / "build_controller_package.py"
 WORKFLOW_PATH = ROOT / ".github" / "workflows" / "controller-package.yml"
 UPLOAD_ARTIFACT_V7_SHA = "043fb46d1a93c77aae656e7c1c64a875d1fc6a0a"
-ATTEST_V4_1_0_SHA = "59d89421af93a897026c735860bf21b6eb4f7b26"
+ATTEST_V4_2_2_SHA = "1e69f48acb82d1966a394da916b4c1698aa569d6"
 
 
 def _load_builder():
@@ -123,7 +123,7 @@ class ControllerPackageTests(unittest.TestCase):
         self.assertIn("scripts/security/scan_secrets.sh tracked", workflow)
         self.assertIn('python3 "tests 2/test_controller_package.py"', workflow)
         self.assertIn(f"actions/upload-artifact@{UPLOAD_ARTIFACT_V7_SHA} # v7", workflow)
-        self.assertIn(f"actions/attest@{ATTEST_V4_1_0_SHA} # v4.1.0", workflow)
+        self.assertIn(f"actions/attest@{ATTEST_V4_2_2_SHA} # v4.2.2", workflow)
         self.assertIn("id-token: write", workflow)
         self.assertIn("attestations: write", workflow)
         self.assertNotIn("workflow_dispatch", workflow)
