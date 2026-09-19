@@ -61,7 +61,7 @@ Review the complete file before uploading it to a public issue.
 
 ## Diagnostics And Release Check
 
-The v2.1.0-beta.1 candidate keeps native diagnostics schema `1`, existing
+The v2.1.0-beta.2 candidate keeps native diagnostics schema `1`, existing
 redaction, aggregate mapped-entity availability, and browser-local Inspector
 compatibility unchanged. After a full restart, confirm loaded identity using Home
 Assistant's native diagnostics fields `custom_components.humidity_intelligence.version`

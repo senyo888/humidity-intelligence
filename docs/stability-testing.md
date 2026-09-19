@@ -1,6 +1,6 @@
 # Stability Score testing
 
-Status: implemented in the unreleased 2.1.0-beta.1 candidate. This guide describes
+Status: implemented in the unreleased 2.1.0-beta.2 candidate. This guide describes
 validation of [the canonical contract](stability-score-accepted-baseline.md); it is
 not a release, deployment or live-observation claim.
 

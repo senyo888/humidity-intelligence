@@ -57,9 +57,10 @@ It gives you:
 - native Home Assistant diagnostics for support and triage
 - services for dashboard export, self-check, diagnostics, pause/resume, and release validation
 
-Current development manifest version: **v2.1.0-beta.1**, an unpublished candidate
-committed and pushed on `senyo888-patch-1`. It adds the accepted observational Stability Score and badge,
-including the corrected live Diagnostics connection and fail-closed score rendering.
+Current development manifest version: **v2.1.0-beta.2**, a local, unpublished candidate.
+It adds seven-day drift baseline progress and explanatory badge details to the
+observational Stability work. The earlier beta.1 source was pushed through `144570b`
+on `senyo888-patch-1`; that commit does not identify the beta.2 package.
 The current published Stable is **v2.0.12**, released on 9 September 2026. HI is in
 the HACS default repository; this new beta has not been published or offered through
 HACS. See [Release Notes](#release-notes) for scope and update requirements.
@@ -452,7 +453,8 @@ must be reviewable from tracked repository files.
 
 ## Current Release Highlights
 
-- unpublished candidate `2.1.0-beta.1` adds the backend-owned Stability Score, compact
+- local candidate `2.1.0-beta.2` adds seven-day drift progress and details alongside
+  the backend-owned Stability Score, compact
   badge, evidence and Recent trend details; it preserves deterministic control and
   is not a published or HACS-offered release
 - published Stable `2.0.12` improves Manual handover, Home Assistant-local time gates,
@@ -966,7 +968,7 @@ Notes:
   workflows. Dashboard creation and editing remain in Home Assistant's dashboard UI.
   System and Manual buttons keep the
   v2.0.7 helper-toggle behavior.
-- **v2.1.0-beta.1 candidate:** the accepted badge shows backend-owned
+- **v2.1.0-beta.2 candidate:** the accepted badge shows backend-owned
   score, evidence and Recent trend details. It remains observational. See the
   [accepted contract](docs/stability-score-accepted-baseline.md) for thresholds,
   incomplete AQ, restart history reset, client support and card refresh, and the
@@ -1217,26 +1219,19 @@ CO emergency pressure. Details are in
 
 ## Release Notes
 
-### v2.1.0-beta.1 (Unpublished candidate)
+### v2.1.0-beta.2 (Local candidate; not published)
 
-- adds the [accepted Stability Score](docs/stability-score-accepted-baseline.md):
-  backend calculation, ten-minute sampling, evidence/caps, readable Diagnostics,
-  compact badge, retained full-circle movement and Recent trend details
-- restores the shared Diagnostics builder connection for live collection and scores;
-  malformed/out-of-range display values now fail closed across all four card surfaces
-- classifies isolated scenario tooling correctly in controller packaging and extends
-  `v205_release_check` to v2.1.0 beta/rc/stable while retaining v2.0.5–v2.0.12 support;
-  its existing name, schema, admin gate and runtime/device-read-only purpose remain
-- preserves Manual handover, CO-first lane order, humidifier independence and existing
-  entity IDs/native states; no configuration or stored-data migration is required
-- requires full restart after an authorized installation, then `refresh_ui`, fresh
-  `dump_cards`/`view_cards`, complete pasted-card replacement and frontend/cache
-  refresh. Restart/reload resets history: 303 new valid samples are needed within the
-  432-bucket window. Package and card rollback remain separate
-- shows one collection LED per valid sample and opens whole-badge details in a native
-  dialog with Close, snapshot labeling and Diagnostics fallback; see
-  [testing and compatibility](docs/stability-testing.md).
-  Local validation does not establish deployment, release readiness or HACS availability
+- adds backend-derived **Baseline · N%** progress to the seven-day drift badge while
+  usable drift data is still being collected; missing or invalid coverage stays unknown
+- opens a short explanation on tap, with **View history** opening native Home
+  Assistant history for the same drift entity and **Close** dismissing details
+- retains the observational Stability work introduced in beta.1; drift calculations,
+  Stability scoring, control decisions and entity semantics are unchanged by this badge update
+- requires refreshed exports (`refresh_ui`, then `dump_cards`/`view_cards`) and complete
+  replacement of pasted Manual cards; no configuration or stored-data migration is required
+- remains local and unpublished. An authorized package installation requires a full
+  restart for the included Python changes; local validation does not establish deployment,
+  release readiness or HACS availability
 
 ### v2.0.12 (Current Published Stable)
 
@@ -1296,6 +1291,27 @@ displaced older summaries into this container as new releases are added. CHANGEL
 remains the complete detailed history. -->
 <details>
 <summary>Previous Releases</summary>
+
+### v2.1.0-beta.1 (Unpublished candidate)
+
+- adds the [accepted Stability Score](docs/stability-score-accepted-baseline.md):
+  backend calculation, ten-minute sampling, evidence/caps, readable Diagnostics,
+  compact badge, retained full-circle movement and Recent trend details
+- restores the shared Diagnostics builder connection for live collection and scores;
+  malformed/out-of-range display values now fail closed across all four card surfaces
+- classifies isolated scenario tooling correctly in controller packaging and extends
+  `v205_release_check` to v2.1.0 beta/rc/stable while retaining v2.0.5–v2.0.12 support;
+  its existing name, schema, admin gate and runtime/device-read-only purpose remain
+- preserves Manual handover, CO-first lane order, humidifier independence and existing
+  entity IDs/native states; no configuration or stored-data migration is required
+- requires full restart after an authorized installation, then `refresh_ui`, fresh
+  `dump_cards`/`view_cards`, complete pasted-card replacement and frontend/cache
+  refresh. Restart/reload resets history: 303 new valid samples are needed within the
+  432-bucket window. Package and card rollback remain separate
+- shows one collection LED per valid sample and opens whole-badge details in a native
+  dialog with Close, snapshot labeling and Diagnostics fallback; see
+  [testing and compatibility](docs/stability-testing.md).
+  Local validation does not establish deployment, release readiness or HACS availability
 
 ### v2.0.10
 

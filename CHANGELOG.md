@@ -6,10 +6,25 @@ All notable changes to Humidity Intelligence will be documented in this file.
 
 This project follows a practical changelog format for Home Assistant and HACS users. Add new entries under a fresh `Unreleased` section before publishing a future release.
 
-## Unreleased — v2.1.0-beta.1
+## Unreleased — v2.1.0-beta.2
 
-Committed and pushed on `senyo888-patch-1`, with earlier collection work through
-`07dc87a`. This candidate remains unpublished: no tag, GitHub Release or HACS
+Local, unpublished candidate; no tag, GitHub Release or HACS offering. The earlier
+beta.1 commit below does not identify this package. Published Stable remains v2.0.12.
+
+### Seven-day drift badge
+
+- Shows backend-derived **Baseline · N%** collection progress before usable drift
+  data is available. Missing or invalid coverage remains unknown rather than implying progress.
+- Opens a concise explanation on tap, with **View history** opening native Home
+  Assistant history for the same drift entity and **Close** dismissing details.
+- Preserves drift calculations, Stability scoring, control decisions and entity
+  semantics. Regenerate exports and replace pasted Manual cards to receive the UI;
+  no configuration or stored-data migration is required.
+
+## v2.1.0-beta.1 — Earlier unpublished candidate
+
+Committed and pushed through `144570b` on `senyo888-patch-1`, with earlier
+collection work through `07dc87a`. This candidate remains unpublished: no tag, GitHub Release or HACS
 offering. Published Stable remains v2.0.12.
 
 ### Accepted Stability Score integration
@@ -57,15 +72,16 @@ offering. Published Stable remains v2.0.12.
   Configured AQ evidence, penalties, caps and unavailable states stay backend-owned.
 - Replaces the historical preview in generated V2 Mobile/Tablet and default gallery
   cards with the accepted score, retained full-circle movement, independent LED
-  colours, Partial/reduced-motion treatment and native Popover Recent trend details.
+  colours, Partial/reduced-motion treatment and Recent trend details; the later
+  correction above uses a detached native dialog with native Diagnostics fallback.
 - Preserves control entity IDs/native states, Manual handover, CO-first ordering and
   independent humidifier authority. No configuration or stored-data migration is
   required. Python installation requires a full restart; regenerate exports, replace
   pasted Manual cards and refresh frontend caches. Restart/reload resets in-memory
   score history and movement. Package and card rollback are separate operations.
 - Adds the [accepted contract](docs/stability-score-accepted-baseline.md) and
-  [synthetic scenario/validation guide](docs/stability-testing.md). Popover-capable
-  clients are required for details. This work is unreleased; earlier preview entries
+  [synthetic scenario/validation guide](docs/stability-testing.md). Details use a
+  native dialog with native more-info fallback. This work is unreleased; earlier preview entries
   below remain historical release truth.
 
 - Extends the existing `v205_release_check` compatibility boundary to v2.1

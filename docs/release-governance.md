@@ -5,7 +5,8 @@ testing and validation branches.
 
 ## Canonical Version Model
 
-- `2.1.0-beta.1`: current committed/pushed, unpublished Stability candidate.
+- `2.1.0-beta.2`: current local, unpublished candidate with seven-day drift badge progress/details.
+- `2.1.0-beta.1`: earlier committed/pushed, unpublished Stability candidate.
 - `2.1.0-rc.N`: future release-candidate identity, only after an authorized transition.
 - `2.1.0`: future stable identity; metadata alone does not publish it.
 - `2.0.12`: current published Stable, released on 2026-09-09.
@@ -23,16 +24,20 @@ must remain aligned with the
 published GitHub Release/tag.
 
 Published Stable is [v2.0.12](https://github.com/senyo888/humidity-intelligence/releases/tag/v2.0.12),
-released on 2026-09-09. The `2.1.0-beta.1` candidate is committed and pushed on
-`senyo888-patch-1`, with earlier collection work through `07dc87a`. There is no v2.1
-tag, GitHub Release or HACS offering. Source status does not certify an installation
-or authorize further runtime mutation.
+released on 2026-09-09. The current `2.1.0-beta.2` candidate is local and unpublished.
+The earlier `2.1.0-beta.1` source was committed and pushed through `144570b` on
+`senyo888-patch-1`; that commit does not identify beta.2. There is no v2.1 tag,
+GitHub Release or HACS offering.
+Source status does not certify an installation or authorize further runtime mutation.
 Release readiness still requires scope-appropriate validation, reviews and explicit
 maintainer approval. Local operational evidence does not replace tracked correctness.
 
-The v2.1 candidate contains accepted observational Stability, the corrected shared
-Diagnostics connection, fail-closed card score validation and scenario/controller
-classification fixes. Control semantics remain unchanged. The existing
+The beta.2 candidate adds backend-derived seven-day drift baseline progress and
+explanatory details with native history access, without changing drift calculations
+or entity semantics. It also contains accepted observational Stability, the corrected shared
+Diagnostics connection, fail-closed score rendering, one collection LED per valid
+sample, bounded failed-sample history, and detached native details with Diagnostics
+fallback, plus scenario/controller fixes. Control semantics remain unchanged. The existing
 `v205_release_check` accepts v2.0.5–v2.0.12 plus v2.1.0 beta/rc/stable identities without
 changing its schema, admin gate or runtime/device-read-only purpose. On installation,
 changed Python requires a full restart; restart/reload resets history and needs 303

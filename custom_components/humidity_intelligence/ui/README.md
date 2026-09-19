@@ -42,6 +42,36 @@ Feature parity is maintained.
 
 ---
 
+## Seven-day humidity drift — v2.1.0-beta.2
+
+The drift badge shows the current house average humidity minus its seven-day mean,
+measured in percentage points. Positive values mean wetter than that average;
+negative values mean drier.
+
+While the backend reports insufficient history, **Baseline · 25%** shows progress
+of reported Statistics time coverage toward the backend requirement. For example,
+22% coverage against an 85% requirement displays 25% after rounding down. Coverage
+can stall, fall or reset. Missing progress metadata shows **Waiting for history**;
+a missing Statistics helper shows **Setup needed**. Other blocked or malformed
+inputs show **Unavailable**, with context in the details.
+
+Tap or use Enter/Space to open the explanation and **View history**. History opens
+Home Assistant's native more-info surface for the registered drift entity; its
+recorded values depend on Recorder and retention. Hold also opens native more-info.
+The details use a native modal dialog and close on changed badge evidence,
+navigation or card removal. Browsers without native dialog support use more-info
+as the tap fallback. Button-card 7.0.1 was exercised with synthetic entity data and
+a minimal Home Assistant event router; live Companion/WallPanel validation is
+separate.
+
+The change applies to V1 Mobile, V2 Mobile, V2 Tablet and their default gallery
+mirrors. Drift calculation, readiness, history ownership, control and entity/service
+contracts are unchanged. After installing the updated templates, run `refresh_ui`
+and `view_cards`, then replace the pasted Manual-card YAML and refresh the client.
+The template-only change needs no configuration/data migration or Python restart;
+other changes in an installed beta package may have their own restart requirements.
+Reverting the card YAML restores the earlier interaction without changing history.
+
 ## UI Preview
 
 ### Live 2.0.10-beta.7 Card State

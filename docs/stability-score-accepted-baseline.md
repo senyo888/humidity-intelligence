@@ -1,7 +1,7 @@
 # Accepted Stability Score baseline
 
 Status: accepted functional and presentation contract; integrated in the unpublished
-`2.1.0-beta.1` candidate.
+`2.1.0-beta.2` candidate, following its introduction in beta.1.
 This records the accepted behaviour for the current implementation work. It does not
 claim publication, HACS availability, deployment, or a newly approved release version.
 Historical release notes retain their original scope.
