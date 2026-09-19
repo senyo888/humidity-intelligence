@@ -38,9 +38,14 @@ function render(state = 'unknown', attrs = baseline()) {
   return results[0];
 }
 
-test('all six supported surfaces share progress, state, details and action behavior', () => {
-  for (const key of ['hi_drift', 'state_display', 'open', 'details', 'javascript']) {
+test('all layouts retain drift calculation and V2 presentation matches its gallery mirrors', () => {
+  for (const key of ['hi_drift', 'state_display', 'open']) {
     assert.equal(new Set(bodies(key)).size, 1, key);
+  }
+  for (const key of ['details', 'javascript']) {
+    const all = bodies(key);
+    assert.equal(all[0], all[3], `V1 mirror: ${key}`);
+    assert.equal(new Set([all[1], all[2], all[4], all[5]]).size, 1, `V2: ${key}`);
   }
 });
 

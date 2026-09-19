@@ -72,6 +72,38 @@ The template-only change needs no configuration/data migration or Python restart
 other changes in an installed beta package may have their own restart requirements.
 Reverting the card YAML restores the earlier interaction without changing history.
 
+## V2 badge summaries
+
+Humidity, Condensation, Mould, Current Air Control, Ready, Zone 1, Zone 2 and AQ
+open a short explanation before **View history**. That action still opens the
+existing native Home Assistant entity details. Ready links to house humidity;
+Zone 1/2 link to their resolved humidity reading, which can be a fallback rather
+than a whole-zone measurement. Condensation/Mould currently link to the recorded
+worst-room source, not a risk-level timeline. AQ links to the recorded house IAQ
+average, and Current Air Control links to operating mode. Richer history views
+remain proposed and are not included in this update.
+
+Summaries identify the mapped history destination and disable the history action
+when that entity is missing. Dynamic text is escaped. Only one HI details dialog
+is open at a time; Close, Escape, navigation and card removal dispose of it.
+New summaries close when their displayed evidence changes. Stability preserves
+its opening snapshot and now explains that below the main content; drift retains
+its existing evidence-change behavior. Native entity details remain the fallback
+when modal dialogs cannot be opened.
+
+Ready, Zone 1, Zone 2 and AQ retain their labels, active tint, borders and alert
+emphasis in compact icon-free rows. Their targets remain at least 44px high and
+allow text to grow. Dialog sizing accounts for device safe areas; physical-client
+appearance must be checked separately from synthetic browser validation.
+
+The changes apply only to V2 Mobile, V2 Tablet and their canonical gallery copies.
+V1 remains unchanged, with retirement owned by the separate v2.1 migration work.
+Refresh exports and replace pasted Manual-card YAML, then refresh the client.
+No configuration/data migration, Python restart, runtime decision, entity or
+service change is introduced by this template-only update. Rollback restores the
+previous templates and saved card YAML. Other changes in an installed beta package
+may have their own restart requirements.
+
 ## UI Preview
 
 ### Live 2.0.10-beta.7 Card State

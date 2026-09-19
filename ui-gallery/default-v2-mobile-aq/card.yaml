@@ -46,6 +46,11 @@ card:
       cards:
         - type: custom:button-card
           entity: sensor.house_average_humidity
+          variables:
+            hi_summary: |
+              [[[ return {"title": "Humidity", "history": "sensor.house_average_humidity", "description": "The current house average relative humidity. HI’s seasonal target band provides context for this reading.", "historyNote": "Recorded house-average humidity.", "kind": "humidity"}; ]]]
+          triggers_update:
+            - sensor.house_average_humidity
           name: Humidity
           icon: mdi:water-percent
           show_name: true
@@ -57,9 +62,123 @@ card:
               if (isNaN(h)) return '—%';
               return `${Math.round(h)}%`;
             ]]]
+          custom_fields:
+            summary_open: |
+              [[[
+                const escapeHtml = value => String(value ?? '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#039;');
+                const raw = typeof entity?.state === 'string' ? entity.state.trim() : '';
+                const numeric = /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$/.test(raw) && Number.isFinite(Number(raw));
+                const current = variables.hi_summary.kind === 'humidity' ? (numeric ? raw + '%' : 'Unavailable') : (raw || 'Unavailable');
+                return `<button type="button" class="hi-summary-open" aria-label="${escapeHtml(variables.hi_summary.title)}: ${escapeHtml(current)}. Open details"></button>`;
+              ]]]
+            summary: |
+              [[[
+                const view = variables.hi_summary;
+                const escapeHtml = value => String(value ?? '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#039;');
+                const readable = value => typeof value === 'string' && value.trim() ? value.trim() : 'Unavailable';
+                const current = readable(entity?.state);
+                const humidityText = typeof entity?.state === 'string' ? entity.state.trim() : '';
+                const humidityValid = /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$/.test(humidityText) && Number.isFinite(Number(humidityText));
+                const target = states[view.history];
+                const historyName = readable(target?.attributes?.friendly_name);
+                const reason = states['sensor.air_control_reason'];
+                const context = view.kind === 'risk'
+                  ? `Source: ${current}. Risk: ${readable(entity?.attributes?.risk)}.`
+                  : view.kind === 'mode'
+                    ? `Current mode: ${current}. Reason: ${readable(reason?.attributes?.full_reason || reason?.state)}.`
+                    : `Current humidity: ${humidityValid ? humidityText + '%' : 'Unavailable'}.`;
+                return `<template class="hi-summary-template">
+                  <style>dialog.hi-summary-details { box-sizing:border-box; width:min(520px,calc(100vw - 32px)); max-height:calc(100vh - 32px); max-height:calc(100dvh - 32px - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px)); top:env(safe-area-inset-top,0px); bottom:env(safe-area-inset-bottom,0px); overflow:auto; padding:20px; border:1px solid #354762; border-radius:20px; background:#0d1522; color:#e2e8f0; text-align:left; white-space:normal; font:14px/1.6 system-ui,sans-serif; }
+                  dialog.hi-summary-details::backdrop { background:rgba(0,0,0,.55); }
+                  dialog.hi-summary-details h2 { margin:0 0 16px; font-size:20px; }
+                  dialog.hi-summary-details p { overflow-wrap:anywhere; }
+                  dialog.hi-summary-details button { min-height:44px; padding:10px 16px; border:1px solid #64748b; border-radius:10px; background:#1e293b; color:#f1f5f9; font:inherit; cursor:pointer; }
+                  dialog.hi-summary-details .hi-summary-close { display:block; position:sticky; top:0; margin:0 0 12px auto; z-index:1; }
+                  dialog.hi-summary-details button:focus-visible { outline:2px solid #38bdf8; outline-offset:2px; }</style>
+                  <button type="button" class="hi-summary-close" autofocus>Close</button>
+                  <h2>${escapeHtml(view.title)}</h2>
+                  <p>${escapeHtml(view.description)}</p>
+                  <p>${escapeHtml(context)}</p>
+                  <p>${target ? `History: ${escapeHtml(historyName === 'Unavailable' ? 'mapped entity' : historyName)}. ${escapeHtml(view.historyNote)}` : 'History unavailable: the mapped entity is missing.'}</p>
+                  <p>Available history depends on Home Assistant Recorder and retention.</p>
+                  <button type="button" class="hi-summary-history" ${target ? '' : 'disabled'}>View history</button>
+                </template>`;
+              ]]]
           tap_action:
-            action: more-info
+            action: javascript
+            javascript: |
+              [[[
+                const owner = this;
+                const entityId = variables.hi_summary.history;
+                const history = () => {
+                  if (entityId && states[entityId] && owner.isConnected) owner.dispatchEvent(new CustomEvent('hass-more-info', {
+                    detail: { entityId }, bubbles: true, composed: true
+                  }));
+                };
+                const source = owner.shadowRoot?.querySelector('template.hi-summary-template');
+                window.__hiBadgeDetailsDispose?.(false);
+                if (!source || !owner.isConnected) { history(); return; }
+                const dialog = document.createElement('dialog');
+                if (typeof dialog.showModal !== 'function') { history(); return; }
+                const snapshot = source.innerHTML;
+                dialog.className = 'hi-summary-details';
+                dialog.setAttribute('data-hi-summary-dialog', '');
+                dialog.setAttribute('aria-label', `${variables.hi_summary.title} details`);
+                dialog.innerHTML = snapshot;
+                const previousFocus = owner.shadowRoot?.activeElement || document.activeElement;
+                let observer;
+                let cleaned = false;
+                let restoreFocus = true;
+                const cleanup = () => {
+                  if (cleaned) return;
+                  cleaned = true;
+                  observer?.disconnect();
+                  for (const name of ['location-changed', 'popstate', 'pagehide']) window.removeEventListener(name, close);
+                  if (window.__hiBadgeDetailsDispose === dispose) delete window.__hiBadgeDetailsDispose;
+                  dialog.remove();
+                  if (restoreFocus && owner.isConnected && previousFocus?.isConnected) previousFocus.focus();
+                };
+                const close = () => { if (dialog.open) dialog.close(); cleanup(); };
+                const dispose = (restore = true) => { restoreFocus = restore; close(); };
+                window.__hiBadgeDetailsDispose = dispose;
+                dialog.addEventListener('close', cleanup, { once: true });
+                dialog.querySelector('.hi-summary-close').addEventListener('click', close);
+                const historyButton = dialog.querySelector('.hi-summary-history');
+                historyButton.disabled = !entityId || !states[entityId];
+                historyButton.addEventListener('click', () => { close(); history(); });
+                dialog.addEventListener('click', event => {
+                  event.stopPropagation();
+                  if (event.target !== dialog) return;
+                  const bounds = dialog.getBoundingClientRect();
+                  if (event.clientX < bounds.left || event.clientX > bounds.right || event.clientY < bounds.top || event.clientY > bounds.bottom) close();
+                });
+                for (const name of ['location-changed', 'popstate', 'pagehide']) window.addEventListener(name, close);
+                observer = new MutationObserver(() => {
+                  const current = owner.shadowRoot?.querySelector('template.hi-summary-template');
+                  if (!owner.isConnected || !current || current.innerHTML !== snapshot) close();
+                });
+                let root = owner.shadowRoot;
+                while (root) {
+                  observer.observe(root, { childList: true, subtree: true, characterData: true });
+                  root = root.host ? root.host.getRootNode() : null;
+                }
+                document.body.appendChild(dialog);
+                try { dialog.showModal(); }
+                catch (_) { cleanup(); history(); }
+              ]]]
+          extra_styles: |
+            .hi-summary-open { position:absolute; inset:0; width:100%; height:100%; padding:0; border:0; border-radius:inherit; background:transparent; pointer-events:none; }
+            .hi-summary-open:focus-visible { outline:2px solid #38bdf8; outline-offset:-4px; }
           styles:
+            custom_fields:
+              summary_open:
+                - position: absolute
+                - inset: 0
+                - border-radius: inherit
+                - pointer-events: none
+                - z-index: 2
+              summary:
+                - display: none
             card:
               - width: |
                   [[[
@@ -165,6 +284,11 @@ card:
               }
         - type: custom:button-card
           entity: sensor.worst_room_condensation
+          variables:
+            hi_summary: |
+              [[[ return {"title": "Condensation", "history": "sensor.worst_room_condensation", "description": "The highest condensation risk reported by the configured room evidence.", "historyNote": "The existing history identifies the source room; it is not a chart of historical condensation risk.", "kind": "risk"}; ]]]
+          triggers_update:
+            - sensor.worst_room_condensation
           name: Condensation
           icon: mdi:water-alert
           show_name: true
@@ -176,9 +300,123 @@ card:
               if (!r || r === 'unknown' || r === 'unavailable') return '—';
               return String(r);
             ]]]
+          custom_fields:
+            summary_open: |
+              [[[
+                const escapeHtml = value => String(value ?? '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#039;');
+                const raw = typeof entity?.state === 'string' ? entity.state.trim() : '';
+                const numeric = /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$/.test(raw) && Number.isFinite(Number(raw));
+                const current = variables.hi_summary.kind === 'humidity' ? (numeric ? raw + '%' : 'Unavailable') : (raw || 'Unavailable');
+                return `<button type="button" class="hi-summary-open" aria-label="${escapeHtml(variables.hi_summary.title)}: ${escapeHtml(current)}. Open details"></button>`;
+              ]]]
+            summary: |
+              [[[
+                const view = variables.hi_summary;
+                const escapeHtml = value => String(value ?? '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#039;');
+                const readable = value => typeof value === 'string' && value.trim() ? value.trim() : 'Unavailable';
+                const current = readable(entity?.state);
+                const humidityText = typeof entity?.state === 'string' ? entity.state.trim() : '';
+                const humidityValid = /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$/.test(humidityText) && Number.isFinite(Number(humidityText));
+                const target = states[view.history];
+                const historyName = readable(target?.attributes?.friendly_name);
+                const reason = states['sensor.air_control_reason'];
+                const context = view.kind === 'risk'
+                  ? `Source: ${current}. Risk: ${readable(entity?.attributes?.risk)}.`
+                  : view.kind === 'mode'
+                    ? `Current mode: ${current}. Reason: ${readable(reason?.attributes?.full_reason || reason?.state)}.`
+                    : `Current humidity: ${humidityValid ? humidityText + '%' : 'Unavailable'}.`;
+                return `<template class="hi-summary-template">
+                  <style>dialog.hi-summary-details { box-sizing:border-box; width:min(520px,calc(100vw - 32px)); max-height:calc(100vh - 32px); max-height:calc(100dvh - 32px - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px)); top:env(safe-area-inset-top,0px); bottom:env(safe-area-inset-bottom,0px); overflow:auto; padding:20px; border:1px solid #354762; border-radius:20px; background:#0d1522; color:#e2e8f0; text-align:left; white-space:normal; font:14px/1.6 system-ui,sans-serif; }
+                  dialog.hi-summary-details::backdrop { background:rgba(0,0,0,.55); }
+                  dialog.hi-summary-details h2 { margin:0 0 16px; font-size:20px; }
+                  dialog.hi-summary-details p { overflow-wrap:anywhere; }
+                  dialog.hi-summary-details button { min-height:44px; padding:10px 16px; border:1px solid #64748b; border-radius:10px; background:#1e293b; color:#f1f5f9; font:inherit; cursor:pointer; }
+                  dialog.hi-summary-details .hi-summary-close { display:block; position:sticky; top:0; margin:0 0 12px auto; z-index:1; }
+                  dialog.hi-summary-details button:focus-visible { outline:2px solid #38bdf8; outline-offset:2px; }</style>
+                  <button type="button" class="hi-summary-close" autofocus>Close</button>
+                  <h2>${escapeHtml(view.title)}</h2>
+                  <p>${escapeHtml(view.description)}</p>
+                  <p>${escapeHtml(context)}</p>
+                  <p>${target ? `History: ${escapeHtml(historyName === 'Unavailable' ? 'mapped entity' : historyName)}. ${escapeHtml(view.historyNote)}` : 'History unavailable: the mapped entity is missing.'}</p>
+                  <p>Available history depends on Home Assistant Recorder and retention.</p>
+                  <button type="button" class="hi-summary-history" ${target ? '' : 'disabled'}>View history</button>
+                </template>`;
+              ]]]
           tap_action:
-            action: more-info
+            action: javascript
+            javascript: |
+              [[[
+                const owner = this;
+                const entityId = variables.hi_summary.history;
+                const history = () => {
+                  if (entityId && states[entityId] && owner.isConnected) owner.dispatchEvent(new CustomEvent('hass-more-info', {
+                    detail: { entityId }, bubbles: true, composed: true
+                  }));
+                };
+                const source = owner.shadowRoot?.querySelector('template.hi-summary-template');
+                window.__hiBadgeDetailsDispose?.(false);
+                if (!source || !owner.isConnected) { history(); return; }
+                const dialog = document.createElement('dialog');
+                if (typeof dialog.showModal !== 'function') { history(); return; }
+                const snapshot = source.innerHTML;
+                dialog.className = 'hi-summary-details';
+                dialog.setAttribute('data-hi-summary-dialog', '');
+                dialog.setAttribute('aria-label', `${variables.hi_summary.title} details`);
+                dialog.innerHTML = snapshot;
+                const previousFocus = owner.shadowRoot?.activeElement || document.activeElement;
+                let observer;
+                let cleaned = false;
+                let restoreFocus = true;
+                const cleanup = () => {
+                  if (cleaned) return;
+                  cleaned = true;
+                  observer?.disconnect();
+                  for (const name of ['location-changed', 'popstate', 'pagehide']) window.removeEventListener(name, close);
+                  if (window.__hiBadgeDetailsDispose === dispose) delete window.__hiBadgeDetailsDispose;
+                  dialog.remove();
+                  if (restoreFocus && owner.isConnected && previousFocus?.isConnected) previousFocus.focus();
+                };
+                const close = () => { if (dialog.open) dialog.close(); cleanup(); };
+                const dispose = (restore = true) => { restoreFocus = restore; close(); };
+                window.__hiBadgeDetailsDispose = dispose;
+                dialog.addEventListener('close', cleanup, { once: true });
+                dialog.querySelector('.hi-summary-close').addEventListener('click', close);
+                const historyButton = dialog.querySelector('.hi-summary-history');
+                historyButton.disabled = !entityId || !states[entityId];
+                historyButton.addEventListener('click', () => { close(); history(); });
+                dialog.addEventListener('click', event => {
+                  event.stopPropagation();
+                  if (event.target !== dialog) return;
+                  const bounds = dialog.getBoundingClientRect();
+                  if (event.clientX < bounds.left || event.clientX > bounds.right || event.clientY < bounds.top || event.clientY > bounds.bottom) close();
+                });
+                for (const name of ['location-changed', 'popstate', 'pagehide']) window.addEventListener(name, close);
+                observer = new MutationObserver(() => {
+                  const current = owner.shadowRoot?.querySelector('template.hi-summary-template');
+                  if (!owner.isConnected || !current || current.innerHTML !== snapshot) close();
+                });
+                let root = owner.shadowRoot;
+                while (root) {
+                  observer.observe(root, { childList: true, subtree: true, characterData: true });
+                  root = root.host ? root.host.getRootNode() : null;
+                }
+                document.body.appendChild(dialog);
+                try { dialog.showModal(); }
+                catch (_) { cleanup(); history(); }
+              ]]]
+          extra_styles: |
+            .hi-summary-open { position:absolute; inset:0; width:100%; height:100%; padding:0; border:0; border-radius:inherit; background:transparent; pointer-events:none; }
+            .hi-summary-open:focus-visible { outline:2px solid #38bdf8; outline-offset:-4px; }
           styles:
+            custom_fields:
+              summary_open:
+                - position: absolute
+                - inset: 0
+                - border-radius: inherit
+                - pointer-events: none
+                - z-index: 2
+              summary:
+                - display: none
             card:
               - width: |
                   [[[
@@ -283,6 +521,11 @@ card:
               }
         - type: custom:button-card
           entity: sensor.worst_room_mould
+          variables:
+            hi_summary: |
+              [[[ return {"title": "Mould", "history": "sensor.worst_room_mould", "description": "The highest mould risk reported by the configured room evidence.", "historyNote": "The existing history identifies the source room; it is not a chart of historical mould risk.", "kind": "risk"}; ]]]
+          triggers_update:
+            - sensor.worst_room_mould
           name: Mould
           icon: mdi:mushroom-outline
           show_name: true
@@ -294,9 +537,123 @@ card:
               if (!r || r === 'unknown' || r === 'unavailable') return '—';
               return String(r);
             ]]]
+          custom_fields:
+            summary_open: |
+              [[[
+                const escapeHtml = value => String(value ?? '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#039;');
+                const raw = typeof entity?.state === 'string' ? entity.state.trim() : '';
+                const numeric = /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$/.test(raw) && Number.isFinite(Number(raw));
+                const current = variables.hi_summary.kind === 'humidity' ? (numeric ? raw + '%' : 'Unavailable') : (raw || 'Unavailable');
+                return `<button type="button" class="hi-summary-open" aria-label="${escapeHtml(variables.hi_summary.title)}: ${escapeHtml(current)}. Open details"></button>`;
+              ]]]
+            summary: |
+              [[[
+                const view = variables.hi_summary;
+                const escapeHtml = value => String(value ?? '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#039;');
+                const readable = value => typeof value === 'string' && value.trim() ? value.trim() : 'Unavailable';
+                const current = readable(entity?.state);
+                const humidityText = typeof entity?.state === 'string' ? entity.state.trim() : '';
+                const humidityValid = /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$/.test(humidityText) && Number.isFinite(Number(humidityText));
+                const target = states[view.history];
+                const historyName = readable(target?.attributes?.friendly_name);
+                const reason = states['sensor.air_control_reason'];
+                const context = view.kind === 'risk'
+                  ? `Source: ${current}. Risk: ${readable(entity?.attributes?.risk)}.`
+                  : view.kind === 'mode'
+                    ? `Current mode: ${current}. Reason: ${readable(reason?.attributes?.full_reason || reason?.state)}.`
+                    : `Current humidity: ${humidityValid ? humidityText + '%' : 'Unavailable'}.`;
+                return `<template class="hi-summary-template">
+                  <style>dialog.hi-summary-details { box-sizing:border-box; width:min(520px,calc(100vw - 32px)); max-height:calc(100vh - 32px); max-height:calc(100dvh - 32px - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px)); top:env(safe-area-inset-top,0px); bottom:env(safe-area-inset-bottom,0px); overflow:auto; padding:20px; border:1px solid #354762; border-radius:20px; background:#0d1522; color:#e2e8f0; text-align:left; white-space:normal; font:14px/1.6 system-ui,sans-serif; }
+                  dialog.hi-summary-details::backdrop { background:rgba(0,0,0,.55); }
+                  dialog.hi-summary-details h2 { margin:0 0 16px; font-size:20px; }
+                  dialog.hi-summary-details p { overflow-wrap:anywhere; }
+                  dialog.hi-summary-details button { min-height:44px; padding:10px 16px; border:1px solid #64748b; border-radius:10px; background:#1e293b; color:#f1f5f9; font:inherit; cursor:pointer; }
+                  dialog.hi-summary-details .hi-summary-close { display:block; position:sticky; top:0; margin:0 0 12px auto; z-index:1; }
+                  dialog.hi-summary-details button:focus-visible { outline:2px solid #38bdf8; outline-offset:2px; }</style>
+                  <button type="button" class="hi-summary-close" autofocus>Close</button>
+                  <h2>${escapeHtml(view.title)}</h2>
+                  <p>${escapeHtml(view.description)}</p>
+                  <p>${escapeHtml(context)}</p>
+                  <p>${target ? `History: ${escapeHtml(historyName === 'Unavailable' ? 'mapped entity' : historyName)}. ${escapeHtml(view.historyNote)}` : 'History unavailable: the mapped entity is missing.'}</p>
+                  <p>Available history depends on Home Assistant Recorder and retention.</p>
+                  <button type="button" class="hi-summary-history" ${target ? '' : 'disabled'}>View history</button>
+                </template>`;
+              ]]]
           tap_action:
-            action: more-info
+            action: javascript
+            javascript: |
+              [[[
+                const owner = this;
+                const entityId = variables.hi_summary.history;
+                const history = () => {
+                  if (entityId && states[entityId] && owner.isConnected) owner.dispatchEvent(new CustomEvent('hass-more-info', {
+                    detail: { entityId }, bubbles: true, composed: true
+                  }));
+                };
+                const source = owner.shadowRoot?.querySelector('template.hi-summary-template');
+                window.__hiBadgeDetailsDispose?.(false);
+                if (!source || !owner.isConnected) { history(); return; }
+                const dialog = document.createElement('dialog');
+                if (typeof dialog.showModal !== 'function') { history(); return; }
+                const snapshot = source.innerHTML;
+                dialog.className = 'hi-summary-details';
+                dialog.setAttribute('data-hi-summary-dialog', '');
+                dialog.setAttribute('aria-label', `${variables.hi_summary.title} details`);
+                dialog.innerHTML = snapshot;
+                const previousFocus = owner.shadowRoot?.activeElement || document.activeElement;
+                let observer;
+                let cleaned = false;
+                let restoreFocus = true;
+                const cleanup = () => {
+                  if (cleaned) return;
+                  cleaned = true;
+                  observer?.disconnect();
+                  for (const name of ['location-changed', 'popstate', 'pagehide']) window.removeEventListener(name, close);
+                  if (window.__hiBadgeDetailsDispose === dispose) delete window.__hiBadgeDetailsDispose;
+                  dialog.remove();
+                  if (restoreFocus && owner.isConnected && previousFocus?.isConnected) previousFocus.focus();
+                };
+                const close = () => { if (dialog.open) dialog.close(); cleanup(); };
+                const dispose = (restore = true) => { restoreFocus = restore; close(); };
+                window.__hiBadgeDetailsDispose = dispose;
+                dialog.addEventListener('close', cleanup, { once: true });
+                dialog.querySelector('.hi-summary-close').addEventListener('click', close);
+                const historyButton = dialog.querySelector('.hi-summary-history');
+                historyButton.disabled = !entityId || !states[entityId];
+                historyButton.addEventListener('click', () => { close(); history(); });
+                dialog.addEventListener('click', event => {
+                  event.stopPropagation();
+                  if (event.target !== dialog) return;
+                  const bounds = dialog.getBoundingClientRect();
+                  if (event.clientX < bounds.left || event.clientX > bounds.right || event.clientY < bounds.top || event.clientY > bounds.bottom) close();
+                });
+                for (const name of ['location-changed', 'popstate', 'pagehide']) window.addEventListener(name, close);
+                observer = new MutationObserver(() => {
+                  const current = owner.shadowRoot?.querySelector('template.hi-summary-template');
+                  if (!owner.isConnected || !current || current.innerHTML !== snapshot) close();
+                });
+                let root = owner.shadowRoot;
+                while (root) {
+                  observer.observe(root, { childList: true, subtree: true, characterData: true });
+                  root = root.host ? root.host.getRootNode() : null;
+                }
+                document.body.appendChild(dialog);
+                try { dialog.showModal(); }
+                catch (_) { cleanup(); history(); }
+              ]]]
+          extra_styles: |
+            .hi-summary-open { position:absolute; inset:0; width:100%; height:100%; padding:0; border:0; border-radius:inherit; background:transparent; pointer-events:none; }
+            .hi-summary-open:focus-visible { outline:2px solid #38bdf8; outline-offset:-4px; }
           styles:
+            custom_fields:
+              summary_open:
+                - position: absolute
+                - inset: 0
+                - border-radius: inherit
+                - pointer-events: none
+                - z-index: 2
+              summary:
+                - display: none
             card:
               - width: |
                   [[[
@@ -476,7 +833,7 @@ card:
                 const view = variables.hi_drift;
                 const escapeHtml = (value) => String(value).replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#039;');
                 return `<template class="hi-drift-details-template">
-                <style>dialog.hi-drift-details { box-sizing:border-box; width:min(520px,calc(100vw - 32px)); max-height:calc(100vh - 32px); max-height:calc(100dvh - 32px); overflow:auto; padding:20px; border:1px solid #354762; border-radius:20px; background:#0d1522; color:#e2e8f0; text-align:left; white-space:normal; font:14px/1.6 system-ui,sans-serif; }
+                <style>dialog.hi-drift-details { box-sizing:border-box; width:min(520px,calc(100vw - 32px)); max-height:calc(100vh - 32px); max-height:calc(100dvh - 32px - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px)); top:env(safe-area-inset-top,0px); bottom:env(safe-area-inset-bottom,0px); overflow:auto; padding:20px; border:1px solid #354762; border-radius:20px; background:#0d1522; color:#e2e8f0; text-align:left; white-space:normal; font:14px/1.6 system-ui,sans-serif; }
                 dialog.hi-drift-details::backdrop { background:rgba(0,0,0,.55); }
                 dialog.hi-drift-details h2 { margin:0 0 16px; font-size:20px; }
                 dialog.hi-drift-details p { overflow-wrap:anywhere; }
@@ -499,6 +856,7 @@ card:
             javascript: |
               [[[
                 const owner = this;
+                window.__hiBadgeDetailsDispose?.(false);
                 const entityId = entity?.entity_id;
                 const history = () => {
                   if (entityId && owner.isConnected) owner.dispatchEvent(new CustomEvent('hass-more-info', {
@@ -525,6 +883,7 @@ card:
                   cleaned = true;
                   observer?.disconnect();
                   for (const name of ['location-changed', 'popstate', 'pagehide']) window.removeEventListener(name, close);
+                  if (window.__hiBadgeDetailsDispose === dialog.__hiDriftDispose) delete window.__hiBadgeDetailsDispose;
                   dialog.remove();
                   if (restoreFocus && owner.isConnected && previousFocus?.isConnected) previousFocus.focus();
                 };
@@ -533,6 +892,7 @@ card:
                   cleanup();
                 };
                 dialog.__hiDriftDispose = (restore = true) => { restoreFocus = restore; close(); };
+                window.__hiBadgeDetailsDispose = dialog.__hiDriftDispose;
                 dialog.addEventListener('close', cleanup, { once: true });
                 dialog.querySelector('.hi-drift-close').addEventListener('click', close);
                 const historyButton = dialog.querySelector('.hi-drift-history');
@@ -678,6 +1038,12 @@ card:
               }
     - type: custom:button-card
       entity: sensor.air_control_mode
+      variables:
+        hi_summary: |
+          [[[ return {"title": "Current Air Control", "history": "sensor.air_control_mode", "description": "The operating mode selected by HI. The current reason explains the selected behaviour and any active gates or restrictions.", "historyNote": "Recorded operating mode; historical reason attributes and physical output activity are not guaranteed.", "kind": "mode"}; ]]]
+      triggers_update:
+        - sensor.air_control_mode
+        - sensor.air_control_reason
       name: Current Air Control
       icon: mdi:eye
       show_icon: true
@@ -734,6 +1100,47 @@ card:
           return `${bandTxt}\n${comfort}`;
         ]]]
       custom_fields:
+        summary_open: |
+          [[[
+            const escapeHtml = value => String(value ?? '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#039;');
+            const raw = typeof entity?.state === 'string' ? entity.state.trim() : '';
+            const numeric = /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$/.test(raw) && Number.isFinite(Number(raw));
+            const current = variables.hi_summary.kind === 'humidity' ? (numeric ? raw + '%' : 'Unavailable') : (raw || 'Unavailable');
+            return `<button type="button" class="hi-summary-open" aria-label="${escapeHtml(variables.hi_summary.title)}: ${escapeHtml(current)}. Open details"></button>`;
+          ]]]
+        summary: |
+          [[[
+            const view = variables.hi_summary;
+            const escapeHtml = value => String(value ?? '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#039;');
+            const readable = value => typeof value === 'string' && value.trim() ? value.trim() : 'Unavailable';
+            const current = readable(entity?.state);
+            const humidityText = typeof entity?.state === 'string' ? entity.state.trim() : '';
+            const humidityValid = /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$/.test(humidityText) && Number.isFinite(Number(humidityText));
+            const target = states[view.history];
+            const historyName = readable(target?.attributes?.friendly_name);
+            const reason = states['sensor.air_control_reason'];
+            const context = view.kind === 'risk'
+              ? `Source: ${current}. Risk: ${readable(entity?.attributes?.risk)}.`
+              : view.kind === 'mode'
+                ? `Current mode: ${current}. Reason: ${readable(reason?.attributes?.full_reason || reason?.state)}.`
+                : `Current humidity: ${humidityValid ? humidityText + '%' : 'Unavailable'}.`;
+            return `<template class="hi-summary-template">
+              <style>dialog.hi-summary-details { box-sizing:border-box; width:min(520px,calc(100vw - 32px)); max-height:calc(100vh - 32px); max-height:calc(100dvh - 32px - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px)); top:env(safe-area-inset-top,0px); bottom:env(safe-area-inset-bottom,0px); overflow:auto; padding:20px; border:1px solid #354762; border-radius:20px; background:#0d1522; color:#e2e8f0; text-align:left; white-space:normal; font:14px/1.6 system-ui,sans-serif; }
+              dialog.hi-summary-details::backdrop { background:rgba(0,0,0,.55); }
+              dialog.hi-summary-details h2 { margin:0 0 16px; font-size:20px; }
+              dialog.hi-summary-details p { overflow-wrap:anywhere; }
+              dialog.hi-summary-details button { min-height:44px; padding:10px 16px; border:1px solid #64748b; border-radius:10px; background:#1e293b; color:#f1f5f9; font:inherit; cursor:pointer; }
+              dialog.hi-summary-details .hi-summary-close { display:block; position:sticky; top:0; margin:0 0 12px auto; z-index:1; }
+              dialog.hi-summary-details button:focus-visible { outline:2px solid #38bdf8; outline-offset:2px; }</style>
+              <button type="button" class="hi-summary-close" autofocus>Close</button>
+              <h2>${escapeHtml(view.title)}</h2>
+              <p>${escapeHtml(view.description)}</p>
+              <p>${escapeHtml(context)}</p>
+              <p>${target ? `History: ${escapeHtml(historyName === 'Unavailable' ? 'mapped entity' : historyName)}. ${escapeHtml(view.historyNote)}` : 'History unavailable: the mapped entity is missing.'}</p>
+              <p>Available history depends on Home Assistant Recorder and retention.</p>
+              <button type="button" class="hi-summary-history" ${target ? '' : 'disabled'}>View history</button>
+            </template>`;
+          ]]]
         status: |
           [[[
             const rawMode = String(states['sensor.air_control_mode']?.state || '').trim().toLowerCase();
@@ -1346,9 +1753,72 @@ card:
               </div>`;
           ]]]
       tap_action:
-        action: more-info
+        action: javascript
+        javascript: |
+          [[[
+            const owner = this;
+            const entityId = variables.hi_summary.history;
+            const history = () => {
+              if (entityId && states[entityId] && owner.isConnected) owner.dispatchEvent(new CustomEvent('hass-more-info', {
+                detail: { entityId }, bubbles: true, composed: true
+              }));
+            };
+            const source = owner.shadowRoot?.querySelector('template.hi-summary-template');
+            window.__hiBadgeDetailsDispose?.(false);
+            if (!source || !owner.isConnected) { history(); return; }
+            const dialog = document.createElement('dialog');
+            if (typeof dialog.showModal !== 'function') { history(); return; }
+            const snapshot = source.innerHTML;
+            dialog.className = 'hi-summary-details';
+            dialog.setAttribute('data-hi-summary-dialog', '');
+            dialog.setAttribute('aria-label', `${variables.hi_summary.title} details`);
+            dialog.innerHTML = snapshot;
+            const previousFocus = owner.shadowRoot?.activeElement || document.activeElement;
+            let observer;
+            let cleaned = false;
+            let restoreFocus = true;
+            const cleanup = () => {
+              if (cleaned) return;
+              cleaned = true;
+              observer?.disconnect();
+              for (const name of ['location-changed', 'popstate', 'pagehide']) window.removeEventListener(name, close);
+              if (window.__hiBadgeDetailsDispose === dispose) delete window.__hiBadgeDetailsDispose;
+              dialog.remove();
+              if (restoreFocus && owner.isConnected && previousFocus?.isConnected) previousFocus.focus();
+            };
+            const close = () => { if (dialog.open) dialog.close(); cleanup(); };
+            const dispose = (restore = true) => { restoreFocus = restore; close(); };
+            window.__hiBadgeDetailsDispose = dispose;
+            dialog.addEventListener('close', cleanup, { once: true });
+            dialog.querySelector('.hi-summary-close').addEventListener('click', close);
+            const historyButton = dialog.querySelector('.hi-summary-history');
+            historyButton.disabled = !entityId || !states[entityId];
+            historyButton.addEventListener('click', () => { close(); history(); });
+            dialog.addEventListener('click', event => {
+              event.stopPropagation();
+              if (event.target !== dialog) return;
+              const bounds = dialog.getBoundingClientRect();
+              if (event.clientX < bounds.left || event.clientX > bounds.right || event.clientY < bounds.top || event.clientY > bounds.bottom) close();
+            });
+            for (const name of ['location-changed', 'popstate', 'pagehide']) window.addEventListener(name, close);
+            observer = new MutationObserver(() => {
+              const current = owner.shadowRoot?.querySelector('template.hi-summary-template');
+              if (!owner.isConnected || !current || current.innerHTML !== snapshot) close();
+            });
+            let root = owner.shadowRoot;
+            while (root) {
+              observer.observe(root, { childList: true, subtree: true, characterData: true });
+              root = root.host ? root.host.getRootNode() : null;
+            }
+            document.body.appendChild(dialog);
+            try { dialog.showModal(); }
+            catch (_) { cleanup(); history(); }
+          ]]]
       hold_action:
         action: more-info
+      extra_styles: |
+        .hi-summary-open { position:absolute; inset:0; width:100%; height:100%; padding:0; border:0; border-radius:inherit; background:transparent; pointer-events:none; }
+        .hi-summary-open:focus-visible { outline:2px solid #38bdf8; outline-offset:-4px; }
       styles:
         card:
           - position: relative
@@ -1459,6 +1929,14 @@ card:
           - color: rgba(226,232,240,0.72)
           - text-align: center
         custom_fields:
+          summary_open:
+            - position: absolute
+            - inset: 0
+            - border-radius: inherit
+            - pointer-events: none
+            - z-index: 2
+          summary:
+            - display: none
           status:
             - width: 100%
             - justify-self: stretch
@@ -1567,16 +2045,139 @@ card:
       cards:
         - type: custom:button-card
           entity: sensor.air_control_mode
+          variables:
+            hi_summary: |
+              [[[ return {"title": "Ready", "history": "sensor.house_average_humidity", "description": "Highlights HI’s normal mode. It is not an all-clear for every sensor or output.", "historyNote": "Recorded house-average humidity, not readiness history.", "kind": "mode"}; ]]]
+          triggers_update:
+            - sensor.house_average_humidity
+            - sensor.air_control_reason
           name: Ready
-          icon: mdi:air-humidifier
+          show_icon: false
           show_state: false
+          custom_fields:
+            summary_open: |
+              [[[
+                const escapeHtml = value => String(value ?? '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#039;');
+                const raw = typeof entity?.state === 'string' ? entity.state.trim() : '';
+                const numeric = /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$/.test(raw) && Number.isFinite(Number(raw));
+                const current = variables.hi_summary.kind === 'humidity' ? (numeric ? raw + '%' : 'Unavailable') : (raw || 'Unavailable');
+                return `<button type="button" class="hi-summary-open" aria-label="${escapeHtml(variables.hi_summary.title)}: ${escapeHtml(current)}. Open details"></button>`;
+              ]]]
+            summary: |
+              [[[
+                const view = variables.hi_summary;
+                const escapeHtml = value => String(value ?? '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#039;');
+                const readable = value => typeof value === 'string' && value.trim() ? value.trim() : 'Unavailable';
+                const current = readable(entity?.state);
+                const humidityText = typeof entity?.state === 'string' ? entity.state.trim() : '';
+                const humidityValid = /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$/.test(humidityText) && Number.isFinite(Number(humidityText));
+                const target = states[view.history];
+                const historyName = readable(target?.attributes?.friendly_name);
+                const reason = states['sensor.air_control_reason'];
+                const context = view.kind === 'risk'
+                  ? `Source: ${current}. Risk: ${readable(entity?.attributes?.risk)}.`
+                  : view.kind === 'mode'
+                    ? `Current mode: ${current}. Reason: ${readable(reason?.attributes?.full_reason || reason?.state)}.`
+                    : `Current humidity: ${humidityValid ? humidityText + '%' : 'Unavailable'}.`;
+                return `<template class="hi-summary-template">
+                  <style>dialog.hi-summary-details { box-sizing:border-box; width:min(520px,calc(100vw - 32px)); max-height:calc(100vh - 32px); max-height:calc(100dvh - 32px - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px)); top:env(safe-area-inset-top,0px); bottom:env(safe-area-inset-bottom,0px); overflow:auto; padding:20px; border:1px solid #354762; border-radius:20px; background:#0d1522; color:#e2e8f0; text-align:left; white-space:normal; font:14px/1.6 system-ui,sans-serif; }
+                  dialog.hi-summary-details::backdrop { background:rgba(0,0,0,.55); }
+                  dialog.hi-summary-details h2 { margin:0 0 16px; font-size:20px; }
+                  dialog.hi-summary-details p { overflow-wrap:anywhere; }
+                  dialog.hi-summary-details button { min-height:44px; padding:10px 16px; border:1px solid #64748b; border-radius:10px; background:#1e293b; color:#f1f5f9; font:inherit; cursor:pointer; }
+                  dialog.hi-summary-details .hi-summary-close { display:block; position:sticky; top:0; margin:0 0 12px auto; z-index:1; }
+                  dialog.hi-summary-details button:focus-visible { outline:2px solid #38bdf8; outline-offset:2px; }</style>
+                  <button type="button" class="hi-summary-close" autofocus>Close</button>
+                  <h2>${escapeHtml(view.title)}</h2>
+                  <p>${escapeHtml(view.description)}</p>
+                  <p>${escapeHtml(context)}</p>
+                  <p>${target ? `History: ${escapeHtml(historyName === 'Unavailable' ? 'mapped entity' : historyName)}. ${escapeHtml(view.historyNote)}` : 'History unavailable: the mapped entity is missing.'}</p>
+                  <p>Available history depends on Home Assistant Recorder and retention.</p>
+                  <button type="button" class="hi-summary-history" ${target ? '' : 'disabled'}>View history</button>
+                </template>`;
+              ]]]
           tap_action:
-            action: more-info
-            entity: sensor.house_average_humidity
+            action: javascript
+            javascript: |
+              [[[
+                const owner = this;
+                const entityId = variables.hi_summary.history;
+                const history = () => {
+                  if (entityId && states[entityId] && owner.isConnected) owner.dispatchEvent(new CustomEvent('hass-more-info', {
+                    detail: { entityId }, bubbles: true, composed: true
+                  }));
+                };
+                const source = owner.shadowRoot?.querySelector('template.hi-summary-template');
+                window.__hiBadgeDetailsDispose?.(false);
+                if (!source || !owner.isConnected) { history(); return; }
+                const dialog = document.createElement('dialog');
+                if (typeof dialog.showModal !== 'function') { history(); return; }
+                const snapshot = source.innerHTML;
+                dialog.className = 'hi-summary-details';
+                dialog.setAttribute('data-hi-summary-dialog', '');
+                dialog.setAttribute('aria-label', `${variables.hi_summary.title} details`);
+                dialog.innerHTML = snapshot;
+                const previousFocus = owner.shadowRoot?.activeElement || document.activeElement;
+                let observer;
+                let cleaned = false;
+                let restoreFocus = true;
+                const cleanup = () => {
+                  if (cleaned) return;
+                  cleaned = true;
+                  observer?.disconnect();
+                  for (const name of ['location-changed', 'popstate', 'pagehide']) window.removeEventListener(name, close);
+                  if (window.__hiBadgeDetailsDispose === dispose) delete window.__hiBadgeDetailsDispose;
+                  dialog.remove();
+                  if (restoreFocus && owner.isConnected && previousFocus?.isConnected) previousFocus.focus();
+                };
+                const close = () => { if (dialog.open) dialog.close(); cleanup(); };
+                const dispose = (restore = true) => { restoreFocus = restore; close(); };
+                window.__hiBadgeDetailsDispose = dispose;
+                dialog.addEventListener('close', cleanup, { once: true });
+                dialog.querySelector('.hi-summary-close').addEventListener('click', close);
+                const historyButton = dialog.querySelector('.hi-summary-history');
+                historyButton.disabled = !entityId || !states[entityId];
+                historyButton.addEventListener('click', () => { close(); history(); });
+                dialog.addEventListener('click', event => {
+                  event.stopPropagation();
+                  if (event.target !== dialog) return;
+                  const bounds = dialog.getBoundingClientRect();
+                  if (event.clientX < bounds.left || event.clientX > bounds.right || event.clientY < bounds.top || event.clientY > bounds.bottom) close();
+                });
+                for (const name of ['location-changed', 'popstate', 'pagehide']) window.addEventListener(name, close);
+                observer = new MutationObserver(() => {
+                  const current = owner.shadowRoot?.querySelector('template.hi-summary-template');
+                  if (!owner.isConnected || !current || current.innerHTML !== snapshot) close();
+                });
+                let root = owner.shadowRoot;
+                while (root) {
+                  observer.observe(root, { childList: true, subtree: true, characterData: true });
+                  root = root.host ? root.host.getRootNode() : null;
+                }
+                document.body.appendChild(dialog);
+                try { dialog.showModal(); }
+                catch (_) { cleanup(); history(); }
+              ]]]
+          extra_styles: |
+            .hi-summary-open { position:absolute; inset:0; width:100%; height:100%; padding:0; border:0; border-radius:inherit; background:transparent; pointer-events:none; }
+            .hi-summary-open:focus-visible { outline:2px solid #38bdf8; outline-offset:-4px; }
           styles:
+            grid:
+              - grid-template-areas: '"n"'
+              - grid-template-rows: min-content
+            custom_fields:
+              summary_open:
+                - position: absolute
+                - inset: 0
+                - border-radius: inherit
+                - pointer-events: none
+                - z-index: 2
+              summary:
+                - display: none
             card:
               - border-radius: 18px
-              - padding: 12px
+              - padding: 10px 6px
+              - min-height: 46px
               - background: |
                   [[[
                     const m = String(entity?.state || '').trim().toLowerCase();
@@ -1628,6 +2229,12 @@ card:
                     return (m === 'normal') ? '#e5e7eb' : '#94a3b8';
                   ]]]
             name:
+              - font-size: 14px
+              - line-height: 1.3
+              - white-space: normal
+              - overflow-wrap: anywhere
+              - text-overflow: clip
+              - overflow: visible
               - color: |
                   [[[
                     const m = String(entity?.state || '').trim().toLowerCase();
@@ -1640,16 +2247,139 @@ card:
                   ]]]
         - type: custom:button-card
           entity: sensor.air_control_mode
+          variables:
+            hi_summary: |
+              [[[ return {"title": "Zone 1", "history": "sensor.kitchen_humidity", "description": "Highlights the Zone 1 control mode. The current mode and reason provide its operating context.", "historyNote": "Recorded humidity from the mapped source, which may use a fallback. This is not zone-decision history or a guaranteed zone aggregate.", "kind": "mode"}; ]]]
+          triggers_update:
+            - sensor.kitchen_humidity
+            - sensor.air_control_reason
           name: Zone 1
-          icon: mdi:chef-hat
+          show_icon: false
           show_state: false
+          custom_fields:
+            summary_open: |
+              [[[
+                const escapeHtml = value => String(value ?? '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#039;');
+                const raw = typeof entity?.state === 'string' ? entity.state.trim() : '';
+                const numeric = /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$/.test(raw) && Number.isFinite(Number(raw));
+                const current = variables.hi_summary.kind === 'humidity' ? (numeric ? raw + '%' : 'Unavailable') : (raw || 'Unavailable');
+                return `<button type="button" class="hi-summary-open" aria-label="${escapeHtml(variables.hi_summary.title)}: ${escapeHtml(current)}. Open details"></button>`;
+              ]]]
+            summary: |
+              [[[
+                const view = variables.hi_summary;
+                const escapeHtml = value => String(value ?? '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#039;');
+                const readable = value => typeof value === 'string' && value.trim() ? value.trim() : 'Unavailable';
+                const current = readable(entity?.state);
+                const humidityText = typeof entity?.state === 'string' ? entity.state.trim() : '';
+                const humidityValid = /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$/.test(humidityText) && Number.isFinite(Number(humidityText));
+                const target = states[view.history];
+                const historyName = readable(target?.attributes?.friendly_name);
+                const reason = states['sensor.air_control_reason'];
+                const context = view.kind === 'risk'
+                  ? `Source: ${current}. Risk: ${readable(entity?.attributes?.risk)}.`
+                  : view.kind === 'mode'
+                    ? `Current mode: ${current}. Reason: ${readable(reason?.attributes?.full_reason || reason?.state)}.`
+                    : `Current humidity: ${humidityValid ? humidityText + '%' : 'Unavailable'}.`;
+                return `<template class="hi-summary-template">
+                  <style>dialog.hi-summary-details { box-sizing:border-box; width:min(520px,calc(100vw - 32px)); max-height:calc(100vh - 32px); max-height:calc(100dvh - 32px - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px)); top:env(safe-area-inset-top,0px); bottom:env(safe-area-inset-bottom,0px); overflow:auto; padding:20px; border:1px solid #354762; border-radius:20px; background:#0d1522; color:#e2e8f0; text-align:left; white-space:normal; font:14px/1.6 system-ui,sans-serif; }
+                  dialog.hi-summary-details::backdrop { background:rgba(0,0,0,.55); }
+                  dialog.hi-summary-details h2 { margin:0 0 16px; font-size:20px; }
+                  dialog.hi-summary-details p { overflow-wrap:anywhere; }
+                  dialog.hi-summary-details button { min-height:44px; padding:10px 16px; border:1px solid #64748b; border-radius:10px; background:#1e293b; color:#f1f5f9; font:inherit; cursor:pointer; }
+                  dialog.hi-summary-details .hi-summary-close { display:block; position:sticky; top:0; margin:0 0 12px auto; z-index:1; }
+                  dialog.hi-summary-details button:focus-visible { outline:2px solid #38bdf8; outline-offset:2px; }</style>
+                  <button type="button" class="hi-summary-close" autofocus>Close</button>
+                  <h2>${escapeHtml(view.title)}</h2>
+                  <p>${escapeHtml(view.description)}</p>
+                  <p>${escapeHtml(context)}</p>
+                  <p>${target ? `History: ${escapeHtml(historyName === 'Unavailable' ? 'mapped entity' : historyName)}. ${escapeHtml(view.historyNote)}` : 'History unavailable: the mapped entity is missing.'}</p>
+                  <p>Available history depends on Home Assistant Recorder and retention.</p>
+                  <button type="button" class="hi-summary-history" ${target ? '' : 'disabled'}>View history</button>
+                </template>`;
+              ]]]
           tap_action:
-            action: more-info
-            entity: sensor.kitchen_humidity
+            action: javascript
+            javascript: |
+              [[[
+                const owner = this;
+                const entityId = variables.hi_summary.history;
+                const history = () => {
+                  if (entityId && states[entityId] && owner.isConnected) owner.dispatchEvent(new CustomEvent('hass-more-info', {
+                    detail: { entityId }, bubbles: true, composed: true
+                  }));
+                };
+                const source = owner.shadowRoot?.querySelector('template.hi-summary-template');
+                window.__hiBadgeDetailsDispose?.(false);
+                if (!source || !owner.isConnected) { history(); return; }
+                const dialog = document.createElement('dialog');
+                if (typeof dialog.showModal !== 'function') { history(); return; }
+                const snapshot = source.innerHTML;
+                dialog.className = 'hi-summary-details';
+                dialog.setAttribute('data-hi-summary-dialog', '');
+                dialog.setAttribute('aria-label', `${variables.hi_summary.title} details`);
+                dialog.innerHTML = snapshot;
+                const previousFocus = owner.shadowRoot?.activeElement || document.activeElement;
+                let observer;
+                let cleaned = false;
+                let restoreFocus = true;
+                const cleanup = () => {
+                  if (cleaned) return;
+                  cleaned = true;
+                  observer?.disconnect();
+                  for (const name of ['location-changed', 'popstate', 'pagehide']) window.removeEventListener(name, close);
+                  if (window.__hiBadgeDetailsDispose === dispose) delete window.__hiBadgeDetailsDispose;
+                  dialog.remove();
+                  if (restoreFocus && owner.isConnected && previousFocus?.isConnected) previousFocus.focus();
+                };
+                const close = () => { if (dialog.open) dialog.close(); cleanup(); };
+                const dispose = (restore = true) => { restoreFocus = restore; close(); };
+                window.__hiBadgeDetailsDispose = dispose;
+                dialog.addEventListener('close', cleanup, { once: true });
+                dialog.querySelector('.hi-summary-close').addEventListener('click', close);
+                const historyButton = dialog.querySelector('.hi-summary-history');
+                historyButton.disabled = !entityId || !states[entityId];
+                historyButton.addEventListener('click', () => { close(); history(); });
+                dialog.addEventListener('click', event => {
+                  event.stopPropagation();
+                  if (event.target !== dialog) return;
+                  const bounds = dialog.getBoundingClientRect();
+                  if (event.clientX < bounds.left || event.clientX > bounds.right || event.clientY < bounds.top || event.clientY > bounds.bottom) close();
+                });
+                for (const name of ['location-changed', 'popstate', 'pagehide']) window.addEventListener(name, close);
+                observer = new MutationObserver(() => {
+                  const current = owner.shadowRoot?.querySelector('template.hi-summary-template');
+                  if (!owner.isConnected || !current || current.innerHTML !== snapshot) close();
+                });
+                let root = owner.shadowRoot;
+                while (root) {
+                  observer.observe(root, { childList: true, subtree: true, characterData: true });
+                  root = root.host ? root.host.getRootNode() : null;
+                }
+                document.body.appendChild(dialog);
+                try { dialog.showModal(); }
+                catch (_) { cleanup(); history(); }
+              ]]]
+          extra_styles: |
+            .hi-summary-open { position:absolute; inset:0; width:100%; height:100%; padding:0; border:0; border-radius:inherit; background:transparent; pointer-events:none; }
+            .hi-summary-open:focus-visible { outline:2px solid #38bdf8; outline-offset:-4px; }
           styles:
+            grid:
+              - grid-template-areas: '"n"'
+              - grid-template-rows: min-content
+            custom_fields:
+              summary_open:
+                - position: absolute
+                - inset: 0
+                - border-radius: inherit
+                - pointer-events: none
+                - z-index: 2
+              summary:
+                - display: none
             card:
               - border-radius: 18px
-              - padding: 12px
+              - padding: 10px 6px
+              - min-height: 46px
               - background: |
                   [[[
                     const m = String(entity?.state || '').trim().toLowerCase();
@@ -1701,6 +2431,12 @@ card:
                     return (m === 'cooking') ? '#38bdf8' : '#94a3b8';
                   ]]]
             name:
+              - font-size: 14px
+              - line-height: 1.3
+              - white-space: normal
+              - overflow-wrap: anywhere
+              - text-overflow: clip
+              - overflow: visible
               - color: |
                   [[[
                     const m = String(entity?.state || '').trim().toLowerCase();
@@ -1713,16 +2449,139 @@ card:
                   ]]]
         - type: custom:button-card
           entity: sensor.air_control_mode
+          variables:
+            hi_summary: |
+              [[[ return {"title": "Zone 2", "history": "sensor.bathroom_humidity", "description": "Highlights the Zone 2 control mode. The current mode and reason provide its operating context.", "historyNote": "Recorded humidity from the mapped source, which may use a fallback. This is not zone-decision history or a guaranteed zone aggregate.", "kind": "mode"}; ]]]
+          triggers_update:
+            - sensor.bathroom_humidity
+            - sensor.air_control_reason
           name: Zone 2
-          icon: mdi:shower
+          show_icon: false
           show_state: false
+          custom_fields:
+            summary_open: |
+              [[[
+                const escapeHtml = value => String(value ?? '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#039;');
+                const raw = typeof entity?.state === 'string' ? entity.state.trim() : '';
+                const numeric = /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$/.test(raw) && Number.isFinite(Number(raw));
+                const current = variables.hi_summary.kind === 'humidity' ? (numeric ? raw + '%' : 'Unavailable') : (raw || 'Unavailable');
+                return `<button type="button" class="hi-summary-open" aria-label="${escapeHtml(variables.hi_summary.title)}: ${escapeHtml(current)}. Open details"></button>`;
+              ]]]
+            summary: |
+              [[[
+                const view = variables.hi_summary;
+                const escapeHtml = value => String(value ?? '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#039;');
+                const readable = value => typeof value === 'string' && value.trim() ? value.trim() : 'Unavailable';
+                const current = readable(entity?.state);
+                const humidityText = typeof entity?.state === 'string' ? entity.state.trim() : '';
+                const humidityValid = /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$/.test(humidityText) && Number.isFinite(Number(humidityText));
+                const target = states[view.history];
+                const historyName = readable(target?.attributes?.friendly_name);
+                const reason = states['sensor.air_control_reason'];
+                const context = view.kind === 'risk'
+                  ? `Source: ${current}. Risk: ${readable(entity?.attributes?.risk)}.`
+                  : view.kind === 'mode'
+                    ? `Current mode: ${current}. Reason: ${readable(reason?.attributes?.full_reason || reason?.state)}.`
+                    : `Current humidity: ${humidityValid ? humidityText + '%' : 'Unavailable'}.`;
+                return `<template class="hi-summary-template">
+                  <style>dialog.hi-summary-details { box-sizing:border-box; width:min(520px,calc(100vw - 32px)); max-height:calc(100vh - 32px); max-height:calc(100dvh - 32px - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px)); top:env(safe-area-inset-top,0px); bottom:env(safe-area-inset-bottom,0px); overflow:auto; padding:20px; border:1px solid #354762; border-radius:20px; background:#0d1522; color:#e2e8f0; text-align:left; white-space:normal; font:14px/1.6 system-ui,sans-serif; }
+                  dialog.hi-summary-details::backdrop { background:rgba(0,0,0,.55); }
+                  dialog.hi-summary-details h2 { margin:0 0 16px; font-size:20px; }
+                  dialog.hi-summary-details p { overflow-wrap:anywhere; }
+                  dialog.hi-summary-details button { min-height:44px; padding:10px 16px; border:1px solid #64748b; border-radius:10px; background:#1e293b; color:#f1f5f9; font:inherit; cursor:pointer; }
+                  dialog.hi-summary-details .hi-summary-close { display:block; position:sticky; top:0; margin:0 0 12px auto; z-index:1; }
+                  dialog.hi-summary-details button:focus-visible { outline:2px solid #38bdf8; outline-offset:2px; }</style>
+                  <button type="button" class="hi-summary-close" autofocus>Close</button>
+                  <h2>${escapeHtml(view.title)}</h2>
+                  <p>${escapeHtml(view.description)}</p>
+                  <p>${escapeHtml(context)}</p>
+                  <p>${target ? `History: ${escapeHtml(historyName === 'Unavailable' ? 'mapped entity' : historyName)}. ${escapeHtml(view.historyNote)}` : 'History unavailable: the mapped entity is missing.'}</p>
+                  <p>Available history depends on Home Assistant Recorder and retention.</p>
+                  <button type="button" class="hi-summary-history" ${target ? '' : 'disabled'}>View history</button>
+                </template>`;
+              ]]]
           tap_action:
-            action: more-info
-            entity: sensor.bathroom_humidity
+            action: javascript
+            javascript: |
+              [[[
+                const owner = this;
+                const entityId = variables.hi_summary.history;
+                const history = () => {
+                  if (entityId && states[entityId] && owner.isConnected) owner.dispatchEvent(new CustomEvent('hass-more-info', {
+                    detail: { entityId }, bubbles: true, composed: true
+                  }));
+                };
+                const source = owner.shadowRoot?.querySelector('template.hi-summary-template');
+                window.__hiBadgeDetailsDispose?.(false);
+                if (!source || !owner.isConnected) { history(); return; }
+                const dialog = document.createElement('dialog');
+                if (typeof dialog.showModal !== 'function') { history(); return; }
+                const snapshot = source.innerHTML;
+                dialog.className = 'hi-summary-details';
+                dialog.setAttribute('data-hi-summary-dialog', '');
+                dialog.setAttribute('aria-label', `${variables.hi_summary.title} details`);
+                dialog.innerHTML = snapshot;
+                const previousFocus = owner.shadowRoot?.activeElement || document.activeElement;
+                let observer;
+                let cleaned = false;
+                let restoreFocus = true;
+                const cleanup = () => {
+                  if (cleaned) return;
+                  cleaned = true;
+                  observer?.disconnect();
+                  for (const name of ['location-changed', 'popstate', 'pagehide']) window.removeEventListener(name, close);
+                  if (window.__hiBadgeDetailsDispose === dispose) delete window.__hiBadgeDetailsDispose;
+                  dialog.remove();
+                  if (restoreFocus && owner.isConnected && previousFocus?.isConnected) previousFocus.focus();
+                };
+                const close = () => { if (dialog.open) dialog.close(); cleanup(); };
+                const dispose = (restore = true) => { restoreFocus = restore; close(); };
+                window.__hiBadgeDetailsDispose = dispose;
+                dialog.addEventListener('close', cleanup, { once: true });
+                dialog.querySelector('.hi-summary-close').addEventListener('click', close);
+                const historyButton = dialog.querySelector('.hi-summary-history');
+                historyButton.disabled = !entityId || !states[entityId];
+                historyButton.addEventListener('click', () => { close(); history(); });
+                dialog.addEventListener('click', event => {
+                  event.stopPropagation();
+                  if (event.target !== dialog) return;
+                  const bounds = dialog.getBoundingClientRect();
+                  if (event.clientX < bounds.left || event.clientX > bounds.right || event.clientY < bounds.top || event.clientY > bounds.bottom) close();
+                });
+                for (const name of ['location-changed', 'popstate', 'pagehide']) window.addEventListener(name, close);
+                observer = new MutationObserver(() => {
+                  const current = owner.shadowRoot?.querySelector('template.hi-summary-template');
+                  if (!owner.isConnected || !current || current.innerHTML !== snapshot) close();
+                });
+                let root = owner.shadowRoot;
+                while (root) {
+                  observer.observe(root, { childList: true, subtree: true, characterData: true });
+                  root = root.host ? root.host.getRootNode() : null;
+                }
+                document.body.appendChild(dialog);
+                try { dialog.showModal(); }
+                catch (_) { cleanup(); history(); }
+              ]]]
+          extra_styles: |
+            .hi-summary-open { position:absolute; inset:0; width:100%; height:100%; padding:0; border:0; border-radius:inherit; background:transparent; pointer-events:none; }
+            .hi-summary-open:focus-visible { outline:2px solid #38bdf8; outline-offset:-4px; }
           styles:
+            grid:
+              - grid-template-areas: '"n"'
+              - grid-template-rows: min-content
+            custom_fields:
+              summary_open:
+                - position: absolute
+                - inset: 0
+                - border-radius: inherit
+                - pointer-events: none
+                - z-index: 2
+              summary:
+                - display: none
             card:
               - border-radius: 18px
-              - padding: 12px
+              - padding: 10px 6px
+              - min-height: 46px
               - background: |
                   [[[
                     const m = String(entity?.state || '').trim().toLowerCase();
@@ -1779,6 +2638,12 @@ card:
                     return active ? '#4ade80' : '#94a3b8';
                   ]]]
             name:
+              - font-size: 14px
+              - line-height: 1.3
+              - white-space: normal
+              - overflow-wrap: anywhere
+              - text-overflow: clip
+              - overflow: visible
               - color: |
                   [[[
                     const m = String(entity?.state || '').trim().toLowerCase();
@@ -1793,16 +2658,139 @@ card:
                   ]]]
         - type: custom:button-card
           entity: sensor.air_control_mode
+          variables:
+            hi_summary: |
+              [[[ return {"title": "AQ", "history": "sensor.air_control_house_iaq_average", "description": "Highlights the existing air-quality status indication. Current Air Control identifies the selected ventilation mode.", "historyNote": "Recorded house IAQ average; this is not a history of every pollutant.", "kind": "mode"}; ]]]
+          triggers_update:
+            - sensor.air_control_house_iaq_average
+            - sensor.air_control_reason
           name: AQ
-          icon: mdi:air-purifier
+          show_icon: false
           show_state: false
+          custom_fields:
+            summary_open: |
+              [[[
+                const escapeHtml = value => String(value ?? '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#039;');
+                const raw = typeof entity?.state === 'string' ? entity.state.trim() : '';
+                const numeric = /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$/.test(raw) && Number.isFinite(Number(raw));
+                const current = variables.hi_summary.kind === 'humidity' ? (numeric ? raw + '%' : 'Unavailable') : (raw || 'Unavailable');
+                return `<button type="button" class="hi-summary-open" aria-label="${escapeHtml(variables.hi_summary.title)}: ${escapeHtml(current)}. Open details"></button>`;
+              ]]]
+            summary: |
+              [[[
+                const view = variables.hi_summary;
+                const escapeHtml = value => String(value ?? '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#039;');
+                const readable = value => typeof value === 'string' && value.trim() ? value.trim() : 'Unavailable';
+                const current = readable(entity?.state);
+                const humidityText = typeof entity?.state === 'string' ? entity.state.trim() : '';
+                const humidityValid = /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$/.test(humidityText) && Number.isFinite(Number(humidityText));
+                const target = states[view.history];
+                const historyName = readable(target?.attributes?.friendly_name);
+                const reason = states['sensor.air_control_reason'];
+                const context = view.kind === 'risk'
+                  ? `Source: ${current}. Risk: ${readable(entity?.attributes?.risk)}.`
+                  : view.kind === 'mode'
+                    ? `Current mode: ${current}. Reason: ${readable(reason?.attributes?.full_reason || reason?.state)}.`
+                    : `Current humidity: ${humidityValid ? humidityText + '%' : 'Unavailable'}.`;
+                return `<template class="hi-summary-template">
+                  <style>dialog.hi-summary-details { box-sizing:border-box; width:min(520px,calc(100vw - 32px)); max-height:calc(100vh - 32px); max-height:calc(100dvh - 32px - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px)); top:env(safe-area-inset-top,0px); bottom:env(safe-area-inset-bottom,0px); overflow:auto; padding:20px; border:1px solid #354762; border-radius:20px; background:#0d1522; color:#e2e8f0; text-align:left; white-space:normal; font:14px/1.6 system-ui,sans-serif; }
+                  dialog.hi-summary-details::backdrop { background:rgba(0,0,0,.55); }
+                  dialog.hi-summary-details h2 { margin:0 0 16px; font-size:20px; }
+                  dialog.hi-summary-details p { overflow-wrap:anywhere; }
+                  dialog.hi-summary-details button { min-height:44px; padding:10px 16px; border:1px solid #64748b; border-radius:10px; background:#1e293b; color:#f1f5f9; font:inherit; cursor:pointer; }
+                  dialog.hi-summary-details .hi-summary-close { display:block; position:sticky; top:0; margin:0 0 12px auto; z-index:1; }
+                  dialog.hi-summary-details button:focus-visible { outline:2px solid #38bdf8; outline-offset:2px; }</style>
+                  <button type="button" class="hi-summary-close" autofocus>Close</button>
+                  <h2>${escapeHtml(view.title)}</h2>
+                  <p>${escapeHtml(view.description)}</p>
+                  <p>${escapeHtml(context)}</p>
+                  <p>${target ? `History: ${escapeHtml(historyName === 'Unavailable' ? 'mapped entity' : historyName)}. ${escapeHtml(view.historyNote)}` : 'History unavailable: the mapped entity is missing.'}</p>
+                  <p>Available history depends on Home Assistant Recorder and retention.</p>
+                  <button type="button" class="hi-summary-history" ${target ? '' : 'disabled'}>View history</button>
+                </template>`;
+              ]]]
           tap_action:
-            action: more-info
-            entity: sensor.air_control_house_iaq_average
+            action: javascript
+            javascript: |
+              [[[
+                const owner = this;
+                const entityId = variables.hi_summary.history;
+                const history = () => {
+                  if (entityId && states[entityId] && owner.isConnected) owner.dispatchEvent(new CustomEvent('hass-more-info', {
+                    detail: { entityId }, bubbles: true, composed: true
+                  }));
+                };
+                const source = owner.shadowRoot?.querySelector('template.hi-summary-template');
+                window.__hiBadgeDetailsDispose?.(false);
+                if (!source || !owner.isConnected) { history(); return; }
+                const dialog = document.createElement('dialog');
+                if (typeof dialog.showModal !== 'function') { history(); return; }
+                const snapshot = source.innerHTML;
+                dialog.className = 'hi-summary-details';
+                dialog.setAttribute('data-hi-summary-dialog', '');
+                dialog.setAttribute('aria-label', `${variables.hi_summary.title} details`);
+                dialog.innerHTML = snapshot;
+                const previousFocus = owner.shadowRoot?.activeElement || document.activeElement;
+                let observer;
+                let cleaned = false;
+                let restoreFocus = true;
+                const cleanup = () => {
+                  if (cleaned) return;
+                  cleaned = true;
+                  observer?.disconnect();
+                  for (const name of ['location-changed', 'popstate', 'pagehide']) window.removeEventListener(name, close);
+                  if (window.__hiBadgeDetailsDispose === dispose) delete window.__hiBadgeDetailsDispose;
+                  dialog.remove();
+                  if (restoreFocus && owner.isConnected && previousFocus?.isConnected) previousFocus.focus();
+                };
+                const close = () => { if (dialog.open) dialog.close(); cleanup(); };
+                const dispose = (restore = true) => { restoreFocus = restore; close(); };
+                window.__hiBadgeDetailsDispose = dispose;
+                dialog.addEventListener('close', cleanup, { once: true });
+                dialog.querySelector('.hi-summary-close').addEventListener('click', close);
+                const historyButton = dialog.querySelector('.hi-summary-history');
+                historyButton.disabled = !entityId || !states[entityId];
+                historyButton.addEventListener('click', () => { close(); history(); });
+                dialog.addEventListener('click', event => {
+                  event.stopPropagation();
+                  if (event.target !== dialog) return;
+                  const bounds = dialog.getBoundingClientRect();
+                  if (event.clientX < bounds.left || event.clientX > bounds.right || event.clientY < bounds.top || event.clientY > bounds.bottom) close();
+                });
+                for (const name of ['location-changed', 'popstate', 'pagehide']) window.addEventListener(name, close);
+                observer = new MutationObserver(() => {
+                  const current = owner.shadowRoot?.querySelector('template.hi-summary-template');
+                  if (!owner.isConnected || !current || current.innerHTML !== snapshot) close();
+                });
+                let root = owner.shadowRoot;
+                while (root) {
+                  observer.observe(root, { childList: true, subtree: true, characterData: true });
+                  root = root.host ? root.host.getRootNode() : null;
+                }
+                document.body.appendChild(dialog);
+                try { dialog.showModal(); }
+                catch (_) { cleanup(); history(); }
+              ]]]
+          extra_styles: |
+            .hi-summary-open { position:absolute; inset:0; width:100%; height:100%; padding:0; border:0; border-radius:inherit; background:transparent; pointer-events:none; }
+            .hi-summary-open:focus-visible { outline:2px solid #38bdf8; outline-offset:-4px; }
           styles:
+            grid:
+              - grid-template-areas: '"n"'
+              - grid-template-rows: min-content
+            custom_fields:
+              summary_open:
+                - position: absolute
+                - inset: 0
+                - border-radius: inherit
+                - pointer-events: none
+                - z-index: 2
+              summary:
+                - display: none
             card:
               - border-radius: 18px
-              - padding: 12px
+              - padding: 10px 6px
+              - min-height: 46px
               - background: |
                   [[[
                     const m = String(entity?.state || '').trim().toLowerCase();
@@ -1871,6 +2859,12 @@ card:
                     return active ? '#a855f7' : '#94a3b8';
                   ]]]
             name:
+              - font-size: 14px
+              - line-height: 1.3
+              - white-space: normal
+              - overflow-wrap: anywhere
+              - text-overflow: clip
+              - overflow: visible
               - color: |
                   [[[
                     const m = String(entity?.state || '').trim().toLowerCase();
@@ -2115,7 +3109,7 @@ card:
                   ${failureArc}
                   ${collecting && collectionMarks > 0 ? '' : '<div class="hi-stability-origin"></div>'}
                 </div><template class="hi-stability-details-template">
-                  <style>dialog.hi-stability-details { box-sizing:border-box; width:min(520px,calc(100vw - 32px)); max-height:calc(100vh - 32px); max-height:calc(100dvh - 32px); overflow:auto; padding:20px; border:1px solid #354762; border-radius:20px; background:#0d1522; color:#e2e8f0; text-align:left; white-space:normal; font:14px/1.6 system-ui,sans-serif; }
+                  <style>dialog.hi-stability-details { box-sizing:border-box; width:min(520px,calc(100vw - 32px)); max-height:calc(100vh - 32px); max-height:calc(100dvh - 32px - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px)); top:env(safe-area-inset-top,0px); bottom:env(safe-area-inset-bottom,0px); overflow:auto; padding:20px; border:1px solid #354762; border-radius:20px; background:#0d1522; color:#e2e8f0; text-align:left; white-space:normal; font:14px/1.6 system-ui,sans-serif; }
                   dialog.hi-stability-details::backdrop { background:rgba(0,0,0,.65); }
                   dialog.hi-stability-details h2 { margin:0 0 16px; font-size:22px; }
                   dialog.hi-stability-details h3 { font-size:15px; }
@@ -2123,12 +3117,12 @@ card:
                   dialog.hi-stability-details .hi-stability-close { display:block; position:sticky; top:0; z-index:1; margin:0 0 12px auto; min-height:44px; padding:10px 18px; border:1px solid #354762; border-radius:8px; background:#18253a; color:#e2e8f0; cursor:pointer; }
                   dialog.hi-stability-details .hi-stability-close:focus-visible { outline:2px solid #38bdf8; outline-offset:4px; }</style>
                   <button type="button" class="hi-stability-close" autofocus>Close</button>
-                  <p>Details reflect the snapshot when opened. Reopen for the latest evidence.</p>
                   <h2>Stability Score</h2>
                   <p>${escapeHtml(detailText)}</p>
                   <p>${escapeHtml(evidenceText)}</p>
                   ${arcDetails}
                   ${showFailureHistory ? `<h3>Unsuccessful collections</h3><p>${escapeHtml(failureHistoryValid && typeof failureHistory.detail_text === 'string' ? failureHistory.detail_text : 'Failed collection history unavailable.')}</p><p>Inner red marks retain failed or missed scheduled samples in the last 72 hours of this runtime. They do not advance the blue baseline progress or indicate a falling score. Their positions are fixed sampling slots, not a timeline starting at the top. History resets when the integration restarts.</p>` : ''}
+                  <p class="hi-stability-snapshot">Details reflect the snapshot when opened. Reopen for the latest evidence.</p>
                 </template></div>`;
               ]]]
           tap_action:
@@ -2136,6 +3130,7 @@ card:
             javascript: |
               [[[
                 const owner = this;
+                window.__hiBadgeDetailsDispose?.(false);
                 const fallback = () => {
                   if (entity?.entity_id) owner.dispatchEvent(new CustomEvent('hass-more-info', {
                     detail: { entityId: entity.entity_id }, bubbles: true, composed: true
@@ -2164,10 +3159,12 @@ card:
                   cleaned = true;
                   observer?.disconnect();
                   for (const name of ['location-changed', 'popstate', 'pagehide']) window.removeEventListener(name, close);
+                  if (window.__hiBadgeDetailsDispose === dialog.__hiStabilityDispose) delete window.__hiBadgeDetailsDispose;
                   dialog.remove();
                   if (restoreFocus && owner.isConnected && previousFocus?.isConnected) previousFocus.focus();
                 };
                 dialog.__hiStabilityDispose = (restore = true) => { restoreFocus = restore; close(); };
+                window.__hiBadgeDetailsDispose = dialog.__hiStabilityDispose;
                 dialog.addEventListener('close', cleanup, { once: true });
                 dialog.querySelector('.hi-stability-close').addEventListener('click', close);
                 dialog.addEventListener('click', (event) => {

@@ -21,6 +21,20 @@ beta.1 commit below does not identify this package. Published Stable remains v2.
   semantics. Regenerate exports and replace pasted Manual cards to receive the UI;
   no configuration or stored-data migration is required.
 
+### V2 badge summaries
+
+- Humidity, Condensation, Mould, Current Air Control, Ready, Zone 1, Zone 2 and AQ
+  open short explanations before their existing native entity history. Summaries
+  identify the actual mapped history source and retain unavailable states.
+- Ready, Zone 1, Zone 2 and AQ use compact text-only badges with their existing
+  active and alert emphasis. Stability details put the snapshot notice below the
+  content and keep Close within a viewport bounded by device safe areas.
+- V2 Mobile and V2 Tablet share the changes. V1 is unchanged. Refresh exports and
+  replace pasted Manual cards; this template-only change requires no Python restart
+  or configuration/data migration. Runtime control and entity semantics are unchanged.
+- Specialised risk, operating-mode and AQ history views remain proposed; this
+  update does not add charts, change history destinations or alter retention.
+
 ## v2.1.0-beta.1 — Earlier unpublished candidate
 
 Committed and pushed through `144570b` on `senyo888-patch-1`, with earlier
