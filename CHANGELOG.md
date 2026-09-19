@@ -23,7 +23,8 @@ remains v2.0.12. No release tag or HACS publication is implied.
   registry quarantine.
 - Uses a neutral devices icon for shared Outputs and domain-specific row icons;
   fans no longer represent switches, humidifiers or lights. Native V2 and gallery
-  headers follow the same convention.
+  headers follow the same convention. The dark Outputs surface owns readable text
+  colours locally, including native child rows, when HA uses a light theme.
 - Accepts Home Assistant read-only configuration mappings when generating adaptive
   cards; a targeted regression protects the live options/export boundary.
 - Bounds observations and identity custody, excludes detailed payloads from Recorder,

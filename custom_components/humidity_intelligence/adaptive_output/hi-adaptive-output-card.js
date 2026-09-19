@@ -55,7 +55,7 @@
         (r.associations===undefined||list(r.associations,validAssociation,128))&&
         (r.observation===undefined||(object(r.observation)&&['last_reported','last_updated','last_changed'].every(k=>r.observation[k]===undefined||(typeof r.observation[k]==='string'&&r.observation[k].length<=64))&&(r.observation.restored===undefined||typeof r.observation.restored==='boolean'))))));
   const CSS = `
-    :host{display:block;container-type:inline-size;color:var(--primary-text-color,#e2e8f0);font-family:var(--paper-font-body1_-_font-family,system-ui,sans-serif)}*{box-sizing:border-box}[hidden]{display:none!important}
+    :host{--primary-text-color:#e2e8f0;--secondary-text-color:#a8b8cb;--state-inactive-color:#94a3b8;display:block;container-type:inline-size;color:var(--primary-text-color,#e2e8f0);font-family:var(--paper-font-body1_-_font-family,system-ui,sans-serif)}*{box-sizing:border-box}[hidden]{display:none!important}
     button{font:inherit;color:inherit;cursor:pointer}button:focus-visible{outline:2px solid var(--primary-color,#7dd3fc);outline-offset:3px}
     .header{width:100%;text-align:left;border:2px solid rgba(148,163,184,.18);border-radius:22px;padding:12px 14px;background:rgba(10,12,16,.62);box-shadow:0 0 18px rgba(148,163,184,.18);backdrop-filter:blur(12px)}
     .title{display:flex;align-items:center;gap:10px;font-size:15px;font-weight:900;letter-spacing:.2px}.title>ha-icon{--mdc-icon-size:18px;color:#94a3b8}
