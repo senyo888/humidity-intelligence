@@ -22,6 +22,7 @@ from pathlib import Path, PurePosixPath
 SOURCE_PROFILE = "public_patch_1"
 SOURCE_PREFIX = "custom_components/humidity_intelligence"
 CONTRACT_ID = "hi-package-public-v20-conventional-1"
+V21_CONTRACT_ID = "hi-package-public-v21-conventional-1"
 DOMAIN = "humidity_intelligence"
 MAX_PACKAGE_BYTES = 16_777_216
 SAFE_FILE_MODES = {"100644", "100755"}
@@ -75,6 +76,7 @@ ALLOWED_NON_RUNTIME_DIRECTORIES = {
     "scripts",
     "site",
     "tests 2",
+    "tools/stability-scenario",
     "ui-gallery",
 }
 RUNTIME_SUFFIXES = (".py", ".json", ".yaml", ".yml")
@@ -197,6 +199,15 @@ def _write_new_file(path: Path, content: bytes) -> None:
         handle.write(content)
 
 
+def _contract_for_version(version: str) -> str:
+    """Keep the V2.0 identity fixed and explicitly identify V2.1.0 artifacts."""
+    if SEMANTIC_VERSION.fullmatch(version) and version.startswith("2.0."):
+        return CONTRACT_ID
+    if re.fullmatch(r"2\.1\.0(?:-(?:beta|rc)\.[1-9]\d*)?", version):
+        return V21_CONTRACT_ID
+    raise PackageBuildError("Integration manifest version is outside the public V2.0/V2.1.0 contracts")
+
+
 def build_package(repository: Path, commitish: str, output: Path) -> dict[str, object]:
     """Build one strict package tree from tracked blobs at ``commitish``."""
 
@@ -279,8 +290,7 @@ def build_package(repository: Path, commitish: str, output: Path) -> dict[str, o
         if manifest_document.get("domain") != DOMAIN:
             raise PackageBuildError("Integration manifest domain differs from the package contract")
         manifest_version = str(manifest_document.get("version") or "")
-        if not SEMANTIC_VERSION.fullmatch(manifest_version) or not manifest_version.startswith("2.0."):
-            raise PackageBuildError("Integration manifest version is outside the public V2.0 contract")
+        contract_id = _contract_for_version(manifest_version)
 
         package_hash = _package_hash(package_files)
         artifact_manifest = {
@@ -289,7 +299,7 @@ def build_package(repository: Path, commitish: str, output: Path) -> dict[str, o
             "commit": commit,
             "tree_hash": tree_hash,
             "manifest_version": manifest_version,
-            "contract_id": CONTRACT_ID,
+            "contract_id": contract_id,
             "package_hash": package_hash,
             "files": [asdict(item) for item in package_files],
         }
@@ -308,7 +318,7 @@ def build_package(repository: Path, commitish: str, output: Path) -> dict[str, o
         "commit": commit,
         "tree_hash": tree_hash,
         "manifest_version": manifest_version,
-        "contract_id": CONTRACT_ID,
+        "contract_id": contract_id,
         "package_hash": package_hash,
         "file_count": len(package_files),
         "total_bytes": total_bytes,

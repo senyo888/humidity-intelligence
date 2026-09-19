@@ -38,6 +38,15 @@ def _git(*arguments: str, text: bool = True):
 
 
 class ControllerPackageTests(unittest.TestCase):
+    def test_explicit_package_version_contracts(self) -> None:
+        for version in ("2.0.12", "2.0.12-rc.1"):
+            self.assertEqual("hi-package-public-v20-conventional-1", BUILDER._contract_for_version(version))
+        for version in ("2.1.0-beta.1", "2.1.0-rc.1", "2.1.0"):
+            self.assertEqual("hi-package-public-v21-conventional-1", BUILDER._contract_for_version(version))
+        for version in ("2.1.1", "2.2.0", "3.0.0", "2.1.0-beta.0", "2.1.0-alpha.1", "2.1.0-beta.01"):
+            with self.subTest(version=version), self.assertRaises(BUILDER.PackageBuildError):
+                BUILDER._contract_for_version(version)
+
     def test_current_commit_build_is_deterministic_and_complete(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             base = pathlib.Path(temporary)
@@ -48,8 +57,13 @@ class ControllerPackageTests(unittest.TestCase):
 
             self.assertEqual(first_summary, second_summary)
             self.assertEqual("public_patch_1", first_summary["source_profile"])
-            self.assertEqual("hi-package-public-v20-conventional-1", first_summary["contract_id"])
-            self.assertEqual(53, first_summary["file_count"])
+            expected_contract = (
+                "hi-package-public-v21-conventional-1"
+                if first_summary["manifest_version"].startswith("2.1.0")
+                else "hi-package-public-v20-conventional-1"
+            )
+            self.assertEqual(expected_contract, first_summary["contract_id"])
+            self.assertEqual(55, first_summary["file_count"])
 
             first_files = {
                 path.relative_to(first).as_posix(): path.read_bytes()
@@ -62,13 +76,13 @@ class ControllerPackageTests(unittest.TestCase):
                 if path.is_file()
             }
             self.assertEqual(first_files, second_files)
-            self.assertEqual(54, len(first_files))
+            self.assertEqual(56, len(first_files))
 
             manifest = json.loads(first_files["artifact-manifest.json"])
             self.assertEqual(first_summary["package_hash"], manifest["package_hash"])
             self.assertEqual(first_summary["commit"], manifest["commit"])
             self.assertEqual(first_summary["tree_hash"], manifest["tree_hash"])
-            self.assertEqual(53, len(manifest["files"]))
+            self.assertEqual(55, len(manifest["files"]))
 
             digest = hashlib.sha256()
             for item in sorted(manifest["files"], key=lambda value: value["relative_path"]):
@@ -112,6 +126,23 @@ class ControllerPackageTests(unittest.TestCase):
             ):
                 with self.assertRaisesRegex(BUILDER.PackageBuildError, "private-key"):
                     BUILDER.build_package(ROOT, "HEAD", output)
+
+    def test_scenario_is_excluded_without_allowing_other_tools_runtime_paths(self) -> None:
+        real_tree = BUILDER._parse_tree(ROOT, "HEAD")
+        for path in ("tools/rogue.py", "tools/stability-scenario-other/rogue.py"):
+            with self.subTest(path=path), tempfile.TemporaryDirectory() as temporary:
+                with unittest.mock.patch.object(
+                    BUILDER, "_parse_tree",
+                    return_value=real_tree + [("100644", "blob", "0" * 40, path)],
+                ):
+                    with self.assertRaisesRegex(BUILDER.PackageBuildError, "not classified"):
+                        BUILDER.build_package(ROOT, "HEAD", pathlib.Path(temporary) / "package")
+        with tempfile.TemporaryDirectory() as temporary:
+            output = pathlib.Path(temporary) / "package"
+            BUILDER.build_package(ROOT, "HEAD", output)
+            self.assertFalse((output / "tools").exists())
+            manifest = json.loads((output / "artifact-manifest.json").read_text())
+            self.assertTrue(all(not item["relative_path"].startswith("tools/") for item in manifest["files"]))
 
     def test_workflow_is_branch_bound_pinned_and_release_independent(self) -> None:
         workflow = WORKFLOW_PATH.read_text(encoding="utf-8")

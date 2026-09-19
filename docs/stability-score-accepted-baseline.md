@@ -26,6 +26,10 @@ Implementation anchors in this repository:
   thresholds, units, condition coverage and level aggregation.
 - `custom_components/humidity_intelligence/sensor.py`: scheduler lifecycle,
   Diagnostics telemetry and readable explanation.
+- `custom_components/humidity_intelligence/services.py`: shared runtime Diagnostics
+  payload and privacy-filtered support export; the sensor consumes this shared builder.
+- `custom_components/humidity_intelligence/diagnostics.py`: native downloadable
+  diagnostics, separately from the live sensor and service export.
 - `custom_components/humidity_intelligence/ui/cards/v2_mobile.yaml` and
   `v2_tablet.yaml`: renderer, animation, compact labels and interactions.
 - `ui-gallery/default-v2-mobile-aq/card.yaml` and

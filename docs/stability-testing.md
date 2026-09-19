@@ -39,6 +39,18 @@ current AQ is complete; partial historical coverage alone does not impose the 91
 `count/303` means eligibility, while details `count/432` means rolling coverage.
 Neither denominator should be changed just to make them match.
 
+## Diagnostics paths and package verification
+
+The live Diagnostics sensor and native config-entry diagnostics expose Stability.
+The existing `dump_diagnostics` support allowlist does not include Stability; absence
+from that export alone does not prove that the sampler is inactive. Use the live
+sensor or native download for this evidence.
+
+Run `tests 2/test_stability_live_pipeline.py` without mocking the shared diagnostics
+builder. Package tests build immutable Git source, so pre-commit tests against an older
+HEAD do not validate newly added files. Validate a complete isolated candidate snapshot
+and repeat the package checks against the final commit before push.
+
 ## Authorized installation and client checks
 
 Deployment, restart and dashboard replacement require their own authorization.

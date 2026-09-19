@@ -6,9 +6,19 @@ All notable changes to Humidity Intelligence will be documented in this file.
 
 This project follows a practical changelog format for Home Assistant and HACS users. Add new entries under a fresh `Unreleased` section before publishing a future release.
 
-## Unreleased
+## Unreleased — v2.1.0-beta.1
+
+Prepared locally with a distinct candidate identity. No tag, GitHub Release, HACS
+publication or deployment is claimed. Published Stable remains v2.0.12.
 
 ### Accepted Stability Score integration
+
+- Restores the accepted shared Diagnostics builder connection so the live sensor
+  receives collection progress and scores. Regression checks use the real builder.
+- Classifies the isolated scenario tooling for controller packaging and updates
+  package-count checks for the two added helpers. V2.1.0 artifacts use the explicit
+  `hi-package-public-v21-conventional-1` contract; the V2.0 contract stays unchanged.
+  Downstream controller acceptance of the new contract is not yet verified.
 
 - Rejects malformed or out-of-range displayed scores without numeric coercion across
   all four cards. Invalid payloads show a dash, neutral halo and `NO SCORE`, without
@@ -31,7 +41,22 @@ This project follows a practical changelog format for Home Assistant and HACS us
   clients are required for details. This work is unreleased; earlier preview entries
   below remain historical release truth.
 
-### Existing candidate history
+- Extends the existing `v205_release_check` compatibility boundary to v2.1
+  beta/rc/stable while retaining v2.0.5–v2.0.12 support. The service name, schema,
+  admin requirement, report path and runtime/device-read-only purpose are unchanged.
+
+## v2.0.12 — Published Stable (2026-09-09)
+
+Published as a non-prerelease [GitHub Release](https://github.com/senyo888/humidity-intelligence/releases/tag/v2.0.12).
+The exact final package registered after one completed restart in the observed
+beta.4-to-Stable update; historical beta validation's two restarts do not establish
+an installation rule. No configuration/data migration or Manual-card re-export is
+required for v2.0.12; its generated-card bytes are unchanged.
+
+### Historical v2.0.12 candidate preparation
+
+The entries below retain their original candidate scope and evidence limitations;
+references to unpublished candidates are historical, not current publication status.
 
 ![Humidity Intelligence v2.0.12 release header celebrating repository-level HACS inclusion](assets/release_banner/v2.0.12_release.png)
 

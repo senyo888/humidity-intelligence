@@ -57,15 +57,12 @@ It gives you:
 - native Home Assistant diagnostics for support and triage
 - services for dashboard export, self-check, diagnostics, pause/resume, and release validation
 
-Current development manifest version: **v2.0.12-rc.1**. This candidate corrects the
-configured time gate to use Home Assistant local time, makes timer countdown updates
-lifecycle-safe, aligns setup assistance with Home Assistant 2026.9 child-device Area
-inheritance, makes Manual override a complete non-CO output handover, and presents
-that handover as one clear explanation in the reason field. It is not a published
-release. The current published Stable GitHub Release and tag are
-**v2.0.11**, published on 11 August 2026. Humidity Intelligence is included in the
-HACS default repository and is available directly in HACS; HACS still installs only a
-published GitHub Release version.
+Current development manifest version: **v2.1.0-beta.1**, a locally prepared,
+unpublished candidate. It adds the accepted observational Stability Score and badge,
+including the corrected live Diagnostics connection and fail-closed score rendering.
+The current published Stable is **v2.0.12**, released on 9 September 2026. HI is in
+the HACS default repository; this new beta has not been published or offered through
+HACS. See [Release Notes](#release-notes) for scope and update requirements.
 
 Optional HA Lab evidence is advisory and does not block promotion, tagging, or
 publication.
@@ -455,20 +452,13 @@ must be reviewable from tracked repository files.
 
 ## Current Release Highlights
 
-- the `2.0.12-rc.1` maintenance candidate uses Home Assistant local time for the
-  configured time gate and gives HI timer entities lifecycle-owned, at-most-once-per-
-  minute countdown updates without changing their IDs or `active`/`idle` states; it
-  also aligns setup assistance with Home Assistant 2026.9 child-device Area inheritance
-  and releases ordinary fan, switch, humidifier, and visual-alert ownership while
-  Manual override is active, with a clearer reason-field explanation and CO emergency
-  retained as the sole exception
-- the published `2.0.11` Stable release restores the established centred, passive
-  Stability preview badge and six-second breathing treatment without calculating a
-  score in the card or changing control behaviour
-- the previous published `2.0.10` Stable release adds deterministic humidifier-output
-  reconciliation and backend-authored `hi.reason.v1` explanations while preserving
-  one selected ventilation lane, the existing lane order, thresholds, configuration,
-  stored data, and entity identity
+- local candidate `2.1.0-beta.1` adds the backend-owned Stability Score, compact
+  badge, evidence and Recent trend details; it preserves deterministic control and
+  is not a published or HACS-offered release
+- published Stable `2.0.12` improves Manual handover, Home Assistant-local time gates,
+  lifecycle-safe timers and Home Assistant 2026.9 setup assistance
+- preceding Stable `2.0.11` restores the centred passive Stability preview; those
+  historical preview semantics remain distinct from the new candidate
 - V2 Mobile, V2 Tablet, and both canonical gallery templates keep ventilation and
   humidifier chips in one horizontally scrollable Current Air Control row;
   `On` and `Requested` are cyan; `Idle`, `Retrying`, `Stopping`, and `Isolated` are
@@ -500,13 +490,10 @@ must be reviewable from tracked repository files.
 - default generated V2 dashboards lean into status and review: pause/resume and
   standalone View Cards workflows live in explicit service/admin paths, while the
   default runtime card surfaces stay calm and inspection-focused
-- the generated V2 Pause LIVE tile is replaced with a passive compact Stability
-  preview badge that reads future v2.1 diagnostics when present; score calculation,
-  sensor creation, lane selection, and runtime control stay backend-owned. Without
-  that future diagnostics contract, the badge shows an intentional neutral-white
-  `2.1 / PREVIEW` state with its established breathing shimmer
-- the Stability preview and completed-white states use a 10 BPM shimmer cadence:
-  one 6-second animation cycle, with reduced-motion preferences respected
+- the v2.1 candidate replaces the historical passive preview with the accepted
+  Stability badge and backend-owned score/evidence; its independent movement colours,
+  six-second Partial treatment and reduced-motion alternatives preserve the accepted
+  presentation. Missing or malformed score payloads fail closed
 - every `pause_control` / `resume_control` call now requires admin user context;
   `entry_id` still limits the action to the supplied config entry
 - explicit `create_dashboard` and `purge_files` service calls require admin user
@@ -525,9 +512,8 @@ must be reviewable from tracked repository files.
 - local issue-triage private report writing is confined through the private atomic
   writer, keeping public issue/support flows separate from local report output
 - the tracked secret scan now fails closed when no tracked files are selected
-- `v205_release_check` preserves its service name; the v2.0.12 candidate
-  extends its generated-card, humidifier-reconciliation, and release-validation
-  contract through the v2.0.12 beta/rc/stable line
+- `v205_release_check` preserves its service name and read-only validation purpose;
+  the v2.1 candidate accepts v2.1.0 beta/rc/stable alongside v2.0.5–v2.0.12
 - Home Assistant Area/Label setup assistance can suggest defaults from registry
   metadata, but saved HI telemetry, zone, AQ, humidifier, and alert mappings remain
   the only runtime truth
@@ -540,7 +526,7 @@ must be reviewable from tracked repository files.
   semantics, migration shape, and UI truth stay aligned with the existing backend
   model
 
-v2.0.12 candidate update note:
+Published v2.0.12 update note:
 
 After installing a new HI version through HACS or replacing its files:
 
@@ -550,7 +536,9 @@ After installing a new HI version through HACS or replacing its files:
 4. Check an ordinary configured time-gate window and a timer start/cancel cycle.
 
 No Manual-card re-export is required for v2.0.12 because generated-card bytes are
-unchanged. If your installed version differs from the expected HACS version, resolve
+unchanged. The unpublished v2.1 candidate does change cards: after an authorized
+installation, regenerate and replace pasted YAML, then refresh the frontend/cache.
+Restart/reload resets Stability history. If your installed version differs from the expected HACS version, resolve
 that package mismatch before treating runtime or diagnostics evidence as current.
 
 The exported YAML belongs inside a Manual card. Keep registered and YAML-mode
@@ -978,7 +966,7 @@ Notes:
   workflows. Dashboard creation and editing remain in Home Assistant's dashboard UI.
   System and Manual buttons keep the
   v2.0.7 helper-toggle behavior.
-- **Unreleased Stability integration:** the accepted badge shows backend-owned
+- **v2.1.0-beta.1 candidate:** the accepted badge shows backend-owned
   score, evidence and Recent trend details. It remains observational. See the
   [accepted contract](docs/stability-score-accepted-baseline.md) for thresholds,
   incomplete AQ, restart history reset, client support and card refresh, and the
@@ -1229,56 +1217,46 @@ CO emergency pressure. Details are in
 
 ## Release Notes
 
-### v2.0.12 (Maintenance candidate; not published)
+### v2.1.0-beta.1 (Local candidate; not published)
+
+- adds the [accepted Stability Score](docs/stability-score-accepted-baseline.md):
+  backend calculation, ten-minute sampling, evidence/caps, readable Diagnostics,
+  compact badge, retained full-circle movement and Recent trend details
+- restores the shared Diagnostics builder connection for live collection and scores;
+  malformed/out-of-range display values now fail closed across all four card surfaces
+- classifies isolated scenario tooling correctly in controller packaging and extends
+  `v205_release_check` to v2.1.0 beta/rc/stable while retaining v2.0.5–v2.0.12 support;
+  its existing name, schema, admin gate and runtime/device-read-only purpose remain
+- preserves Manual handover, CO-first lane order, humidifier independence and existing
+  entity IDs/native states; no configuration or stored-data migration is required
+- requires full restart after an authorized installation, then `refresh_ui`, fresh
+  `dump_cards`/`view_cards`, complete pasted-card replacement and frontend/cache
+  refresh. Restart/reload resets history: 303 new valid samples are needed within the
+  432-bucket window. Package and card rollback remain separate
+- requires Popover-capable clients for details; see [testing and compatibility](docs/stability-testing.md).
+  Local validation does not establish deployment, release readiness or HACS availability
+
+### v2.0.12 (Current Published Stable)
 
 ![Humidity Intelligence v2.0.12 release header celebrating repository-level HACS inclusion](assets/release_banner/v2.0.12_release.png)
 
-- carries development manifest identity `2.0.12-rc.1`; this is release preparation,
-  not a published GitHub Release or an HACS-offered v2.0.12 package
-- celebrates completed inclusion of Humidity Intelligence in the HACS default
-  integration repository; the button opens the repository in HACS and the user still
-  selects **Download**
-- evaluates configured time-gate wall-clock windows using Home Assistant local time,
-  including same-day, overnight, spring-forward, and both autumn-fold cases, without
-  changing the existing inclusive window boundaries
-- replaces unowned timer sleepers with lifecycle-owned Home Assistant callbacks,
-  aware UTC duration arithmetic, invalidation guards, exact expiry, and at-most-once-
-  per-minute `remaining` updates; entity IDs and primary `active`/`idle` states remain
-  unchanged
-- suppresses only pause-timer `active` to `active` countdown events from full engine
-  evaluation while preserving immediate evaluation when the pause state changes
-- extends the backward-compatible `v205_release_check` accepted manifest range and
-  report wording through v2.0.12 beta/rc/stable; its name, schema, admin requirement,
-  report path, and runtime/device-read-only side effects remain unchanged
-- preserves native diagnostics schema `1`, redaction, aggregate mapping privacy, and
-  Inspector compatibility; after restart, native diagnostics report the installed
-  manifest version dynamically
-- makes Manual override a complete handover of ordinary fan, switch, humidifier, AQ,
-  and visual-alert ownership: pending non-CO work is cancelled, physical output states
-  are left unchanged, humidifier truth is observed-only `manual_hold`, and bounded
-  runtime-control diagnostics report the handover without claiming an HI command; CO
-  remains the sole ventilation exception and normal AUTO ownership resumes after
-  Manual is released
-- presents that Manual handover in one plain-language reason: what Manual means, what
-  HI will leave unchanged, who remains in control, how to return to AUTO, and the CO
-  emergency exception; runtime behavior and authority boundaries are unchanged
-- preserves CO-first canonical lane order, normal non-Manual AUTO ownership,
-  humidifier-lane independence, output configuration, stored data, generated-card
-  bytes, and Stability behavior
-- requires a full Home Assistant restart after package installation; it requires no
-  config-entry, entity-registry, stored-data, threshold, lane-order, service-name, or
-  dashboard migration, and no Manual-card re-export is required
-- advances beta.4 to RC through manifest identity, documentation, and matching tests
-  only; beta.4 live validation remains evidence for beta.4, not the RC package
-- **Candidate validation:** beta.4 used two complete Home Assistant restarts, with
-  startup and registration checked after each. This is a candidate-validation
-  procedure; a two-restart requirement for final v2.0.12 is unverified. See
-  [registration evidence](docs/release-governance.md#candidate-registration-evidence).
-- remains blocked from tag and publication until exact-package validation, required
-  reviews, release sanity, Content Harmony closeout, and final maintainer README and
-  release approval are complete
+- [published on 9 September 2026](https://github.com/senyo888/humidity-intelligence/releases/tag/v2.0.12)
+  as a non-prerelease GitHub Release; available through the HACS default listing
+- makes Manual override a complete ordinary-output handover with a clear reason:
+  pending non-CO work is cancelled and existing outputs are left unchanged; CO
+  emergency remains the sole ventilation exception
+- evaluates time gates in Home Assistant local time, makes timer callbacks and
+  countdown updates lifecycle-safe, and respects Home Assistant 2026.9 child-device
+  Area inheritance for setup suggestions
+- retains entity IDs, service names, lane priorities and native diagnostics schema 1;
+  `v205_release_check` supports v2.0.12
+- requires a full restart but no configuration/data migration or Manual-card re-export;
+  generated-card bytes are unchanged in this release
+- the observed beta.4-to-Stable update registered the exact final package after one
+  completed restart. Historical beta validation used two; that is not a permanent
+  installation requirement. Keep rollback copies outside `custom_components`
 
-### v2.0.11 — Poetic Justice (Current Published Stable)
+### v2.0.11 — Poetic Justice (Previous Published Stable)
 
 ![Humidity Intelligence v2.0.11 Poetic Justice release banner](assets/release_banner/v2.0.11_release.png)
 
@@ -1286,7 +1264,7 @@ CO emergency pressure. Details are in
 
 - was published on 11 August 2026 as a non-prerelease GitHub Release and immutable tag
   from exact commit `0dd3e68ab9f35608641dc64efc4b2c4bfacb06ce`; it is the
-  current published Stable release
+  immediately preceding published Stable release
 - is now available through the existing HACS default integration listing; the later
   HACS inclusion milestone does not alter the published v2.0.11 package bytes or tag
 - restores the established centred Stability Score preview across generated V2
@@ -1310,7 +1288,14 @@ CO emergency pressure. Details are in
 - requires no config-entry, entity-registry, stored-data, threshold, lane-order,
   service-name, or dashboard-registration migration
 
-### v2.0.10 (Previous Published Stable)
+<!-- Canonical release-note structure: keep the current candidate, current Published
+Stable, and immediately preceding Published Stable summaries expanded above. Move
+displaced older summaries into this container as new releases are added. CHANGELOG.md
+remains the complete detailed history. -->
+<details>
+<summary>Previous Releases</summary>
+
+### v2.0.10
 
 ![Humidity Intelligence v2.0.10 release banner](assets/release_banner/v2.0.10_release.png)
 
@@ -1354,13 +1339,6 @@ CO emergency pressure. Details are in
   and no failed or missed slots. Private Stable-instance diagnostics also passed for
   the installed beta.7 package; neither evidence class proves that the later stable
   package bytes were installed on that instance
-
-<!-- Canonical release-note structure: keep the current candidate, current Published
-Stable, and immediately preceding Published Stable summaries expanded above. Move
-displaced older summaries into this container as new releases are added. CHANGELOG.md
-remains the complete detailed history. -->
-<details>
-<summary>Previous Releases</summary>
 
 ### v2.0.9
 

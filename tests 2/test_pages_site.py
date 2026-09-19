@@ -152,13 +152,14 @@ class PagesSiteTests(unittest.TestCase):
         self.assertIn("assets/site/github-pages-hero.png", assets)
         self.assertIn("assets/release_banner/v2.0.12_release.png", parser.images)
         self.assertIn("A focused maintenance release.", html)
-        self.assertIn("v2.0.12 maintenance candidate", html)
+        self.assertIn("v2.0.12 published Stable", html)
         self.assertIn("included in the HACS default integration repository", normalized_html)
-        self.assertIn("Published Stable remains v2.0.11", normalized_html)
-        self.assertIn("v2.0.12 is not available until", normalized_html)
+        self.assertIn("Published Stable v2.0.12", normalized_html)
+        self.assertIn("v2.1.0-beta.1", normalized_html)
+        self.assertIn("unpublished", normalized_html)
         self.assertNotIn("Install from GitHub", html)
         self.assertIn("Open in HACS", html)
-        self.assertIn("published release</span><span class=\"badge-value\">v2.0.11", html)
+        self.assertIn("published release</span><span class=\"badge-value\">v2.0.12", html)
 
         for asset in assets:
             with self.subTest(asset=asset):

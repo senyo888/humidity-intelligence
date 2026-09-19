@@ -5,18 +5,14 @@ testing and validation branches.
 
 ## Canonical Version Model
 
-- `2.0.12-beta.1`: initial testing build.
-- `2.0.12-beta.2`: prior testing build with the Home Assistant 2026.9 child-device
-  Area inheritance alignment.
-- `2.0.12-beta.3`: prior testing build with the Manual override output-handover repair
-  and bounded runtime-control diagnostics.
-- `2.0.12-beta.4`: tested beta build with the same Manual handover behavior and a
-  coherent plain-language reason-field explanation.
-- `2.0.12-rc.1`: current release-candidate build; metadata/docs/tests promotion of beta.4.
-- `2.0.12`: stable version label. On `senyo888-patch-1`, `develop`, or `main`,
-  stable metadata may be staged or promoted through the governed release path.
-  Published release status comes from release tags, GitHub release publication, and
-  maintainer approval.
+- `2.1.0-beta.1`: current locally prepared, unpublished Stability candidate.
+- `2.1.0-rc.N`: future release-candidate identity, only after an authorized transition.
+- `2.1.0`: future stable identity; metadata alone does not publish it.
+- `2.0.12`: current published Stable, released on 2026-09-09.
+- `2.0.11`: immediately preceding published Stable, released on 2026-08-11.
+
+The historical v2.0.12 beta.1–beta.4 and rc.1 sequence below retains its original
+scope and evidence. It does not describe the current candidate or reopen that release.
 
 The integration version in
 `custom_components/humidity_intelligence/manifest.json` is the source of truth for the
@@ -26,16 +22,22 @@ must remain aligned with the
 `custom_components/humidity_intelligence/manifest.json` version contained in the
 published GitHub Release/tag.
 
-Published Stable is `2.0.11`, released on 2026-08-11 from exact commit
-`0dd3e68ab9f35608641dc64efc4b2c4bfacb06ce`. Humidity Intelligence was subsequently
-included in the HACS default integration repository. The current development candidate
-uses `2.0.12-rc.1` metadata on the governed release-preparation lane. A branch or
-merge containing that metadata is not by itself a publication. Public release status
-comes from GitHub Releases and the version offered through HACS, while
-release readiness must be established through public-safe validation summaries,
-GitHub CI, the required review gates, and explicit maintainer approval. Local
-operational evidence does not replace or become part of the tracked public
-correctness contract.
+Published Stable is [v2.0.12](https://github.com/senyo888/humidity-intelligence/releases/tag/v2.0.12),
+released on 2026-09-09. The current `2.1.0-beta.1` candidate is prepared locally only;
+there is no v2.1 tag, GitHub Release, HACS availability or deployment claim. Candidate
+preparation does not authorize commit, push, promotion, publication or runtime mutation.
+Release readiness still requires scope-appropriate validation, reviews and explicit
+maintainer approval. Local operational evidence does not replace tracked correctness.
+
+The v2.1 candidate contains accepted observational Stability, the corrected shared
+Diagnostics connection, fail-closed card score validation and scenario/controller
+classification fixes. Control semantics remain unchanged. The existing
+`v205_release_check` accepts v2.0.5–v2.0.12 plus v2.1.0 beta/rc/stable identities without
+changing its schema, admin gate or runtime/device-read-only purpose. On installation,
+changed Python requires a full restart; restart/reload resets history and needs 303
+new valid observations. Regenerate exports, replace pasted cards and refresh cache.
+No configuration/entity migration is required. Restore package and dashboard separately
+on rollback. See [the Stability contract](stability-score-accepted-baseline.md).
 
 The short-lived deterministic package produced by
 `.github/workflows/controller-package.yml` is a separately bounded external-validation
@@ -45,6 +47,10 @@ See [Deterministic controller package artifact](controller-package-artifact.md) 
 its exact source, retention, content, provenance, and rollback boundaries.
 
 ## Candidate Registration Evidence
+
+Historical v2.0.12 preparation evidence follows. The final published package registered
+after one completed restart in the observed beta.4-to-Stable update. These observations
+do not transfer to the new v2.1 candidate or guarantee every installation path.
 
 Beta.4 validation used two complete Home Assistant restarts, waiting for startup to
 finish and recording loaded identity and entity/service registration after each.
@@ -81,6 +87,9 @@ an extra restart requirement from an on-disk/loaded version mismatch alone or re
 restarts without diagnosing setup errors and retaining a recoverable predecessor.
 
 ## v2.0.11 Publication And v2.0.12 Maintenance Path
+
+Historical record: both versions are now published. The candidate descriptions below
+preserve the scope and prepublication requirements recorded during their preparation.
 
 The v2.0.11 **Poetic Justice** tag and non-prerelease GitHub Release were published on
 2026-08-11 from exact commit `0dd3e68ab9f35608641dc64efc4b2c4bfacb06ce`.
@@ -291,7 +300,21 @@ If any gate is missing for the version being prepared, the release state is `not
 even when the manifest version already carries a stable number on `senyo888-patch-1`,
 `develop`, or `main`.
 
+## v2.1 Candidate Validation
+
+For the exact new candidate, record commit/tree/package identity; run the complete
+tracked suite, compile, version governance, deterministic package checks and the
+[Stability acceptance matrix](stability-testing.md). Verify accepted valid-score parity,
+malformed-score rejection, the real shared Diagnostics pipeline, scheduler lifecycle,
+control invariants and all four generated/gallery surfaces. Client checks cover
+Popover interactions and reduced motion. Existing v2.0.12 or sandbox evidence does
+not establish candidate installation or release readiness. Lab evidence stays optional.
+
 ## v2.0.12 Release Checklist
+
+Historical checklist retained for the completed v2.0.12 release; unchecked marks are
+not a claim that this already published release is blocked. Use the current candidate
+validation scope above for new work.
 
 Use this checklist for the exact v2.0.12 candidate. Keep local validation, Home
 Assistant activation, promotion, tag, GitHub Release, HACS availability observation,

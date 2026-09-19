@@ -155,7 +155,7 @@ Control row:
 
 - preserve the v2.0.7 tap-to-toggle behavior for the System and Manual helper buttons
 - keep the Stability Score badge passive; it must not pause/resume, select lanes, or create output writes
-- for the accepted unreleased Stability integration, render backend schema 3/formula 3
+- for the local unpublished `2.1.0-beta.1` Stability candidate, render backend schema 3/formula 3
   score, classifications and evidence states; missing/malformed payloads show no score
 - preserve the accepted 82px footprint, independent LED colours, retained signed
   full-circle movement, six-second Partial pulse and reduced-motion alternatives
