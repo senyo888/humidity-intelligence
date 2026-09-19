@@ -195,3 +195,14 @@ def test_observation_options_regenerate_only_for_presentation_changes():
         )
         asyncio.run(integration._async_options_updated(hass, config))
         assert events == (['reload', 'export', 'notify'] if exported else ['reload'])
+
+
+def test_ha_readonly_config_mappings_generate_adaptive_outputs():
+    from types import MappingProxyType
+    register, _ = load()
+    config = entry()
+    config.data = MappingProxyType(config.data)
+    config.options = MappingProxyType(config.options)
+    result = asyncio.run(generate(register, config))
+    assert "custom:hi-adaptive-output-card" in result["v2_mobile"]
+    assert "custom:hi-adaptive-output-card" in result["v2_tablet"]

@@ -18,6 +18,8 @@ remains v2.0.12. No release tag or HACS publication is implied.
   coverage, and normal mobile/tablet exports with complete native output controls.
 - Preserves beta.3's Stability implementation, drift progress, badge summaries,
   history panels, room colours, lane decisions and existing entity semantics.
+- Accepts Home Assistant read-only configuration mappings when generating adaptive
+  cards; a targeted regression protects the live options/export boundary.
 - Bounds observations and identity custody, excludes detailed payloads from Recorder,
   redacts mapping identities in diagnostics, and isolates optional setup failures.
 - Validated locally with pure/regression suites, real HA 2026.5.1/2026.9.3 APIs and

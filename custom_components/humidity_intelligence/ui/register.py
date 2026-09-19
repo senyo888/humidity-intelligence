@@ -398,7 +398,7 @@ async def async_register_cards(hass: HomeAssistant, entry_id: str, mapping: Dict
                     from ..adaptive_output.cards import render_output_card
                     from ..adaptive_output.config_adapter import extract_configured
 
-                    inventory = extract_configured(entry.data or {}, entry.options or {})
+                    inventory = extract_configured(dict(entry.data or {}), dict(entry.options or {}))
                     feed = None
                     if observation.get("presentation", "native") == "adaptive":
                         feed = er.async_get(hass).async_get_entity_id(
