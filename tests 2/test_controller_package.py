@@ -63,7 +63,9 @@ class ControllerPackageTests(unittest.TestCase):
                 else "hi-package-public-v20-conventional-1"
             )
             self.assertEqual(expected_contract, first_summary["contract_id"])
-            self.assertEqual(56, first_summary["file_count"])
+            tracked_package = _git("ls-tree", "-r", "--name-only", "HEAD", BUILDER.SOURCE_PREFIX).splitlines()
+            expected_count = len(tracked_package)
+            self.assertEqual(expected_count, first_summary["file_count"])
 
             first_files = {
                 path.relative_to(first).as_posix(): path.read_bytes()
@@ -76,14 +78,17 @@ class ControllerPackageTests(unittest.TestCase):
                 if path.is_file()
             }
             self.assertEqual(first_files, second_files)
-            self.assertEqual(57, len(first_files))
+            self.assertEqual(expected_count + 1, len(first_files))
             self.assertIn("humidity_intelligence/ui/badge_history.js", first_files)
 
             manifest = json.loads(first_files["artifact-manifest.json"])
             self.assertEqual(first_summary["package_hash"], manifest["package_hash"])
             self.assertEqual(first_summary["commit"], manifest["commit"])
             self.assertEqual(first_summary["tree_hash"], manifest["tree_hash"])
-            self.assertEqual(56, len(manifest["files"]))
+            self.assertEqual(expected_count, len(manifest["files"]))
+            for source_path in tracked_package:
+                relative = source_path.removeprefix("custom_components/")
+                self.assertIn(relative, first_files)
 
             digest = hashlib.sha256()
             for item in sorted(manifest["files"], key=lambda value: value["relative_path"]):

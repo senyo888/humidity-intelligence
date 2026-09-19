@@ -441,7 +441,8 @@
           "options_aq": "Air Quality",
           "options_alerts": "Alerts",
           "options_slope": "Temperature Slope",
-          "options_done": "Finish"
+          "options_done": "Finish",
+          "options_output_observation": "Output observation"
         }
       },
       "options_dependencies": {
@@ -778,6 +779,79 @@
             }
           }
         }
+      },
+      "options_output_observation": {
+        "title": "Output observation",
+        "description": "Optional reporting only. These settings never change output commands. Return to the main options and choose Finish to save.",
+        "menu_options": {
+          "options_output_settings": "Enable and presentation",
+          "options_output_add": "Add a diagnostic meaning",
+          "options_output_manage": "Review, edit or pause a meaning",
+          "options_output_import": "Import companion meanings",
+          "options_output_back": "Keep changes and return to options",
+          "options_output_cancel": "Discard these changes"
+        }
+      },
+      "options_output_settings": {
+        "title": "Output observation settings",
+        "description": "Observation is optional. Native presentation retains the existing Outputs panel. Adaptive presentation requires the packaged frontend resource and a fresh card export. Disabling observation never changes device control.",
+        "data": {
+          "enabled": "Enable output observation",
+          "presentation": "Outputs presentation"
+        }
+      },
+      "options_output_binding": {
+        "title": "Diagnostic meaning",
+        "description": "Select an output configured in HI and an explicit source. Device association does not prove a component-specific fault. Editing a replacement requires reviewing and confirming its current identity on the next page.",
+        "data": {
+          "output": "Configured output",
+          "source": "Diagnostic source",
+          "semantic": "Reported condition",
+          "rule": "Interpretation rule"
+        }
+      },
+      "options_output_rule": {
+        "title": "Exact interpretation",
+        "description": "Enter exact case-sensitive values. Active and clear values must be distinct; any other value remains unknown. Numeric comparisons are strict: equality does not match. Numeric units are not bound or converted by this rule.",
+        "data": {
+          "active_values": "Values reporting attention",
+          "clear_values": "Values explicitly reporting clear",
+          "threshold": "Numeric threshold"
+        }
+      },
+      "options_output_manage": {
+        "title": "Review saved and discovered sources",
+        "description": "Unresolved bindings remain saved until explicitly changed. Context only pauses interpretation while preserving any saved meaning. Resume reapplies that meaning or standard automatic discovery. Revoking a custom meaning does not suppress a standard automatic meaning.",
+        "data": {
+          "binding": "Output and diagnostic source",
+          "action": "Action"
+        }
+      },
+      "options_output_import": {
+        "title": "Import experimental companion meanings",
+        "description": "Choose a companion explicitly bound to this HI entry. Only matching current identities are eligible. The preview never modifies the companion. Historical pending observation custody is not imported: the integrated observer starts from the current Home Assistant snapshot. Disable the companion separately after validating a migration.",
+        "data": {
+          "companion": "Experimental companion"
+        }
+      },
+      "options_output_confirm": {
+        "title": "Confirm observation change",
+        "description": "{preview}\n\nConfirm only after reviewing the selected entities and exact interpretation. This stages options only; choose Finish in the main options to save. Uncheck to discard this change.",
+        "data": {
+          "confirm": "Confirm this exact change"
+        }
+      },
+      "options_output_empty": {
+        "title": "No choices available",
+        "description": "No eligible configured outputs, associated diagnostics or companion entries are available for this action. Return to output observation."
+      },
+      "options_output_binding_error": {
+        "title": "Binding cannot be confirmed",
+        "description": "The selected entity is missing, disabled or has no stable registry identity. Return to select its current identity explicitly."
+      },
+      "options_output_observation_error": {
+        "title": "Saved observation settings need review",
+        "description": "Existing observation settings cannot be interpreted. They have been preserved. Return to the main options without replacing them."
       }
     },
     "error": {
@@ -787,7 +861,13 @@
       "alert_save_failed": "Failed to save alert configuration. Check logs and try again.",
       "room_unknown": "Selected room is not in configured telemetry.",
       "room_missing_humidity": "Selected room has no humidity telemetry for room-scoped humidity danger.",
-      "room_missing_temp_humidity": "Selected room needs both humidity and temperature telemetry for this room-scoped trigger."
+      "room_missing_temp_humidity": "Selected room needs both humidity and temperature telemetry for this room-scoped trigger.",
+      "invalid_observation": "Saved observation settings are invalid or exceed supported bounds. They have not been replaced.",
+      "invalid_binding": "Select a configured output, diagnostic source and supported rule.",
+      "invalid_rule": "Use disjoint nonempty active/clear values (at most 32 values, 120 characters each), or a finite numeric threshold.",
+      "unavailable_binding": "The selected binding is unavailable or changed. Review the current entities explicitly.",
+      "identity_changed": "An entity changed after the preview. Cancel this change and review its new identity.",
+      "import_unresolved": "Import contains missing, replaced, unsupported or conflicting bindings. Review the companion meanings individually; nothing has been imported."
     },
     "abort": {
       "user_cancelled": "Options closed without saving."
@@ -797,6 +877,57 @@
     "house_humidity_mean_7d_missing": {
       "title": "House humidity drift needs a Statistics helper",
       "description": "Humidity Intelligence cannot calculate 7-day house humidity drift until `{dependency_entity}` exists. Create a Home Assistant Statistics helper named House Humidity Mean 7d using `{source_entity}` as the source, state characteristic `mean`, and max age 7 days. The helper entity ID must be exactly `sensor.house_humidity_mean_7d`; rename the entity ID manually if Home Assistant creates a different one. Drift will stay unavailable until Home Assistant reports sufficient recorder/statistics coverage. Do not fabricate history."
+    }
+  },
+  "selector": {
+    "output_presentation": {
+      "options": {
+        "native": "Native Outputs panel",
+        "adaptive": "Adaptive Outputs panel"
+      }
+    },
+    "output_semantic": {
+      "options": {
+        "fault": "Fault reported",
+        "problem": "Problem reported",
+        "obstruction": "Obstruction reported",
+        "replace_filter": "Filter replacement reported",
+        "refill": "Refill reported",
+        "clean": "Cleaning reported",
+        "generic_attention": "Attention reported",
+        "battery_low": "Low battery reported",
+        "disconnected": "Connection lost reported"
+      }
+    },
+    "output_rule": {
+      "options": {
+        "binary_active": "Binary: on means attention, off means clear",
+        "enum_active_values": "Explicit active and clear values",
+        "numeric_below": "Value strictly below threshold",
+        "numeric_above": "Value strictly above threshold"
+      }
+    },
+    "output_action": {
+      "options": {
+        "edit": "Edit or explicitly bind replacement",
+        "revoke": "Revoke custom meaning",
+        "retire": "Keep as context only",
+        "resume": "Resume monitoring"
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "output_status": {
+        "name": "Output status",
+        "state": {
+          "attention": "Attention reported",
+          "degraded": "Monitoring incomplete",
+          "clear": "No interpreted issues reported",
+          "unmonitored": "Monitoring not configured",
+          "not_configured": "No outputs configured"
+        }
+      }
     }
   }
 }

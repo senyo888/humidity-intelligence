@@ -6,7 +6,35 @@ All notable changes to Humidity Intelligence will be documented in this file.
 
 This project follows a practical changelog format for Home Assistant and HACS users. Add new entries under a fresh `Unreleased` section before publishing a future release.
 
-## Unreleased — v2.1.0-beta.3
+## Unreleased — v2.1.0-beta.4
+
+Unpublished development candidate based on beta.3 (`345a840`). Published Stable
+remains v2.0.12. No release tag or HACS publication is implied.
+
+- Integrates optional, read-only output observation with structured exact-rule
+  confirmations, identity-bound recovery, per-association context-only retirement,
+  and explicit companion mapping import. It defaults disabled.
+- Adds an optional packaged adaptive Outputs card, backend-authored attention and
+  coverage, and normal mobile/tablet exports with complete native output controls.
+- Preserves beta.3's Stability implementation, drift progress, badge summaries,
+  history panels, room colours, lane decisions and existing entity semantics.
+- Bounds observations and identity custody, excludes detailed payloads from Recorder,
+  redacts mapping identities in diagnostics, and isolates optional setup failures.
+- Validated locally with pure/regression suites, real HA 2026.5.1/2026.9.3 APIs and
+  synthetic browser cases. Target deployment evidence remains separately recorded.
+
+### Upgrade from beta.3
+
+Install the complete package and restart Home Assistant to load the new Python
+modules. Restart resets in-memory Stability collection; this is a new observation
+period, not continuation of the beta.3 soak. No configuration/entity migration is
+required for existing HI settings. To use the optional UI, enable observation,
+register its module resource, regenerate cards and replace saved Manual-card YAML.
+Existing companion users explicitly import reviewed bindings and remove the old
+competing frontend resource. See [setup and rollback](docs/output-observation.md).
+Rollback restores the complete beta.3 package and prior cards/options/resources.
+
+## v2.1.0-beta.3 — Earlier unpublished candidate
 
 Development candidate, prepared from all changes since the beta.2 version commit
 `76285b0`, through `4f86e66`. Published Stable remains v2.0.12; this beta remains

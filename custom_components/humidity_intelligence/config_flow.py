@@ -12,6 +12,7 @@ from homeassistant.data_entry_flow import section
 from homeassistant.helpers import selector
 from homeassistant.helpers.selector import SelectOptionDict
 
+from .adaptive_output.options import OutputObservationOptionsMixin
 from .helpers.frontend_dependencies import async_render_dependency_status
 from .helpers.level_labels import (
     level_label as resolve_level_label,
@@ -1474,7 +1475,7 @@ class HumidityIntelligenceConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         )
 
 
-class HumidityIntelligenceOptionsFlow(config_entries.OptionsFlow):
+class HumidityIntelligenceOptionsFlow(OutputObservationOptionsMixin, config_entries.OptionsFlow):
     """Options flow for Humidity Intelligence."""
 
     def __init__(self, entry: config_entries.ConfigEntry) -> None:
@@ -1611,6 +1612,7 @@ class HumidityIntelligenceOptionsFlow(config_entries.OptionsFlow):
                 "options_aq",
                 "options_alerts",
                 "options_slope",
+                "options_output_observation",
                 "options_done",
             ],
         )

@@ -110,6 +110,15 @@ async def async_get_config_entry_diagnostics(
         },
     }
 
+    observer = runtime_data.get("output_observer")
+    observed = observer.payload if observer else None
+    payload["output_observation"] = {
+        "configured": observer is not None,
+        "available": observed is not None,
+        "state": observed["state"] if observed else "unavailable",
+        "counts": dict(observed["counts"]) if observed else {},
+        "coverage_state": observed["coverage"]["state"] if observed else "unknown",
+    }
     return redact_diagnostics_payload(payload)
 
 

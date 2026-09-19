@@ -214,6 +214,16 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
     runtime_data["stability_snapshot_unsub"] = _stop_stability_scheduler
     entry.async_on_unload(_stop_stability_scheduler)
 
+    # Observation is optional and cannot prevent existing sensors or control setup.
+    observation_settings = _entry_section(entry, "output_observation", {})
+    if isinstance(observation_settings, dict) and observation_settings.get("enabled") is True:
+        try:
+            from .adaptive_output.sensor import async_setup_observation
+
+            await async_setup_observation(hass, entry, async_add_entities)
+        except Exception:
+            _LOGGER.exception("Optional output-status setup failed; existing HI sensors remain available")
+
 
 class HIDiagnosticsSensor(SensorEntity):
     """Expose configuration and entity mapping diagnostics."""

@@ -41,6 +41,7 @@ INCLUDE_FILES = {
     "switch.py",
 }
 INCLUDE_DIRECTORIES = {
+    "adaptive_output",
     "automations",
     "brand",
     "helpers",

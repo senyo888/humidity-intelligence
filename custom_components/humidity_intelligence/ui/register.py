@@ -390,6 +390,27 @@ async def async_register_cards(hass: HomeAssistant, entry_id: str, mapping: Dict
         content = _prune_invalid_conditional_cards(content)
         content = _prune_empty_card_lists(content)
 
+        if name in {"v2_mobile", "v2_tablet"} and show_output_details:
+            observation = _entry_section(entry, "output_observation", {}) if entry else {}
+            alert_only = bool(_entry_section(entry, "alert_only_mode", False)) if entry else False
+            if isinstance(observation, dict) and observation.get("enabled") is True and not alert_only:
+                try:
+                    from ..adaptive_output.cards import render_output_card
+                    from ..adaptive_output.config_adapter import extract_configured
+
+                    inventory = extract_configured(entry.data or {}, entry.options or {})
+                    feed = None
+                    if observation.get("presentation", "native") == "adaptive":
+                        feed = er.async_get(hass).async_get_entity_id(
+                            "sensor", DOMAIN, f"hi_{entry_id}_output_status"
+                        )
+                    content = await hass.async_add_executor_job(
+                        render_output_card, content, inventory, feed
+                    )
+                except Exception as exc:
+                    # Export remains usable with the canonical native presentation.
+                    _LOGGER.warning("Adaptive output card unavailable; keeping native Outputs: %s", exc)
+
         unresolved_in_card: List[str] = []
         for placeholder in unresolved:
             if _is_optional_placeholder(placeholder):

@@ -318,3 +318,22 @@ as risk context, but none of those states is a promotion or release veto. Promot
 tagging, GitHub Release publication, HACS publication, and Stable approval are decided
 only by the canonical tracked validation, review, version-governance, CI, and explicit
 maintainer gates documented for the release scope.
+
+## Optional output observation
+
+The opt-in `adaptive_output` subsystem observes configured outputs and diagnostic
+sources without feeding the control engine or writing outputs. Its status sensor
+and optional frontend are failure-isolated from core setup. Exact identity-bound
+source rules and backend-authored coverage determine presentation; observed On is
+not command success or physical-device proof. Registry invalidations remain
+quarantined across orderly reload until later relevant state evidence arrives.
+Custody persistence is best effort, not crash durability.
+
+Structured options stage explicit confirmations and per-association context-only
+retirement before the existing options save. Native presentation remains available
+without the custom frontend. Export transforms preserve surrounding card content
+and resolve the registered sensor; dashboards and Lovelace resources remain
+user-managed. Observation does not change lane priority, humidifier independence,
+Manual ownership, entity semantics of existing entities, or Stability calculations.
+See [output observation](docs/output-observation.md) for lifecycle, limits,
+prototype migration, and rollback boundaries.

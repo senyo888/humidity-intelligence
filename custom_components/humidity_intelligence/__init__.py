@@ -99,6 +99,16 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     await async_update_humidity_drift_repair_issue(hass)
     await async_setup_automations(hass, entry)
 
+    # Optional static presentation resource; it has no authority over the engine.
+    observation_settings = effective_config.get("output_observation", {})
+    if isinstance(observation_settings, dict) and observation_settings.get("enabled") is True:
+        try:
+            from .adaptive_output.frontend import async_register_frontend
+
+            await async_register_frontend(hass)
+        except Exception:
+            _LOGGER.exception("Output-status resource unavailable; native card export remains available")
+
     # Prepare UI card YAML for this entry using entity mapping.
     try:
         mapping = await async_build_entity_mapping(hass, entry.entry_id)
@@ -203,6 +213,12 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     await hass.config_entries.async_unload_platforms(entry, ["sensor", "binary_sensor", "switch"])
     await async_unload_automations(hass, entry)
     data = hass.data.get(DOMAIN, {}).get(entry.entry_id, {})
+    observer = data.pop("output_observer", None)
+    if observer is not None and observer.active:
+        try:
+            await observer.async_stop()
+        except Exception:
+            _LOGGER.exception("Optional output observer cleanup failed")
     if unsub := data.get("startup_ui_refresh_unsub"):
         unsub()
     data.pop("startup_ui_refresh_scheduled", None)
@@ -468,12 +484,21 @@ async def _async_options_updated(hass: HomeAssistant, entry: ConfigEntry) -> Non
             _entry_show_output_entity_details(entry),
         )
     )
+    def observation_presentation(config):
+        settings = config.get("output_observation", {})
+        if not isinstance(settings, dict):
+            return (False, "native")
+        return (settings.get("enabled") is True, settings.get("presentation", "native"))
+
+    previous_observation = observation_presentation(previous_cfg)
+    next_observation = observation_presentation({**entry.data, **entry.options})
     next_alert_only = _entry_alert_only_mode(entry)
     next_output_details = _entry_show_output_entity_details(entry)
     await hass.config_entries.async_reload(entry.entry_id)
     ui_visibility_changed = (
         prev_alert_only != next_alert_only
         or prev_output_details != next_output_details
+        or previous_observation != next_observation
     )
     if not ui_visibility_changed:
         return
@@ -487,6 +512,8 @@ async def _async_options_updated(hass: HomeAssistant, entry: ConfigEntry) -> Non
         changed.append("alert-only mode")
     if prev_output_details != next_output_details:
         changed.append("generated-card output details")
+    if previous_observation != next_observation:
+        changed.append("output observation presentation")
     try:
         written = await _async_refresh_and_dump_cards(hass, entry.entry_id)
     except Exception as err:

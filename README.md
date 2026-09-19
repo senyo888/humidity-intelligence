@@ -57,9 +57,9 @@ It gives you:
 - native Home Assistant diagnostics for support and triage
 - services for dashboard export, self-check, diagnostics, pause/resume, and release validation
 
-Current development manifest version: **v2.1.0-beta.3**, an unpublished candidate.
-It brings friendly V2 badge summaries, richer histories and distinct source-room
-colours, building on beta.2’s seven-day drift progress and observational Stability.
+Current development manifest version: **v2.1.0-beta.4**, an unpublished candidate.
+It adds optional output observation and adaptive Outputs cards, retaining beta.3’s
+badge summaries, histories, drift progress and observational Stability.
 The current published Stable is **v2.0.12**, released on 9 September 2026 and available
 through HACS. See [Release Notes](#release-notes) for beta scope and upgrade steps.
 
@@ -101,6 +101,8 @@ here: installation guidance, release notes, migration notes, diagnostics, the Wi
 support manual, GitHub releases, and the canonical `ui-gallery/` files.
 
 ---
+
+Current development includes an opt-in [output observation candidate](docs/output-observation.md). It adds read-only diagnostic context and an optional adaptive Outputs view; it is not part of the published release claim above.
 
 ## Wiki and Support Manual
 
@@ -451,7 +453,7 @@ must be reviewable from tracked repository files.
 
 ## Current Release Highlights
 
-- unpublished candidate `2.1.0-beta.3` adds V2 summaries, richer recorded histories,
+- unpublished candidate `2.1.0-beta.4` adds optional output observation to V2 summaries, histories,
   clearer navigation and source-room colours alongside drift and Stability details;
   deterministic control remains authoritative
 - published Stable `2.0.12` improves Manual handover, Home Assistant-local time gates,
@@ -965,7 +967,7 @@ Notes:
   workflows. Dashboard creation and editing remain in Home Assistant's dashboard UI.
   System and Manual buttons keep the
   v2.0.7 helper-toggle behavior.
-- **v2.1.0-beta.3 candidate:** the accepted badge shows backend-owned
+- **v2.1.0-beta.4 candidate:** the accepted badge shows backend-owned
   score, evidence and Recent trend details. It remains observational. See the
   [accepted contract](docs/stability-score-accepted-baseline.md) for thresholds,
   incomplete AQ, restart history reset, client support and card refresh, and the
@@ -1216,25 +1218,22 @@ CO emergency pressure. Details are in
 
 ## Release Notes
 
-### v2.1.0-beta.3 (Unpublished candidate)
+### v2.1.0-beta.4 (Unpublished candidate)
 
-- collects every change since beta.2 (`76285b0`): V2 badge summaries, compact
-  Ready/Zone 1/Zone 2/AQ badges, clearer Stability details and friendly explanations
-- adds 24-hour/seven-day risk and room timelines, mode/reason history and separate
-  AQ charts; room colours match labelled legends across histories and ranges within
-  the page session. Risk, availability, units and timestamps retain their meaning
-- uses compact circular Close controls and transparent Back/Close navigation;
-  includes the shared history renderer, deterministic embeds and packaging checks
-- retains beta.2’s **Baseline · N%** drift progress and observational Stability;
-  backend Python, entity semantics and control decisions are preserved
-- upgrade from beta.2: install the complete candidate, run `refresh_ui`, create fresh
-  exports with `dump_cards`/`view_cards`, replace saved V2 Manual cards and refresh
-  the dashboard. This UI update preserves the running collection; Home Assistant
-  loads the new manifest identity at its next full restart, which resets Stability
-  collection. Earlier Python baselines require the cumulative package restart
-- configuration and stored data carry forward. Refresh-loading work remains deferred.
-  See [the changelog](CHANGELOG.md#unreleased--v210-beta3) for complete scope,
-  validation coverage and source-specific Lab evidence
+- adds opt-in, read-only output observation, structured diagnostic rules, identity
+  recovery, context-only retirement and reviewed companion mapping import
+- adds packaged adaptive Outputs and native fallback, with backend-owned attention,
+  coverage and complete configured controls in fresh mobile/tablet exports
+- retains beta.3's badge summaries, recorded histories, room colours, **Baseline**
+  drift progress and accepted Stability; control and existing entity semantics remain
+  unchanged
+- install the full package and restart Home Assistant; restart begins a fresh
+  in-memory Stability collection. Existing settings require no migration
+- to enable the optional UI, register its resource, regenerate fresh exports and
+  replace saved Manual cards. [Setup and rollback](docs/output-observation.md)
+  explain companion migration and native fallback
+- [Complete beta.4 changes](CHANGELOG.md#unreleased--v210-beta4). Published Stable
+  remains v2.0.12; beta.3 soak evidence does not establish beta.4 validation
 
 ### v2.0.12 (Current Published Stable)
 
@@ -1294,6 +1293,28 @@ displaced older summaries into this container as new releases are added. CHANGEL
 remains the complete detailed history. -->
 <details>
 <summary>Previous Releases</summary>
+
+### v2.1.0-beta.3 (Earlier unpublished candidate)
+
+- collects every change since beta.2 (`76285b0`): V2 badge summaries, compact
+  Ready/Zone 1/Zone 2/AQ badges, clearer Stability details and friendly explanations
+- adds 24-hour/seven-day risk and room timelines, mode/reason history and separate
+  AQ charts; room colours match labelled legends across histories and ranges within
+  the page session. Risk, availability, units and timestamps retain their meaning
+- uses compact circular Close controls and transparent Back/Close navigation;
+  includes the shared history renderer, deterministic embeds and packaging checks
+- retains beta.2’s **Baseline · N%** drift progress and observational Stability;
+  backend Python, entity semantics and control decisions are preserved
+- upgrade from beta.2: install the complete candidate, run `refresh_ui`, create fresh
+  exports with `dump_cards`/`view_cards`, replace saved V2 Manual cards and refresh
+  the dashboard. This UI update preserves the running collection; Home Assistant
+  loads the new manifest identity at its next full restart, which resets Stability
+  collection. Earlier Python baselines require the cumulative package restart
+- configuration and stored data carry forward. Refresh-loading work remains deferred.
+  See [the changelog](CHANGELOG.md#v210-beta3--earlier-unpublished-candidate) for complete scope,
+  validation coverage and source-specific Lab evidence
+
+
 
 ### v2.1.0-beta.2 (Local candidate; not published)
 

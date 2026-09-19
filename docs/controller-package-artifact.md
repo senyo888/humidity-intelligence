@@ -88,3 +88,7 @@ unchanged. Source profile, branch, selected paths, manifest schema, deterministi
 hashing and security checks remain the same. A controller must explicitly recognize
 the V2.1 contract before accepting this candidate. Producing this artifact does not
 assert downstream controller compatibility or authorize controller changes/deployment.
+
+Beta.4 also packages the optional `adaptive_output/` subsystem and its JavaScript
+resource. Completeness checks compare every tracked component file, so this directory
+cannot be silently omitted from controller artifacts.

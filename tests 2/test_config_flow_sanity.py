@@ -180,7 +180,7 @@ def _install_homeassistant_stubs() -> None:
 
 def _install_package_scaffold() -> None:
     pkg = types.ModuleType(PKG)
-    pkg.__path__ = [str(ROOT)]
+    pkg.__path__ = [str(INTEGRATION_ROOT)]
     sys.modules[PKG] = pkg
 
     helpers = types.ModuleType(f"{PKG}.helpers")
