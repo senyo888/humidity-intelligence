@@ -167,8 +167,17 @@ Control row:
 - while collecting, details show `Baseline progress: N of 303 valid samples`, using the backend minimum
   rather than a fixed denominator. The 432 buckets remain rolling-window capacity,
   not the baseline target; outside collection the tally is labelled `Rolling-window coverage`.
-  Collection details explain that consecutive and balance
-  evidence are also required; do not hold a full ring or delay backend state transitions
+  Collection details explain that backend evidence requirements still apply;
+  do not hold a full ring or delay backend state transitions
+- non-scored collection/evidence states show a separate thin red track for backend
+  `sampling.failure_history`: known failed or missed scheduled buckets over 72 hours.
+  Use backend angles/count/description; do not infer history in the card. At most
+  432 unique UTC positions are retained, expire with the window, and clear if their
+  bucket is later captured successfully. Dense marks can overlap; details give the
+  exact count. This track does not alter blue progress or available-score movement
+- failure history is in memory only: restart/reload clears it with the baseline.
+  No offline or pre-start failures are inferred. Installing the Python history
+  update requires restart; no configuration or stored-data migration is needed
 - after changed Python, restart Home Assistant; run `refresh_ui`, obtain fresh
   `dump_cards`/`view_cards` exports, replace complete pasted YAML, and refresh frontend
   caches. No configuration/entity migration is needed. Restart/reload resets history

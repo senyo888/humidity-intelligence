@@ -28,6 +28,7 @@ from .helpers.stability import (
     crossed_bucket_count,
     next_bucket_boundary_after,
     record_stability_score_movement,
+    record_stability_bucket_outcome,
     stability_diagnostics_payload,
     stability_snapshot_invalid_reasons,
 )
@@ -77,6 +78,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
     runtime_data["slope_map"] = slope_map
     runtime_data["hi_timers"] = {t._key: t for t in timer_sensors}
     runtime_data.setdefault("stability_snapshot_ring", StabilitySnapshotRing())
+    runtime_data["stability_failed_buckets"] = set()
     sampling = runtime_data["stability_sampling"] = {
         "scheduler_active": True,
         "last_capture_status": "pending",
@@ -167,6 +169,14 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
             sampling["last_invalid_reasons"] = []
             raise
         finally:
+            try:
+                record_stability_bucket_outcome(
+                    runtime_data, scheduled_at, observed_at,
+                    successful=sampling["last_capture_status"] == "captured",
+                    missed_range=sampling["last_capture_status"] == "late_skipped",
+                )
+            except Exception:
+                _LOGGER.exception("Unable to record Stability collection history")
             if 0 <= lateness <= SNAPSHOT_LATE_GRACE_SECONDS:
                 try:
                     record_stability_score_movement(

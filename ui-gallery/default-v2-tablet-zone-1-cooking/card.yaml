@@ -1693,6 +1693,20 @@ card:
                 const collectionArc = `<div class="hi-stability-direction hi-stability-direction-higher" aria-hidden="true">${Array.from({ length: collectionMarks }, (_, index) =>
                   `<i class="hi-stability-mark" style="--hi-mark-angle:${index * 3}deg;--hi-mark-from:1;--hi-mark-to:1;animation:none;"></i>`
                 ).join('')}</div>`;
+                const failureHistory = stability.sampling?.failure_history;
+                const showFailureHistory = !invalidScore && !hasValue && (collecting
+                  || stateCode.startsWith('incomplete_evidence_') || stateCode === 'live_data_unavailable');
+                const failureAngles = failureHistory?.marker_angles_degrees;
+                const failureHistoryValid = showFailureHistory && failureHistory?.status === 'available'
+                  && Number.isInteger(failureHistory.failed_bucket_count)
+                  && failureHistory.failed_bucket_count >= 0 && failureHistory.failed_bucket_count <= 432
+                  && Array.isArray(failureAngles) && failureAngles.length === failureHistory.failed_bucket_count
+                  && failureAngles.every((angle) => typeof angle === 'number' && Number.isFinite(angle) && angle >= 0 && angle < 360)
+                  && new Set(failureAngles).size === failureAngles.length;
+                const failureArc = failureHistoryValid
+                  ? `<div class="hi-stability-failure-history" aria-hidden="true">${failureAngles.map((angle) =>
+                    `<i class="hi-stability-failure-mark" style="--hi-failure-angle:${angle}deg;"></i>`
+                  ).join('')}</div>` : '';
                 const movementColors = {
                   rise_gentle: '#38bdf8',
                   rise_strong: '#4ade80',
@@ -1754,12 +1768,14 @@ card:
                   <div class="hi-stability-center" data-digits="${primaryText.length}"><span>${escapeHtml(primaryText)}</span></div>
                   ${collecting ? collectionArc : ledArcs}
                   <div class="${evidenceClass}"></div>
+                  ${failureArc}
                   <div class="hi-stability-origin"></div>
                 </div></button><div id="hi-stability-details" class="hi-stability-details" popover="auto" role="dialog" aria-label="Stability Score details">
                   <h2>Stability Score</h2>
                   <p>${escapeHtml(detailText)}</p>
                   <p>${escapeHtml(evidenceText)}</p>
                   ${arcDetails}
+                  ${showFailureHistory ? `<h3>Unsuccessful collections</h3><p>${escapeHtml(failureHistoryValid && typeof failureHistory.detail_text === 'string' ? failureHistory.detail_text : 'Failed collection history unavailable.')}</p><p>Inner red marks retain failed or missed scheduled samples in the last 72 hours of this runtime. They do not advance the blue baseline progress or indicate a falling score. Their positions are fixed sampling slots, not a timeline starting at the top. History resets when the integration restarts.</p>` : ''}
                   <button class="hi-stability-close" onclick="event.stopPropagation()" popovertarget="hi-stability-details" popovertargetaction="hide">Close</button>
                 </div></div>`;
               ]]]
@@ -1885,6 +1901,22 @@ card:
             }
             .hi-stability-center[data-digits="3"] span {
               font-size: 23px;
+            }
+            .hi-stability-failure-history {
+              position: absolute;
+              z-index: 2;
+              inset: 3px;
+              border-radius: inherit;
+              pointer-events: none;
+              opacity: 0.8;
+              -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 1px), #000 calc(100% - 0.75px), #000 calc(100% - 0.25px), transparent 100%);
+              mask: radial-gradient(farthest-side, transparent calc(100% - 1px), #000 calc(100% - 0.75px), #000 calc(100% - 0.25px), transparent 100%);
+            }
+            .hi-stability-failure-mark {
+              position: absolute;
+              inset: 0;
+              border-radius: inherit;
+              background: conic-gradient(from var(--hi-failure-angle), #ef4444 0deg 0.5deg, transparent 0.5deg 360deg);
             }
             .hi-stability-direction,
             .hi-stability-evidence {

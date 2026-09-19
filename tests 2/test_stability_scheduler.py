@@ -126,6 +126,8 @@ def _load_sensor_module(registrations, captures, repair_updates):
             self.pruned_at.append(observed_at)
 
     stability = types.ModuleType(f"{PKG}.helpers.stability")
+    from test_stability_score import _load_stability_module
+    stability.record_stability_bucket_outcome = _load_stability_module().record_stability_bucket_outcome
     stability.SNAPSHOT_LATE_GRACE_SECONDS = 60
     stability.StabilitySnapshotRing = StabilitySnapshotRing
     stability.bucket_start_for = lambda observed_at: observed_at.replace(
@@ -421,6 +423,7 @@ def test_late_scheduler_callback_is_missing_without_backfill():
 
     runtime_data = hass.data[DOMAIN][entry.entry_id]
     assert captures == []
+    assert len(runtime_data["stability_failed_buckets"]) == 2
     assert runtime_data["stability_snapshot_ring"].samples() == []
     assert runtime_data["stability_sampling"] == {
         "scheduler_active": True,

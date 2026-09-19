@@ -164,6 +164,23 @@ movement. A ratio of 1 renders a full ring only while the backend still reports
 collection. Transition immediately to backend-reported score or incomplete evidence;
 do not hold completion, delay a score, or hide unmet evidence requirements.
 
+Non-scored collection/evidence states also show a separate thin red failure-history
+track inside the blue progress ring. It consumes backend
+`sampling.failure_history` status, count, angles and description; the renderer does
+not reconstruct failed buckets. Red marks represent known unsuccessful or missed
+scheduled collections, not score decline, elapsed collection progress or samples
+that count toward 303. The 82px badge footprint and readable central count remain.
+
+Failure history contains at most 432 unique fixed ten-minute UTC slots in the rolling
+72-hour window. Each bucket keeps a fixed modulo-432 angular position until it
+expires; repeated reports deduplicate, and a later successful capture for the same
+bucket removes its failure. Record only actual incomplete captures and known missed
+scheduled buckets, never inferred offline or pre-setup gaps. Dense marks may overlap:
+the popup's exact backend count is authoritative, not visual counting. Explain the
+72-hour window in details. This history is retained only in memory and resets on
+restart/reload alongside baseline samples. Available-score movement remains unchanged
+and does not show this separate failure track.
+
 Once a score is available, LED movement retains signed integer endpoints within [-360,+360]. Each scheduled
 valid score comparison adds signed `ceil(abs(delta) * 3.6)` degrees, higher clockwise,
 lower counter-clockwise. Saturate each step; at full circle hold until reversal.
@@ -187,7 +204,7 @@ Tap/click/keyboard activation of gauge opens native Popover API details: backend
 explanation and, while collecting, **Baseline progress: N of 303 valid samples**, using backend
 `window.valid_samples` and `window.minimum_valid_samples`, never a hardcoded
 denominator. During collection, details explain the clockwise sample-progress ring
-and that score eligibility still requires consecutive and balance evidence. Once
+and that score eligibility still depends on backend evidence requirements. Once
 scored, **Recent trend** explains retained arc versus current colour plus exact
 backend movement detail. Outside collection, the tally is explicitly labelled
 **Rolling-window coverage: N of 432 valid samples**, using backend expected samples.

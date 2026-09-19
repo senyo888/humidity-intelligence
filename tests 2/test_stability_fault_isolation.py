@@ -119,6 +119,8 @@ def test_scheduler_capture_exception_rearms_and_breaks_movement_chain():
     assert sampling["missed_buckets_since_setup"] == 1
     assert len(runtime_data["stability_snapshot_ring"].samples()) == 432
     failed = mod.stability_diagnostics_payload(runtime_data, observed_at=failed_at)
+    assert failed["sampling"]["failure_history"]["failed_bucket_count"] == 1
+    assert runtime_data["stability_failed_buckets"] == {failed_at}
     assert failed["movement"]["status"] == "unavailable"
     assert failed["movement"]["active_led_steps"] == 0
     assert runtime_data["stability_movement_last_score"] is None
@@ -134,4 +136,5 @@ def test_scheduler_capture_exception_rearms_and_breaks_movement_chain():
     assert recovered["previous_display_score"] is None
     assert recovered["active_led_steps"] == 0
     assert sampling["last_capture_status"] == "captured"
+    assert runtime_data["stability_failed_buckets"] == {failed_at}
     assert sampling["missed_buckets_since_setup"] == 1

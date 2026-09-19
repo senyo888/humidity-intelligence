@@ -402,7 +402,7 @@ def stability_diagnostics_payload(
         current_invalid_reasons=live_invalid_reasons,
         observed_at=observed_at or datetime.now(timezone.utc),
     )
-    payload["sampling"] = _sampling_payload(runtime_data)
+    payload["sampling"] = _sampling_payload(runtime_data, observed_at=observed_at)
     payload["movement"] = _movement_from_runtime(runtime_data, payload)
     return payload
 
@@ -614,7 +614,81 @@ def stability_snapshot_invalid_reasons(sample: StabilitySnapshot) -> list[str]:
     return reasons
 
 
-def _sampling_payload(runtime_data: dict[str, Any]) -> dict[str, Any]:
+def record_stability_bucket_outcome(
+    runtime_data: dict[str, Any],
+    scheduled_at: datetime,
+    observed_at: datetime,
+    *,
+    successful: bool = False,
+    missed_range: bool = False,
+) -> None:
+    """Record observed collection failures only; never infer pre-setup history."""
+    scheduled_at = _as_utc(scheduled_at)
+    observed_at = _as_utc(observed_at)
+    latest = bucket_start_for(observed_at)
+    cutoff = latest - timedelta(hours=WINDOW_HOURS) + timedelta(minutes=BUCKET_MINUTES)
+    history = runtime_data.get("stability_failed_buckets")
+    history = history if isinstance(history, set) else set()
+    history = {
+        bucket for bucket in history
+        if isinstance(bucket, datetime) and bucket.tzinfo is not None
+        and cutoff <= bucket <= latest and bucket == bucket_start_for(bucket)
+    }
+    ring = runtime_data.get("stability_snapshot_ring")
+    valid_buckets = {
+        bucket_start_for(sample.observed_at) for sample in ring.samples()
+    } if isinstance(ring, StabilitySnapshotRing) else set()
+    history.difference_update(valid_buckets)
+    runtime_data["stability_failed_buckets"] = history
+    # Early callbacks are not evidence that a future bucket failed.
+    if observed_at < scheduled_at:
+        return
+    scheduled_bucket = bucket_start_for(scheduled_at)
+    if successful:
+        history.discard(scheduled_bucket)
+        return
+    first = max(cutoff, scheduled_bucket)
+    last = latest if missed_range else scheduled_bucket
+    while first <= last <= latest:
+        if first not in valid_buckets:
+            history.add(first)
+        first += timedelta(minutes=BUCKET_MINUTES)
+
+
+def _failure_history_payload(runtime_data: dict[str, Any], observed_at: datetime) -> dict[str, Any]:
+    if not isinstance(runtime_data.get("stability_failed_buckets"), set):
+        return {
+            "status": "unavailable",
+            "failed_bucket_count": 0,
+            "marker_angles_degrees": [],
+            "detail_text": "Collection failure history unavailable.",
+        }
+    # Prune on reads too, without recording an unobserved attempt.
+    record_stability_bucket_outcome(
+        runtime_data, observed_at + timedelta(minutes=BUCKET_MINUTES), observed_at
+    )
+    history = runtime_data["stability_failed_buckets"]
+    angles = sorted(
+        round((int(bucket.timestamp()) // (BUCKET_MINUTES * 60) % EXPECTED_SAMPLES)
+              * 360 / EXPECTED_SAMPLES, 6)
+        for bucket in history
+    )
+    count = len(history)
+    return {
+        "status": "available",
+        "failed_bucket_count": count,
+        "marker_angles_degrees": angles,
+        "detail_text": (
+            f"{count} unsuccessful scheduled collection buckets in the current 72-hour window. "
+            "Red marks show observed missed or invalid collections, not baseline progress. "
+            "History resets on restart or reload."
+        ),
+    }
+
+
+def _sampling_payload(
+    runtime_data: dict[str, Any], *, observed_at: Optional[datetime] = None
+) -> dict[str, Any]:
     raw = (
         runtime_data.get("stability_sampling")
         if isinstance(runtime_data, dict)
@@ -636,6 +710,10 @@ def _sampling_payload(runtime_data: dict[str, Any]) -> dict[str, Any]:
     bucket_start = raw.get("last_bucket_start_utc")
     return {
         "source_schema_version": 2,
+        "failure_history": _failure_history_payload(
+            runtime_data if isinstance(runtime_data, dict) else {},
+            observed_at or datetime.now(timezone.utc),
+        ),
         "snapshot_source": SNAPSHOT_SOURCE,
         "alignment": SNAPSHOT_SCHEDULE,
         "interval_minutes": BUCKET_MINUTES,

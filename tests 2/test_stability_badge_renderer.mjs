@@ -447,3 +447,91 @@ test('collection state and indicator mode must agree before progress is drawn', 
     assert.equal(renderedMarks(renderContract(contract)).length, 0);
   }
 });
+
+function withFailureHistory(contract, history = {}) {
+  return { ...contract, sampling: { failure_history: {
+    status: 'available', failed_bucket_count: 2,
+    marker_angles_degrees: [12.5, 359.166667],
+    detail_text: 'Two failed scheduled sampling buckets remain in the 72-hour window.',
+    ...history,
+  } } };
+}
+
+function failureMarks(output) {
+  return [...output.matchAll(/<i class="hi-stability-failure-mark"[^>]*>/g)].map(([html]) => html);
+}
+
+test('failed bucket markers use a separate history track without consuming valid progress', () => {
+  const clean = renderContract(collectingContract(151, 0.4983));
+  const marked = renderContract(withFailureHistory(collectingContract(151, 0.4983)));
+  assert.deepEqual(renderedMarks(marked), renderedMarks(clean));
+  assert.equal(failureMarks(marked).length, 2);
+  assert.match(marked, /hi-stability-failure-history/);
+  assert.match(marked, /Two failed scheduled sampling buckets remain in the 72-hour window\./);
+  assert.match(marked, /Baseline progress: 151 of 303 valid samples\./);
+});
+
+test('failure markers remain during backend evidence gaps and live-data suppression', () => {
+  for (const state of ['collecting', 'incomplete_evidence_gaps', 'incomplete_evidence_balance', 'live_data_unavailable']) {
+    const contract = collectingContract(151, 0.4983);
+    contract.presentation.state_code = state;
+    contract.presentation.indicator_mode = state === 'collecting' ? 'collection' : 'none';
+    const output = renderContract(withFailureHistory(contract));
+    assert.equal(failureMarks(output).length, 2, state);
+  }
+});
+
+test('missing malformed or inconsistent failure history never invents red markers', () => {
+  const invalidHistories = [undefined, null, [], {}, false, 'failed',
+    { status: 'unavailable' },
+    ...[undefined, null, false, '2', -1, 1.5, 433, Infinity].map(failed_bucket_count => ({ failed_bucket_count })),
+    ...[undefined, null, false, {}, '12,24', [12], [12,12], [0,360], [-1,12], [NaN,12], [Infinity,12], ['12',24], [false,24], [[],24]].map(marker_angles_degrees => ({ marker_angles_degrees })),
+  ];
+  for (const bad of invalidHistories) {
+    const contract = withFailureHistory(collectingContract(151, 0.4983));
+    contract.sampling.failure_history = bad && typeof bad === 'object' && !Array.isArray(bad)
+      ? { ...contract.sampling.failure_history, ...bad } : bad;
+    if (bad && typeof bad === 'object' && Object.keys(bad).length === 0) contract.sampling.failure_history = bad;
+    assert.equal(failureMarks(renderContract(contract)).length, 0, JSON.stringify(bad));
+  }
+  assert.equal(failureMarks(renderContract(collectingContract(151, 0.4983))).length, 0);
+});
+
+test('failure marker capacity is bounded and admits all 432 unique backend slots', () => {
+  for (const count of [0, 1, 432]) {
+    const output = renderContract(withFailureHistory(collectingContract(151, 0.4983), {
+      failed_bucket_count: count,
+      marker_angles_degrees: Array.from({ length: count }, (_, index) => index * 360 / 432),
+    }));
+    assert.equal(failureMarks(output).length, count);
+  }
+});
+
+test('failure history hides on valid scores invalid scores and unsupported evidence states', () => {
+  const available = {
+    availability: 'available', score: { display_score: 90, display_classification: 'Good' },
+    presentation: { state_code: 'available', indicator_mode: 'score', tone: 'good' },
+    movement: { status: 'available', start_position_degrees: -18, end_position_degrees: -18, color_token: 'fall_gentle' },
+  };
+  const markedAvailable = renderContract(withFailureHistory(available));
+  assert.equal(failureMarks(markedAvailable).length, 0);
+  assert.deepEqual(renderedMarks(markedAvailable), renderedMarks(renderContract(available)));
+  for (const value of [false, [], '90', 101]) {
+    const contract = collectingContract(151, 0.4983);
+    contract.score = { display_score: value };
+    assert.equal(failureMarks(renderContract(withFailureHistory(contract))).length, 0);
+  }
+  for (const state of ['unavailable', 'unknown', 'available']) {
+    const contract = collectingContract(151, 0.4983);
+    contract.presentation.state_code = state;
+    assert.equal(failureMarks(renderContract(withFailureHistory(contract))).length, 0);
+  }
+});
+
+test('failure history detail is escaped and cannot inject popup markup', () => {
+  const output = renderContract(withFailureHistory(collectingContract(151, 0.4983), {
+    detail_text: '<img src=x onerror="bad"> & \'failed\'',
+  }));
+  assert.doesNotMatch(output, /<img|onerror="bad"/);
+  assert.match(output, /&lt;img src=x onerror=&quot;bad&quot;&gt; &amp; &#039;failed&#039;/);
+});

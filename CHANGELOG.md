@@ -13,6 +13,14 @@ publication or deployment is claimed. Published Stable remains v2.0.12.
 
 ### Accepted Stability Score integration
 
+- Retains known failed or missed scheduled sample buckets in memory for the rolling
+  72-hour window. A separate thin red track shows that history in non-scored
+  collection/evidence states; details give the exact count when marks overlap.
+  Backend-owned history is bounded to 432 unique UTC slots, expires with the window,
+  and never infers pre-start or offline failures. Successful recovery of a bucket
+  clears its failure mark. Restart/reload clears this history with the baseline.
+  The Python update requires a restart; no configuration or stored-data migration
+  is required. Scoring, score-movement LEDs and control decisions are unchanged.
 - Shows collection progress as a clockwise LED fill from the top, using backend
   progress toward the minimum valid-sample requirement. Collection details now show baseline
   progress against that minimum (303), instead of the 432-bucket rolling capacity,

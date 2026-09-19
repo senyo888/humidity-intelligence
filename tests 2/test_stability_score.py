@@ -777,6 +777,9 @@ def test_diagnostics_declares_fixed_bucket_snapshot_provenance():
         "representative": "last_complete_scheduled_observation",
         "capture_minutes_utc": [0, 10, 20, 30, 40, 50],
     }
+    failure_history = result["sampling"].pop("failure_history")
+    assert failure_history["failed_bucket_count"] == 0
+    assert failure_history["marker_angles_degrees"] == []
     assert result["sampling"] == {
         "source_schema_version": 2,
         "snapshot_source": "hi_owned_fixed_bucket",
