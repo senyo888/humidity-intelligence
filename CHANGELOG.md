@@ -18,6 +18,12 @@ remains v2.0.12. No release tag or HACS publication is implied.
   coverage, and normal mobile/tablet exports with complete native output controls.
 - Preserves beta.3's Stability implementation, drift progress, badge summaries,
   history panels, room colours, lane decisions and existing entity semantics.
+- Handles initial setup and unchanged HA state reports without false missing-output
+  claims; event timestamps prevent delayed older reports from clearing newer
+  registry quarantine.
+- Uses a neutral devices icon for shared Outputs and domain-specific row icons;
+  fans no longer represent switches, humidifiers or lights. Native V2 and gallery
+  headers follow the same convention.
 - Accepts Home Assistant read-only configuration mappings when generating adaptive
   cards; a targeted regression protects the live options/export boundary.
 - Bounds observations and identity custody, excludes detailed payloads from Recorder,

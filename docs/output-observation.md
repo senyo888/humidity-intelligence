@@ -8,8 +8,14 @@ presentation. Installing beta.4 requires a full Home Assistant restart to load i
 
 The observer reads outputs already configured in HI, their Home Assistant states,
 and associated diagnostic entities. Shared outputs appear once, retaining their
-configured roles and each role's enable state. A disabled role is configuration
-context; it does not prove isolation or prevent another enabled role using the output.
+configured roles and each role's enable state. Outputs uses a neutral devices icon;
+individual rows use their HA entity domain (fan, switch, humidifier or light), with
+a generic fallback. A switch icon does not identify the appliance connected to it.
+Device icons describe the HA entity type, not availability, activity or health.
+These are entity categories, not an appliance allowlist: a switch-backed device
+retains switch semantics. Other configured domains use a generic icon and remain
+control-support-unconfirmed; an icon never adds a new actuation capability.
+A disabled role is configuration context; it does not prove isolation or prevent another enabled role using the output.
 
 Observation does not select lanes, send service calls, change helpers, repair devices,
 or become an input to the control engine. Ventilation priority, independent humidifier
@@ -108,7 +114,12 @@ The observer uses targeted state listeners, coalesces events, and caches registr
 metadata between registry changes. Custody stores registry fingerprints, known
 associations, and pending invalidations in its own entry-scoped HA storage. It does
 not restore cached source values. Registry changes quarantine affected states until
-a subsequent relevant state event; quarantine survives an orderly unload/reload.
+a subsequent relevant changed or unchanged HA state report; quarantine survives an
+orderly unload/reload.
+Pending observations are labelled awaiting a new report, not missing when an HA
+state exists. Events predating the registry change cannot release quarantine, even
+when HA delivers them later. A genuinely new observer accepts its initial current
+snapshot without treating setup registry events as lost evidence.
 Delayed HA storage writes and shutdown flushing are best effort, not a crash,
 power-loss, or failed-disk durability guarantee. Invalid storage fails closed.
 

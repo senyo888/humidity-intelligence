@@ -11,6 +11,7 @@ import re
 ROLES = ('ventilation_zone_1', 'ventilation_zone_2', 'aq', 'humidifier_zone_1',
          'humidifier_zone_2', 'alert_light', 'alert_power')
 SUPPORTED = {'fan', 'switch', 'humidifier', 'light'}
+DEVICE_ICONS = {'fan': 'fan', 'switch': 'toggle-switch-outline', 'humidifier': 'air-humidifier', 'light': 'lightbulb'}
 MAX_CONFIG = 128
 MAX_MAPPINGS = 256
 MAX_TEXT = 120
@@ -133,7 +134,8 @@ def normalize(configured, states, mappings):
         attrs = raw.get('attributes', {}) if isinstance(raw, dict) else {}
         percent = attrs.get('percentage') if isinstance(attrs, dict) else None
         record['percentage'] = percent if supported and entity.startswith('fan.') and type(percent) in (int, float) and isfinite(percent) and 0 <= percent <= 100 else None
-        record['operation'] = _facet(operation, {'on':'On', 'off':'Off', 'unknown':'Operation unknown'}[operation], 'active' if operation == 'on' else 'neutral', 'fan' if operation == 'on' else 'power')
+        record['device_icon'] = DEVICE_ICONS.get(entity.split('.')[0], 'devices')
+        record['operation'] = _facet(operation, {'on':'On', 'off':'Off', 'unknown':'Operation unknown'}[operation], 'active' if operation == 'on' else 'neutral', record['device_icon'] if operation == 'on' else 'power')
         if operation == 'on' and record['percentage'] is not None:
             record['operation']['label'] = f'On · {record["percentage"]:g}%'
         # A humidifier may be on while idle. Only the platform's explicit action
@@ -237,7 +239,7 @@ def normalize(configured, states, mappings):
     state = 'not_configured' if not count and not attention else 'attention' if any(a['severity'] <= 5 for a in attention) else 'degraded' if attention else 'unmonitored' if mapped < count else 'clear'
     headline = f'{on}/{count} on' if count else 'No outputs configured'
     summary = 'Attention required' if attention else 'No mapped issues reported' if mapped else 'Monitoring not configured' if count else 'No outputs configured'
-    chips = [dict(label=headline, tone='active' if on else 'neutral', icon='fan', kind='fleet')]
+    chips = [dict(label=headline, tone='active' if on else 'neutral', icon='devices', kind='fleet')]
     if affected:
         first = next(a for a in attention if a['entity_id'] == affected[0])
         chips.append(dict(label=f'{first["label"]} · {first["title"]}', tone=first['tone'], icon=first['icon'], kind='attention'))
