@@ -31,6 +31,8 @@ beta.1 commit below does not identify this package. Published Stable remains v2.
   content and keep Close within a viewport bounded by device safe areas.
   V2 dialogs use compact circular X controls with accessible Close labels and
   comfortable touch targets; explanations use positive, direct language.
+  History navigation keeps its background transparent so scrolling content remains
+  visible between Back and Close.
 - V2 Mobile and V2 Tablet share the changes. V1 is unchanged. Refresh exports and
   replace pasted Manual cards; this template-only change requires no Python restart
   or configuration/data migration. Runtime control and entity semantics are unchanged.

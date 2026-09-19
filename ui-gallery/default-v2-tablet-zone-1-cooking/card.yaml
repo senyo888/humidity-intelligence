@@ -390,7 +390,8 @@ card:
                     section.innerHTML = `<style>
                       .hi-history { min-height:320px; overflow-wrap:anywhere; }
                       .hi-history[hidden] { display:none; }
-                      .hi-history nav { display:flex; gap:8px; align-items:center; position:sticky; top:0; z-index:2; padding-bottom:8px; background:#0d1522; }
+                      .hi-history nav { display:flex; gap:8px; align-items:center; position:sticky; top:0; z-index:2; padding-bottom:8px; background:transparent; pointer-events:none; }
+                      .hi-history nav button { pointer-events:auto; }
                       .hi-history .hi-history-ranges { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:16px; }
                       .hi-history .hi-history-ranges button[aria-pressed="true"] { border-color:#38bdf8; }
                       .hi-history .hi-history-content { min-height:240px; }
@@ -819,7 +820,8 @@ card:
                     section.innerHTML = `<style>
                       .hi-history { min-height:320px; overflow-wrap:anywhere; }
                       .hi-history[hidden] { display:none; }
-                      .hi-history nav { display:flex; gap:8px; align-items:center; position:sticky; top:0; z-index:2; padding-bottom:8px; background:#0d1522; }
+                      .hi-history nav { display:flex; gap:8px; align-items:center; position:sticky; top:0; z-index:2; padding-bottom:8px; background:transparent; pointer-events:none; }
+                      .hi-history nav button { pointer-events:auto; }
                       .hi-history .hi-history-ranges { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:16px; }
                       .hi-history .hi-history-ranges button[aria-pressed="true"] { border-color:#38bdf8; }
                       .hi-history .hi-history-content { min-height:240px; }
@@ -2129,7 +2131,8 @@ card:
                 section.innerHTML = `<style>
                   .hi-history { min-height:320px; overflow-wrap:anywhere; }
                   .hi-history[hidden] { display:none; }
-                  .hi-history nav { display:flex; gap:8px; align-items:center; position:sticky; top:0; z-index:2; padding-bottom:8px; background:#0d1522; }
+                  .hi-history nav { display:flex; gap:8px; align-items:center; position:sticky; top:0; z-index:2; padding-bottom:8px; background:transparent; pointer-events:none; }
+                  .hi-history nav button { pointer-events:auto; }
                   .hi-history .hi-history-ranges { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:16px; }
                   .hi-history .hi-history-ranges button[aria-pressed="true"] { border-color:#38bdf8; }
                   .hi-history .hi-history-content { min-height:240px; }
@@ -3328,7 +3331,8 @@ card:
                     section.innerHTML = `<style>
                       .hi-history { min-height:320px; overflow-wrap:anywhere; }
                       .hi-history[hidden] { display:none; }
-                      .hi-history nav { display:flex; gap:8px; align-items:center; position:sticky; top:0; z-index:2; padding-bottom:8px; background:#0d1522; }
+                      .hi-history nav { display:flex; gap:8px; align-items:center; position:sticky; top:0; z-index:2; padding-bottom:8px; background:transparent; pointer-events:none; }
+                      .hi-history nav button { pointer-events:auto; }
                       .hi-history .hi-history-ranges { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:16px; }
                       .hi-history .hi-history-ranges button[aria-pressed="true"] { border-color:#38bdf8; }
                       .hi-history .hi-history-content { min-height:240px; }
