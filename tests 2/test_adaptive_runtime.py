@@ -74,7 +74,7 @@ class FakeHass:
         self.raw_states=states
         self.states=SimpleNamespace(get=lambda eid:SimpleNamespace(state=self.raw_states[eid]['state'],attributes=self.raw_states[eid].get('attributes',{})) if eid in self.raw_states else None)
         self.config_entries=SimpleNamespace(async_get_entry=lambda eid:self.target if eid==self.target.entry_id else None)
-        self.state_listeners=[];self.bus_listeners=[];self.handles=[]
+        self.state_listeners=[];self.report_listeners=[];self.bus_listeners=[];self.handles=[]
         def soon(cb):
             handle=Handle(cb);self.handles.append(handle);return handle
         self.loop=SimpleNamespace(call_soon=soon)
@@ -97,6 +97,10 @@ def coordinator_module():
         item=(ids,cb);hass.state_listeners.append(item)
         return lambda:hass.state_listeners.remove(item)
     modules['homeassistant.helpers.event'].async_track_state_change_event=track
+    def track_reports(hass,ids,cb):
+        item=(ids,cb);hass.report_listeners.append(item)
+        return lambda:hass.report_listeners.remove(item)
+    modules['homeassistant.helpers.event'].async_track_state_report_event=track_reports
     modules['homeassistant.helpers.storage'].Store=FakeStore
     with patch.dict(sys.modules,modules):
         name=f'{PACKAGE}.coordinator'
@@ -202,6 +206,65 @@ class AdaptiveCoordinatorTests(unittest.IsolatedAsyncioTestCase):
 
     async def asyncTearDown(self):
         if self.observer.active:await self.observer.async_stop()
+
+    async def test_initial_setup_registry_events_do_not_invalidate_brand_new_snapshot(self):
+        await self.observer.async_stop()
+        self.hass.target.state='setup_in_progress'
+        self.observer=self.module.OutputObserver(self.hass,self.hass.target)
+        await self.observer.async_start()
+        self.observer._registry_changed(SimpleNamespace(data={}))
+        self.observer.refresh()
+        self.assertIsNone(self.observer.payload)
+        self.hass.target.state='loaded'
+        self.observer._target_state_changed()
+        self.assertEqual(self.observer.bridge.quarantined,set())
+        self.assertEqual(self.observer.payload['records'][0]['operation']['state'],'on')
+        self.assertEqual(self.observer.payload['records'][0]['availability']['state'],'available')
+
+    async def test_same_value_report_releases_retained_quarantine_and_listener_cleans_up(self):
+        self.hass.registry.entities[OUTPUT].device_class='example_changed_class'
+        self.observer._registry_changed(SimpleNamespace(data={}))
+        self.observer.refresh()
+        record=self.observer.payload['records'][0]
+        self.assertEqual(record['availability']['state'],'unknown')
+        self.assertEqual(record['availability']['label'],'Awaiting new report')
+        self.assertTrue(record['observation_pending'])
+        self.assertFalse(any(a['code']=='missing' for a in self.observer.payload['attention']))
+        ids,report=self.hass.report_listeners[0]
+        self.assertEqual(set(ids),self.observer._watch)
+        report(SimpleNamespace(data={'entity_id':OUTPUT}))
+        self.observer.refresh()
+        self.assertNotIn(OUTPUT,self.observer.bridge.quarantined)
+        self.assertEqual(self.observer.payload['records'][0]['operation']['state'],'on')
+        await self.observer.async_stop()
+        self.assertEqual(self.hass.report_listeners,[])
+
+    async def test_delayed_pre_registry_report_does_not_release_across_batches(self):
+        from datetime import datetime, timedelta, timezone
+        changed=datetime(2026,1,1,tzinfo=timezone.utc)
+        self.hass.registry.entities[OUTPUT].device_class='example_changed_class'
+        self.observer._registry_changed(SimpleNamespace(data={},time_fired=changed))
+        self.observer.refresh()
+        self.assertFalse(self.observer._registry_event)
+        self.observer._state_changed(SimpleNamespace(data={'entity_id':OUTPUT},time_fired=changed-timedelta(seconds=1)))
+        self.observer.refresh()
+        self.assertIn(OUTPUT,self.observer.bridge.quarantined)
+        self.observer._state_changed(SimpleNamespace(data={'entity_id':OUTPUT},time_fired=changed+timedelta(seconds=1)))
+        self.observer.refresh()
+        self.assertNotIn(OUTPUT,self.observer.bridge.quarantined)
+
+    async def test_initial_setup_exception_never_discards_retained_invalidation(self):
+        await self.observer.async_stop()
+        self.hass.target.state='setup_in_progress'
+        self.observer=self.module.OutputObserver(self.hass,self.hass.target)
+        self.observer.bridge=Bridge.from_custody({'known':[dict(output=OUTPUT,source=SOURCE,
+            output_identity='registry:output-id',source_identity='registry:source-id',semantic='problem',rule='binary_active')]})
+        await self.observer.async_start()
+        self.observer._registry_changed(SimpleNamespace(data={}))
+        self.hass.target.state='loaded'
+        self.observer._target_state_changed()
+        self.assertIn(OUTPUT,self.observer.bridge.quarantined)
+        self.assertEqual(self.observer.payload['records'][0]['availability']['state'],'unknown')
 
     async def test_hi_entry_identity_and_no_duplicate_update_listener(self):
         self.assertEqual(self.observer.target_id,self.hass.target.entry_id)

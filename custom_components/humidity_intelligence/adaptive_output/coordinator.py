@@ -6,7 +6,7 @@ from datetime import datetime
 from homeassistant.config_entries import ConfigEntryState
 from homeassistant.core import callback
 from homeassistant.helpers import entity_registry as er, device_registry as dr
-from homeassistant.helpers.event import async_track_state_change_event
+from homeassistant.helpers.event import async_track_state_change_event, async_track_state_report_event
 from homeassistant.helpers.storage import Store
 
 from .bridge import ObservationBridge, validate_bindings
@@ -39,10 +39,13 @@ class OutputObserver:
         self._listeners = []
         self._unsub = []
         self._state_unsub = None
+        self._report_unsub = None
         self._watch = set()
         self._scheduled = None
         self._registry_event = False
         self._fresh_entities = {}
+        self._fresh_report_times = {}
+        self._registry_time = None
         self._event_sequence = 0
         self._registry_sequence = 0
         self._storage_valid = False
@@ -83,16 +86,27 @@ class OutputObserver:
 
     @callback
     def _registry_changed(self, event):
+        if not self.active:
+            return
         self._snapshot_cache = None
         self._event_sequence += 1
         self._registry_sequence = self._event_sequence
+        self._registry_time = getattr(event, 'time_fired', None)
         self._registry_event = True
         self._schedule()
 
     @callback
     def _state_changed(self, event):
+        if not self.active:
+            return
+        entity = event.data['entity_id']
+        fired = getattr(event, 'time_fired', None)
+        previous = self._fresh_report_times.get(entity)
+        if isinstance(fired, datetime) and isinstance(previous, datetime) and fired <= previous:
+            return
         self._event_sequence += 1
-        self._fresh_entities[event.data['entity_id']] = self._event_sequence
+        self._fresh_entities[entity] = self._event_sequence
+        self._fresh_report_times[entity] = fired
         self._schedule()
 
     @callback
@@ -194,16 +208,35 @@ class OutputObserver:
             registry, states, helpers, confirmations, retired = self._snapshots(target)
             # Registry changes invalidate pre-change cached states. Only actual
             # new targeted events may release those quarantine entries.
-            self.bridge.reconcile_registry(registry, registry_event=self._registry_event)
+            # Registry creation during initial HI setup does not invalidate any
+            # earlier observation: genuinely new observers have no such custody.
+            # Retained known bindings/quarantine or a prior fingerprint baseline
+            # must still use the normal conservative reconciliation path.
+            new_observer = self.bridge.registry is None and not self.bridge.known and not self.bridge.quarantined
+            self.bridge.reconcile_registry(registry, registry_event=self._registry_event and not new_observer)
             for entity, sequence in self._fresh_entities.items():
-                if not self._registry_event or sequence > self._registry_sequence:
+                fired = self._fresh_report_times.get(entity)
+                # HA versions may defer state callbacks beyond a later direct
+                # registry callback. Compare event occurrence, not delivery order.
+                # Keep the registry watermark across completed refresh batches.
+                later = (fired > self._registry_time
+                         if isinstance(fired, datetime) and isinstance(self._registry_time, datetime)
+                         else not self._registry_event or sequence > self._registry_sequence)
+                if later:
                     self.bridge.quarantined.discard(entity)
             payload = self.bridge.evaluate(dict(target.data), dict(target.options), registry, states, helpers, confirmations, retired=retired)
             watch = set(self.bridge.session.snapshot['watch_entities']) | set(helpers.values())
             if watch != self._watch:
                 if self._state_unsub:
                     self._state_unsub()
+                    self._state_unsub = None
+                if self._report_unsub:
+                    self._report_unsub()
+                    self._report_unsub = None
                 self._state_unsub = async_track_state_change_event(self.hass, sorted(watch), self._state_changed) if watch else None
+                # Unchanged HA reports do not emit state_changed. They are still
+                # new reports that may release an outstanding invalidation.
+                self._report_unsub = async_track_state_report_event(self.hass, sorted(watch), self._state_changed) if watch else None
                 self._watch = watch
             self.payload = payload
             self.failure = None
@@ -220,6 +253,7 @@ class OutputObserver:
             if succeeded:
                 self._registry_event = False
                 self._fresh_entities.clear()
+                self._fresh_report_times.clear()
         self._notify()
 
     @callback
@@ -239,6 +273,9 @@ class OutputObserver:
         if self._state_unsub:
             self._state_unsub()
             self._state_unsub = None
+        if self._report_unsub:
+            self._report_unsub()
+            self._report_unsub = None
         for unsub in self._unsub:
             unsub()
         self._unsub.clear()

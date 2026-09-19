@@ -129,7 +129,10 @@ class ObservationBridge:
         quarantine = set(self.quarantined)
         if fresh_entity:
             quarantine.discard(fresh_entity)
-        clean_states = {eid: value for eid, value in states.items() if eid not in quarantine}
+        # Quarantine means an existing HA state is not yet usable evidence. It
+        # must not turn a present configured output into a fictitious missing one.
+        clean_states = {eid: value if eid not in quarantine else {'state': 'unknown', 'attributes': {}}
+                        for eid, value in states.items()}
         labels = {r['entity_id']: r.get('name') or r.get('original_name') or r['entity_id'] for r in registry}
         configured = extract_configured(data, options, labels=labels)
         runtime = []
@@ -187,6 +190,14 @@ class ObservationBridge:
                 record['context'] = 'This alert output is not covered by the fan or humidifier isolation helper. Observed state does not prove a command succeeded.'
             if not record['attention'] and facet['state'] in ('isolated', 'partial', 'unknown'):
                 record['status'] = facet
+            if record['entity_id'] in quarantine and record['entity_id'] in states:
+                record['observation_pending'] = True
+                record['availability']['label'] = 'Awaiting new report'
+                record['observed_state'] = 'Not used as current evidence'
+                record['context'] += ' Registry observation is pending a new Home Assistant report; the entity state exists.'
+                for item in record['attention']:
+                    if item['code'] == 'state_unknown':
+                        item['evidence'] = 'The entity state exists, but registry observation is awaiting a new Home Assistant report.'
         if not payload['runtime_context_complete']:
             payload['context_notice'] = 'HI control or isolation context is incomplete; observed output state and device signals are still shown.'
         if len(json.dumps(payload, allow_nan=False, separators=(',', ':')).encode()) > MAX_PAYLOAD_BYTES:

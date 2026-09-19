@@ -116,6 +116,7 @@ class NativeHomeAssistantTests(unittest.IsolatedAsyncioTestCase):
         self.assertIsNone(observer.payload)
         self.assertFalse(observer._unsub)
         self.assertIsNone(observer._state_unsub)
+        self.assertIsNone(observer._report_unsub)
 
     async def test_registry_quarantine_survives_real_store_reload(self):
         observer = await self.start_observer()
@@ -129,6 +130,60 @@ class NativeHomeAssistantTests(unittest.IsolatedAsyncioTestCase):
         self.assertIn(self.source.entity_id, restarted.bridge.quarantined)
         await self.set_and_observe(restarted, self.source.entity_id, 'on')
         self.assertNotIn(self.source.entity_id, restarted.bridge.quarantined)
+
+    async def test_same_value_report_releases_registry_quarantine(self):
+        observer = await self.start_observer()
+        self.registry.async_update_entity(self.source.entity_id, original_device_class='battery')
+        await self.hass.async_block_till_done()
+        self.assertIn(self.source.entity_id, observer.bridge.quarantined)
+        state_before = self.hass.states.get(self.source.entity_id)
+        self.assertEqual(state_before.state, 'off')
+        # Identical state/attributes emits STATE_REPORTED, not STATE_CHANGED.
+        await self.set_and_observe(observer, self.source.entity_id, 'off')
+        state_after = self.hass.states.get(self.source.entity_id)
+        self.assertEqual(state_after.last_changed, state_before.last_changed)
+        self.assertEqual(state_after.last_updated, state_before.last_updated)
+        self.assertNotIn(self.source.entity_id, observer.bridge.quarantined)
+        self.assertEqual(observer.payload['counts']['reporting'], 1)
+        self.assertEqual(observer.payload['observation']['physical_freshness'], 'not_established')
+
+    async def test_report_before_registry_change_cannot_release_new_quarantine(self):
+        observer = await self.start_observer()
+        # HA 2026.5 defers report callback dispatch. Event receipt must not
+        # reclassify a pre-registry report as post-registry fresh evidence.
+        self.hass.states.async_set(self.source.entity_id, 'off')
+        self.registry.async_update_entity(self.source.entity_id, original_device_class='battery')
+        await self.hass.async_block_till_done()
+        for _ in range(3):
+            await asyncio.sleep(0)
+        self.assertIn(self.source.entity_id, observer.bridge.quarantined)
+
+    async def test_changed_state_before_registry_change_cannot_release_new_quarantine(self):
+        observer = await self.start_observer()
+        self.hass.states.async_set(self.source.entity_id, 'on')
+        self.registry.async_update_entity(self.source.entity_id, original_device_class='battery')
+        await self.hass.async_block_till_done()
+        for _ in range(3):
+            await asyncio.sleep(0)
+        self.assertIn(self.source.entity_id, observer.bridge.quarantined)
+
+    async def test_first_setup_registry_events_accept_current_snapshot(self):
+        self.entry._async_set_state(self.hass, ConfigEntryState.SETUP_IN_PROGRESS, None)
+        observer = coordinator.OutputObserver(self.hass, self.entry)
+        self.observers.append(observer)
+        await observer.async_start()
+        self.assertIsNone(observer.payload)
+        self.assertIsNone(observer.bridge.registry)
+        # The first observer sees registry initialization before HI is loaded.
+        self.registry.async_update_entity(self.source.entity_id, original_name='Example problem reading')
+        await self.hass.async_block_till_done()
+        self.assertTrue(observer._registry_event)
+        self.entry._async_set_state(self.hass, ConfigEntryState.LOADED, None)
+        await self.hass.async_block_till_done()
+        self.assertIsNotNone(observer.payload, observer.failure)
+        self.assertEqual(observer.bridge.quarantined, set())
+        self.assertEqual(observer.payload['counts']['available'], 1)
+        self.assertEqual(observer.payload['counts']['reporting'], 1)
 
     async def test_registry_change_while_stopped_is_detected_on_start(self):
         observer = await self.start_observer()
