@@ -6,26 +6,16 @@ All notable changes to Humidity Intelligence will be documented in this file.
 
 This project follows a practical changelog format for Home Assistant and HACS users. Add new entries under a fresh `Unreleased` section before publishing a future release.
 
-## Unreleased — v2.1.0-beta.2
+## Unreleased — v2.1.0-beta.3
 
-Local, unpublished candidate; no tag, GitHub Release or HACS offering. The earlier
-beta.1 commit below does not identify this package. Published Stable remains v2.0.12.
-
-### Seven-day drift badge
-
-- Shows backend-derived **Baseline · N%** collection progress before usable drift
-  data is available. Missing or invalid coverage remains unknown rather than implying progress.
-- Opens a concise explanation on tap, with **View history** opening native Home
-  Assistant history for the same drift entity and **Close** dismissing details.
-- Preserves drift calculations, Stability scoring, control decisions and entity
-  semantics. Regenerate exports and replace pasted Manual cards to receive the UI;
-  no configuration or stored-data migration is required.
+Development candidate, prepared from all changes since the beta.2 version commit
+`76285b0`, through `4f86e66`. Published Stable remains v2.0.12; this beta remains
+an unpublished candidate.
 
 ### V2 badge summaries
 
 - Mould and condensation history give source rooms individual colours with matching
   labelled legends, retained across histories and ranges within the page session.
-
 - Humidity, Condensation, Mould, Current Air Control, Ready, Zone 1, Zone 2 and AQ
   open short explanations before history. Summaries
   identify the actual mapped history source and retain unavailable states.
@@ -53,6 +43,48 @@ beta.1 commit below does not identify this package. Published Stable remains v2.
   entity-details access. Missing, failed and bounded partial results are explicit;
   history availability continues to depend on Home Assistant Recorder and access.
   Recorder retention, backend control and dashboard refresh behavior are preserved.
+
+### Packaging and validation
+
+- Adds the canonical shared history renderer and deterministic embed-sync tooling
+  for both V2 templates and their gallery mirrors. The complete controller package
+  contract now includes the renderer (56 files).
+- Extends automated validation for summary interactions, recorded history, generated
+  entity mappings, packaging, drift and Stability details. Source-room colours have
+  regression coverage for matching legends and identity across embedded histories.
+
+### Upgrade from beta.2
+
+- Install the complete beta.3 package when applying this candidate, then run
+  `humidity_intelligence.refresh_ui` and export fresh V2 cards with `dump_cards` or
+  `view_cards`. Replace each saved Manual card with its complete fresh export and
+  refresh the dashboard client to load it.
+- The beta.2-to-beta.3 changes are UI assets, packaging checks and documentation;
+  backend Python, entity semantics, lane priority and stored data are preserved.
+  UI activation uses refreshed exports while the existing runtime and Stability
+  collection continue. Home Assistant loads the new manifest identity on its next
+  full restart; restarting resets the in-memory Stability collection. Installing
+  from an earlier Python baseline requires the cumulative package restart.
+- V1 retains its beta.2 behaviour. Dashboard refresh-loading improvements remain
+  deferred. Rollback restores the earlier package and saved dashboard cards together.
+- The implemented UI through `4f86e66` received Lab checks before this version bump;
+  those observations identify the tested UI source. Beta.3 package/loaded-version
+  evidence is recorded separately when installed and activated.
+
+## v2.1.0-beta.2 — Earlier unpublished candidate
+
+Version introduced at `76285b0`; subsequent V2 summary and history work is collected
+under beta.3 above. Published Stable remains v2.0.12.
+
+### Seven-day drift badge
+
+- Shows backend-derived **Baseline · N%** collection progress before usable drift
+  data is available. Missing or invalid coverage remains unknown rather than implying progress.
+- Opens a concise explanation on tap, with **View history** opening native Home
+  Assistant history for the same drift entity and **Close** dismissing details.
+- Preserves drift calculations, Stability scoring, control decisions and entity
+  semantics. Regenerate exports and replace pasted Manual cards to receive the UI;
+  no configuration or stored-data migration is required.
 
 ## v2.1.0-beta.1 — Earlier unpublished candidate
 

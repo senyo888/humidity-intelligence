@@ -57,13 +57,11 @@ It gives you:
 - native Home Assistant diagnostics for support and triage
 - services for dashboard export, self-check, diagnostics, pause/resume, and release validation
 
-Current development manifest version: **v2.1.0-beta.2**, a local, unpublished candidate.
-It adds seven-day drift baseline progress and explanatory badge details to the
-observational Stability work. The earlier beta.1 source was pushed through `144570b`
-on `senyo888-patch-1`; that commit does not identify the beta.2 package.
-The current published Stable is **v2.0.12**, released on 9 September 2026. HI is in
-the HACS default repository; this new beta has not been published or offered through
-HACS. See [Release Notes](#release-notes) for scope and update requirements.
+Current development manifest version: **v2.1.0-beta.3**, an unpublished candidate.
+It brings friendly V2 badge summaries, richer histories and distinct source-room
+colours, building on beta.2’s seven-day drift progress and observational Stability.
+The current published Stable is **v2.0.12**, released on 9 September 2026 and available
+through HACS. See [Release Notes](#release-notes) for beta scope and upgrade steps.
 
 Optional HA Lab evidence is advisory and does not block promotion, tagging, or
 publication.
@@ -453,10 +451,9 @@ must be reviewable from tracked repository files.
 
 ## Current Release Highlights
 
-- local candidate `2.1.0-beta.2` adds seven-day drift progress and details alongside
-  the backend-owned Stability Score, compact
-  badge, evidence and Recent trend details; it preserves deterministic control and
-  is not a published or HACS-offered release
+- unpublished candidate `2.1.0-beta.3` adds V2 summaries, richer recorded histories,
+  clearer navigation and source-room colours alongside drift and Stability details;
+  deterministic control remains authoritative
 - published Stable `2.0.12` improves Manual handover, Home Assistant-local time gates,
   lifecycle-safe timers and Home Assistant 2026.9 setup assistance
 - preceding Stable `2.0.11` restores the centred passive Stability preview; those
@@ -968,7 +965,7 @@ Notes:
   workflows. Dashboard creation and editing remain in Home Assistant's dashboard UI.
   System and Manual buttons keep the
   v2.0.7 helper-toggle behavior.
-- **v2.1.0-beta.2 candidate:** the accepted badge shows backend-owned
+- **v2.1.0-beta.3 candidate:** the accepted badge shows backend-owned
   score, evidence and Recent trend details. It remains observational. See the
   [accepted contract](docs/stability-score-accepted-baseline.md) for thresholds,
   incomplete AQ, restart history reset, client support and card refresh, and the
@@ -1219,22 +1216,25 @@ CO emergency pressure. Details are in
 
 ## Release Notes
 
-### v2.1.0-beta.2 (Local candidate; not published)
+### v2.1.0-beta.3 (Unpublished candidate)
 
-- adds V2 badge explanations, compact icon-free Ready/Zone 1/Zone 2/AQ badges,
-  and a clearer Stability details header; Condensation, Mould, Current Air Control
-  and AQ offer 24-hour/seven-day recorded history with Back and Close controls
-- adds backend-derived **Baseline · N%** progress to the seven-day drift badge while
-  usable drift data is still being collected; missing or invalid coverage stays unknown
-- opens a short explanation on tap, with **View history** opening native Home
-  Assistant history for the same drift entity and **Close** dismissing details
-- retains the observational Stability work introduced in beta.1; drift calculations,
-  Stability scoring, control decisions and entity semantics are unchanged by this badge update
-- requires refreshed exports (`refresh_ui`, then `dump_cards`/`view_cards`) and complete
-  replacement of pasted Manual cards; no configuration or stored-data migration is required
-- remains local and unpublished. An authorized package installation requires a full
-  restart for the included Python changes; local validation does not establish deployment,
-  release readiness or HACS availability
+- collects every change since beta.2 (`76285b0`): V2 badge summaries, compact
+  Ready/Zone 1/Zone 2/AQ badges, clearer Stability details and friendly explanations
+- adds 24-hour/seven-day risk and room timelines, mode/reason history and separate
+  AQ charts; room colours match labelled legends across histories and ranges within
+  the page session. Risk, availability, units and timestamps retain their meaning
+- uses compact circular Close controls and transparent Back/Close navigation;
+  includes the shared history renderer, deterministic embeds and packaging checks
+- retains beta.2’s **Baseline · N%** drift progress and observational Stability;
+  backend Python, entity semantics and control decisions are preserved
+- upgrade from beta.2: install the complete candidate, run `refresh_ui`, create fresh
+  exports with `dump_cards`/`view_cards`, replace saved V2 Manual cards and refresh
+  the dashboard. This UI update preserves the running collection; Home Assistant
+  loads the new manifest identity at its next full restart, which resets Stability
+  collection. Earlier Python baselines require the cumulative package restart
+- configuration and stored data carry forward. Refresh-loading work remains deferred.
+  See [the changelog](CHANGELOG.md#unreleased--v210-beta3) for complete scope,
+  validation coverage and source-specific Lab evidence
 
 ### v2.0.12 (Current Published Stable)
 
@@ -1294,6 +1294,21 @@ displaced older summaries into this container as new releases are added. CHANGEL
 remains the complete detailed history. -->
 <details>
 <summary>Previous Releases</summary>
+
+### v2.1.0-beta.2 (Local candidate; not published)
+
+- adds backend-derived **Baseline · N%** progress to the seven-day drift badge while
+  usable drift data is still being collected; missing or invalid coverage stays unknown
+- opens a short explanation on tap, with **View history** opening native Home
+  Assistant history for the same drift entity and **Close** dismissing details
+- retains the observational Stability work introduced in beta.1; drift calculations,
+  Stability scoring, control decisions and entity semantics are unchanged by this badge update
+- requires refreshed exports (`refresh_ui`, then `dump_cards`/`view_cards`) and complete
+  replacement of pasted Manual cards; no configuration or stored-data migration is required
+- remains local and unpublished. An authorized package installation requires a full
+  restart for the included Python changes; local validation does not establish deployment,
+  release readiness or HACS availability
+
 
 ### v2.1.0-beta.1 (Unpublished candidate)
 

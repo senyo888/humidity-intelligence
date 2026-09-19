@@ -80,6 +80,10 @@ Home Assistant entity details; Ready links to house humidity. Zone 1/2 link to t
 resolved humidity reading, which can be a fallback rather than a whole-zone
 measurement.
 
+Beta.3 collects the V2 summaries, compact status row, friendly wording and history
+updates introduced after beta.2. Refresh exports and replace saved V2 cards to
+apply them while preserving the running Stability collection.
+
 Condensation, Mould, Current Air Control and AQ use a shared recorded-history panel:
 
 - **24 hours** and **7 days** select a bounded window. **Back** returns to the

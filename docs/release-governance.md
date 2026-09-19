@@ -5,7 +5,8 @@ testing and validation branches.
 
 ## Canonical Version Model
 
-- `2.1.0-beta.2`: current local, unpublished candidate with seven-day drift badge progress/details.
+- `2.1.0-beta.3`: current unpublished candidate with V2 summaries, recorded histories and source-room colours.
+- `2.1.0-beta.2`: earlier unpublished candidate, introduced at `76285b0`, with seven-day drift progress/details.
 - `2.1.0-beta.1`: earlier committed/pushed, unpublished Stability candidate.
 - `2.1.0-rc.N`: future release-candidate identity, only after an authorized transition.
 - `2.1.0`: future stable identity; metadata alone does not publish it.
@@ -24,15 +25,23 @@ must remain aligned with the
 published GitHub Release/tag.
 
 Published Stable is [v2.0.12](https://github.com/senyo888/humidity-intelligence/releases/tag/v2.0.12),
-released on 2026-09-09. The current `2.1.0-beta.2` candidate is local and unpublished.
+released on 2026-09-09. The current `2.1.0-beta.3` candidate is unpublished.
 The earlier `2.1.0-beta.1` source was committed and pushed through `144570b` on
-`senyo888-patch-1`; that commit does not identify beta.2. There is no v2.1 tag,
+`senyo888-patch-1`; beta.2 began at `76285b0`, and beta.3 collects the subsequent UI work through `4f86e66`. There is no v2.1 tag,
 GitHub Release or HACS offering.
 Source status does not certify an installation or authorize further runtime mutation.
 Release readiness still requires scope-appropriate validation, reviews and explicit
 maintainer approval. Local operational evidence does not replace tracked correctness.
 
-The beta.2 candidate adds backend-derived seven-day drift baseline progress and
+Beta.3 adds V2 summaries, compact status badges, richer history panels, friendly
+wording, transparent navigation and distinct source-room colours. Its change from
+beta.2 preserves backend Python and entity semantics. Refresh exports and saved
+Manual cards to activate the UI; the next full restart loads the beta.3 manifest
+identity and resets the in-memory Stability collection. Earlier-baseline installs
+retain the cumulative Python restart requirement. Lab UI evidence through `4f86e66`
+precedes the beta.3 version bump and identifies that exact tested source.
+
+The earlier beta.2 candidate adds backend-derived seven-day drift baseline progress and
 explanatory details with native history access, without changing drift calculations
 or entity semantics. It also contains accepted observational Stability, the corrected shared
 Diagnostics connection, fail-closed score rendering, one collection LED per valid
