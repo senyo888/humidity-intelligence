@@ -133,17 +133,17 @@ const hiBadgeHistory = (() => {
       };
       select.addEventListener('change', show); show();
     }
-    const inspection = (records, label) => `<label>Inspect ${escape(label)}<select aria-label="Inspect ${escape(label)}">${records.map((record, i) => `<option value="${i}">${escape(date(record.time))} — ${escape(record.state)}${record.boundary ? ' · state at start' : ''}</option>`).join('')}</select></label><output></output>`;
+    const inspection = (records, label, kind) => `<label>Choose a recorded ${kind === 'numeric' ? 'value' : kind === 'reason' ? 'reason' : kind === 'risk' ? 'risk level' : 'state'}<select aria-label="Choose a record: ${escape(label)}">${records.map((record, i) => `<option value="${i}">${escape(date(record.time))} — ${escape(record.state)}${record.boundary ? ' · state at start' : ''}</option>`).join('')}</select></label><output></output>`;
     function draw(model, item, start, end) {
       const article = document.createElement('article');
       const heading = `<h3>${escape(item.label)}</h3>`;
       if (model.status !== 'ok') {
-        const message = {unmapped:'History becomes available when this metric has a mapped source.',missing:'History for this source is currently unavailable.',empty:'History is available when Recorder retains accessible records for this period.',oversize:'Choose 24 hours or open entity details to explore this larger history.'}[model.status] || 'History unavailable.';
+        const message = {unmapped:'This source is currently unavailable in Home Assistant.',missing:'History for this source is currently unavailable.',empty:'History for this period is currently unavailable. Try another range or open the source details.',oversize:'Choose 24 hours or open entity details to explore this larger history.'}[model.status] || 'History unavailable.';
         article.innerHTML = heading + `<p>${message}</p>`; return article;
       }
       const records = model.records;
       let html = heading;
-      if (model.omitted) html += `<p>Partial view: latest ${records.length} of ${records.length + model.omitted} records. Choose a shorter range for finer detail, or open entity details to explore the wider history.</p>`;
+      if (model.omitted) html += `<p>Showing the latest ${records.length} of ${records.length + model.omitted} usable records. Use the range controls or source details to explore further.</p>`;
       if (model.invalid) html += `<p>${model.invalid} records need a valid timestamp within this period to display.</p>`;
       const shortDate = time => { try {return new Intl.DateTimeFormat(hass?.locale?.language || undefined,{timeZone:hass?.config?.time_zone || undefined,month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}).format(time);} catch (_) {return new Date(time).toISOString().slice(5,16);} };
       const tick = value => Number(value.toPrecision(3)).toLocaleString('en',{notation:Math.abs(value)>=10000 || (value!==0 && Math.abs(value)<.01) ? 'scientific' : 'standard',maximumSignificantDigits:3});
@@ -151,19 +151,19 @@ const hiBadgeHistory = (() => {
       if (item.kind === 'numeric') {
         const units = [...new Set(records.filter(record => record.number !== null).map(record => record.unit))];
         if (units.length > 1) html += '<p class="hi-history-note">Recorded units change; each unit has a separate chart.</p>';
-        if (!units.length) html += '<p>Recorded categorical states are available in the inspector below.</p>';
-        if (units.length > 8) html += '<p>Inspect individual values below to explore the many recorded units in this period.</p>';
+        if (!units.length) html += '<p>Choose a recorded state below to see its value and time.</p>';
+        if (units.length > 8) html += '<p>Choose a recorded value below to explore the different units in this period.</p>';
         for (const unit of units.slice(0, units.length > 8 ? 0 : 8)) {
-          html += `<p>${unit === null ? 'Reported aggregate value · unit unspecified' : 'Recorded unit: ' + escape(unit)}</p>`;
+          html += `<p>${unit === null ? 'Recorded value · unit unspecified' : 'Recorded unit: ' + escape(unit)}</p>`;
         const group = records.map(record => record.unit === unit ? record : {...record, number:null});
         const chart = seriesPaths(group, start, end);
         if (chart.points.length) {
           const paths = chart.segments.map(points => `<polyline points="${points.map(p => `${p.x.toFixed(2)},${p.y.toFixed(2)}`).join(' ')}" fill="none" stroke="#7dd3fc" stroke-width="2"/>`).join('');
           const dots = chart.points.map(p => `<circle cx="${p.x.toFixed(2)}" cy="${p.y.toFixed(2)}" r="2" fill="#7dd3fc"/>`).join('');
-          html += `<svg class="hi-history-chart" viewBox="0 0 500 190" role="img" aria-label="${escape(item.label)} recorded values. Inspect exact values below."><path d="M48 20V156H475" fill="none" stroke="#64748b"/><text x="4" y="30" fill="#cbd5e1" font-size="10">${escape(tick(chart.max))}</text><text x="4" y="158" fill="#cbd5e1" font-size="10">${escape(tick(chart.min))}</text>${paths}${dots}</svg>${axis}`;
+          html += `<svg class="hi-history-chart" viewBox="0 0 500 190" role="img" aria-label="${escape(item.label)} recorded values. Choose a recorded value below for its time and value."><path d="M48 20V156H475" fill="none" stroke="#64748b"/><text x="4" y="30" fill="#cbd5e1" font-size="10">${escape(tick(chart.max))}</text><text x="4" y="158" fill="#cbd5e1" font-size="10">${escape(tick(chart.min))}</text>${paths}${dots}</svg>${axis}`;
         }
         }
-        html += '<p class="hi-history-note">Lines join recorded observations, with breaks at categorical states and unit changes.</p>';
+        html += '<p class="hi-history-note">Lines join recorded values. A recorded state such as Unavailable, or a change of unit, creates a break.</p>';
       } else if (item.kind !== 'reason') {
         const colors = {ok:'#4ade80',watch:'#facc15',risk:'#fb923c',danger:'#f87171',unknown:'#64748b',neutral:'#7dd3fc'};
         const ribbons = records.map((record,index) => {
@@ -173,12 +173,12 @@ const hiBadgeHistory = (() => {
           const label = category(record.state,item.kind);
           return `<rect x="${x.toFixed(2)}" y="0" width="${width.toFixed(2)}" height="36" fill="${colors[label.tone]}" stroke="#0d1522" stroke-width="1"><title>${escape(label.label)} · ${escape(date(record.time))}</title></rect>${width >= 50 ? `<text x="${(x+5).toFixed(2)}" y="23" font-size="13" fill="#071523">${escape(label.label.slice(0, Math.max(1, Math.floor((width-10)/8))))}${label.label.length > Math.floor((width-10)/8) ? '…' : ''}</text>` : ''}`;
         }).join('');
-        html += `<svg class="hi-history-chart" viewBox="0 0 500 36" role="img" aria-label="${escape(item.label)} recorded states. Inspect states below.">${ribbons}</svg>${axis}`;
+        html += `<svg class="hi-history-chart" viewBox="0 0 500 36" role="img" aria-label="${escape(item.label)} recorded states. Choose a recorded state below for its time and value.">${ribbons}</svg>${axis}`;
         html += `<div class="hi-history-legend">${[...new Set(records.map(record => record.state))].map(value => {const label=category(value,item.kind); return `<span><i style="background:${colors[label.tone]}" aria-hidden="true"></i>${escape(label.label)}</span>`;}).join('')}</div>`;
       }
-      html += inspection(records,item.label);
+      html += inspection(records,item.label,item.kind);
       const updates = item.kind === 'numeric' || item.kind === 'reason' ? records.filter(record => !record.boundary) : transitions(records);
-      html += `<details class="hi-history-records"><summary>${item.kind === 'numeric' || item.kind === 'reason' ? 'Recorded updates' : 'Recorded transitions'} (${updates.length})</summary><ul>${updates.map(record => `<li>${escape(date(record.time))} — ${escape(record.state)}${record.unit ? ' ' + escape(record.unit) : ''}</li>`).join('')}</ul></details>`;
+      html += `<details class="hi-history-records"><summary>${item.kind === 'numeric' || item.kind === 'reason' ? 'Recorded updates' : 'Recorded changes'} (${updates.length})</summary><ul>${updates.map(record => `<li>${escape(date(record.time))} — ${escape(record.state)}${record.unit ? ' ' + escape(record.unit) : ''}</li>`).join('')}</ul></details>`;
 
       article.innerHTML = html; inspect(article, records); return article;
     }
@@ -186,13 +186,13 @@ const hiBadgeHistory = (() => {
       invalidate(); const requestGeneration = generation;
       const end = now(), start = end - hours * 3600000;
       content.innerHTML = '<p role="status">Loading recorded history…</p>';
-      if (!requested.length) { content.innerHTML = '<p>History becomes available when its sources are mapped.</p>'; return; }
+      if (!requested.length) { content.innerHTML = '<p>History sources are currently unavailable in Home Assistant.</p>'; return; }
       if (typeof hass?.callWS !== 'function') { content.innerHTML = '<p>Open entity details to access history in this client.</p>'; return; }
       let timedOut = false;
       timer = setTimeout(() => {
         if (disposed || !active || requestGeneration !== generation) return;
         timedOut = true; generation++;
-        content.innerHTML = '<p>History request timed out. Choose a range to try again, or open entity details.</p>';
+        content.innerHTML = '<p>History took too long to load. Choose a range to try again, or open source details.</p>';
       }, timeoutMs);
       try {
         const response = await hass.callWS({type:'history/history_during_period',start_time:new Date(start).toISOString(),end_time:new Date(end).toISOString(),entity_ids:requested,include_start_time_state:true,significant_changes_only:false,minimal_response:false,no_attributes:false});
@@ -200,10 +200,10 @@ const hiBadgeHistory = (() => {
         clearTimeout(timer);
         content.replaceChildren();
         const context = document.createElement('p'); context.className='hi-history-note';
-        context.textContent = allowed.some(item=>item.kind==='numeric') ? 'Each chart follows one recorded aggregate and its available inputs. Historical membership is unspecified. Use dedicated CO safety status when assessing CO emergencies.' : allowed.some(item=>item.kind==='risk') ? 'Risk and room records keep independent timestamps. An OK classification reflects the available room evidence.' : 'Recorded operating modes describe controller state. Reasons retain their own timestamps. Physical output activity is separate evidence.';
+        context.textContent = allowed.some(item=>item.kind==='numeric') ? 'Each chart shows a recorded house average. The mix of sensors can change over time. Details of that mix are unavailable for past readings. For CO emergencies, use dedicated CO safety information.' : allowed.some(item=>item.kind==='risk') ? 'Risk and room changes are recorded separately. “OK” reflects the room readings available at the time.' : 'Explore HI’s recorded modes and reasons. Each keeps its own timestamp. These records describe HI’s selected mode.';
         content.appendChild(context);
         const range = document.createElement('p'); range.className='hi-history-note';
-        range.textContent = `${date(start)} — ${date(end)}. State at start provides carried context; its original change time is unspecified.`;
+        range.textContent = `${date(start)} — ${date(end)}. “State at start” shows the value carried into this period. Its timestamp marks the start of your selected range.`;
         content.appendChild(range);
         if (!response || typeof response !== 'object' || Array.isArray(response)) throw new Error('Invalid history response');
         for (const item of allowed) {
@@ -213,7 +213,7 @@ const hiBadgeHistory = (() => {
         }
       } catch (_) {
         if (disposed || !active || requestGeneration !== generation) return;
-        clearTimeout(timer); content.innerHTML = '<p>History is currently unavailable. Try another range or open entity details to continue.</p>';
+        clearTimeout(timer); content.innerHTML = '<p>History is currently unavailable. Try another range or open source details.</p>';
       }
     }
     return {

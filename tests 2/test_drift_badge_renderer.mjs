@@ -75,7 +75,7 @@ test('baseline is floored progress toward the reported requirement, never a buck
     details.forEach(fn => {
       const html = fn({ hi_drift: view });
       assert.match(html, new RegExp(`value="${expected}"`));
-      assert.match(html, /Baseline progress measures Statistics time coverage/);
+      assert.match(html, /Baseline progress measures Statistics time coverage|Progress follows the Statistics helper’s time coverage/);
       assert.doesNotMatch(html, /Collecting|Baseline progress: 100%/);
     });
   }

@@ -134,6 +134,12 @@ service change is introduced by this template-only update. Rollback restores the
 previous templates and saved card YAML. Other changes in an installed beta package
 may have their own restart requirements.
 
+The summary and history explanations use plain language. Recorded changes, value
+selectors and availability messages describe the available data and useful next
+steps. Backend classifications, historical units and CO safety context remain
+authoritative. The local Stability fallback reads **Unavailable** when the
+score payload needs valid evidence.
+
 ## UI Preview
 
 ### Live 2.0.10-beta.7 Card State

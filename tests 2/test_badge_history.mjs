@@ -91,15 +91,15 @@ test('Back and range switches discard stale results and preserve chosen range',a
  h.controller.open();assert.equal(Date.parse(h.requests[2].end_time)-Date.parse(h.requests[2].start_time),7*86400000);h.controller.dispose();
 });
 test('timeout, failures, close and owner removal never paint a late response',async()=>{
- const h=harness({timeoutMs:5});h.controller.open();await new Promise(r=>setTimeout(r,15));assert.match(h.content.innerHTML,/timed out/);h.pending[0].resolve({'sensor.entry_risk':[row(1,'LATE')]});await flush();assert.match(h.content.innerHTML,/timed out/);h.controller.dispose();
+ const h=harness({timeoutMs:5});h.controller.open();await new Promise(r=>setTimeout(r,15));assert.match(h.content.innerHTML,/took too long to load/);h.pending[0].resolve({'sensor.entry_risk':[row(1,'LATE')]});await flush();assert.match(h.content.innerHTML,/took too long to load/);h.controller.dispose();
  const f=harness();f.controller.open();f.pending[0].reject(new Error('denied'));await flush();assert.match(f.content.innerHTML,/currently unavailable/);f.controller.dispose();
  const c=harness();c.controller.open();c.owner.isConnected=false;c.pending[0].resolve({'sensor.entry_risk':[row(1,'REMOVED')]});await flush();assert.match(c.content.innerHTML,/Loading/);c.controller.dispose();
  const d=harness();d.controller.open();d.controller.dispose();d.pending[0].resolve({'sensor.entry_risk':[row(1,'CLOSED')]});await flush();assert.equal(d.section.isConnected,false);
 });
 test('missing optional metrics do not broaden query and all-missing does not fetch',async()=>{
  const entities=[{id:'sensor.entry_iaq',kind:'numeric',label:'IAQ'},{id:'sensor.entry_voc',kind:'numeric',label:'VOC'},{id:'not_an_entity',kind:'numeric',label:'Invalid'}];
- const h=harness({entities,states:{'sensor.entry_iaq':{state:'0'}}});h.controller.open();assert.deepEqual(h.requests[0].entity_ids,['sensor.entry_iaq']);h.pending[0].resolve({'sensor.entry_iaq':[row(1,'0')]});await flush();assert.match(h.content.children.map(n=>n.innerHTML).join(''),/metric has a mapped source/);h.controller.dispose();
- const absent=harness({states:{}});absent.controller.open();assert.equal(absent.requests.length,0);assert.match(absent.content.innerHTML,/sources are mapped/);absent.controller.dispose();
+ const h=harness({entities,states:{'sensor.entry_iaq':{state:'0'}}});h.controller.open();assert.deepEqual(h.requests[0].entity_ids,['sensor.entry_iaq']);h.pending[0].resolve({'sensor.entry_iaq':[row(1,'0')]});await flush();assert.match(h.content.children.map(n=>n.innerHTML).join(''),/This source is currently unavailable/);h.controller.dispose();
+ const absent=harness({states:{}});absent.controller.open();assert.equal(absent.requests.length,0);assert.match(absent.content.innerHTML,/History sources are currently unavailable/);absent.controller.dispose();
 });
 test('numeric rendering uses historical units, separate charts, escaped inspection and exact zero',async()=>{
  const h=harness({entities:[{id:'sensor.entry_iaq',kind:'numeric',label:'IAQ'}]});h.controller.open();h.pending[0].resolve({'sensor.entry_iaq':[row(1,'0'),row(2,'2',{unit_of_measurement:'x'}),row(3,'3',{unit_of_measurement:'y'}),row(4,'<script>bad</script>')]});await flush();

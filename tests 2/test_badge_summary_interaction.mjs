@@ -175,7 +175,7 @@ test('renderer escapes dynamic risk, reason and history labels and qualifies exi
   const states={[config.history]:{attributes:{friendly_name:hostile}},'sensor.air_control_reason':{state:hostile}};
   const html=render(entity,{hi_summary:config},states);
   assert.ok(!html.includes(hostile),title);assert.match(html,/&lt;img/);assert.match(html,/Recorder and retention/);
-  const absent=render(undefined,{hi_summary:config},{});assert.match(absent,/mapped entit(?:y is|ies are) missing/);assert.match(absent,/disabled/);assert.match(absent,/Unavailable/);
+  const absent=render(undefined,{hi_summary:config},{});assert.match(absent,/currently unavailable in Home Assistant/);assert.match(absent,/disabled/);assert.match(absent,/Unavailable/);
  }
 });
 test('compact badges preserve color expressions and icons are removed only from four cards',()=>{
@@ -186,7 +186,7 @@ test('compact badges preserve color expressions and icons are removed only from 
    assert.match(card,/show_icon: false/);assert.match(card,/min-height: 46px/);assert.match(card,/font-size: 14px/);assert.match(card,/white-space: normal/);assert.match(card,/overflow-wrap: anywhere/);assert.match(card,/text-overflow: clip/);assert.match(card,/co_emergency/);assert.match(card,/box-shadow:/);
   }
   assert.match(text,/safe-area-inset-top/);assert.match(text,/safe-area-inset-bottom/);
-  const title=text.indexOf('<h2>Stability Score</h2>');const footer=text.indexOf('Details reflect the snapshot when opened.');assert.ok(footer>title);
+  const title=text.indexOf('<h2>Stability Score</h2>');const footer=text.indexOf('These details capture the moment you opened this panel.');assert.ok(footer>title);
  }
 });
 

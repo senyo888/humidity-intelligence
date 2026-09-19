@@ -33,6 +33,9 @@ beta.1 commit below does not identify this package. Published Stable remains v2.
   comfortable touch targets; explanations use positive, direct language.
   History navigation keeps its background transparent so scrolling content remains
   visible between Back and Close.
+- Badge explanations and history messages use plain, friendly language. Recorded
+  changes and value selectors have clearer labels, and history availability messages
+  offer useful next steps while retaining source status and safety context.
 - V2 Mobile and V2 Tablet share the changes. V1 is unchanged. Refresh exports and
   replace pasted Manual cards; this template-only change requires no Python restart
   or configuration/data migration. Runtime control and entity semantics are unchanged.

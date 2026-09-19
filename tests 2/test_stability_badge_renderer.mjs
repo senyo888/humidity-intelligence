@@ -76,7 +76,7 @@ test('missing and malformed contracts cannot imply a preview or completed score'
   for (const contract of [undefined, null, {}, 'malformed', []]) {
     const output = renderContract(contract);
     assert.match(output, /<span>—<\/span><\/div>/);
-    assert.equal(renderLabel(contract), 'NO SCORE');
+    assert.equal(renderLabel(contract), 'Unavailable');
     assert.match(output, /--hi-stability-color:#94a3b8/);
     assert.doesNotMatch(output, /gauge-white|PREVIEW|2\.1/);
   }
@@ -135,7 +135,7 @@ test('native compact label escapes backend text without deriving score classific
   const unsafe = '<img src=x onerror="bad"> & \'quoted\'';
   assert.equal(renderLabel({ presentation: { compact_text: unsafe } }),
     '&lt;img src=x onerror=&quot;bad&quot;&gt; &amp; &#039;quoted&#039;');
-  assert.equal(renderLabel({ score: { display_score: 99, display_classification: 'excellent' } }), 'NO SCORE');
+  assert.equal(renderLabel({ score: { display_score: 99, display_classification: 'excellent' } }), 'Unavailable');
 });
 
 test('LED palette consumes backend tokens independently of the condition halo', () => {
@@ -292,7 +292,7 @@ test('badge provides an inert dialog snapshot with backend explanation evidence 
   });
   assert.match(output, /<template class="hi-stability-details-template">/);
   assert.doesNotMatch(output, /popovertarget|popover="auto"|hi-stability-open/);
-  assert.match(output, /Details reflect the snapshot when opened/);
+  assert.match(output, /These details capture the moment you opened this panel/);
   assert.match(output, /<p>Backend partial evidence explanation\.<\/p>/);
   assert.match(output, /<p>Rolling-window coverage: 303 of 432 valid samples\.<\/p>/);
   assert.match(output, /<h3>Recent trend<\/h3>/);
@@ -329,7 +329,7 @@ test('malformed score types and ranges fail closed despite healthy presentation 
       assert.match(output, /--hi-stability-led-sweep:0deg;/);
       assert.match(output, /Stability Score unavailable\./);
       assert.doesNotMatch(output, /gauge-white|partial-pulse|Healthy stale|Stale movement|class="hi-stability-mark"/);
-      assert.equal(renderLabel(contract), 'NO SCORE');
+      assert.equal(renderLabel(contract), 'Unavailable');
     }
   }
 });
@@ -344,7 +344,7 @@ test('legacy score locations use the same strict numeric validation', () => {
       assert.match(output, /<span>—<\/span><\/div>/);
       assert.match(output, /--hi-stability-color:#94a3b8;/);
       assert.doesNotMatch(output, /gauge-white/);
-      assert.equal(assertIdentical(LABEL_RENDERERS.map(render => render({attributes}))), 'NO SCORE');
+      assert.equal(assertIdentical(LABEL_RENDERERS.map(render => render({attributes}))), 'Unavailable');
     }
   }
 });
@@ -355,7 +355,7 @@ test('available payload without a numeric score and unavailable payload with sta
     const output = renderContract(contract);
     assert.match(output, /<span>—<\/span><\/div>/);
     assert.match(output, /--hi-stability-color:#94a3b8;/);
-    assert.equal(renderLabel(contract), 'NO SCORE');
+    assert.equal(renderLabel(contract), 'Unavailable');
   }
 });
 
