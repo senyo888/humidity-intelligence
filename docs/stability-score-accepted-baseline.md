@@ -1,6 +1,7 @@
 # Accepted Stability Score baseline
 
-Status: accepted functional and presentation contract; local unreleased integration.
+Status: accepted functional and presentation contract; integrated in the unpublished
+`2.1.0-beta.1` candidate.
 This records the accepted behaviour for the current implementation work. It does not
 claim publication, HACS availability, deployment, or a newly approved release version.
 Historical release notes retain their original scope.
@@ -151,14 +152,18 @@ fallback. Do not couple independent LED colour back to halo colour.
 
 Preserve accepted footprint: 82px gauge, centred numeric content (26px, 23px for three
 digits), label below, compact status below label at 8px. No extra inner grey circle,
-no visible dormant LED bank. Fine 0.8-degree marks spaced at three-degree intervals
-sit on the outer edge; small top origin. Do not move or enlarge the badge during
+no visible dormant LED bank. Scored movement uses fine 0.8-degree marks spaced at
+three-degree intervals on the outer edge, with a small top origin. Do not move or enlarge the badge during
 integration. Exact CSS at baseline remains the visual reference.
 
-During collection, the LED ring fills clockwise from the top using backend
-`presentation.progress_ratio`, with `floor(ratio * 120)` illuminated marks. Accept
-only finite numeric ratios in [0,1], without coercion; malformed progress stays
-unlit. Incomplete progress cannot appear as a full ring. Collection uses the blue
+During collection, the LED ring fills clockwise from the top with one illuminated
+mark per valid sample, using backend counts and `presentation.progress_ratio`.
+The required count must be an integer in [1,432], and the valid count must be a
+non-negative integer no greater than 432. Accept only finite numeric ratios in [0,1] consistent with
+the backend's rounded count/required ratio, without coercion; malformed or conflicting
+progress stays unlit. Divide the circle into the required number of slots (currently
+303), centre each tick in its slot, and hide the fixed origin after the first tick.
+Incomplete progress cannot appear as a full ring. Collection uses the blue
 collection colour and represents valid-sample progress, not elapsed time or score
 movement. A ratio of 1 renders a full ring only while the backend still reports
 collection. Transition immediately to backend-reported score or incomplete evidence;
@@ -200,7 +205,10 @@ Only changed marks fade sequentially (138ms fade, 18ms stagger); retained marks 
 Half-circle settles in about 1.2s, full circle about 2.4s; at most 120 marks per winding.
 Crossing origin can render both windings temporarily. Invalid endpoints fail closed.
 
-Tap/click/keyboard activation of gauge opens native Popover API details: backend
+Tap/click/keyboard activation of the whole badge opens a native modal dialog through
+the supported button-card action. An inert template in the owning card supplies an
+explicitly labelled snapshot, mounted outside the card's gesture-handling ancestry.
+There is no nested native opener. Details contain the backend
 explanation and, while collecting, **Baseline progress: N of 303 valid samples**, using backend
 `window.valid_samples` and `window.minimum_valid_samples`, never a hardcoded
 denominator. During collection, details explain the clockwise sample-progress ring
@@ -208,11 +216,14 @@ and that score eligibility still depends on backend evidence requirements. Once
 scored, **Recent trend** explains retained arc versus current colour plus exact
 backend movement detail. Outside collection, the tally is explicitly labelled
 **Rolling-window coverage: N of 432 valid samples**, using backend expected samples.
-Close, Escape and outside
-tap dismiss. Hold opens HI Diagnostics more-info. Readable Diagnostics attribute
-exposes score, evidence and movement; native Activity is not a substitute telemetry
-panel. Modern Popover-capable client required; older WebViews need explicit handling,
-not a silent removal of the detail interaction.
+A visible sticky Close control, native Escape and backdrop activation dismiss the
+dialog and restore focus. Only one Stability dialog is open at a time. Navigation
+or removal of the owning card cleans it up. Telemetry refresh must not replace an
+open snapshot or detach its Close control; reopen to see updated evidence.
+Hold opens HI Diagnostics more-info. If native `showModal` is unavailable, tap also
+falls back to Home Assistant's Diagnostics more-info. The readable Diagnostics
+attribute exposes score, baseline progress, failure history and movement; native
+Activity is not a substitute telemetry panel.
 
 `count/303` is progress toward the minimum sample requirement; it does not guarantee
 score eligibility on its own. The 432 buckets remain the 72-hour rolling-window
@@ -244,10 +255,10 @@ Run `humidity_intelligence.refresh_ui`, then obtain fresh supported `dump_cards`
 browser/app frontend; clear its cache if it retains an older renderer. Existing pasted
 cards do not update themselves. Validate Mobile, Tablet and the cards actually in use.
 
-Use a modern Popover-capable browser/WebView for score details. On older clients,
-update the browser/WebView and use the readable Diagnostics attribute to inspect truth
-until compatibility is restored. A missing detail interaction is a compatibility gap,
-not equivalent support for the accepted interaction.
+Verify dialog open/dismiss/reopen on the actual phone and tablet clients, including
+after telemetry refresh. Clients without native modal support must open Diagnostics
+more-info rather than silently losing the interaction. Desktop screenshots and
+structural renderer tests do not establish touch-client correctness.
 
 Rollback has two parts: restore the preserved integration package and restart, and
 separately restore saved dashboard/Manual-card YAML. Keep package backups outside

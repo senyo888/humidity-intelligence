@@ -8,10 +8,20 @@ This project follows a practical changelog format for Home Assistant and HACS us
 
 ## Unreleased — v2.1.0-beta.1
 
-Prepared locally with a distinct candidate identity. No tag, GitHub Release, HACS
-publication or deployment is claimed. Published Stable remains v2.0.12.
+Committed and pushed on `senyo888-patch-1`, with earlier collection work through
+`07dc87a`. This candidate remains unpublished: no tag, GitHub Release or HACS
+offering. Published Stable remains v2.0.12.
 
 ### Accepted Stability Score integration
+
+- Corrects early baseline progress with one clockwise LED per valid sample. Strict
+  count/ratio checks keep malformed evidence unlit; the origin clears as collection
+  begins. Scored movement and the separate red history track retain their behavior.
+- Uses the whole badge action to open a detached details dialog with a visible Close
+  button, snapshot label, navigation cleanup and native Diagnostics fallback.
+  Readable Diagnostics includes baseline and failure evidence. Refresh exports and
+  replace pasted cards; updated Python requires restart, which clears baseline history.
+  No configuration migration or control-lane changes are required.
 
 - Retains known failed or missed scheduled sample buckets in memory for the rolling
   72-hour window. A separate thin red track shows that history in non-scored

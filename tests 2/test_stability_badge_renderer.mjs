@@ -284,25 +284,25 @@ test('incomplete native label preserves escaped text inside the evidence marker 
   }
 });
 
-test('badge opens its native details popover with backend explanation, evidence and movement', () => {
+test('badge provides an inert dialog snapshot with backend explanation evidence and movement', () => {
   const output = renderContract({
     presentation: { detail_text: 'Backend partial evidence explanation.' },
     window: { valid_samples: 303, expected_samples: 432 },
     movement: { detail_text: 'Backend movement explanation.' },
   });
-  assert.match(output, /<button class="hi-stability-open" onclick="event.stopPropagation\(\)" popovertarget="hi-stability-details" aria-label="Open Stability Score details">/);
-  assert.match(output, /id="hi-stability-details" class="hi-stability-details" popover="auto" role="dialog" aria-label="Stability Score details"/);
+  assert.match(output, /<template class="hi-stability-details-template">/);
+  assert.doesNotMatch(output, /popovertarget|popover="auto"|hi-stability-open/);
+  assert.match(output, /Details reflect the snapshot when opened/);
   assert.match(output, /<p>Backend partial evidence explanation\.<\/p>/);
   assert.match(output, /<p>Rolling-window coverage: 303 of 432 valid samples\.<\/p>/);
   assert.match(output, /<h3>Recent trend<\/h3>/);
   assert.match(output, /Arc position does not measure elapsed time\./);
   assert.match(output, /<p>Backend movement explanation\.<\/p>/);
-  assert.match(output, /class="hi-stability-close" onclick="event.stopPropagation\(\)"/);
-  assert.match(output, /popovertargetaction="hide">Close<\/button>/);
+  assert.match(output, /<button type="button" class="hi-stability-close" autofocus>Close<\/button>/);
   assert.doesNotMatch(output, /browser_mod|call-service/);
 });
 
-test('popover escapes every dynamic text surface and reports absent evidence', () => {
+test('dialog snapshot escapes every dynamic text surface and reports absent evidence', () => {
   const unsafe = '<img src=x onerror="bad">';
   const output = renderContract({ presentation: { detail_text: unsafe }, window: { valid_samples: unsafe, expected_samples: unsafe }, movement: { detail_text: unsafe } });
   assert.doesNotMatch(output, /<img|onerror="bad"/);
@@ -385,16 +385,20 @@ function renderedMarks(output) {
 }
 
 test('collection fills clockwise by actual minimum-sample progress without completing early', () => {
-  for (const [samples, count] of [[0, 0], [1, 0], [151, 59], [302, 119], [303, 120]]) {
+  for (let samples = 0; samples <= 303; samples++) {
     const ratio = Math.round(samples / 303 * 10000) / 10000;
     const output = renderContract(collectingContract(samples, ratio));
     const marks = renderedMarks(output);
-    assert.equal(marks.length, count, `${samples}/303`);
+    assert.equal(marks.length, samples, `${samples}/303`);
     marks.forEach((mark, index) => {
-      assert.ok(mark.includes(`--hi-mark-angle:${index * 3}deg;`));
+      const step = 360 / 303;
+      const width = Math.min(0.8, step * 0.7);
+      assert.ok(mark.includes(`--hi-mark-angle:${index * step + (step - width) / 2}deg;`));
+      assert.ok(mark.includes(`--hi-mark-width:${width}deg;`));
       assert.ok(mark.includes('--hi-mark-from:1;--hi-mark-to:1;'));
       assert.ok(mark.includes('animation:none;'));
     });
+    assert.equal(output.includes('<div class="hi-stability-origin"></div>'), samples === 0);
     assert.match(output, /hi-stability-direction-higher/);
     assert.match(output, /--hi-stability-led-color:#38bdf8;/);
     assert.ok(output.includes(`Baseline progress: ${samples} of 303 valid samples.`));
@@ -534,4 +538,50 @@ test('failure history detail is escaped and cannot inject popup markup', () => {
   }));
   assert.doesNotMatch(output, /<img|onerror="bad"/);
   assert.match(output, /&lt;img src=x onerror=&quot;bad&quot;&gt; &amp; &#039;failed&#039;/);
+});
+
+test('early collection shows four distinct ticks and over-target evidence clamps at full ring', () => {
+  const early = renderedMarks(renderContract(collectingContract(4, 0.0132)));
+  assert.equal(early.length, 4);
+  assert.equal(new Set(early.map(mark => mark.match(/--hi-mark-angle:([^;]+)/)[1])).size, 4);
+  const before = renderedMarks(renderContract(collectingContract(302, 0.9967)));
+  const full = renderedMarks(renderContract(collectingContract(303, 1)));
+  assert.equal(before.length, 302); assert.equal(full.length, 303);
+  assert.deepEqual(before, full.slice(0,302));
+  assert.deepEqual(renderedMarks(renderContract(collectingContract(432, 1))), full);
+});
+
+test('collection count target and ratio must be bounded and mutually consistent', () => {
+  for (const [count, required, ratio, expected] of [
+    [0,1,0,0], [1,1,1,1], [432,432,1,432],
+    [1,0,1,0], [1,433,0.0023,0], [433,303,1,0],
+    [4,303,0.0131,0], [4,303,1,0], [302,303,1,0], [0,303,0.1,0],
+    [-1,303,0,0], [4.5,303,0.0149,0], [4,303.5,0.0132,0],
+  ]) {
+    const contract = collectingContract(count, ratio);
+    contract.window.minimum_valid_samples = required;
+    assert.equal(renderedMarks(renderContract(contract)).length, expected, `${count}/${required} ratio ${ratio}`);
+  }
+  for (const field of ['valid_samples','minimum_valid_samples']) {
+    for (const bad of [undefined,null,false,true,[],{},'303',NaN,Infinity]) {
+      const contract = collectingContract(4,0.0132); contract.window[field] = bad;
+      assert.equal(renderedMarks(renderContract(contract)).length, 0, `${field}: ${String(bad)}`);
+    }
+  }
+});
+
+test('maximum collection density retains positive gaps and scored ticks keep original width', () => {
+  const contract = collectingContract(432,1); contract.window.minimum_valid_samples = 432;
+  const marks = renderedMarks(renderContract(contract));
+  const angles = marks.map(mark => Number(mark.match(/--hi-mark-angle:([^d]+)deg/)[1]));
+  const widths = marks.map(mark => Number(mark.match(/--hi-mark-width:([^d]+)deg/)[1]));
+  assert.ok(widths.every(width => width > 0 && width < 360 / 432));
+  assert.ok(angles.every((angle,index) => angle >= 0 && angle + widths[index] < 360));
+  assert.ok(angles.slice(1).every((angle,index) => angle > angles[index] + widths[index]));
+  const scored = arcs(0,18).output;
+  assert.ok(renderedMarks(scored).every(mark => !mark.includes('--hi-mark-width:')));
+  for (const surface of SURFACES) {
+    const source = fs.readFileSync(path.join(ROOT,surface),'utf8');
+    assert.match(source,/var\(--hi-mark-width, 0\.8deg\)/);
+  }
 });

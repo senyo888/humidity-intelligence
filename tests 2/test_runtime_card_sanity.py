@@ -3557,8 +3557,10 @@ def test_default_public_card_surfaces_use_passive_stability_badge_instead_of_pau
         assert "<small>" not in block
         assert "@media (prefers-reduced-motion: reduce)" in block
         assert "- grid-area: 'n'" in block
-        assert "tap_action:\n            action: none" in block
-        assert 'popover="auto" role="dialog"' in block
+        assert "tap_action:\n            action: javascript" in block
+        assert '<template class="hi-stability-details-template">' in block
+        assert "document.body.appendChild(dialog)" in block
+        assert "dialog.showModal()" in block
         assert "browser_mod" not in block
         assert "hold_action:\n            action: more-info" in block
         assert "call-service" not in block

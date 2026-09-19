@@ -57,8 +57,8 @@ It gives you:
 - native Home Assistant diagnostics for support and triage
 - services for dashboard export, self-check, diagnostics, pause/resume, and release validation
 
-Current development manifest version: **v2.1.0-beta.1**, a locally prepared,
-unpublished candidate. It adds the accepted observational Stability Score and badge,
+Current development manifest version: **v2.1.0-beta.1**, an unpublished candidate
+committed and pushed on `senyo888-patch-1`. It adds the accepted observational Stability Score and badge,
 including the corrected live Diagnostics connection and fail-closed score rendering.
 The current published Stable is **v2.0.12**, released on 9 September 2026. HI is in
 the HACS default repository; this new beta has not been published or offered through
@@ -452,7 +452,7 @@ must be reviewable from tracked repository files.
 
 ## Current Release Highlights
 
-- local candidate `2.1.0-beta.1` adds the backend-owned Stability Score, compact
+- unpublished candidate `2.1.0-beta.1` adds the backend-owned Stability Score, compact
   badge, evidence and Recent trend details; it preserves deterministic control and
   is not a published or HACS-offered release
 - published Stable `2.0.12` improves Manual handover, Home Assistant-local time gates,
@@ -1217,7 +1217,7 @@ CO emergency pressure. Details are in
 
 ## Release Notes
 
-### v2.1.0-beta.1 (Local candidate; not published)
+### v2.1.0-beta.1 (Unpublished candidate)
 
 - adds the [accepted Stability Score](docs/stability-score-accepted-baseline.md):
   backend calculation, ten-minute sampling, evidence/caps, readable Diagnostics,
@@ -1233,7 +1233,9 @@ CO emergency pressure. Details are in
   `dump_cards`/`view_cards`, complete pasted-card replacement and frontend/cache
   refresh. Restart/reload resets history: 303 new valid samples are needed within the
   432-bucket window. Package and card rollback remain separate
-- requires Popover-capable clients for details; see [testing and compatibility](docs/stability-testing.md).
+- shows one collection LED per valid sample and opens whole-badge details in a native
+  dialog with Close, snapshot labeling and Diagnostics fallback; see
+  [testing and compatibility](docs/stability-testing.md).
   Local validation does not establish deployment, release readiness or HACS availability
 
 ### v2.0.12 (Current Published Stable)

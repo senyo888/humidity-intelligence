@@ -279,12 +279,27 @@ def _readable_stability_score(score) -> str:
     window = score.get("window")
     window = window if isinstance(window, dict) else {}
     valid = window.get("valid_samples")
+    minimum = window.get("minimum_valid_samples")
+    if presentation.get("state_code") == "collecting":
+        if type(valid) is int and valid >= 0 and type(minimum) is int and minimum > 0:
+            lines.append(f"Baseline progress: {valid} of {minimum} valid samples.")
+        else:
+            lines.append("Baseline progress unavailable.")
     expected = window.get("expected_samples")
     hours = window.get("duration_hours")
     if all(type(value) is int for value in (valid, expected, hours)) and 0 <= valid <= expected and expected > 0 and hours > 0:
         lines.append(f"Window: {valid}/{expected} valid snapshots over {hours} hours.")
     else:
         lines.append("Window coverage unavailable.")
+    sampling = score.get("sampling")
+    sampling = sampling if isinstance(sampling, dict) else {}
+    history = sampling.get("failure_history")
+    history = history if isinstance(history, dict) else {}
+    failed = history.get("failed_bucket_count")
+    if history.get("status") == "available" and type(failed) is int and 0 <= failed <= 432:
+        lines.append(f"Unsuccessful collections: {failed} scheduled buckets in the current 72-hour window.")
+    else:
+        lines.append("Collection failure history unavailable.")
     movement = score.get("movement")
     movement = movement if isinstance(movement, dict) else {}
     movement_detail = movement.get("detail_text")

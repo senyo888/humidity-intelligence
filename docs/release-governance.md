@@ -5,7 +5,7 @@ testing and validation branches.
 
 ## Canonical Version Model
 
-- `2.1.0-beta.1`: current locally prepared, unpublished Stability candidate.
+- `2.1.0-beta.1`: current committed/pushed, unpublished Stability candidate.
 - `2.1.0-rc.N`: future release-candidate identity, only after an authorized transition.
 - `2.1.0`: future stable identity; metadata alone does not publish it.
 - `2.0.12`: current published Stable, released on 2026-09-09.
@@ -23,9 +23,10 @@ must remain aligned with the
 published GitHub Release/tag.
 
 Published Stable is [v2.0.12](https://github.com/senyo888/humidity-intelligence/releases/tag/v2.0.12),
-released on 2026-09-09. The current `2.1.0-beta.1` candidate is prepared locally only;
-there is no v2.1 tag, GitHub Release, HACS availability or deployment claim. Candidate
-preparation does not authorize commit, push, promotion, publication or runtime mutation.
+released on 2026-09-09. The `2.1.0-beta.1` candidate is committed and pushed on
+`senyo888-patch-1`, with earlier collection work through `07dc87a`. There is no v2.1
+tag, GitHub Release or HACS offering. Source status does not certify an installation
+or authorize further runtime mutation.
 Release readiness still requires scope-appropriate validation, reviews and explicit
 maintainer approval. Local operational evidence does not replace tracked correctness.
 

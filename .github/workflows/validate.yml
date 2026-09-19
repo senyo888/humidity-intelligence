@@ -170,6 +170,7 @@ jobs:
           set -euo pipefail
           node --test "tests 2/test_reason_card_renderer.mjs"
           node --test "tests 2/test_stability_badge_renderer.mjs"
+          node --test "tests 2/test_stability_badge_interaction.mjs"
 
       - name: Validate YAML if PyYAML is available
         shell: bash

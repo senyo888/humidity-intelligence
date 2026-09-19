@@ -1862,11 +1862,20 @@ card:
                 const collecting = !invalidScore && !hasValue
                   && stateCode === 'collecting' && indicatorMode === 'collection';
                 const collectionRatio = presentation.progress_ratio;
-                const collectionProgressValid = collecting && typeof collectionRatio === 'number'
-                  && Number.isFinite(collectionRatio) && collectionRatio >= 0 && collectionRatio <= 1;
-                const collectionMarks = collectionProgressValid ? Math.floor(collectionRatio * 120) : 0;
+                const collectionCount = windowData.valid_samples;
+                const collectionRequired = windowData.minimum_valid_samples;
+                const collectionEvidenceValid = Number.isInteger(collectionCount) && collectionCount >= 0 && collectionCount <= 432
+                  && Number.isInteger(collectionRequired) && collectionRequired >= 1 && collectionRequired <= 432;
+                const expectedCollectionRatio = collectionEvidenceValid
+                  ? Math.round(Math.min(collectionCount / collectionRequired, 1) * 10000) / 10000 : null;
+                const collectionProgressValid = collecting && collectionEvidenceValid && typeof collectionRatio === 'number'
+                  && Number.isFinite(collectionRatio) && collectionRatio >= 0 && collectionRatio <= 1
+                  && Math.abs(collectionRatio - expectedCollectionRatio) <= 1e-8;
+                const collectionMarks = collectionProgressValid ? Math.min(collectionCount, collectionRequired) : 0;
+                const collectionStep = collectionProgressValid ? 360 / collectionRequired : 0;
+                const collectionWidth = Math.min(0.8, collectionStep * 0.7);
                 const collectionArc = `<div class="hi-stability-direction hi-stability-direction-higher" aria-hidden="true">${Array.from({ length: collectionMarks }, (_, index) =>
-                  `<i class="hi-stability-mark" style="--hi-mark-angle:${index * 3}deg;--hi-mark-from:1;--hi-mark-to:1;animation:none;"></i>`
+                  `<i class="hi-stability-mark" style="--hi-mark-angle:${index * collectionStep + (collectionStep - collectionWidth) / 2}deg;--hi-mark-width:${collectionWidth}deg;--hi-mark-from:1;--hi-mark-to:1;animation:none;"></i>`
                 ).join('')}</div>`;
                 const failureHistory = stability.sampling?.failure_history;
                 const showFailureHistory = !invalidScore && !hasValue && (collecting
@@ -1939,23 +1948,85 @@ card:
                   tone === 'incomplete' ? 'hi-stability-gauge-incomplete' : '',
                   incompletePulse ? 'hi-stability-gauge-partial-pulse' : ''
                 ].filter(Boolean).join(' ');
-                return `<div class="hi-stability-interactive"><button class="hi-stability-open" onclick="event.stopPropagation()" popovertarget="hi-stability-details" aria-label="Open Stability Score details"><div class="${gaugeClass}" style="--hi-stability-color:${color};--hi-stability-score-color:${scoreColor};--hi-stability-led-color:${collecting ? '#38bdf8' : movementColor};--hi-stability-led-sweep:${collecting ? (collectionProgressValid ? collectionRatio * 360 : 0) : activeLedSteps}deg;" role="img" aria-label="${escapeHtml(fullDetailText)}" title="${escapeHtml(fullDetailText)}">
+                return `<div class="hi-stability-interactive"><div class="${gaugeClass}" style="--hi-stability-color:${color};--hi-stability-score-color:${scoreColor};--hi-stability-led-color:${collecting ? '#38bdf8' : movementColor};--hi-stability-led-sweep:${collecting ? (collectionProgressValid ? collectionRatio * 360 : 0) : activeLedSteps}deg;" role="img" aria-label="${escapeHtml(fullDetailText)}" title="${escapeHtml(fullDetailText)}">
                   <div class="hi-stability-center" data-digits="${primaryText.length}"><span>${escapeHtml(primaryText)}</span></div>
                   ${collecting ? collectionArc : ledArcs}
                   <div class="${evidenceClass}"></div>
                   ${failureArc}
-                  <div class="hi-stability-origin"></div>
-                </div></button><div id="hi-stability-details" class="hi-stability-details" popover="auto" role="dialog" aria-label="Stability Score details">
+                  ${collecting && collectionMarks > 0 ? '' : '<div class="hi-stability-origin"></div>'}
+                </div><template class="hi-stability-details-template">
+                  <style>dialog.hi-stability-details { box-sizing:border-box; width:min(520px,calc(100vw - 32px)); max-height:calc(100vh - 32px); max-height:calc(100dvh - 32px); overflow:auto; padding:20px; border:1px solid #354762; border-radius:20px; background:#0d1522; color:#e2e8f0; text-align:left; white-space:normal; font:14px/1.6 system-ui,sans-serif; }
+                  dialog.hi-stability-details::backdrop { background:rgba(0,0,0,.65); }
+                  dialog.hi-stability-details h2 { margin:0 0 16px; font-size:22px; }
+                  dialog.hi-stability-details h3 { font-size:15px; }
+                  dialog.hi-stability-details p { overflow-wrap:anywhere; }
+                  dialog.hi-stability-details .hi-stability-close { display:block; position:sticky; top:0; z-index:1; margin:0 0 12px auto; min-height:44px; padding:10px 18px; border:1px solid #354762; border-radius:8px; background:#18253a; color:#e2e8f0; cursor:pointer; }
+                  dialog.hi-stability-details .hi-stability-close:focus-visible { outline:2px solid #38bdf8; outline-offset:4px; }</style>
+                  <button type="button" class="hi-stability-close" autofocus>Close</button>
+                  <p>Details reflect the snapshot when opened. Reopen for the latest evidence.</p>
                   <h2>Stability Score</h2>
                   <p>${escapeHtml(detailText)}</p>
                   <p>${escapeHtml(evidenceText)}</p>
                   ${arcDetails}
                   ${showFailureHistory ? `<h3>Unsuccessful collections</h3><p>${escapeHtml(failureHistoryValid && typeof failureHistory.detail_text === 'string' ? failureHistory.detail_text : 'Failed collection history unavailable.')}</p><p>Inner red marks retain failed or missed scheduled samples in the last 72 hours of this runtime. They do not advance the blue baseline progress or indicate a falling score. Their positions are fixed sampling slots, not a timeline starting at the top. History resets when the integration restarts.</p>` : ''}
-                  <button class="hi-stability-close" onclick="event.stopPropagation()" popovertarget="hi-stability-details" popovertargetaction="hide">Close</button>
-                </div></div>`;
+                </template></div>`;
               ]]]
           tap_action:
-            action: none
+            action: javascript
+            javascript: |
+              [[[
+                const owner = this;
+                const fallback = () => {
+                  if (entity?.entity_id) owner.dispatchEvent(new CustomEvent('hass-more-info', {
+                    detail: { entityId: entity.entity_id }, bubbles: true, composed: true
+                  }));
+                };
+                const source = owner.shadowRoot?.querySelector('template.hi-stability-details-template');
+                if (!source || !owner.isConnected) { fallback(); return; }
+                const existing = document.querySelector('dialog[data-hi-stability-dialog]');
+                if (existing) existing.__hiStabilityDispose?.(false);
+                const dialog = document.createElement('dialog');
+                if (typeof dialog.showModal !== 'function') { fallback(); return; }
+                dialog.className = 'hi-stability-details';
+                dialog.setAttribute('data-hi-stability-dialog', '');
+                dialog.setAttribute('aria-label', 'Stability Score details');
+                dialog.innerHTML = source.innerHTML;
+                const previousFocus = owner.shadowRoot?.activeElement || document.activeElement;
+                let observer;
+                let cleaned = false;
+                const close = () => {
+                  if (dialog.open) dialog.close();
+                  cleanup();
+                };
+                let restoreFocus = true;
+                const cleanup = () => {
+                  if (cleaned) return;
+                  cleaned = true;
+                  observer?.disconnect();
+                  for (const name of ['location-changed', 'popstate', 'pagehide']) window.removeEventListener(name, close);
+                  dialog.remove();
+                  if (restoreFocus && owner.isConnected && previousFocus?.isConnected) previousFocus.focus();
+                };
+                dialog.__hiStabilityDispose = (restore = true) => { restoreFocus = restore; close(); };
+                dialog.addEventListener('close', cleanup, { once: true });
+                dialog.querySelector('.hi-stability-close').addEventListener('click', close);
+                dialog.addEventListener('click', (event) => {
+                  if (event.target !== dialog) return;
+                  const bounds = dialog.getBoundingClientRect();
+                  if (event.clientX < bounds.left || event.clientX > bounds.right
+                    || event.clientY < bounds.top || event.clientY > bounds.bottom) close();
+                });
+                for (const name of ['location-changed', 'popstate', 'pagehide']) window.addEventListener(name, close);
+                observer = new MutationObserver(() => { if (!owner.isConnected) close(); });
+                let root = owner.getRootNode();
+                while (root) {
+                  observer.observe(root, { childList: true, subtree: true });
+                  root = root.host ? root.host.getRootNode() : null;
+                }
+                document.body.appendChild(dialog);
+                try { dialog.showModal(); }
+                catch (_) { cleanup(); fallback(); }
+              ]]]
           hold_action:
             action: more-info
           styles:
@@ -1994,35 +2065,6 @@ card:
                 - align-self: center
                 - justify-self: center
           extra_styles: |
-            .hi-stability-open {
-              display: block;
-              padding: 0;
-              border: 0;
-              background: transparent;
-              color: inherit;
-              cursor: pointer;
-            }
-            .hi-stability-open:focus-visible,
-            .hi-stability-close:focus-visible { outline: 2px solid #38bdf8; outline-offset: 4px; }
-            .hi-stability-details {
-              box-sizing: border-box;
-              width: min(520px, calc(100vw - 32px));
-              max-height: calc(100vh - 48px);
-              overflow: auto;
-              padding: 24px;
-              border: 1px solid #354762;
-              border-radius: 20px;
-              background: #0d1522;
-              color: #e2e8f0;
-              text-align: left;
-              white-space: normal;
-              font: 14px/1.6 system-ui, sans-serif;
-            }
-            .hi-stability-details::backdrop { background: rgba(0,0,0,.65); }
-            .hi-stability-details h2 { margin: 0 0 16px; font-size: 22px; }
-            .hi-stability-details h3 { font-size: 15px; }
-            .hi-stability-details p { overflow-wrap: anywhere; }
-            .hi-stability-close { padding: 10px 18px; border: 1px solid #354762; border-radius: 8px; background: #18253a; color: #e2e8f0; cursor: pointer; }
             .hi-stability-gauge {
               width: 82px;
               height: 82px;
@@ -2110,7 +2152,7 @@ card:
               position: absolute;
               inset: 0;
               border-radius: inherit;
-              background: conic-gradient(from var(--hi-mark-angle), var(--hi-stability-led-color) 0deg 0.8deg, transparent 0.8deg 360deg);
+              background: conic-gradient(from var(--hi-mark-angle), var(--hi-stability-led-color) 0deg var(--hi-mark-width, 0.8deg), transparent var(--hi-mark-width, 0.8deg) 360deg);
               opacity: var(--hi-mark-to);
               animation: hi-stability-mark-on 138ms ease-out var(--hi-mark-delay) both;
             }

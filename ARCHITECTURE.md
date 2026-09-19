@@ -24,8 +24,8 @@ truth.
 
 The [accepted Stability contract](docs/stability-score-accepted-baseline.md) defines
 backend schema 3/formula 3, six weighted components, evidence states, safety caps,
-classification and presentation. It is accepted for local integration; it does not
-change published release identity. Stability cannot select lanes, change gates or
+classification and presentation. It is implemented in the unreleased 2.1.0-beta.1
+candidate; deployment to an instance does not change published release identity. Stability cannot select lanes, change gates or
 write outputs. Existing control entities/native states remain unchanged; Diagnostics
 adds structured Stability telemetry and a readable summary.
 
@@ -38,7 +38,27 @@ is incomplete evidence, never clean air. Excellent/Good/Unstable/Poor boundaries
 
 The four generated/gallery renderers preserve the accepted 82px badge, independent
 LED palette and retained signed ±360 movement. Movement reflects score changes, not
-elapsed time. Tap/keyboard opens native Popover details and Recent trend; hold opens
+elapsed time. While collecting, the blue LEDs instead fill clockwise from backend
+valid-sample progress toward 303; collection details use the same minimum target.
+Each valid sample illuminates one centred collection slot; the fixed origin hides
+after the first tick. Counts and target are bounded to 432, with a positive target,
+and must agree with the backend progress ratio. Invalid evidence remains unlit;
+incomplete collection cannot appear as a full ring.
+Scored details retain rolling-window coverage out of 432. Backend evidence gates
+remain authoritative; reaching the sample target never forces a score.
+
+A separate inner red track displays observed failed or missed scheduled collection
+buckets during collection or unscored incomplete/live-data states. Backend history
+contains unique buckets in the current 72-hour window, bounded to 432; valid stored
+buckets cannot also be failed. No offline, pre-setup or future failures are inferred.
+Positions are fixed UTC sampling slots, not a timeline beginning at the top. Missing
+history is unavailable, not proof of zero failures. The history resets on restart or
+reload and never advances baseline progress or changes scoring or control.
+
+Whole-badge tap/keyboard opens detached native dialog details as an explicitly labelled
+snapshot, outside the button-card gesture handlers. Close, Escape and backdrop dismiss;
+focus restores, and navigation or owner removal cleans up the single active dialog.
+Clients without native dialog support fall back to Diagnostics more-info; hold opens
 Diagnostics. Partial and reduced-motion treatments remain explicit. Optional frontend
 resources cannot block runtime operation. See [validation and client limitations](docs/stability-testing.md).
 

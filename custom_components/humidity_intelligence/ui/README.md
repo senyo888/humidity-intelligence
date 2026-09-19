@@ -155,15 +155,23 @@ Control row:
 
 - preserve the v2.0.7 tap-to-toggle behavior for the System and Manual helper buttons
 - keep the Stability Score badge passive; it must not pause/resume, select lanes, or create output writes
-- for the local unpublished `2.1.0-beta.1` Stability candidate, render backend schema 3/formula 3
+- for the integrated, unpublished `2.1.0-beta.1` Stability candidate, render backend schema 3/formula 3
   score, classifications and evidence states; missing/malformed payloads show no score
 - preserve the accepted 82px footprint, independent LED colours, retained signed
   full-circle movement, six-second Partial pulse and reduced-motion alternatives
-- tap/click/keyboard opens native Popover details with collection progress or Recent trend; hold opens
-  Diagnostics. Modern Popover-capable clients are required; update older WebViews
-- collection LEDs fill clockwise from the top using the backend progress ratio;
-  `floor(ratio * 120)` marks ensures incomplete progress never appears complete.
-  Invalid ratios stay unlit. This is sample progress, not elapsed time or score movement
+- whole-badge tap/click/keyboard activation opens a native modal dialog through the
+  button-card action. Details are a labelled snapshot copied from the owning card's
+  inert template, mounted outside its gesture handlers; there is no nested opener
+- keep a visible sticky Close control, native Escape and backdrop dismissal, focus
+  restoration, and cleanup on navigation or owner removal. Only one Stability dialog
+  may be open; telemetry updates must not silently replace its snapshot
+- hold opens Diagnostics. Clients without native `showModal` support fall back to
+  Home Assistant's Diagnostics more-info, including readable baseline/failure evidence
+- collection LEDs fill clockwise from the top, one per valid sample in backend-defined
+  slots (currently 303). Centre ticks in their slots and hide the origin after the first
+  tick. Strict integer counts and a target in [1,432] must agree with the finite backend
+  ratio; invalid/conflicting progress stays unlit. Incomplete collection never fills
+  the ring. This is sample progress, not elapsed time or score movement
 - while collecting, details show `Baseline progress: N of 303 valid samples`, using the backend minimum
   rather than a fixed denominator. The 432 buckets remain rolling-window capacity,
   not the baseline target; outside collection the tally is labelled `Rolling-window coverage`.

@@ -59,6 +59,12 @@ def test_real_builder_reaches_live_diagnostics_and_dump(sample_count, export_rep
             observed_at=now - timedelta(minutes=10 * (sample_count - 1 - index)),
         ))
 
+    runtime["stability_failed_buckets"] = set()
+    if sample_count == 1:
+        # A real failed bucket reaches the sensor through the shared builder.
+        failed_at = FixedDatetime(2026, 9, 19, 11, 50, tzinfo=timezone.utc)
+        stability.record_stability_bucket_outcome(runtime, failed_at, now)
+
     sensor = sensor_module.HIDiagnosticsSensor(hass, ENTRY_ID)
     sensor.update()
     live = sensor._attr_extra_state_attributes["diagnostics_summary"]["stability_score"]
@@ -72,6 +78,15 @@ def test_real_builder_reaches_live_diagnostics_and_dump(sample_count, export_rep
     assert live["score"]["display_score"] == (None if sample_count == 1 else 97)
     assert live["presentation"]["detail_text"] in sensor._attr_extra_state_attributes["Stability Score"]
     assert f"Window: {sample_count}/432 valid snapshots over 72 hours." in sensor._attr_extra_state_attributes["Stability Score"]
+
+    history = live["sampling"]["failure_history"]
+    assert history["status"] == "available"
+    assert history["failed_bucket_count"] == (1 if sample_count == 1 else 0)
+    assert len(history["marker_angles_degrees"]) == history["failed_bucket_count"]
+    readable = sensor._attr_extra_state_attributes["Stability Score"]
+    assert f"Unsuccessful collections: {history['failed_bucket_count']} scheduled buckets" in readable
+    if sample_count == 1:
+        assert "Baseline progress: 1 of 303 valid samples." in readable
 
     if not export_report:
         return
