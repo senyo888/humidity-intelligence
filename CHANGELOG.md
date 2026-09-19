@@ -24,16 +24,27 @@ beta.1 commit below does not identify this package. Published Stable remains v2.
 ### V2 badge summaries
 
 - Humidity, Condensation, Mould, Current Air Control, Ready, Zone 1, Zone 2 and AQ
-  open short explanations before their existing native entity history. Summaries
+  open short explanations before history. Summaries
   identify the actual mapped history source and retain unavailable states.
 - Ready, Zone 1, Zone 2 and AQ use compact text-only badges with their existing
   active and alert emphasis. Stability details put the snapshot notice below the
   content and keep Close within a viewport bounded by device safe areas.
+  V2 dialogs use compact circular X controls with accessible Close labels and
+  comfortable touch targets; explanations use positive, direct language.
 - V2 Mobile and V2 Tablet share the changes. V1 is unchanged. Refresh exports and
   replace pasted Manual cards; this template-only change requires no Python restart
   or configuration/data migration. Runtime control and entity semantics are unchanged.
-- Specialised risk, operating-mode and AQ history views remain proposed; this
-  update does not add charts, change history destinations or alter retention.
+- Condensation and Mould show recorded risk levels and source rooms on separate
+  timelines. Current Air Control shows operating-mode changes and separately
+  timestamped recorded reasons. Each source retains its own timing; operating mode
+  represents controller state.
+- AQ shows separate recorded aggregate charts for available IAQ, PM2.5, VOC and CO
+  sources. Missing units are stated, unavailable values break traces, and recorded
+  unit changes are kept separate. Values follow the recorded backend aggregates.
+- History loads on demand for 24 hours or seven days, with Back, Close and native
+  entity-details access. Missing, failed and bounded partial results are explicit;
+  history availability continues to depend on Home Assistant Recorder and access.
+  Recorder retention, backend control and dashboard refresh behavior are preserved.
 
 ## v2.1.0-beta.1 — Earlier unpublished candidate
 

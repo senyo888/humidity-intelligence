@@ -33,16 +33,25 @@ const baseline = overrides => ({
   ...overrides,
 });
 function render(state = 'unknown', attrs = baseline()) {
-  const results = views.map(fn => fn({ state, attributes: attrs }));
+  const results = views.map(fn => {
+    const result = fn({ state, attributes: attrs });
+    // V1 keeps its approved copy; V2 uses positive phrasing with the same status.
+    const legacyCopy = {
+      'The Statistics helper is waiting for a usable value.': 'The Statistics helper has no usable value yet.',
+      'The Statistics helper needs a numeric mean to calculate drift.': 'The Statistics helper is not reporting a numeric mean.',
+      'Drift and baseline progress are awaiting valid evidence.': 'Drift is unavailable. Baseline progress cannot be confirmed.',
+    };
+    return {...result, detail: legacyCopy[result.detail] || result.detail};
+  });
   results.forEach(v => assert.deepEqual(v, results[0]));
   return results[0];
 }
 
 test('all layouts retain drift calculation and V2 presentation matches its gallery mirrors', () => {
-  for (const key of ['hi_drift', 'state_display', 'open']) {
+  for (const key of ['state_display', 'open']) {
     assert.equal(new Set(bodies(key)).size, 1, key);
   }
-  for (const key of ['details', 'javascript']) {
+  for (const key of ['hi_drift', 'details', 'javascript']) {
     const all = bodies(key);
     assert.equal(all[0], all[3], `V1 mirror: ${key}`);
     assert.equal(new Set([all[1], all[2], all[4], all[5]]).size, 1, `V2: ${key}`);

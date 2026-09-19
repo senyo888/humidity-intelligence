@@ -73,11 +73,13 @@ class DriftCardExportTests(unittest.TestCase):
         for text in (
             "Baseline · ${progress}%", "Waiting for history", "coverage_ratio",
             "required_age_coverage_ratio", "Baseline progress measures Statistics time coverage",
-            "Seven-day humidity drift", "View history", ">Close</button>",
+            "Seven-day humidity drift", "View history", 'class="hi-drift-close"',
             "action: javascript", "const entityId = entity?.entity_id;",
             "hass-more-info", "detail: { entityId }", "historyButton.disabled = !entityId",
         ):
             self.assertTrue(text in block, f"Missing drift export contract: {text}")
+
+        self.assertTrue('>Close</button>' in block or 'aria-label="Close" title="Close" autofocus><svg aria-hidden="true"' in block)
 
     def test_registry_identity_and_renamed_identity_survive_export(self):
         for entity_id in ("sensor.hi_house_drift_7d", "sensor.example_renamed_drift"):

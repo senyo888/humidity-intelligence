@@ -296,9 +296,9 @@ test('badge provides an inert dialog snapshot with backend explanation evidence 
   assert.match(output, /<p>Backend partial evidence explanation\.<\/p>/);
   assert.match(output, /<p>Rolling-window coverage: 303 of 432 valid samples\.<\/p>/);
   assert.match(output, /<h3>Recent trend<\/h3>/);
-  assert.match(output, /Arc position does not measure elapsed time\./);
+  assert.match(output, /Arc position represents accumulated score movement\./);
   assert.match(output, /<p>Backend movement explanation\.<\/p>/);
-  assert.match(output, /<button type="button" class="hi-stability-close" autofocus>Close<\/button>/);
+  assert.match(output, /<button type="button" class="hi-stability-close" aria-label="Close" title="Close" autofocus><svg aria-hidden="true"/);
   assert.doesNotMatch(output, /browser_mod|call-service/);
 });
 

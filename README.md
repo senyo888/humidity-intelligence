@@ -1221,9 +1221,9 @@ CO emergency pressure. Details are in
 
 ### v2.1.0-beta.2 (Local candidate; not published)
 
-- adds V2 badge explanations before existing entity history, compact icon-free
-  Ready/Zone 1/Zone 2/AQ badges, and a clearer Stability details header; specialised
-  risk, controller and AQ history views remain proposed
+- adds V2 badge explanations, compact icon-free Ready/Zone 1/Zone 2/AQ badges,
+  and a clearer Stability details header; Condensation, Mould, Current Air Control
+  and AQ offer 24-hour/seven-day recorded history with Back and Close controls
 - adds backend-derived **Baseline · N%** progress to the seven-day drift badge while
   usable drift data is still being collected; missing or invalid coverage stays unknown
 - opens a short explanation on tap, with **View history** opening native Home

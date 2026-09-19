@@ -75,16 +75,45 @@ Reverting the card YAML restores the earlier interaction without changing histor
 ## V2 badge summaries
 
 Humidity, Condensation, Mould, Current Air Control, Ready, Zone 1, Zone 2 and AQ
-open a short explanation before **View history**. That action still opens the
-existing native Home Assistant entity details. Ready links to house humidity;
-Zone 1/2 link to their resolved humidity reading, which can be a fallback rather
-than a whole-zone measurement. Condensation/Mould currently link to the recorded
-worst-room source, not a risk-level timeline. AQ links to the recorded house IAQ
-average, and Current Air Control links to operating mode. Richer history views
-remain proposed and are not included in this update.
+open a short explanation before **View history**. Humidity and Ready retain native
+Home Assistant entity details; Ready links to house humidity. Zone 1/2 link to their
+resolved humidity reading, which can be a fallback rather than a whole-zone
+measurement.
 
-Summaries identify the mapped history destination and disable the history action
-when that entity is missing. Dynamic text is escaped. Only one HI details dialog
+Condensation, Mould, Current Air Control and AQ use a shared recorded-history panel:
+
+- **24 hours** and **7 days** select a bounded window. **Back** returns to the
+  explanation and retains the selected range; **Close** dismisses the dialog.
+- Condensation/Mould show categorical risk and worst-room source as separate
+  time-aligned ribbons, with timestamped records. Independently recorded updates
+  retain their own timing and source context. Unknown and unavailable remain
+  distinct from recorded risk categories.
+- Current Air Control shows recorded operating mode and separately timestamped
+  reason text where Recorder retained it. This records controller state;
+  physical output activity is available through the corresponding output entities.
+- AQ shows an independent numeric chart for each available mapped IAQ, PM2.5, VOC
+  and CO aggregate. Recorded units are used when present; otherwise the chart identifies
+  the unit as unspecified. Invalid/unavailable values and unit changes break
+  traces. Values follow the recorded aggregates and their own scales. Use dedicated CO
+  safety status when assessing CO emergencies.
+
+History is requested only after **View history**, through the authenticated Home
+Assistant history WebSocket API, for at most four mapped entities. Loading, empty,
+failed and partial results retain explicit availability labels. A carried value
+at the start of the window is labelled as starting context. Transitions retain
+their recorded evidence; recording frequency follows the source. Bounded rendering discloses
+truncation and preserves the retained transitions. Native **Open entity
+details** remains available. Back, Close, navigation, card removal and range changes
+invalidate pending requests so the latest selected view stays authoritative.
+
+The renderer lives in `badge_history.js` and is embedded in the exported YAML;
+Manual cards include the renderer directly.
+After editing that source, run `python scripts/sync_badge_history.py` from the repo
+root and verify the generated copies with its `--check` option. History preserves
+Recorder configuration, retention, entity semantics and runtime control.
+
+Summaries identify their mapped history sources. Enhanced history is available
+when at least one source is mapped; native history links follow their mapped entity. Dynamic text is escaped. Only one HI details dialog
 is open at a time; Close, Escape, navigation and card removal dispose of it.
 New summaries close when their displayed evidence changes. Stability preserves
 its opening snapshot and now explains that below the main content; drift retains
@@ -93,7 +122,8 @@ when modal dialogs cannot be opened.
 
 Ready, Zone 1, Zone 2 and AQ retain their labels, active tint, borders and alert
 emphasis in compact icon-free rows. Their targets remain at least 44px high and
-allow text to grow. Dialog sizing accounts for device safe areas; physical-client
+allow text to grow. Close uses a compact circular X with a 44px touch target and an accessible label.
+Dialog sizing accounts for device safe areas; physical-client
 appearance must be checked separately from synthetic browser validation.
 
 The changes apply only to V2 Mobile, V2 Tablet and their canonical gallery copies.

@@ -26,7 +26,7 @@ function actionBody(relativePath, title = 'Humidity') {
 class DetailEvent extends Event {
   constructor(type, options = {}) { super(type, options); this.detail = options.detail; }
 }
-function harness({ supported = true, deferredClose = false, showThrows = false, missing = false } = {}) {
+function harness({ supported = true, deferredClose = false, showThrows = false, missing = false, statesOverride } = {}) {
   const observers = new Set();
   const queuedCloseEvents = [];
   const window = new EventTarget();
@@ -95,8 +95,9 @@ function harness({ supported = true, deferredClose = false, showThrows = false, 
     const body = actionBody(source, title);
     const routes = {Humidity:'sensor.house_average_humidity',Condensation:'sensor.worst_room_condensation',Mould:'sensor.worst_room_mould','Current Air Control':'sensor.air_control_mode',Ready:'sensor.house_average_humidity','Zone 1':'sensor.kitchen_humidity','Zone 2':'sensor.bathroom_humidity',AQ:'sensor.air_control_house_iaq_average'};
     const history = routes[title] || (title === 'Stability Score' ? 'sensor.hi_diagnostics' : 'sensor.house_humidity_drift_7d');
+    const summary = routes[title] ? new Function(rendererBody(source,title,'hi_summary'))() : {history,title};
     new Function('document', 'window', 'MutationObserver', 'CustomEvent', 'entity', 'variables', 'states', body)
-      .call(card, document, window, Observer, DetailEvent, { entity_id: history }, {hi_summary:{history,title}}, missing ? {} : {[history]:{state:'normal'}});
+      .call(card, document, window, Observer, DetailEvent, { entity_id: history }, {hi_summary:summary}, statesOverride || (missing ? {} : {[history]:{state:'normal'}}));
   }
   return { document, window, owner, invoke, observers,
     dialogs: () => document.querySelectorAll('[data-hi-summary-dialog]'),
@@ -107,8 +108,8 @@ function harness({ supported = true, deferredClose = false, showThrows = false, 
 
 
 const TITLES = ['Humidity','Condensation','Mould','Current Air Control','Ready','Zone 1','Zone 2','AQ'];
-test('all eight badges and four maintained surfaces share the lifecycle action', () => {
-  assert.equal(new Set(SURFACES.flatMap(source => TITLES.map(title => actionBody(source,title).trim().split('\n').map(line=>line.trim()).join('\n')))).size, 1);
+test('each summary action matches all maintained layout and gallery counterparts', () => {
+  for (const title of TITLES) assert.equal(new Set(SURFACES.map(source => actionBody(source,title).trim().split('\n').map(line=>line.trim()).join('\n'))).size, 1,title);
 });
 test('every summary opens and closes before dispatching its explicit history route', () => {
   const routes = ['sensor.house_average_humidity','sensor.worst_room_condensation','sensor.worst_room_mould','sensor.air_control_mode','sensor.house_average_humidity','sensor.kitchen_humidity','sensor.bathroom_humidity','sensor.air_control_house_iaq_average'];
@@ -117,8 +118,14 @@ test('every summary opens and closes before dispatching its explicit history rou
     card.addEventListener('hass-more-info',event=>{assert.equal(h.dialogs().length,0); detail=event.detail;});
     h.invoke(card,source,title); const [dialog]=h.dialogs(); assert.ok(dialog.open);
     assert.equal(dialog.getAttribute('aria-label'),`${title} details`);
-    dialog.querySelector('.hi-summary-history').dispatchEvent(new Event('click'));
-    assert.equal(detail.entityId,routes[i]); assert.equal(h.observers.size,0);
+    if (['Condensation','Mould','Current Air Control','AQ'].includes(title)) {
+      assert.equal(detail,undefined);
+      dialog.querySelector('.hi-summary-close').dispatchEvent(new Event('click'));
+    } else {
+      dialog.querySelector('.hi-summary-history').dispatchEvent(new Event('click'));
+      assert.equal(detail.entityId,routes[i]);
+    }
+    assert.equal(h.observers.size,0);
   }
 });
 test('Close, native Escape close, navigation, backdrop and removal clean up',()=>{
@@ -168,7 +175,7 @@ test('renderer escapes dynamic risk, reason and history labels and qualifies exi
   const states={[config.history]:{attributes:{friendly_name:hostile}},'sensor.air_control_reason':{state:hostile}};
   const html=render(entity,{hi_summary:config},states);
   assert.ok(!html.includes(hostile),title);assert.match(html,/&lt;img/);assert.match(html,/Recorder and retention/);
-  const absent=render(undefined,{hi_summary:config},{});assert.match(absent,/mapped entity is missing/);assert.match(absent,/disabled/);assert.match(absent,/Unavailable/);
+  const absent=render(undefined,{hi_summary:config},{});assert.match(absent,/mapped entit(?:y is|ies are) missing/);assert.match(absent,/disabled/);assert.match(absent,/Unavailable/);
  }
 });
 test('compact badges preserve color expressions and icons are removed only from four cards',()=>{
@@ -221,5 +228,13 @@ test('each summary provides an escaped native keyboard button without intercepti
   const text=fs.readFileSync(path.join(ROOT,source),'utf8');
   assert.match(text,/\.hi-summary-open \{[^}]*pointer-events:none/);
   assert.match(text,/\.hi-summary-open:focus-visible/);
+ }
+});
+
+test('enhanced-history native fallback selects an available explicitly mapped source',()=>{
+ for(const source of SURFACES){
+  const h=harness({supported:false,statesOverride:{'sensor.worst_room_condensation_risk':{state:'Risk'}}});
+  const card=h.owner();let event;card.addEventListener('hass-more-info',e=>event=e.detail);
+  h.invoke(card,source,'Condensation');assert.equal(event.entityId,'sensor.worst_room_condensation_risk');assert.equal(h.dialogs().length,0);
  }
 });

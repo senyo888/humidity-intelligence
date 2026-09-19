@@ -173,6 +173,8 @@ jobs:
           node --test "tests 2/test_stability_badge_interaction.mjs"
           node --test "tests 2/test_drift_badge_renderer.mjs"
           node --test "tests 2/test_badge_summary_interaction.mjs"
+          node --test "tests 2/test_badge_history.mjs"
+          python scripts/sync_badge_history.py --check
           python "tests 2/test_badge_summary_export.py"
 
       - name: Validate YAML if PyYAML is available
