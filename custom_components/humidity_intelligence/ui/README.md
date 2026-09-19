@@ -87,7 +87,10 @@ Condensation, Mould, Current Air Control and AQ use a shared recorded-history pa
 - Condensation/Mould show categorical risk and worst-room source as separate
   time-aligned ribbons, with timestamped records. Independently recorded updates
   retain their own timing and source context. Unknown and unavailable remain
-  distinct from recorded risk categories.
+  distinct from recorded risk categories. Source rooms have individual colours and
+  matching labelled legends. Room colours stay consistent across both histories,
+  range changes and reopenings within the same page session; they identify rooms
+  independently of risk. Unknown/unavailable source states use a neutral grey.
 - Current Air Control shows recorded operating mode and separately timestamped
   reason text where Recorder retained it. This records controller state;
   physical output activity is available through the corresponding output entities.

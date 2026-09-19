@@ -358,6 +358,29 @@ card:
                     const modes = {normal: 'Normal', cooking: 'Zone 1', bathroom: 'Zone 2', bath: 'Zone 2', air_quality: 'Air quality', global_gate: 'Global gate', away: 'Away', paused: 'Paused', manual_override: 'Manual override', disabled: 'Disabled', telemetry_unavailable: 'Telemetry unavailable', co_emergency: 'CO emergency', danger: 'Danger', alert: 'Alert'};
                     return Object.hasOwn(modes, value) ? {label: modes[value], tone: value === 'co_emergency' ? 'danger' : 'neutral'} : {label: `Unrecognised recorded value: ${value}`, tone: 'unknown'};
                   }
+                  // Share room identity colours between independently embedded badge renderers.
+                  // The registry lives only for this page, including range changes and reopenings.
+                  function sourceColor(value, document) {
+                    if (['unknown', 'unavailable', 'conflicting records', 'none', ''].includes(value.trim().toLowerCase())) return '#64748b';
+                    const key = Symbol.for('hi.badge-history.room-colors.v1');
+                    const registry = document[key] ||= new Map();
+                    if (!registry.has(value)) {
+                      const palette = ['#7dd3fc', '#c4b5fd', '#f9a8d4', '#5eead4', '#fde68a', '#a5b4fc', '#fdba74', '#a3e635', '#e879f9', '#67e8f9'];
+                      let hash = 2166136261;
+                      for (const character of value) hash = Math.imul(hash ^ character.codePointAt(0), 16777619) >>> 0;
+                      const used = new Set(registry.values());
+                      let color;
+                      for (let offset = 0; offset < palette.length; offset++) {
+                        const candidate = palette[(hash + offset) % palette.length];
+                        if (!used.has(candidate)) { color = candidate; break; }
+                      }
+                      // Extra rooms retain individual labelled swatches beyond the primary palette.
+                      let index = registry.size;
+                      while (!color || used.has(color)) color = `hsl(${((index++ * 137.508) % 360).toFixed(3)} 65% 72%)`;
+                      registry.set(value, color);
+                    }
+                    return registry.get(value);
+                  }
                   function transitions(records) {
                     return records.filter((record, index) => !record.boundary && (typeof record.transition === 'boolean' ? record.transition : index > 0 && record.state !== records[index - 1].state));
                   }
@@ -474,15 +497,17 @@ card:
                         html += '<p class="hi-history-note">Lines join recorded values. A recorded state such as Unavailable, or a change of unit, creates a break.</p>';
                       } else if (item.kind !== 'reason') {
                         const colors = {ok:'#4ade80',watch:'#facc15',risk:'#fb923c',danger:'#f87171',unknown:'#64748b',neutral:'#7dd3fc'};
+                        const colorFor = value => item.kind === 'source' ? sourceColor(value, document) : colors[category(value, item.kind).tone];
+                        if (item.kind === 'source') html += '<p class="hi-history-note">Colours identify rooms. The risk level is shown in the chart above.</p>';
                         const ribbons = records.map((record,index) => {
                           const next = records[index+1]?.time ?? end;
                           const x = 500 * (record.time-start) / Math.max(1,end-start);
                           const width = Math.max(0,500 * (next-record.time) / Math.max(1,end-start));
                           const label = category(record.state,item.kind);
-                          return `<rect x="${x.toFixed(2)}" y="0" width="${width.toFixed(2)}" height="36" fill="${colors[label.tone]}" stroke="#0d1522" stroke-width="1"><title>${escape(label.label)} · ${escape(date(record.time))}</title></rect>${width >= 50 ? `<text x="${(x+5).toFixed(2)}" y="23" font-size="13" fill="#071523">${escape(label.label.slice(0, Math.max(1, Math.floor((width-10)/8))))}${label.label.length > Math.floor((width-10)/8) ? '…' : ''}</text>` : ''}`;
+                          return `<rect x="${x.toFixed(2)}" y="0" width="${width.toFixed(2)}" height="36" fill="${colorFor(record.state)}" stroke="#0d1522" stroke-width="1"><title>${escape(label.label)} · ${escape(date(record.time))}</title></rect>${width >= 50 ? `<text x="${(x+5).toFixed(2)}" y="23" font-size="13" fill="#071523">${escape(label.label.slice(0, Math.max(1, Math.floor((width-10)/8))))}${label.label.length > Math.floor((width-10)/8) ? '…' : ''}</text>` : ''}`;
                         }).join('');
                         html += `<svg class="hi-history-chart" viewBox="0 0 500 36" role="img" aria-label="${escape(item.label)} recorded states. Choose a recorded state below for its time and value.">${ribbons}</svg>${axis}`;
-                        html += `<div class="hi-history-legend">${[...new Set(records.map(record => record.state))].map(value => {const label=category(value,item.kind); return `<span><i style="background:${colors[label.tone]}" aria-hidden="true"></i>${escape(label.label)}</span>`;}).join('')}</div>`;
+                        html += `<div class="hi-history-legend">${[...new Set(records.map(record => record.state))].map(value => {const label=category(value,item.kind); return `<span><i style="background:${colorFor(value)}" aria-hidden="true"></i>${escape(label.label)}</span>`;}).join('')}</div>`;
                       }
                       html += inspection(records,item.label,item.kind);
                       const updates = item.kind === 'numeric' || item.kind === 'reason' ? records.filter(record => !record.boundary) : transitions(records);
@@ -529,7 +554,7 @@ card:
                       dispose() { disposed = true; active = false; invalidate(); section.remove(); },
                     };
                   }
-                  return {normalize, numeric, category, transitions, seriesPaths, create};
+                  return {normalize, numeric, category, transitions, seriesPaths, sourceColor, create};
                 })();
                 // HI-HISTORY-RENDERER:END
                 const owner = this;
@@ -788,6 +813,29 @@ card:
                     const modes = {normal: 'Normal', cooking: 'Zone 1', bathroom: 'Zone 2', bath: 'Zone 2', air_quality: 'Air quality', global_gate: 'Global gate', away: 'Away', paused: 'Paused', manual_override: 'Manual override', disabled: 'Disabled', telemetry_unavailable: 'Telemetry unavailable', co_emergency: 'CO emergency', danger: 'Danger', alert: 'Alert'};
                     return Object.hasOwn(modes, value) ? {label: modes[value], tone: value === 'co_emergency' ? 'danger' : 'neutral'} : {label: `Unrecognised recorded value: ${value}`, tone: 'unknown'};
                   }
+                  // Share room identity colours between independently embedded badge renderers.
+                  // The registry lives only for this page, including range changes and reopenings.
+                  function sourceColor(value, document) {
+                    if (['unknown', 'unavailable', 'conflicting records', 'none', ''].includes(value.trim().toLowerCase())) return '#64748b';
+                    const key = Symbol.for('hi.badge-history.room-colors.v1');
+                    const registry = document[key] ||= new Map();
+                    if (!registry.has(value)) {
+                      const palette = ['#7dd3fc', '#c4b5fd', '#f9a8d4', '#5eead4', '#fde68a', '#a5b4fc', '#fdba74', '#a3e635', '#e879f9', '#67e8f9'];
+                      let hash = 2166136261;
+                      for (const character of value) hash = Math.imul(hash ^ character.codePointAt(0), 16777619) >>> 0;
+                      const used = new Set(registry.values());
+                      let color;
+                      for (let offset = 0; offset < palette.length; offset++) {
+                        const candidate = palette[(hash + offset) % palette.length];
+                        if (!used.has(candidate)) { color = candidate; break; }
+                      }
+                      // Extra rooms retain individual labelled swatches beyond the primary palette.
+                      let index = registry.size;
+                      while (!color || used.has(color)) color = `hsl(${((index++ * 137.508) % 360).toFixed(3)} 65% 72%)`;
+                      registry.set(value, color);
+                    }
+                    return registry.get(value);
+                  }
                   function transitions(records) {
                     return records.filter((record, index) => !record.boundary && (typeof record.transition === 'boolean' ? record.transition : index > 0 && record.state !== records[index - 1].state));
                   }
@@ -904,15 +952,17 @@ card:
                         html += '<p class="hi-history-note">Lines join recorded values. A recorded state such as Unavailable, or a change of unit, creates a break.</p>';
                       } else if (item.kind !== 'reason') {
                         const colors = {ok:'#4ade80',watch:'#facc15',risk:'#fb923c',danger:'#f87171',unknown:'#64748b',neutral:'#7dd3fc'};
+                        const colorFor = value => item.kind === 'source' ? sourceColor(value, document) : colors[category(value, item.kind).tone];
+                        if (item.kind === 'source') html += '<p class="hi-history-note">Colours identify rooms. The risk level is shown in the chart above.</p>';
                         const ribbons = records.map((record,index) => {
                           const next = records[index+1]?.time ?? end;
                           const x = 500 * (record.time-start) / Math.max(1,end-start);
                           const width = Math.max(0,500 * (next-record.time) / Math.max(1,end-start));
                           const label = category(record.state,item.kind);
-                          return `<rect x="${x.toFixed(2)}" y="0" width="${width.toFixed(2)}" height="36" fill="${colors[label.tone]}" stroke="#0d1522" stroke-width="1"><title>${escape(label.label)} · ${escape(date(record.time))}</title></rect>${width >= 50 ? `<text x="${(x+5).toFixed(2)}" y="23" font-size="13" fill="#071523">${escape(label.label.slice(0, Math.max(1, Math.floor((width-10)/8))))}${label.label.length > Math.floor((width-10)/8) ? '…' : ''}</text>` : ''}`;
+                          return `<rect x="${x.toFixed(2)}" y="0" width="${width.toFixed(2)}" height="36" fill="${colorFor(record.state)}" stroke="#0d1522" stroke-width="1"><title>${escape(label.label)} · ${escape(date(record.time))}</title></rect>${width >= 50 ? `<text x="${(x+5).toFixed(2)}" y="23" font-size="13" fill="#071523">${escape(label.label.slice(0, Math.max(1, Math.floor((width-10)/8))))}${label.label.length > Math.floor((width-10)/8) ? '…' : ''}</text>` : ''}`;
                         }).join('');
                         html += `<svg class="hi-history-chart" viewBox="0 0 500 36" role="img" aria-label="${escape(item.label)} recorded states. Choose a recorded state below for its time and value.">${ribbons}</svg>${axis}`;
-                        html += `<div class="hi-history-legend">${[...new Set(records.map(record => record.state))].map(value => {const label=category(value,item.kind); return `<span><i style="background:${colors[label.tone]}" aria-hidden="true"></i>${escape(label.label)}</span>`;}).join('')}</div>`;
+                        html += `<div class="hi-history-legend">${[...new Set(records.map(record => record.state))].map(value => {const label=category(value,item.kind); return `<span><i style="background:${colorFor(value)}" aria-hidden="true"></i>${escape(label.label)}</span>`;}).join('')}</div>`;
                       }
                       html += inspection(records,item.label,item.kind);
                       const updates = item.kind === 'numeric' || item.kind === 'reason' ? records.filter(record => !record.boundary) : transitions(records);
@@ -959,7 +1009,7 @@ card:
                       dispose() { disposed = true; active = false; invalidate(); section.remove(); },
                     };
                   }
-                  return {normalize, numeric, category, transitions, seriesPaths, create};
+                  return {normalize, numeric, category, transitions, seriesPaths, sourceColor, create};
                 })();
                 // HI-HISTORY-RENDERER:END
                 const owner = this;
@@ -2099,6 +2149,29 @@ card:
                 const modes = {normal: 'Normal', cooking: 'Zone 1', bathroom: 'Zone 2', bath: 'Zone 2', air_quality: 'Air quality', global_gate: 'Global gate', away: 'Away', paused: 'Paused', manual_override: 'Manual override', disabled: 'Disabled', telemetry_unavailable: 'Telemetry unavailable', co_emergency: 'CO emergency', danger: 'Danger', alert: 'Alert'};
                 return Object.hasOwn(modes, value) ? {label: modes[value], tone: value === 'co_emergency' ? 'danger' : 'neutral'} : {label: `Unrecognised recorded value: ${value}`, tone: 'unknown'};
               }
+              // Share room identity colours between independently embedded badge renderers.
+              // The registry lives only for this page, including range changes and reopenings.
+              function sourceColor(value, document) {
+                if (['unknown', 'unavailable', 'conflicting records', 'none', ''].includes(value.trim().toLowerCase())) return '#64748b';
+                const key = Symbol.for('hi.badge-history.room-colors.v1');
+                const registry = document[key] ||= new Map();
+                if (!registry.has(value)) {
+                  const palette = ['#7dd3fc', '#c4b5fd', '#f9a8d4', '#5eead4', '#fde68a', '#a5b4fc', '#fdba74', '#a3e635', '#e879f9', '#67e8f9'];
+                  let hash = 2166136261;
+                  for (const character of value) hash = Math.imul(hash ^ character.codePointAt(0), 16777619) >>> 0;
+                  const used = new Set(registry.values());
+                  let color;
+                  for (let offset = 0; offset < palette.length; offset++) {
+                    const candidate = palette[(hash + offset) % palette.length];
+                    if (!used.has(candidate)) { color = candidate; break; }
+                  }
+                  // Extra rooms retain individual labelled swatches beyond the primary palette.
+                  let index = registry.size;
+                  while (!color || used.has(color)) color = `hsl(${((index++ * 137.508) % 360).toFixed(3)} 65% 72%)`;
+                  registry.set(value, color);
+                }
+                return registry.get(value);
+              }
               function transitions(records) {
                 return records.filter((record, index) => !record.boundary && (typeof record.transition === 'boolean' ? record.transition : index > 0 && record.state !== records[index - 1].state));
               }
@@ -2215,15 +2288,17 @@ card:
                     html += '<p class="hi-history-note">Lines join recorded values. A recorded state such as Unavailable, or a change of unit, creates a break.</p>';
                   } else if (item.kind !== 'reason') {
                     const colors = {ok:'#4ade80',watch:'#facc15',risk:'#fb923c',danger:'#f87171',unknown:'#64748b',neutral:'#7dd3fc'};
+                    const colorFor = value => item.kind === 'source' ? sourceColor(value, document) : colors[category(value, item.kind).tone];
+                    if (item.kind === 'source') html += '<p class="hi-history-note">Colours identify rooms. The risk level is shown in the chart above.</p>';
                     const ribbons = records.map((record,index) => {
                       const next = records[index+1]?.time ?? end;
                       const x = 500 * (record.time-start) / Math.max(1,end-start);
                       const width = Math.max(0,500 * (next-record.time) / Math.max(1,end-start));
                       const label = category(record.state,item.kind);
-                      return `<rect x="${x.toFixed(2)}" y="0" width="${width.toFixed(2)}" height="36" fill="${colors[label.tone]}" stroke="#0d1522" stroke-width="1"><title>${escape(label.label)} · ${escape(date(record.time))}</title></rect>${width >= 50 ? `<text x="${(x+5).toFixed(2)}" y="23" font-size="13" fill="#071523">${escape(label.label.slice(0, Math.max(1, Math.floor((width-10)/8))))}${label.label.length > Math.floor((width-10)/8) ? '…' : ''}</text>` : ''}`;
+                      return `<rect x="${x.toFixed(2)}" y="0" width="${width.toFixed(2)}" height="36" fill="${colorFor(record.state)}" stroke="#0d1522" stroke-width="1"><title>${escape(label.label)} · ${escape(date(record.time))}</title></rect>${width >= 50 ? `<text x="${(x+5).toFixed(2)}" y="23" font-size="13" fill="#071523">${escape(label.label.slice(0, Math.max(1, Math.floor((width-10)/8))))}${label.label.length > Math.floor((width-10)/8) ? '…' : ''}</text>` : ''}`;
                     }).join('');
                     html += `<svg class="hi-history-chart" viewBox="0 0 500 36" role="img" aria-label="${escape(item.label)} recorded states. Choose a recorded state below for its time and value.">${ribbons}</svg>${axis}`;
-                    html += `<div class="hi-history-legend">${[...new Set(records.map(record => record.state))].map(value => {const label=category(value,item.kind); return `<span><i style="background:${colors[label.tone]}" aria-hidden="true"></i>${escape(label.label)}</span>`;}).join('')}</div>`;
+                    html += `<div class="hi-history-legend">${[...new Set(records.map(record => record.state))].map(value => {const label=category(value,item.kind); return `<span><i style="background:${colorFor(value)}" aria-hidden="true"></i>${escape(label.label)}</span>`;}).join('')}</div>`;
                   }
                   html += inspection(records,item.label,item.kind);
                   const updates = item.kind === 'numeric' || item.kind === 'reason' ? records.filter(record => !record.boundary) : transitions(records);
@@ -2270,7 +2345,7 @@ card:
                   dispose() { disposed = true; active = false; invalidate(); section.remove(); },
                 };
               }
-              return {normalize, numeric, category, transitions, seriesPaths, create};
+              return {normalize, numeric, category, transitions, seriesPaths, sourceColor, create};
             })();
             // HI-HISTORY-RENDERER:END
             const owner = this;
@@ -3299,6 +3374,29 @@ card:
                     const modes = {normal: 'Normal', cooking: 'Zone 1', bathroom: 'Zone 2', bath: 'Zone 2', air_quality: 'Air quality', global_gate: 'Global gate', away: 'Away', paused: 'Paused', manual_override: 'Manual override', disabled: 'Disabled', telemetry_unavailable: 'Telemetry unavailable', co_emergency: 'CO emergency', danger: 'Danger', alert: 'Alert'};
                     return Object.hasOwn(modes, value) ? {label: modes[value], tone: value === 'co_emergency' ? 'danger' : 'neutral'} : {label: `Unrecognised recorded value: ${value}`, tone: 'unknown'};
                   }
+                  // Share room identity colours between independently embedded badge renderers.
+                  // The registry lives only for this page, including range changes and reopenings.
+                  function sourceColor(value, document) {
+                    if (['unknown', 'unavailable', 'conflicting records', 'none', ''].includes(value.trim().toLowerCase())) return '#64748b';
+                    const key = Symbol.for('hi.badge-history.room-colors.v1');
+                    const registry = document[key] ||= new Map();
+                    if (!registry.has(value)) {
+                      const palette = ['#7dd3fc', '#c4b5fd', '#f9a8d4', '#5eead4', '#fde68a', '#a5b4fc', '#fdba74', '#a3e635', '#e879f9', '#67e8f9'];
+                      let hash = 2166136261;
+                      for (const character of value) hash = Math.imul(hash ^ character.codePointAt(0), 16777619) >>> 0;
+                      const used = new Set(registry.values());
+                      let color;
+                      for (let offset = 0; offset < palette.length; offset++) {
+                        const candidate = palette[(hash + offset) % palette.length];
+                        if (!used.has(candidate)) { color = candidate; break; }
+                      }
+                      // Extra rooms retain individual labelled swatches beyond the primary palette.
+                      let index = registry.size;
+                      while (!color || used.has(color)) color = `hsl(${((index++ * 137.508) % 360).toFixed(3)} 65% 72%)`;
+                      registry.set(value, color);
+                    }
+                    return registry.get(value);
+                  }
                   function transitions(records) {
                     return records.filter((record, index) => !record.boundary && (typeof record.transition === 'boolean' ? record.transition : index > 0 && record.state !== records[index - 1].state));
                   }
@@ -3415,15 +3513,17 @@ card:
                         html += '<p class="hi-history-note">Lines join recorded values. A recorded state such as Unavailable, or a change of unit, creates a break.</p>';
                       } else if (item.kind !== 'reason') {
                         const colors = {ok:'#4ade80',watch:'#facc15',risk:'#fb923c',danger:'#f87171',unknown:'#64748b',neutral:'#7dd3fc'};
+                        const colorFor = value => item.kind === 'source' ? sourceColor(value, document) : colors[category(value, item.kind).tone];
+                        if (item.kind === 'source') html += '<p class="hi-history-note">Colours identify rooms. The risk level is shown in the chart above.</p>';
                         const ribbons = records.map((record,index) => {
                           const next = records[index+1]?.time ?? end;
                           const x = 500 * (record.time-start) / Math.max(1,end-start);
                           const width = Math.max(0,500 * (next-record.time) / Math.max(1,end-start));
                           const label = category(record.state,item.kind);
-                          return `<rect x="${x.toFixed(2)}" y="0" width="${width.toFixed(2)}" height="36" fill="${colors[label.tone]}" stroke="#0d1522" stroke-width="1"><title>${escape(label.label)} · ${escape(date(record.time))}</title></rect>${width >= 50 ? `<text x="${(x+5).toFixed(2)}" y="23" font-size="13" fill="#071523">${escape(label.label.slice(0, Math.max(1, Math.floor((width-10)/8))))}${label.label.length > Math.floor((width-10)/8) ? '…' : ''}</text>` : ''}`;
+                          return `<rect x="${x.toFixed(2)}" y="0" width="${width.toFixed(2)}" height="36" fill="${colorFor(record.state)}" stroke="#0d1522" stroke-width="1"><title>${escape(label.label)} · ${escape(date(record.time))}</title></rect>${width >= 50 ? `<text x="${(x+5).toFixed(2)}" y="23" font-size="13" fill="#071523">${escape(label.label.slice(0, Math.max(1, Math.floor((width-10)/8))))}${label.label.length > Math.floor((width-10)/8) ? '…' : ''}</text>` : ''}`;
                         }).join('');
                         html += `<svg class="hi-history-chart" viewBox="0 0 500 36" role="img" aria-label="${escape(item.label)} recorded states. Choose a recorded state below for its time and value.">${ribbons}</svg>${axis}`;
-                        html += `<div class="hi-history-legend">${[...new Set(records.map(record => record.state))].map(value => {const label=category(value,item.kind); return `<span><i style="background:${colors[label.tone]}" aria-hidden="true"></i>${escape(label.label)}</span>`;}).join('')}</div>`;
+                        html += `<div class="hi-history-legend">${[...new Set(records.map(record => record.state))].map(value => {const label=category(value,item.kind); return `<span><i style="background:${colorFor(value)}" aria-hidden="true"></i>${escape(label.label)}</span>`;}).join('')}</div>`;
                       }
                       html += inspection(records,item.label,item.kind);
                       const updates = item.kind === 'numeric' || item.kind === 'reason' ? records.filter(record => !record.boundary) : transitions(records);
@@ -3470,7 +3570,7 @@ card:
                       dispose() { disposed = true; active = false; invalidate(); section.remove(); },
                     };
                   }
-                  return {normalize, numeric, category, transitions, seriesPaths, create};
+                  return {normalize, numeric, category, transitions, seriesPaths, sourceColor, create};
                 })();
                 // HI-HISTORY-RENDERER:END
                 const owner = this;

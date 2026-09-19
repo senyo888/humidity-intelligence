@@ -23,6 +23,9 @@ beta.1 commit below does not identify this package. Published Stable remains v2.
 
 ### V2 badge summaries
 
+- Mould and condensation history give source rooms individual colours with matching
+  labelled legends, retained across histories and ranges within the page session.
+
 - Humidity, Condensation, Mould, Current Air Control, Ready, Zone 1, Zone 2 and AQ
   open short explanations before history. Summaries
   identify the actual mapped history source and retain unavailable states.

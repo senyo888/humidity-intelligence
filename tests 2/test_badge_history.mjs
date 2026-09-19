@@ -120,3 +120,25 @@ test('range caption preserves timezone offsets across the daylight-saving bounda
  h.pending[1].resolve({});await flush();
  const caption=h.content.children.map(n=>n.textContent||'').join(' ');assert.match(caption,/GMT\+1/);assert.match(caption,/GMT/);h.controller.dispose();
 });
+
+
+test('room colours stay distinct and stable across embedded renderers and range subsets',()=>{
+ const document={};
+ const other=new Function(source+'\nreturn hiBadgeHistory;')();
+ const names=Array.from({length:30},(_,i)=>`Room ${i}`);
+ const colors=names.map(name=>model.sourceColor(name,document));
+ assert.equal(new Set(colors).size,names.length);
+ for(const index of [29,1,0,15])assert.equal(other.sourceColor(names[index],document),colors[index]);
+ for(const state of ['Unknown','unavailable','Conflicting records','None',''])assert.equal(model.sourceColor(state,document),'#64748b');
+ assert.equal(model.category('Danger','risk').tone,'danger');
+});
+
+test('source ribbons and labelled legends use matching individual room colours',async()=>{
+ const h=harness();h.controller.open();
+ h.pending[0].resolve({'sensor.entry_risk':[row(0,'Risk')],'sensor.entry_source':[row(0,'Room A'),row(200,'Room B'),row(400,'Room A'),row(600,'unavailable')]});await flush();
+ const html=h.content.children.filter(n=>n.tagName==='ARTICLE')[1].innerHTML;
+ const fills=[...html.matchAll(/height="36" fill="([^"]+)"/g)].map(m=>m[1]);
+ assert.notEqual(fills[0],fills[1]);assert.equal(fills[0],fills[2]);assert.equal(fills[3],'#64748b');
+ for(const color of new Set(fills))assert.ok(html.includes(`background:${color}`));
+ assert.match(html,/Colours identify rooms/);assert.match(html,/Room A/);assert.match(html,/Room B/);h.controller.dispose();
+});
