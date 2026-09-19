@@ -159,9 +159,16 @@ Control row:
   score, classifications and evidence states; missing/malformed payloads show no score
 - preserve the accepted 82px footprint, independent LED colours, retained signed
   full-circle movement, six-second Partial pulse and reduced-motion alternatives
-- tap/click/keyboard opens native Popover details with Recent trend; hold opens
+- tap/click/keyboard opens native Popover details with collection progress or Recent trend; hold opens
   Diagnostics. Modern Popover-capable clients are required; update older WebViews
-- collection `count/303` is eligibility; details `count/432` is rolling coverage
+- collection LEDs fill clockwise from the top using the backend progress ratio;
+  `floor(ratio * 120)` marks ensures incomplete progress never appears complete.
+  Invalid ratios stay unlit. This is sample progress, not elapsed time or score movement
+- while collecting, details show `Baseline progress: N of 303 valid samples`, using the backend minimum
+  rather than a fixed denominator. The 432 buckets remain rolling-window capacity,
+  not the baseline target; outside collection the tally is labelled `Rolling-window coverage`.
+  Collection details explain that consecutive and balance
+  evidence are also required; do not hold a full ring or delay backend state transitions
 - after changed Python, restart Home Assistant; run `refresh_ui`, obtain fresh
   `dump_cards`/`view_cards` exports, replace complete pasted YAML, and refresh frontend
   caches. No configuration/entity migration is needed. Restart/reload resets history

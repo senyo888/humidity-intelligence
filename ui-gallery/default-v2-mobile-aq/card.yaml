@@ -1860,6 +1860,15 @@ card:
                   (hasValue ? 'score' : stateCode === 'collecting' ? 'collection' :
                     stateCode.startsWith('incomplete_evidence_') ? 'incomplete' : 'none')
                 );
+                const collecting = !invalidScore && !hasValue
+                  && stateCode === 'collecting' && indicatorMode === 'collection';
+                const collectionRatio = presentation.progress_ratio;
+                const collectionProgressValid = collecting && typeof collectionRatio === 'number'
+                  && Number.isFinite(collectionRatio) && collectionRatio >= 0 && collectionRatio <= 1;
+                const collectionMarks = collectionProgressValid ? Math.floor(collectionRatio * 120) : 0;
+                const collectionArc = `<div class="hi-stability-direction hi-stability-direction-higher" aria-hidden="true">${Array.from({ length: collectionMarks }, (_, index) =>
+                  `<i class="hi-stability-mark" style="--hi-mark-angle:${index * 3}deg;--hi-mark-from:1;--hi-mark-to:1;animation:none;"></i>`
+                ).join('')}</div>`;
                 const movementColors = {
                   rise_gentle: '#38bdf8',
                   rise_strong: '#4ade80',
@@ -1901,22 +1910,32 @@ card:
                   .replaceAll('>', '&gt;')
                   .replaceAll('"', '&quot;')
                   .replaceAll("'", '&#039;');
+                const evidenceCount = windowData.valid_samples;
+                const evidenceTarget = collecting ? windowData.minimum_valid_samples : windowData.expected_samples;
+                const evidenceValid = Number.isInteger(evidenceCount) && evidenceCount >= 0
+                  && Number.isInteger(evidenceTarget) && evidenceTarget > 0;
+                const evidenceText = evidenceValid
+                  ? `${collecting ? 'Baseline progress' : 'Rolling-window coverage'}: ${evidenceCount} of ${evidenceTarget} valid samples.`
+                  : 'Sample progress unavailable.';
+                const arcDetails = collecting
+                  ? '<h3>Baseline collection</h3><p>The blue LEDs fill clockwise as valid samples accumulate toward the baseline requirement. They show sample progress, not elapsed time. The score appears when the backend evidence requirements are met.</p>'
+                  : `<h3>Recent trend</h3><p>The arc retains accumulated score movement. Its colour shows the latest change: blue or green indicates recovery, even while an earlier downward arc is still retracting. Orange or red indicates a decline. Arc position does not measure elapsed time.</p><p>${escapeHtml(movementDetail || 'Movement unavailable.')}</p>`;
                 const gaugeClass = [
                   'hi-stability-gauge',
                   tone === 'excellent' ? 'hi-stability-gauge-white' : '',
                   tone === 'incomplete' ? 'hi-stability-gauge-incomplete' : '',
                   incompletePulse ? 'hi-stability-gauge-partial-pulse' : ''
                 ].filter(Boolean).join(' ');
-                return `<div class="hi-stability-interactive"><button class="hi-stability-open" onclick="event.stopPropagation()" popovertarget="hi-stability-details" aria-label="Open Stability Score details"><div class="${gaugeClass}" style="--hi-stability-color:${color};--hi-stability-score-color:${scoreColor};--hi-stability-led-color:${movementColor};--hi-stability-led-sweep:${activeLedSteps}deg;" role="img" aria-label="${escapeHtml(fullDetailText)}" title="${escapeHtml(fullDetailText)}">
+                return `<div class="hi-stability-interactive"><button class="hi-stability-open" onclick="event.stopPropagation()" popovertarget="hi-stability-details" aria-label="Open Stability Score details"><div class="${gaugeClass}" style="--hi-stability-color:${color};--hi-stability-score-color:${scoreColor};--hi-stability-led-color:${collecting ? '#38bdf8' : movementColor};--hi-stability-led-sweep:${collecting ? (collectionProgressValid ? collectionRatio * 360 : 0) : activeLedSteps}deg;" role="img" aria-label="${escapeHtml(fullDetailText)}" title="${escapeHtml(fullDetailText)}">
                   <div class="hi-stability-center" data-digits="${primaryText.length}"><span>${escapeHtml(primaryText)}</span></div>
-                  ${ledArcs}
+                  ${collecting ? collectionArc : ledArcs}
                   <div class="${evidenceClass}"></div>
                   <div class="hi-stability-origin"></div>
                 </div></button><div id="hi-stability-details" class="hi-stability-details" popover="auto" role="dialog" aria-label="Stability Score details">
                   <h2>Stability Score</h2>
                   <p>${escapeHtml(detailText)}</p>
-                  <p>${escapeHtml(`Evidence: ${windowData.valid_samples ?? 'Unknown'} of ${windowData.expected_samples ?? 'unknown'} valid samples.`)}</p>
-                  <h3>Recent trend</h3><p>The arc retains accumulated score movement. Its colour shows the latest change: blue or green indicates recovery, even while an earlier downward arc is still retracting. Orange or red indicates a decline. Arc position does not measure elapsed time.</p><p>${escapeHtml(movementDetail || 'Movement unavailable.')}</p>
+                  <p>${escapeHtml(evidenceText)}</p>
+                  ${arcDetails}
                   <button class="hi-stability-close" onclick="event.stopPropagation()" popovertarget="hi-stability-details" popovertargetaction="hide">Close</button>
                 </div></div>`;
               ]]]

@@ -129,7 +129,7 @@ correction preserves valid backend payloads, including a genuine numeric zero.
 
 | Backend state | Visible presentation |
 | --- | --- |
-| Collecting | Valid count centred in circle; `Collecting baseline`; `OF 303` below label |
+| Collecting | Valid count centred in circle; `Collecting baseline`; `OF 303` below label; clockwise LED fill from backend collection progress |
 | Available complete | Displayed integer; `Stability Score`; backend classification label |
 | Partial without stronger condition headline | Numeric score; `PARTIAL`; incomplete-evidence treatment |
 | Insufficient consecutive evidence | Dash; `Evidence gaps`; `GAPS` |
@@ -155,7 +155,16 @@ no visible dormant LED bank. Fine 0.8-degree marks spaced at three-degree interv
 sit on the outer edge; small top origin. Do not move or enlarge the badge during
 integration. Exact CSS at baseline remains the visual reference.
 
-LED movement retains signed integer endpoints within [-360,+360]. Each scheduled
+During collection, the LED ring fills clockwise from the top using backend
+`presentation.progress_ratio`, with `floor(ratio * 120)` illuminated marks. Accept
+only finite numeric ratios in [0,1], without coercion; malformed progress stays
+unlit. Incomplete progress cannot appear as a full ring. Collection uses the blue
+collection colour and represents valid-sample progress, not elapsed time or score
+movement. A ratio of 1 renders a full ring only while the backend still reports
+collection. Transition immediately to backend-reported score or incomplete evidence;
+do not hold completion, delay a score, or hide unmet evidence requirements.
+
+Once a score is available, LED movement retains signed integer endpoints within [-360,+360]. Each scheduled
 valid score comparison adds signed `ceil(abs(delta) * 3.6)` degrees, higher clockwise,
 lower counter-clockwise. Saturate each step; at full circle hold until reversal.
 Reversal retracts from retained endpoint, potentially crossing the origin. Steady
@@ -165,7 +174,8 @@ score movement, including cap changes, **not elapsed time**.
 Independent colour: gentle rise blue `#38bdf8`, strong rise green `#4ade80`, gentle
 fall orange `#fb923c`, strong fall red `#ef4444`. Strong means absolute rate >=5 score
 points per ten minutes, normalized by actual positive comparison interval. Invalid
-timing is neutral. Baseline/unavailable is unlit. Scheduled unavailable truth resets
+timing is neutral. The first scored movement baseline and unavailable states are
+unlit; collection progress is the separate presentation described above. Scheduled unavailable truth resets
 the chain; a later valid score establishes a new baseline. Read-time unavailable hides
 the arc without mutating stored scheduled history. Late skipped callbacks add no move.
 
@@ -173,16 +183,24 @@ Only changed marks fade sequentially (138ms fade, 18ms stagger); retained marks 
 Half-circle settles in about 1.2s, full circle about 2.4s; at most 120 marks per winding.
 Crossing origin can render both windings temporarily. Invalid endpoints fail closed.
 
-Tap/click/keyboard activation of gauge opens native Popover API details: backend score
-explanation, evidence tally against 432, and **Recent trend** explaining retained arc
-versus current colour plus exact backend movement detail. Close, Escape and outside
+Tap/click/keyboard activation of gauge opens native Popover API details: backend
+explanation and, while collecting, **Baseline progress: N of 303 valid samples**, using backend
+`window.valid_samples` and `window.minimum_valid_samples`, never a hardcoded
+denominator. During collection, details explain the clockwise sample-progress ring
+and that score eligibility still requires consecutive and balance evidence. Once
+scored, **Recent trend** explains retained arc versus current colour plus exact
+backend movement detail. Outside collection, the tally is explicitly labelled
+**Rolling-window coverage: N of 432 valid samples**, using backend expected samples.
+Close, Escape and outside
 tap dismiss. Hold opens HI Diagnostics more-info. Readable Diagnostics attribute
 exposes score, evidence and movement; native Activity is not a substitute telemetry
 panel. Modern Popover-capable client required; older WebViews need explicit handling,
 not a silent removal of the detail interaction.
 
-`count/303` is baseline eligibility; `count/432` is rolling evidence coverage. They
-must not be presented as contradictory denominators or changed to match artificially.
+`count/303` is progress toward the minimum sample requirement; it does not guarantee
+score eligibility on its own. The 432 buckets remain the 72-hour rolling-window
+capacity in backend telemetry and the separately labelled coverage tally, not the popup's baseline
+target. This presentation change does not alter the sampling window or evidence gates.
 
 ## Scenario and acceptance coverage
 

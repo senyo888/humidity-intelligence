@@ -13,6 +13,15 @@ publication or deployment is claimed. Published Stable remains v2.0.12.
 
 ### Accepted Stability Score integration
 
+- Shows collection progress as a clockwise LED fill from the top, using backend
+  progress toward the minimum valid-sample requirement. Collection details now show baseline
+  progress against that minimum (303), instead of the 432-bucket rolling capacity,
+  and explain collection separately from score movement. Outside collection the
+  tally is explicitly labelled rolling-window coverage. Incomplete progress never
+  fills the whole ring; backend score and evidence transitions remain immediate.
+  This presentation-only change preserves scoring, control and entity semantics.
+  Regenerate exports and replace pasted Manual cards to receive the updated UI;
+  no configuration or stored-data migration is required.
 - Restores the accepted shared Diagnostics builder connection so the live sensor
   receives collection progress and scores. Regression checks use the real builder.
 - Classifies the isolated scenario tooling for controller packaging and updates

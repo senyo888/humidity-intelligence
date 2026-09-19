@@ -293,7 +293,7 @@ test('badge opens its native details popover with backend explanation, evidence 
   assert.match(output, /<button class="hi-stability-open" onclick="event.stopPropagation\(\)" popovertarget="hi-stability-details" aria-label="Open Stability Score details">/);
   assert.match(output, /id="hi-stability-details" class="hi-stability-details" popover="auto" role="dialog" aria-label="Stability Score details"/);
   assert.match(output, /<p>Backend partial evidence explanation\.<\/p>/);
-  assert.match(output, /<p>Evidence: 303 of 432 valid samples\.<\/p>/);
+  assert.match(output, /<p>Rolling-window coverage: 303 of 432 valid samples\.<\/p>/);
   assert.match(output, /<h3>Recent trend<\/h3>/);
   assert.match(output, /Arc position does not measure elapsed time\./);
   assert.match(output, /<p>Backend movement explanation\.<\/p>/);
@@ -307,9 +307,9 @@ test('popover escapes every dynamic text surface and reports absent evidence', (
   const output = renderContract({ presentation: { detail_text: unsafe }, window: { valid_samples: unsafe, expected_samples: unsafe }, movement: { detail_text: unsafe } });
   assert.doesNotMatch(output, /<img|onerror="bad"/);
   assert.match(output, /<p>&lt;img src=x onerror=&quot;bad&quot;&gt;<\/p>/);
-  assert.match(output, /Evidence: &lt;img src=x onerror=&quot;bad&quot;&gt; of &lt;img src=x onerror=&quot;bad&quot;&gt; valid samples/);
+  assert.match(output, /Sample progress unavailable\./);
   const absent = renderContract({});
-  assert.match(absent, /Evidence: Unknown of unknown valid samples\./);
+  assert.match(absent, /Sample progress unavailable\./);
   assert.match(absent, /Movement unavailable\./);
 });
 
@@ -366,5 +366,84 @@ test('all valid integer scores including genuine zero retain backend presentatio
     assert.ok(output.includes(`<span>${value}</span></div>`));
     assert.match(output, /--hi-stability-color:#ef4444;/);
     assert.equal(renderLabel(contract), 'POOR');
+  }
+});
+
+function collectingContract(samples, ratio) {
+  return {
+    availability: 'insufficient_coverage',
+    window: { valid_samples: samples, minimum_valid_samples: 303, expected_samples: 432 },
+    presentation: {
+      state_code: 'collecting', indicator_mode: 'collection', tone: 'collecting',
+      primary_text: String(samples), compact_text: 'OF 303', progress_ratio: ratio,
+    },
+  };
+}
+
+function renderedMarks(output) {
+  return [...output.matchAll(/<i class="hi-stability-mark"[^>]*>/g)].map(([html]) => html);
+}
+
+test('collection fills clockwise by actual minimum-sample progress without completing early', () => {
+  for (const [samples, count] of [[0, 0], [1, 0], [151, 59], [302, 119], [303, 120]]) {
+    const ratio = Math.round(samples / 303 * 10000) / 10000;
+    const output = renderContract(collectingContract(samples, ratio));
+    const marks = renderedMarks(output);
+    assert.equal(marks.length, count, `${samples}/303`);
+    marks.forEach((mark, index) => {
+      assert.ok(mark.includes(`--hi-mark-angle:${index * 3}deg;`));
+      assert.ok(mark.includes('--hi-mark-from:1;--hi-mark-to:1;'));
+      assert.ok(mark.includes('animation:none;'));
+    });
+    assert.match(output, /hi-stability-direction-higher/);
+    assert.match(output, /--hi-stability-led-color:#38bdf8;/);
+    assert.ok(output.includes(`Baseline progress: ${samples} of 303 valid samples.`));
+    assert.match(output, /Baseline collection/);
+    assert.doesNotMatch(output, /Recent trend|arc retains accumulated score movement|of 432 valid samples/);
+  }
+});
+
+test('malformed collection ratios do not create progress LEDs or coerce values', () => {
+  for (const ratio of [undefined, null, false, true, [], [1], {}, '1', NaN, Infinity, -Infinity, -0.1, 1.1]) {
+    const contract = collectingContract(302, ratio);
+    // A stale score movement must never fill a collecting ring.
+    contract.movement = { status: 'available', start_position_degrees: 0, end_position_degrees: 360 };
+    assert.equal(renderedMarks(renderContract(contract)).length, 0, String(ratio));
+  }
+});
+
+test('collection counts use the minimum target and fail safely for malformed evidence', () => {
+  for (const field of ['valid_samples', 'minimum_valid_samples']) {
+    for (const value of [undefined, null, false, [], '303', -1, 1.5, Infinity]) {
+      const contract = collectingContract(151, 0.4983);
+      contract.window[field] = value;
+      const output = renderContract(contract);
+      assert.doesNotMatch(output, /Baseline progress: \d+ of \d+ valid samples\./);
+      assert.match(output, /unavailable/i);
+    }
+  }
+});
+
+test('available score keeps movement LEDs and reports rolling-window coverage separately', () => {
+  const output = renderContract({
+    availability: 'available',
+    score: { display_score: 90, display_classification: 'Good' },
+    window: { valid_samples: 303, minimum_valid_samples: 303, expected_samples: 432 },
+    presentation: { state_code: 'available', indicator_mode: 'score', tone: 'good', progress_ratio: 1 },
+    movement: { status: 'available', start_position_degrees: -18, end_position_degrees: -18, color_token: 'fall_gentle' },
+  });
+  assert.equal(renderedMarks(output).length, 6);
+  assert.match(output, /--hi-stability-led-color:#fb923c;/);
+  assert.match(output, /Rolling-window coverage: 303 of 432 valid samples\./);
+  assert.match(output, /Recent trend/);
+  assert.doesNotMatch(output, /Baseline collection/);
+});
+
+test('collection state and indicator mode must agree before progress is drawn', () => {
+  for (const [state, mode] of [['incomplete_evidence_gaps', 'collection'], ['collecting', 'none'], ['live_data_unavailable', 'none']]) {
+    const contract = collectingContract(303, 1);
+    contract.presentation.state_code = state;
+    contract.presentation.indicator_mode = mode;
+    assert.equal(renderedMarks(renderContract(contract)).length, 0);
   }
 });
