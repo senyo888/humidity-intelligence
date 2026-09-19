@@ -978,13 +978,12 @@ Notes:
   workflows. Dashboard creation and editing remain in Home Assistant's dashboard UI.
   System and Manual buttons keep the
   v2.0.7 helper-toggle behavior.
-- The generated V2 control row uses a passive Stability preview badge instead of
-  a Pause LIVE control tile. It reflects future v2.1 diagnostics when available
-  while score calculation, lane selection, and runtime control stay backend-owned.
-  Without that future contract, the badge shows `2.1 / PREVIEW` with the established
-  neutral-white breathing shimmer, paced at a slow 10 BPM—one pulse every 6 seconds.
-  A dedicated preview class keeps that presentation distinct from a completed
-  backend score.
+- **Unreleased Stability integration:** the accepted badge shows backend-owned
+  score, evidence and Recent trend details. It remains observational. See the
+  [accepted contract](docs/stability-score-accepted-baseline.md) for thresholds,
+  incomplete AQ, restart history reset, client support and card refresh, and the
+  [testing guide](docs/stability-testing.md). This does not change published release
+  availability or historical preview behaviour.
 - Every `pause_control` / `resume_control` call requires an admin user context.
   Supplying `entry_id` scopes the action to that config entry; it does not bypass the
   authorization check. Background automations/scripts whose action context has no

@@ -14,6 +14,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.helpers.event import async_track_state_change_event, async_track_time_interval
 from homeassistant.util import dt as dt_util
 
+from ..helpers.air_quality import capture_configured_aq_evidence
 from ..const import (
     ALERT_THRESHOLD_BOUNDS,
     ALERT_TRIGGER_DEFS,
@@ -297,6 +298,17 @@ class HIAutomationEngine:
 
     async def _evaluate(self) -> None:
         try:
+            try:
+                self._record_stability_aq_truth()
+            except Exception:
+                self.hass.data.setdefault(DOMAIN, {}).setdefault(
+                    self.entry.entry_id, {}
+                )["stability_current_air_quality"] = {
+                    "configured_trigger_count": 0,
+                    "evaluated_trigger_count": 0,
+                    "crossed_trigger_count": 0,
+                }
+                _LOGGER.exception("Unable to capture passive Stability AQ evidence")
             target_profile = self._active_target_profile()
             house_humidity = self._level_avg("humidity", None)
             humidity_class = seasonal_humidity_state(house_humidity, target_profile)
@@ -1366,6 +1378,22 @@ class HIAutomationEngine:
 
     def _aq_trigger_details(self, level: str, cfg: Dict[str, Any]) -> List[str]:
         return self._aq_trigger_evaluation(level, cfg)[0]
+
+    def _record_stability_aq_truth(self) -> None:
+        """Record bounded live AQ threshold truth for passive Stability diagnostics."""
+        evidence = capture_configured_aq_evidence(
+            self.hass,
+            {
+                "telemetry": self.telemetry,
+                "aq": self._cfg("aq", {}),
+            },
+        )
+        data = self.hass.data.setdefault(DOMAIN, {}).setdefault(self.entry.entry_id, {})
+        data["stability_current_air_quality"] = {
+            "configured_trigger_count": evidence["configured_trigger_count"],
+            "evaluated_trigger_count": evidence["evaluated_trigger_count"],
+            "crossed_trigger_count": evidence["bad_trigger_count"],
+        }
 
     async def _start_aq(self, level: str, cfg: Dict[str, Any]) -> None:
         if self._manual_override_active():

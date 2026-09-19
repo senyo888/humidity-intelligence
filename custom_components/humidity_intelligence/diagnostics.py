@@ -10,6 +10,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import __version__ as HA_VERSION
 from homeassistant.core import HomeAssistant
 
+from .helpers.stability import stability_diagnostics_payload
 from .const import (
     CONF_ALERT_HANDLING_ENABLED,
     CONF_AUTO_REFRESH_UI_ON_STARTUP,
@@ -473,6 +474,7 @@ def _diagnostics_summary(
         "active_alert_resolution": _alert_resolution_summary(runtime_data.get("alert_telemetry", [])),
         "visual_alerts": _visual_alert_summary(alerts),
         "humidity_drift_7d": drift_dependency,
+        "stability_score": stability_diagnostics_payload(runtime_data),
         "setup_assist": setup_assist,
         "pm25_entity_id_normalization": pm25_normalization,
         "humidifier_reconciliation": humidifier_reconciliation,

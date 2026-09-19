@@ -209,6 +209,8 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     task = data.pop("startup_ui_refresh_task", None)
     if isinstance(task, asyncio.Task):
         task.cancel()
+    if unsub := data.get("stability_snapshot_unsub"):
+        unsub()
     if unsub := data.get("core_unsub"):
         unsub()
     if unsub := data.get("slope_unsub"):

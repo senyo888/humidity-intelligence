@@ -14,7 +14,7 @@ const SURFACES = [
 
 function gaugeBody(relativePath) {
   const source = fs.readFileSync(path.join(ROOT, relativePath), 'utf8');
-  const cardStart = source.indexOf('          name: Stability Score\n');
+  const cardStart = source.indexOf('          entity: sensor.hi_diagnostics\n');
   assert.notEqual(cardStart, -1, `${relativePath}: Stability Score card missing`);
   const gaugeStart = source.indexOf('            gauge: |\n', cardStart);
   const tapAction = source.indexOf('          tap_action:\n', gaugeStart);
@@ -31,6 +31,24 @@ function gaugeBody(relativePath) {
     .join('\n');
 }
 
+function labelBody(relativePath) {
+  const source = fs.readFileSync(path.join(ROOT, relativePath), 'utf8');
+  const start = source.indexOf('          entity: sensor.hi_diagnostics\n');
+  const labelStart = source.indexOf('          label: |\n', start);
+  assert.ok(start >= 0 && labelStart > start, `${relativePath}: native label missing`);
+  const open = source.indexOf('[[[', labelStart);
+  const close = source.indexOf(']]]', open);
+  assert.ok(close > open, `${relativePath}: label wrapper missing`);
+  return source.slice(open + 3, close).trim();
+}
+
+const LABEL_BODIES = SURFACES.map(labelBody);
+const LABEL_RENDERERS = LABEL_BODIES.map((body) => new Function('entity', body));
+
+function renderLabel(contract) {
+  return assertIdentical(LABEL_RENDERERS.map((render) => render({ attributes: { diagnostics_summary: { stability_score: contract } } })));
+}
+
 const BODIES = SURFACES.map(gaugeBody);
 const RENDERERS = BODIES.map((body) => new Function('entity', body));
 
@@ -45,102 +63,308 @@ function assertIdentical(outputs) {
 
 test('all four public surfaces carry one identical Stability renderer', () => {
   assert.equal(new Set(BODIES).size, 1);
+  assert.equal(new Set(LABEL_BODIES).size, 1);
 });
 
-test('absent v2.1 diagnostics render an intentional preview rather than a completed score', () => {
-  const output = assertIdentical(renderAll({ diagnostics_summary: {} }));
-  assert.match(output, /--hi-stability-color:#f8fafc/);
-  assert.match(output, /hi-stability-gauge hi-stability-gauge-preview/);
-  assert.match(output, /<span>2\.1<\/span><small>PREVIEW<\/small>/);
-  assert.match(output, /aria-label="Stability Score preview for v2\.1\."/);
-  assert.doesNotMatch(output, /hi-stability-gauge-white/);
-  assert.doesNotMatch(output, />future</i);
-});
+function renderContract(contract) {
+  const output = assertIdentical(renderAll({ diagnostics_summary: { stability_score: contract } }));
+  assert.doesNotMatch(output, /<small\b/, 'compact status must stay outside the ring');
+  return output;
+}
 
-test('explicit incomplete nested contracts degrade to no score rather than preview', () => {
-  for (const stabilityScore of [{}, null, 'malformed', []]) {
-    const output = assertIdentical(renderAll({
-      diagnostics_summary: { stability_score: stabilityScore },
-    }));
+test('missing and malformed contracts cannot imply a preview or completed score', () => {
+  for (const contract of [undefined, null, {}, 'malformed', []]) {
+    const output = renderContract(contract);
+    assert.match(output, /<span>—<\/span><\/div>/);
+    assert.equal(renderLabel(contract), 'NO SCORE');
     assert.match(output, /--hi-stability-color:#94a3b8/);
-    assert.match(output, /<span>—<\/span><small>NO SCORE<\/small>/);
-    assert.match(output, /aria-label="Stability Score is not available\."/);
-    assert.doesNotMatch(output, /hi-stability-gauge-preview/);
-    assert.doesNotMatch(output, /<small>PREVIEW<\/small>/);
+    assert.doesNotMatch(output, /gauge-white|PREVIEW|2\.1/);
   }
 });
 
-test('backend score and classification still drive the live badge', () => {
-  const output = assertIdentical(renderAll({
-    diagnostics_summary: {
-      stability_score: {
-        score: { display_score: 82, display_classification: 'good' },
-      },
-    },
-  }));
-  assert.match(output, /--hi-stability-color:#4ade80/);
-  assert.match(output, /<span>82<\/span><small>score<\/small>/);
-  assert.match(output, /aria-label="Stability Score 82, good\."/);
-  assert.doesNotMatch(output, /hi-stability-gauge-preview/);
-  assert.doesNotMatch(output, /hi-stability-gauge-white/);
+test('backend collecting presentation reports real sample progress', () => {
+  const contract = {
+    availability: 'insufficient_coverage',
+    window: { valid_samples: 288, minimum_valid_samples: 303 },
+    score: { suppression_reason: 'coverage_below_threshold' },
+    presentation: { state_code: 'collecting', tone: 'collecting', primary_text: '288', compact_text: 'OF 303', detail_text: 'Collecting valid samples.' },
+  };
+  const output = renderContract(contract);
+  assert.match(output, /<span>288<\/span><\/div>/);
+  assert.equal(renderLabel(contract), 'OF 303');
+  assert.doesNotMatch(output, /OF 303/);
+  assert.match(output, /--hi-stability-color:#38bdf8/);
+  assert.match(output, /aria-label="Collecting valid samples\."/);
+  assert.doesNotMatch(output, /gauge-white/);
 });
 
-test('completed backend score alone receives completed white styling', () => {
-  const output = assertIdentical(renderAll({
-    diagnostics_summary: {
-      stability_score: {
-        score: { display_score: 99, display_classification: 'excellent' },
-      },
-    },
-  }));
-  assert.match(output, /--hi-stability-color:#f8fafc/);
-  assert.match(output, /hi-stability-gauge hi-stability-gauge-white/);
-  assert.doesNotMatch(output, /hi-stability-gauge-preview/);
-  assert.match(output, /<span>99<\/span><small>score<\/small>/);
+test('numeric score never overrides the backend classification or class cap', () => {
+  for (const [classification, color] of [['excellent', '#f8fafc'], ['good', '#4ade80'], ['unstable', '#facc15'], ['poor', '#ef4444']]) {
+    const contract = { score: { display_score: 99, display_classification: classification }, presentation: { tone: classification, primary_text: '99', compact_text: classification.toUpperCase() } };
+    const output = renderContract(contract);
+    assert.ok(output.includes(`--hi-stability-color:${color}`));
+    assert.ok(output.includes('<span>99</span></div>'));
+    assert.equal(renderLabel(contract), classification.toUpperCase());
+    assert.ok(!output.includes(classification.toUpperCase()));
+    assert.equal(output.includes('hi-stability-gauge-white'), classification === 'excellent');
+  }
 });
 
-test('future collecting and unavailable states remain explicit without inventing a score', () => {
-  const collecting = assertIdentical(renderAll({
-    diagnostics_summary: {
-      stability_score: {
-        availability: 'insufficient_coverage',
-        score: { suppression_reason: 'coverage_below_threshold' },
-      },
-    },
-  }));
-  assert.match(collecting, /--hi-stability-color:#38bdf8/);
-  assert.match(collecting, /<span>—<\/span><small>COLLECTING<\/small>/);
-  assert.doesNotMatch(collecting, /hi-stability-gauge-white/);
-
-  const unavailable = assertIdentical(renderAll({
-    diagnostics_summary: {
-      stability_score: {
-        availability: 'unavailable',
-        score: { suppression_reason: 'current_telemetry_unavailable' },
-      },
-    },
-  }));
-  assert.match(unavailable, /--hi-stability-color:#94a3b8/);
-  assert.match(unavailable, /<span>—<\/span><small>NO DATA<\/small>/);
-  assert.doesNotMatch(unavailable, /hi-stability-gauge-white/);
+test('suppressed evidence and live data have distinct truthful states', () => {
+  for (const [suppression, label, color] of [
+    ['current_telemetry_unavailable', 'LIVE DATA', '#94a3b8'],
+    ['insufficient_consecutive_samples', 'GAPS', '#ec4899'],
+    ['insufficient_balance_sources', 'BALANCE', '#ec4899'],
+  ]) {
+    const contract = { availability: 'unavailable', score: { suppression_reason: suppression }, presentation: { compact_text: label } };
+    const output = renderContract(contract);
+    assert.ok(output.includes('<span>—</span></div>'));
+    assert.equal(renderLabel(contract), label);
+    assert.ok(output.includes(`--hi-stability-color:${color}`));
+  }
 });
 
-test('flattened future states remain contract-backed collecting and unavailable truth', () => {
-  const collecting = assertIdentical(renderAll({
-    diagnostics_summary: {},
-    stability_score_availability: 'insufficient_coverage',
-    stability_score_suppression_reason: 'coverage_below_threshold',
-  }));
-  assert.match(collecting, /--hi-stability-color:#38bdf8/);
-  assert.match(collecting, /<span>—<\/span><small>COLLECTING<\/small>/);
-  assert.doesNotMatch(collecting, /<small>PREVIEW<\/small>/);
+test('presentation text is escaped in visible content and accessible detail', () => {
+  const unsafe = '<img src=x onerror="bad"> & \'quoted\'';
+  const output = renderContract({ presentation: { primary_text: unsafe, compact_text: unsafe, detail_text: unsafe }, movement: { detail_text: unsafe } });
+  assert.doesNotMatch(output, /<img|onerror="bad"/);
+  assert.match(output, /&lt;img src=x onerror=&quot;bad&quot;&gt; &amp; &#039;quoted&#039;/);
+});
 
-  const unavailable = assertIdentical(renderAll({
-    diagnostics_summary: {},
-    stability_score_availability: 'unavailable',
-    stability_score_suppression_reason: 'current_telemetry_unavailable',
-  }));
-  assert.match(unavailable, /--hi-stability-color:#94a3b8/);
-  assert.match(unavailable, /<span>—<\/span><small>NO DATA<\/small>/);
-  assert.doesNotMatch(unavailable, /<small>PREVIEW<\/small>/);
+test('native compact label escapes backend text without deriving score classification', () => {
+  const unsafe = '<img src=x onerror="bad"> & \'quoted\'';
+  assert.equal(renderLabel({ presentation: { compact_text: unsafe } }),
+    '&lt;img src=x onerror=&quot;bad&quot;&gt; &amp; &#039;quoted&#039;');
+  assert.equal(renderLabel({ score: { display_score: 99, display_classification: 'excellent' } }), 'NO SCORE');
+});
+
+test('LED palette consumes backend tokens independently of the condition halo', () => {
+  for (const [color_token, expected] of [['rise_gentle','#38bdf8'],['rise_strong','#4ade80'],['fall_gentle','#fb923c'],['fall_strong','#ef4444'],['neutral','#94a3b8'],['unknown','#94a3b8']]) {
+    const output = renderContract({
+      score: { display_score: 95, display_classification: 'excellent' },
+      presentation: { tone: 'excellent', primary_text: '95', compact_text: 'EXCELLENT' },
+      movement: { status: 'available', direction: 'lower', start_position_degrees: 0, end_position_degrees: -18, color_token },
+    });
+    assert.ok(output.includes('--hi-stability-color:#f8fafc;'));
+    assert.ok(output.includes(`--hi-stability-led-color:${expected};`));
+    assert.ok(output.includes('--hi-stability-led-sweep:18deg;'));
+  }
+});
+
+function arcs(start, end, extra = {}) {
+  const output = renderContract({ movement: { status: 'available', start_position_degrees: start, end_position_degrees: end, ...extra } });
+  const extract = (side) => {
+    const html = output.match(new RegExp(`hi-stability-direction-${side}" aria-hidden="true">(.*?)</div>`))[1];
+    return [...html.matchAll(/--hi-mark-angle:(\d+)deg;--hi-mark-delay:(\d+)ms;--hi-mark-from:(\d);--hi-mark-to:(\d);([^"]*)/g)]
+      .map((m) => ({ angle: +m[1], delay: +m[2], from: +m[3], to: +m[4], fixed: m[5].includes('animation:none') }));
+  };
+  return { output, right: extract('higher'), left: extract('lower') };
+}
+
+test('steady endpoint preserves lit marks and backend colour without replaying fades', () => {
+  const {output, left, right} = arcs(-18, -18, {direction: 'steady', color_token: 'fall_gentle'});
+  assert.equal(left.length, 6);
+  assert.equal(right.length, 0);
+  assert.ok(left.every((m) => m.from === 1 && m.to === 1 && m.fixed));
+  assert.ok(output.includes('--hi-stability-led-color:#fb923c;'));
+});
+
+test('higher trend retracts an existing left arc toward the origin', () => {
+  const {left, right} = arcs(-18, -6, {direction: 'higher'});
+  assert.equal(right.length, 0);
+  assert.deepEqual(left.filter((m) => m.to).map((m) => m.angle), [0, 3]);
+  const fading = left.filter((m) => !m.to).sort((a,b) => a.delay-b.delay);
+  assert.deepEqual(fading.map((m) => m.angle), [15, 12, 9, 6]);
+  assert.ok(fading.every((m) => m.from === 1 && !m.fixed));
+});
+
+test('crossing the origin clears the old side before filling the new side', () => {
+  for (const sign of [1, -1]) {
+    const rendered = arcs(-6 * sign, 9 * sign);
+    const old = sign === 1 ? rendered.left : rendered.right;
+    const fresh = sign === 1 ? rendered.right : rendered.left;
+    assert.equal(old.length, 2);
+    assert.equal(fresh.length, 3);
+    assert.ok(old.every((m) => m.from === 1 && m.to === 0));
+    assert.ok(fresh.every((m) => m.from === 0 && m.to === 1));
+    assert.ok(Math.max(...old.map((m) => m.delay)) < Math.min(...fresh.map((m) => m.delay)));
+  }
+});
+
+test('half and full circle endpoints are bounded and reveal at the agreed pace', () => {
+  for (const sign of [1, -1]) {
+    for (const [extent, count, duration] of [[180, 60, 1200], [360, 120, 2280]]) {
+      const rendered = arcs(0, sign * extent);
+      const marks = sign === 1 ? rendered.right : rendered.left;
+      assert.equal(marks.length, count);
+      assert.equal(Math.max(...marks.map((m) => m.delay)) + 138, duration);
+      assert.equal(marks[0].delay, 0);
+      assert.ok(marks.every((m) => m.from === 0 && m.to === 1));
+    }
+  }
+});
+
+test('missing, invalid and unavailable endpoints fail closed', () => {
+  for (const bad of [undefined, null, NaN, Infinity, '18', 1.5, 361, -361, true]) {
+    for (const [start, end] of [[bad, 18], [18, bad]]) {
+      const rendered = arcs(start, end);
+      assert.equal(rendered.left.length + rendered.right.length, 0);
+    }
+  }
+  const unavailable = arcs(18, 36, {status: 'unavailable'});
+  assert.equal(unavailable.left.length + unavailable.right.length, 0);
+});
+
+test('reduced motion renders the final endpoint including cleared marks', () => {
+  for (const relativePath of SURFACES) {
+    const source = fs.readFileSync(path.join(ROOT, relativePath), 'utf8');
+    const badge = source.slice(source.indexOf('          entity: sensor.hi_diagnostics'));
+    const reduced = badge.slice(badge.indexOf('@media (prefers-reduced-motion: reduce)'));
+    assert.match(reduced, /\.hi-stability-mark\s*\{\s*animation: none !important;\s*opacity: var\(--hi-mark-to\);/);
+  }
+  const {left} = arcs(-18, -6);
+  assert.deepEqual(left.map((m) => m.to), [1, 1, 0, 0, 0, 0]);
+});
+
+test('partial scored evidence pulses to backend classification while retaining magenta evidence and independent movement', () => {
+  for (const [classification, expected] of [['excellent', '#f8fafc'], ['good', '#4ade80'], ['unstable', '#facc15'], ['poor', '#ef4444']]) {
+    const output = renderContract({
+      score: { display_score: 82, display_classification: classification },
+      presentation: { tone: 'incomplete', primary_text: '82', compact_text: 'PARTIAL', indicator_mode: 'incomplete' },
+      movement: { status: 'available', start_position_degrees: 18, end_position_degrees: 18, color_token: 'fall_gentle' },
+    });
+    assert.match(output, /hi-stability-gauge-partial-pulse/);
+    assert.ok(output.includes(`--hi-stability-score-color:${expected};`));
+    assert.ok(output.includes('--hi-stability-color:#ec4899;'));
+    assert.ok(output.includes('--hi-stability-led-color:#fb923c;'));
+    assert.match(output, /hi-stability-evidence active/);
+    assert.doesNotMatch(output, /hi-stability-gauge-white/);
+  }
+});
+
+test('partial pulse requires a real score and a known backend classification', () => {
+  for (const display_score of [null, undefined, '', 'unavailable', NaN, Infinity]) {
+    const output = renderContract({ score: { display_score, display_classification: 'good' }, presentation: { tone: 'incomplete' } });
+    assert.doesNotMatch(output, /hi-stability-gauge-partial-pulse/);
+  }
+  for (const classification of [undefined, '', 'unknown', '__proto__']) {
+    const output = renderContract({ score: { display_score: 82, display_classification: classification }, presentation: { tone: 'incomplete' } });
+    assert.doesNotMatch(output, /hi-stability-gauge-partial-pulse/);
+  }
+  for (const tone of ['excellent', 'good', 'unstable', 'poor', 'collecting', 'unavailable']) {
+    const output = renderContract({ score: { display_score: 82, display_classification: 'good' }, presentation: { tone } });
+    assert.doesNotMatch(output, /hi-stability-gauge-partial-pulse/);
+  }
+});
+
+test('partial halo has a six-second cycle and reduced motion separates static score and evidence', () => {
+  for (const relativePath of SURFACES) {
+    const source = fs.readFileSync(path.join(ROOT, relativePath), 'utf8');
+    const badge = source.slice(source.indexOf('          entity: sensor.hi_diagnostics'));
+    assert.match(badge, /\.hi-stability-gauge-partial-pulse::before\s*\{\s*animation: hi-stability-partial-pulse 6000ms ease-in-out infinite;/);
+    assert.match(badge, /\.hi-stability-gauge::before\s*\{[^}]*box-shadow: 0 0 9px 3px var\(--hi-stability-color\);/);
+    const reduced = badge.slice(badge.indexOf('@media (prefers-reduced-motion: reduce)'));
+    const normal = badge.slice(0, badge.indexOf('@media (prefers-reduced-motion: reduce)'));
+    assert.doesNotMatch(normal, /\.hi-stability-partial-label::before/);
+    assert.match(reduced, /\.hi-stability-gauge-partial-pulse::before\s*\{\s*box-shadow: 0 0 9px 3px var\(--hi-stability-score-color\);/);
+    assert.match(reduced, /\.hi-stability-partial-label::before\s*\{[^}]*width: 4px;[^}]*height: 4px;[^}]*background: #ec4899;/);
+
+    assert.match(reduced, /\.hi-stability-gauge-partial-pulse::before,[^{]*\{\s*animation: none !important;/);
+  }
+});
+
+test('incomplete native label preserves escaped text inside the evidence marker wrapper', () => {
+  const unsafe = '<img src=x onerror="bad"> & \'quoted\'';
+  assert.equal(renderLabel({ presentation: { tone: 'incomplete', compact_text: unsafe } }),
+    '<span class="hi-stability-partial-label">&lt;img src=x onerror=&quot;bad&quot;&gt; &amp; &#039;quoted&#039;</span>');
+  assert.equal(renderLabel({ presentation: { tone: 'incomplete', compact_text: 'PARTIAL' } }),
+    '<span class="hi-stability-partial-label">PARTIAL</span>');
+  for (const tone of [undefined, 'excellent', 'good', 'unstable', 'poor', 'collecting', 'unavailable']) {
+    assert.equal(renderLabel({ presentation: { tone, compact_text: 'EXAMPLE' } }), 'EXAMPLE');
+  }
+});
+
+test('badge opens its native details popover with backend explanation, evidence and movement', () => {
+  const output = renderContract({
+    presentation: { detail_text: 'Backend partial evidence explanation.' },
+    window: { valid_samples: 303, expected_samples: 432 },
+    movement: { detail_text: 'Backend movement explanation.' },
+  });
+  assert.match(output, /<button class="hi-stability-open" onclick="event.stopPropagation\(\)" popovertarget="hi-stability-details" aria-label="Open Stability Score details">/);
+  assert.match(output, /id="hi-stability-details" class="hi-stability-details" popover="auto" role="dialog" aria-label="Stability Score details"/);
+  assert.match(output, /<p>Backend partial evidence explanation\.<\/p>/);
+  assert.match(output, /<p>Evidence: 303 of 432 valid samples\.<\/p>/);
+  assert.match(output, /<h3>Recent trend<\/h3>/);
+  assert.match(output, /Arc position does not measure elapsed time\./);
+  assert.match(output, /<p>Backend movement explanation\.<\/p>/);
+  assert.match(output, /class="hi-stability-close" onclick="event.stopPropagation\(\)"/);
+  assert.match(output, /popovertargetaction="hide">Close<\/button>/);
+  assert.doesNotMatch(output, /browser_mod|call-service/);
+});
+
+test('popover escapes every dynamic text surface and reports absent evidence', () => {
+  const unsafe = '<img src=x onerror="bad">';
+  const output = renderContract({ presentation: { detail_text: unsafe }, window: { valid_samples: unsafe, expected_samples: unsafe }, movement: { detail_text: unsafe } });
+  assert.doesNotMatch(output, /<img|onerror="bad"/);
+  assert.match(output, /<p>&lt;img src=x onerror=&quot;bad&quot;&gt;<\/p>/);
+  assert.match(output, /Evidence: &lt;img src=x onerror=&quot;bad&quot;&gt; of &lt;img src=x onerror=&quot;bad&quot;&gt; valid samples/);
+  const absent = renderContract({});
+  assert.match(absent, /Evidence: Unknown of unknown valid samples\./);
+  assert.match(absent, /Movement unavailable\./);
+});
+
+test('malformed score types and ranges fail closed despite healthy presentation and retained movement', () => {
+  for (const value of [false, true, [], [88], {}, '', ' ', '0', '88', NaN, Infinity, -Infinity, -1, 101, 88.5]) {
+    for (const tone of ['excellent', 'good', 'incomplete']) {
+      const contract = {
+        availability: 'available',
+        score: { display_score: value, display_classification: 'Excellent' },
+        presentation: { state_code: 'available', tone, primary_text: '100', compact_text: 'EXCELLENT', detail_text: 'Healthy stale text', indicator_mode: 'score' },
+        message: 'Healthy stale message',
+        movement: { status: 'available', start_position_degrees: 90, end_position_degrees: 180, color_token: 'rise_strong', detail_text: 'Stale movement' },
+      };
+      const output = renderContract(contract);
+      assert.match(output, /<span>—<\/span><\/div>/);
+      assert.match(output, /--hi-stability-color:#94a3b8;/);
+      assert.match(output, /--hi-stability-led-sweep:0deg;/);
+      assert.match(output, /Stability Score unavailable\./);
+      assert.doesNotMatch(output, /gauge-white|partial-pulse|Healthy stale|Stale movement|class="hi-stability-mark"/);
+      assert.equal(renderLabel(contract), 'NO SCORE');
+    }
+  }
+});
+
+test('legacy score locations use the same strict numeric validation', () => {
+  for (const value of [false, [], [88], '88', -1, 101]) {
+    for (const attributes of [
+      { diagnostics_summary: { stability_score: { display_score: value, display_classification: 'Excellent' } } },
+      { stability_score_display_score: value, stability_score_display_classification: 'Excellent' },
+    ]) {
+      const output = assertIdentical(renderAll(attributes));
+      assert.match(output, /<span>—<\/span><\/div>/);
+      assert.match(output, /--hi-stability-color:#94a3b8;/);
+      assert.doesNotMatch(output, /gauge-white/);
+      assert.equal(assertIdentical(LABEL_RENDERERS.map(render => render({attributes}))), 'NO SCORE');
+    }
+  }
+});
+
+test('available payload without a numeric score and unavailable payload with stale score fail closed', () => {
+  for (const [availability, value] of [['available', null], ['available', undefined], ['unavailable', 100], ['insufficient_coverage', 100]]) {
+    const contract = {availability, score: {display_score: value, display_classification: 'Excellent'}, presentation: {tone: 'excellent', primary_text: '100', compact_text: 'EXCELLENT'}};
+    const output = renderContract(contract);
+    assert.match(output, /<span>—<\/span><\/div>/);
+    assert.match(output, /--hi-stability-color:#94a3b8;/);
+    assert.equal(renderLabel(contract), 'NO SCORE');
+  }
+});
+
+test('all valid integer scores including genuine zero retain backend presentation', () => {
+  for (let value = 0; value <= 100; value++) {
+    const contract = {availability: 'available', score: {display_score: value, display_classification: 'Poor'}, presentation: {tone: 'poor', primary_text: String(value), compact_text: 'POOR'}};
+    const output = renderContract(contract);
+    assert.ok(output.includes(`<span>${value}</span></div>`));
+    assert.match(output, /--hi-stability-color:#ef4444;/);
+    assert.equal(renderLabel(contract), 'POOR');
+  }
 });

@@ -155,9 +155,22 @@ Control row:
 
 - preserve the v2.0.7 tap-to-toggle behavior for the System and Manual helper buttons
 - keep the Stability Score badge passive; it must not pause/resume, select lanes, or create output writes
-- render absent future Stability diagnostics as the neutral-white `2.1 / PREVIEW`
-  state with the established six-second breathing shimmer; use a dedicated preview
-  class so it remains distinct from a real completed backend score
+- for the accepted unreleased Stability integration, render backend schema 3/formula 3
+  score, classifications and evidence states; missing/malformed payloads show no score
+- preserve the accepted 82px footprint, independent LED colours, retained signed
+  full-circle movement, six-second Partial pulse and reduced-motion alternatives
+- tap/click/keyboard opens native Popover details with Recent trend; hold opens
+  Diagnostics. Modern Popover-capable clients are required; update older WebViews
+- collection `count/303` is eligibility; details `count/432` is rolling coverage
+- after changed Python, restart Home Assistant; run `refresh_ui`, obtain fresh
+  `dump_cards`/`view_cards` exports, replace complete pasted YAML, and refresh frontend
+  caches. No configuration/entity migration is needed. Restart/reload resets history
+- restore package and dashboard YAML separately on rollback; package rollback needs
+  restart and does not restore pasted cards
+
+The [accepted Stability contract](../../../docs/stability-score-accepted-baseline.md)
+and [testing guide](../../../docs/stability-testing.md) own detailed thresholds,
+missing AQ treatment, sampling/reset semantics and four-surface parity checks.
 
 Output details:
 

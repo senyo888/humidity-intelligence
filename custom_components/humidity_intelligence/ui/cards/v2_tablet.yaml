@@ -1577,113 +1577,174 @@ card:
               - "-webkit-backdrop-filter": blur(12px)
         - type: custom:button-card
           entity: sensor.hi_diagnostics
-          name: Stability Score
+          name: |
+            [[[
+              const stability = entity?.attributes?.diagnostics_summary?.stability_score || {};
+              const rawValue = stability.score?.display_score ?? stability.display_score
+                ?? entity?.attributes?.stability_score_display_score;
+              const availability = stability.availability
+                || entity?.attributes?.stability_score_availability || '';
+              const validScore = typeof rawValue === 'number' && Number.isInteger(rawValue)
+                && rawValue >= 0 && rawValue <= 100;
+              const invalidScore = (rawValue != null && !validScore)
+                || (availability === 'available' && !validScore)
+                || (rawValue != null && availability !== '' && availability !== 'available');
+              const presentation = invalidScore ? {} : stability.presentation || {};
+              return String(presentation.card_label || 'Stability Score');
+            ]]]
           show_icon: false
           show_state: false
-          show_label: false
+          show_label: true
+          label: |
+            [[[
+              const stability = entity?.attributes?.diagnostics_summary?.stability_score || {};
+              const rawValue = stability.score?.display_score ?? stability.display_score
+                ?? entity?.attributes?.stability_score_display_score;
+              const availability = stability.availability
+                || entity?.attributes?.stability_score_availability || '';
+              const validScore = typeof rawValue === 'number' && Number.isInteger(rawValue)
+                && rawValue >= 0 && rawValue <= 100;
+              const invalidScore = (rawValue != null && !validScore)
+                || (availability === 'available' && !validScore)
+                || (rawValue != null && availability !== '' && availability !== 'available');
+              if (invalidScore) return 'NO SCORE';
+              const text = String(entity?.attributes?.diagnostics_summary?.stability_score?.presentation?.compact_text || 'NO SCORE');
+              const escaped = text.replaceAll('&', '&amp;').replaceAll('<', '&lt;')
+                .replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#039;');
+              const partial = entity?.attributes?.diagnostics_summary?.stability_score?.presentation?.tone === 'incomplete';
+              return partial ? `<span class="hi-stability-partial-label">${escaped}</span>` : escaped;
+            ]]]
           custom_fields:
             gauge: |
               [[[
-                const summary = entity?.attributes?.diagnostics_summary;
-                const hasNestedStabilityContract =
-                  summary !== null &&
-                  typeof summary === 'object' &&
-                  !Array.isArray(summary) &&
-                  Object.prototype.hasOwnProperty.call(summary, 'stability_score');
-                const nestedStability = hasNestedStabilityContract ? summary.stability_score : null;
-                const stability =
-                  nestedStability !== null &&
-                  typeof nestedStability === 'object' &&
-                  !Array.isArray(nestedStability)
-                    ? nestedStability
-                    : {};
+                const stability = entity?.attributes?.diagnostics_summary?.stability_score || {};
+                const rawValue = stability.score?.display_score ?? stability.display_score
+                  ?? entity?.attributes?.stability_score_display_score;
+                const availability = stability.availability
+                  || entity?.attributes?.stability_score_availability || '';
+                const validScore = typeof rawValue === 'number' && Number.isInteger(rawValue)
+                  && rawValue >= 0 && rawValue <= 100;
+                const invalidScore = (rawValue != null && !validScore)
+                  || (availability === 'available' && !validScore)
+                  || (rawValue != null && availability !== '' && availability !== 'available');
                 const score = stability.score || {};
-                const rawValue =
-                  score.display_score ??
-                  stability.display_score ??
-                  entity?.attributes?.stability_score_display_score;
-                const hasRawValue = rawValue !== null && rawValue !== undefined && rawValue !== '';
-                const value = hasRawValue ? Number(rawValue) : NaN;
+                const presentation = invalidScore ? {} : stability.presentation || {};
+                const windowData = invalidScore ? {} : stability.window || {};
+                const movement = invalidScore ? {} : stability.movement || {};
+                const value = validScore ? rawValue : NaN;
                 const classification = String(
                   score.display_classification ||
                   stability.display_classification ||
                   entity?.attributes?.stability_score_display_classification ||
                   ''
                 ).toLowerCase();
-                const availability = String(
-                  stability.availability ||
-                  entity?.attributes?.stability_score_availability ||
-                  ''
-                );
                 const suppression = String(
                   score.suppression_reason ||
                   stability.suppression_reason ||
                   entity?.attributes?.stability_score_suppression_reason ||
                   ''
                 );
-                const hasValue = hasRawValue && Number.isFinite(value);
-                const attributes = entity?.attributes || {};
-                const hasFlattenedStabilityContract = [
-                  'stability_score_display_score',
-                  'stability_score_display_classification',
-                  'stability_score_availability',
-                  'stability_score_suppression_reason',
-                ].some((key) => Object.prototype.hasOwnProperty.call(attributes, key));
-                const hasStabilityContract =
-                  hasFlattenedStabilityContract || hasNestedStabilityContract;
-                const preview = !hasValue && !hasStabilityContract;
-                const unavailable =
-                  suppression === 'current_telemetry_unavailable' || availability === 'unavailable';
-                const collecting =
-                  availability === 'insufficient_coverage' || suppression === 'coverage_below_threshold';
-                const completeWhite = hasValue && (value >= 99 || classification === 'excellent');
+                const hasValue = validScore && !invalidScore;
+                const validSamples = Number(windowData.valid_samples || 0);
+                const fallbackStateCode = invalidScore ? 'unavailable' : hasValue ? 'available' :
+                  suppression === 'current_telemetry_unavailable' ? 'live_data_unavailable' :
+                  suppression === 'insufficient_consecutive_samples' ? 'incomplete_evidence_gaps' :
+                  suppression === 'insufficient_balance_sources' ? 'incomplete_evidence_balance' :
+                  availability === 'insufficient_coverage' || suppression === 'coverage_below_threshold' ? 'collecting' :
+                  'unavailable';
+                const stateCode = String(presentation.state_code || fallbackStateCode);
+                const fallbackTone = hasValue ? classification :
+                  stateCode === 'collecting' ? 'collecting' :
+                  stateCode.startsWith('incomplete_evidence_') ? 'incomplete' :
+                  'unavailable';
+                const tone = String(presentation.tone || fallbackTone).toLowerCase();
                 const color =
-                  preview ? '#f8fafc' :
-                  unavailable ? '#94a3b8' :
-                  collecting ? '#38bdf8' :
-                  completeWhite ? '#f8fafc' :
-                  classification === 'good' ? '#4ade80' :
-                  classification === 'unstable' ? '#f9a8d4' :
-                  classification === 'poor' ? '#db2777' :
+                  tone === 'excellent' ? '#f8fafc' :
+                  tone === 'good' ? '#4ade80' :
+                  tone === 'unstable' ? '#facc15' :
+                  tone === 'poor' ? '#ef4444' :
+                  tone === 'collecting' ? '#38bdf8' :
+                  tone === 'incomplete' ? '#ec4899' :
                   '#94a3b8';
-                const normalized = hasValue ? Math.max(-1, Math.min(1, (value - 50) / 50)) : 0;
-                const direction = normalized < 0 ? 'left' : 'right';
-                const activeDots = hasValue ? Math.max(1, Math.min(7, Math.round(Math.abs(normalized) * 7))) : 1;
-                const center = 3;
-                const dots = Array.from({ length: 7 }, (_, index) => {
-                  const active = hasValue
-                    ? direction === 'left'
-                      ? index <= center && center - index < activeDots
-                      : index >= center && index - center < activeDots
-                    : index === center;
-                  return `<i class="led-${index} ${active ? 'active' : ''}"></i>`;
+                const scoreColors = { excellent: '#f8fafc', good: '#4ade80', unstable: '#facc15', poor: '#ef4444' };
+                const incompletePulse = tone === 'incomplete' && hasValue
+                  && Object.prototype.hasOwnProperty.call(scoreColors, classification);
+                const scoreColor = incompletePulse ? scoreColors[classification] : color;
+                const fallbackPrimary = hasValue ? String(Math.round(value)) :
+                  stateCode === 'collecting' ? String(Math.max(0, validSamples)) : '—';
+                const primaryText = String(presentation.primary_text || fallbackPrimary);
+                const detailText = String(
+                  presentation.detail_text ||
+                  (!invalidScore && stability.message) ||
+                  'Stability Score unavailable.'
+                );
+                const indicatorMode = String(
+                  presentation.indicator_mode ||
+                  (hasValue ? 'score' : stateCode === 'collecting' ? 'collection' :
+                    stateCode.startsWith('incomplete_evidence_') ? 'incomplete' : 'none')
+                );
+                const movementColors = {
+                  rise_gentle: '#38bdf8',
+                  rise_strong: '#4ade80',
+                  fall_gentle: '#fb923c',
+                  fall_strong: '#ef4444',
+                };
+                const movementColor = Object.prototype.hasOwnProperty.call(movementColors, movement.color_token)
+                  ? movementColors[movement.color_token] : '#94a3b8';
+                const movementStatus = String(movement.status || 'unavailable');
+                const validPosition = (value) => Number.isInteger(value) && Math.abs(value) <= 360;
+                const positionsAvailable = movementStatus === 'available'
+                  && validPosition(movement.start_position_degrees)
+                  && validPosition(movement.end_position_degrees);
+                const startPosition = positionsAvailable ? movement.start_position_degrees : 0;
+                const endPosition = positionsAvailable ? movement.end_position_degrees : 0;
+                const activeLedSteps = Math.abs(endPosition);
+                const ledArcs = [1, -1].map((side) => {
+                  const fromExtent = Math.max(0, startPosition * side);
+                  const toExtent = Math.max(0, endPosition * side);
+                  const count = Math.ceil(Math.max(fromExtent, toExtent) / 3);
+                  const marks = Array.from({ length: count }, (_, index) => {
+                    const angle = index * 3;
+                    const from = angle < fromExtent ? 1 : 0;
+                    const to = angle < toExtent ? 1 : 0;
+                    const distance = Math.abs(angle * side - startPosition);
+                    const delay = Math.max(0, Math.ceil(distance / 3) - (from > to ? 1 : 0)) * 18;
+                    const animation = from === to ? 'animation:none;' : '';
+                    return `<i class="hi-stability-mark" style="--hi-mark-angle:${angle}deg;--hi-mark-delay:${delay}ms;--hi-mark-from:${from};--hi-mark-to:${to};${animation}"></i>`;
+                  }).join('');
+                  return `<div class="hi-stability-direction hi-stability-direction-${side === 1 ? 'higher' : 'lower'}" aria-hidden="true">${marks}</div>`;
                 }).join('');
-                const valueText = hasValue ? String(Math.round(value)) : preview ? '2.1' : '—';
-                const unitText = hasValue ? 'score' :
-                  preview ? 'PREVIEW' :
-                  unavailable ? 'NO DATA' :
-                  collecting ? 'COLLECTING' :
-                  'NO SCORE';
-                const accessibleClassification = ['excellent', 'good', 'unstable', 'poor'].includes(classification)
-                  ? `, ${classification}`
-                  : '';
-                const accessibilityText = hasValue ? `Stability Score ${Math.round(value)}${accessibleClassification}.` :
-                  preview ? 'Stability Score preview for v2.1.' :
-                  unavailable ? 'Stability Score data is unavailable.' :
-                  collecting ? 'Stability Score is collecting evidence.' :
-                  'Stability Score is not available.';
+                const movementDetail = String(movement.detail_text || '');
+                const fullDetailText = movementDetail ? `${detailText} ${movementDetail}` : detailText;
+                const evidenceClass = indicatorMode === 'incomplete'
+                  ? 'hi-stability-evidence active' : 'hi-stability-evidence';
+                const escapeHtml = (text) => String(text)
+                  .replaceAll('&', '&amp;')
+                  .replaceAll('<', '&lt;')
+                  .replaceAll('>', '&gt;')
+                  .replaceAll('"', '&quot;')
+                  .replaceAll("'", '&#039;');
                 const gaugeClass = [
                   'hi-stability-gauge',
-                  preview ? 'hi-stability-gauge-preview' : '',
-                  completeWhite ? 'hi-stability-gauge-white' : '',
+                  tone === 'excellent' ? 'hi-stability-gauge-white' : '',
+                  tone === 'incomplete' ? 'hi-stability-gauge-incomplete' : '',
+                  incompletePulse ? 'hi-stability-gauge-partial-pulse' : ''
                 ].filter(Boolean).join(' ');
-                return `<div class="${gaugeClass}" style="--hi-stability-color:${color};" role="img" aria-label="${accessibilityText}" title="${accessibilityText}">
-                  <div class="hi-stability-center"><span>${valueText}</span><small>${unitText}</small></div>
-                  <div class="hi-stability-leds">${dots}</div>
-                </div>`;
+                return `<div class="hi-stability-interactive"><button class="hi-stability-open" onclick="event.stopPropagation()" popovertarget="hi-stability-details" aria-label="Open Stability Score details"><div class="${gaugeClass}" style="--hi-stability-color:${color};--hi-stability-score-color:${scoreColor};--hi-stability-led-color:${movementColor};--hi-stability-led-sweep:${activeLedSteps}deg;" role="img" aria-label="${escapeHtml(fullDetailText)}" title="${escapeHtml(fullDetailText)}">
+                  <div class="hi-stability-center" data-digits="${primaryText.length}"><span>${escapeHtml(primaryText)}</span></div>
+                  ${ledArcs}
+                  <div class="${evidenceClass}"></div>
+                  <div class="hi-stability-origin"></div>
+                </div></button><div id="hi-stability-details" class="hi-stability-details" popover="auto" role="dialog" aria-label="Stability Score details">
+                  <h2>Stability Score</h2>
+                  <p>${escapeHtml(detailText)}</p>
+                  <p>${escapeHtml(`Evidence: ${windowData.valid_samples ?? 'Unknown'} of ${windowData.expected_samples ?? 'unknown'} valid samples.`)}</p>
+                  <h3>Recent trend</h3><p>The arc retains accumulated score movement. Its colour shows the latest change: blue or green indicates recovery, even while an earlier downward arc is still retracting. Orange or red indicates a decline. Arc position does not measure elapsed time.</p><p>${escapeHtml(movementDetail || 'Movement unavailable.')}</p>
+                  <button class="hi-stability-close" onclick="event.stopPropagation()" popovertarget="hi-stability-details" popovertargetaction="hide">Close</button>
+                </div></div>`;
               ]]]
           tap_action:
-            action: more-info
+            action: none
           hold_action:
             action: more-info
           styles:
@@ -1697,20 +1758,60 @@ card:
               - backdrop-filter: blur(12px)
               - "-webkit-backdrop-filter": blur(12px)
             grid:
-              - grid-template-areas: '"gauge" "n"'
-              - grid-template-rows: 86px min-content
+              - grid-template-areas: '"gauge" "n" "l"'
+              - grid-template-rows: 84px min-content min-content
               - row-gap: 0
+            label:
+              - grid-area: l
+              - color: "#6b7280"
+              - font-size: 8px
+              - font-weight: 700
+              - letter-spacing: 0.08em
+              - line-height: 1.2
+              - margin-top: 4px
             name:
               - grid-area: 'n'
               - color: "#e5e7eb"
-              - font-size: 13px
-              - font-weight: 700
+              - font-size: 12px
+              - font-weight: 650
+              - line-height: 1.2
+              - letter-spacing: -0.01em
+              - margin-top: 2px
             custom_fields:
               gauge:
                 - grid-area: gauge
                 - align-self: center
                 - justify-self: center
           extra_styles: |
+            .hi-stability-open {
+              display: block;
+              padding: 0;
+              border: 0;
+              background: transparent;
+              color: inherit;
+              cursor: pointer;
+            }
+            .hi-stability-open:focus-visible,
+            .hi-stability-close:focus-visible { outline: 2px solid #38bdf8; outline-offset: 4px; }
+            .hi-stability-details {
+              box-sizing: border-box;
+              width: min(520px, calc(100vw - 32px));
+              max-height: calc(100vh - 48px);
+              overflow: auto;
+              padding: 24px;
+              border: 1px solid #354762;
+              border-radius: 20px;
+              background: #0d1522;
+              color: #e2e8f0;
+              text-align: left;
+              white-space: normal;
+              font: 14px/1.6 system-ui, sans-serif;
+            }
+            .hi-stability-details::backdrop { background: rgba(0,0,0,.65); }
+            .hi-stability-details h2 { margin: 0 0 16px; font-size: 22px; }
+            .hi-stability-details h3 { font-size: 15px; }
+            .hi-stability-details p { overflow-wrap: anywhere; }
+            .hi-stability-close { padding: 10px 18px; border: 1px solid #354762; border-radius: 8px; background: #18253a; color: #e2e8f0; cursor: pointer; }
             .hi-stability-gauge {
               width: 82px;
               height: 82px;
@@ -1735,62 +1836,92 @@ card:
               inset: 20px;
               border-radius: 999px;
               background: #000;
-              box-shadow: inset 0 0 0 1px rgba(255,255,255,0.08), 0 0 10px rgba(0,0,0,0.85);
+              box-shadow: none;
             }
-            .hi-stability-gauge-preview::before,
             .hi-stability-gauge-white::before {
               animation: hi-stability-white-shimmer 6000ms ease-in-out infinite;
+            }
+            .hi-stability-gauge-partial-pulse::before {
+              animation: hi-stability-partial-pulse 6000ms ease-in-out infinite;
+            }
+            @keyframes hi-stability-partial-pulse {
+              0%, 100% { box-shadow: 0 0 9px 3px var(--hi-stability-color); }
+              50% { box-shadow: 0 0 9px 3px var(--hi-stability-score-color); }
             }
             .hi-stability-center {
               position: relative;
               z-index: 1;
               display: grid;
               place-items: center;
-              line-height: 1.05;
+              line-height: 1;
+              font-variant-numeric: tabular-nums;
             }
             .hi-stability-center span {
               color: #f8fafc;
               font-size: 26px;
-              font-weight: 800;
+              font-weight: 750;
+              letter-spacing: -0.045em;
+              text-shadow: 0 1px 3px rgba(0,0,0,0.45);
             }
-            .hi-stability-center small {
-              color: #6b7280;
-              font-size: 9px;
-              font-weight: 700;
-              letter-spacing: 0;
-              margin-top: 3px;
+            .hi-stability-center[data-digits="3"] span {
+              font-size: 23px;
             }
-            .hi-stability-leds {
+            .hi-stability-direction,
+            .hi-stability-evidence {
               position: absolute;
               z-index: 2;
-              left: 50%;
-              top: 0;
-              width: 82px;
-              height: 18px;
-              transform: translateX(-50%);
-            }
-            .hi-stability-leds i {
-              position: absolute;
-              width: 2px;
-              height: 2px;
               border-radius: 999px;
+              inset: 0;
+            }
+            .hi-stability-direction {
               opacity: 0;
-              background: transparent;
+              -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 1.25px), #000 calc(100% - 1px), #000 calc(100% - 0.25px), transparent 100%);
+              mask: radial-gradient(farthest-side, transparent calc(100% - 1.25px), #000 calc(100% - 1px), #000 calc(100% - 0.25px), transparent 100%);
+              filter: drop-shadow(0 0 1px var(--hi-stability-led-color));
             }
-            .hi-stability-leds i.led-0 { left: 25px; top: 8px; }
-            .hi-stability-leds i.led-1 { left: 30px; top: 5px; }
-            .hi-stability-leds i.led-2 { left: 35px; top: 3px; }
-            .hi-stability-leds i.led-3 { left: 40px; top: 2px; }
-            .hi-stability-leds i.led-4 { left: 45px; top: 3px; }
-            .hi-stability-leds i.led-5 { left: 50px; top: 5px; }
-            .hi-stability-leds i.led-6 { left: 55px; top: 8px; }
-            .hi-stability-leds i.active {
+            .hi-stability-mark {
+              position: absolute;
+              inset: 0;
+              border-radius: inherit;
+              background: conic-gradient(from var(--hi-mark-angle), var(--hi-stability-led-color) 0deg 0.8deg, transparent 0.8deg 360deg);
+              opacity: var(--hi-mark-to);
+              animation: hi-stability-mark-on 138ms ease-out var(--hi-mark-delay) both;
+            }
+            @keyframes hi-stability-mark-on {
+              from { opacity: var(--hi-mark-from); }
+              to { opacity: var(--hi-mark-to); }
+            }
+            .hi-stability-direction-higher,
+            .hi-stability-direction-lower {
               opacity: 1;
-              background: var(--hi-stability-color);
-              box-shadow: 0 0 3px var(--hi-stability-color);
             }
-            .hi-stability-gauge-preview .hi-stability-leds i.active,
-            .hi-stability-gauge-white .hi-stability-leds i.active {
+            .hi-stability-direction-lower {
+              transform: scaleX(-1);
+            }
+            .hi-stability-evidence {
+              display: none;
+            }
+            .hi-stability-evidence.active {
+              display: block;
+              background: repeating-conic-gradient(from 0deg, var(--hi-stability-color) 0deg 5deg, transparent 5deg 14deg);
+              -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 4px), #000 calc(100% - 3px), #000 calc(100% - 1px), transparent 100%);
+              mask: radial-gradient(farthest-side, transparent calc(100% - 4px), #000 calc(100% - 3px), #000 calc(100% - 1px), transparent 100%);
+              filter: drop-shadow(0 0 3px var(--hi-stability-color));
+            }
+            .hi-stability-origin {
+              position: absolute;
+              z-index: 3;
+              left: 40.25px;
+              top: 0;
+              width: 1.5px;
+              height: 1.5px;
+              border-radius: 999px;
+              background: var(--hi-stability-color);
+              box-shadow: 0 0 2px var(--hi-stability-color);
+            }
+            .hi-stability-gauge-white .hi-stability-direction-higher,
+            .hi-stability-gauge-white .hi-stability-direction-lower,
+            .hi-stability-gauge-white .hi-stability-origin {
               animation: hi-stability-led-shimmer 6000ms ease-in-out infinite;
             }
             @keyframes hi-stability-white-shimmer {
@@ -1802,10 +1933,28 @@ card:
               50% { opacity: 1; }
             }
             @media (prefers-reduced-motion: reduce) {
-              .hi-stability-gauge-preview::before,
+              .hi-stability-gauge-partial-pulse::before {
+                box-shadow: 0 0 9px 3px var(--hi-stability-score-color);
+              }
+              .hi-stability-partial-label::before {
+                content: "";
+                display: inline-block;
+                width: 4px;
+                height: 4px;
+                border-radius: 50%;
+                background: #ec4899;
+                margin-right: 4px;
+                vertical-align: middle;
+              }
+              .hi-stability-mark {
+                animation: none !important;
+                opacity: var(--hi-mark-to);
+              }
+              .hi-stability-gauge-partial-pulse::before,
               .hi-stability-gauge-white::before,
-              .hi-stability-gauge-preview .hi-stability-leds i.active,
-              .hi-stability-gauge-white .hi-stability-leds i.active {
+              .hi-stability-gauge-white .hi-stability-direction-higher,
+              .hi-stability-gauge-white .hi-stability-direction-lower,
+              .hi-stability-gauge-white .hi-stability-origin {
                 animation: none !important;
               }
             }

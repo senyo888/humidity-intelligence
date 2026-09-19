@@ -8,6 +8,31 @@ This project follows a practical changelog format for Home Assistant and HACS us
 
 ## Unreleased
 
+### Accepted Stability Score integration
+
+- Rejects malformed or out-of-range displayed scores without numeric coercion across
+  all four cards. Invalid payloads show a dash, neutral halo and `NO SCORE`, without
+  stale healthy text or movement. Valid scores, including zero, remain unchanged.
+
+- Integrates the accepted observational Stability backend, ten-minute UTC sampler,
+  bounded diagnostics and readable explanation. Six components use a 72-hour window;
+  eligibility needs 303 of 432 valid buckets plus consecutive/balance evidence.
+  Configured AQ evidence, penalties, caps and unavailable states stay backend-owned.
+- Replaces the historical preview in generated V2 Mobile/Tablet and default gallery
+  cards with the accepted score, retained full-circle movement, independent LED
+  colours, Partial/reduced-motion treatment and native Popover Recent trend details.
+- Preserves control entity IDs/native states, Manual handover, CO-first ordering and
+  independent humidifier authority. No configuration or stored-data migration is
+  required. Python installation requires a full restart; regenerate exports, replace
+  pasted Manual cards and refresh frontend caches. Restart/reload resets in-memory
+  score history and movement. Package and card rollback are separate operations.
+- Adds the [accepted contract](docs/stability-score-accepted-baseline.md) and
+  [synthetic scenario/validation guide](docs/stability-testing.md). Popover-capable
+  clients are required for details. This work is unreleased; earlier preview entries
+  below remain historical release truth.
+
+### Existing candidate history
+
 ![Humidity Intelligence v2.0.12 release header celebrating repository-level HACS inclusion](assets/release_banner/v2.0.12_release.png)
 
 - Advanced the development identity to `2.0.12-rc.1` for the forward promotion from

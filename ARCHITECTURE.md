@@ -20,6 +20,28 @@ schemas, tracked generated-card templates, and release documentation. Ignored lo
 planning notes may inform maintainer review, but they do not override tracked runtime
 truth.
 
+## Observational Stability Score (unreleased)
+
+The [accepted Stability contract](docs/stability-score-accepted-baseline.md) defines
+backend schema 3/formula 3, six weighted components, evidence states, safety caps,
+classification and presentation. It is accepted for local integration; it does not
+change published release identity. Stability cannot select lanes, change gates or
+write outputs. Existing control entities/native states remain unchanged; Diagnostics
+adds structured Stability telemetry and a readable summary.
+
+Sampling uses 432 ten-minute UTC buckets over 72 hours, with 303 valid samples needed
+for eligibility plus consecutive-pair and balance coverage. History and retained
+movement are in memory only: restart/reload resets both, with no startup backfill.
+Required live evidence suppresses stale scores when unavailable. Configured missing AQ
+is incomplete evidence, never clean air. Excellent/Good/Unstable/Poor boundaries are
+92/70/55/0; caps and explanatory text belong to the backend.
+
+The four generated/gallery renderers preserve the accepted 82px badge, independent
+LED palette and retained signed ±360 movement. Movement reflects score changes, not
+elapsed time. Tap/keyboard opens native Popover details and Recent trend; hold opens
+Diagnostics. Partial and reduced-motion treatments remain explicit. Optional frontend
+resources cannot block runtime operation. See [validation and client limitations](docs/stability-testing.md).
+
 ## Deterministic Lane Order
 
 Ventilation lane priority is fixed:

@@ -312,6 +312,11 @@ def test_native_diagnostics_payload_contains_support_sections():
     assert payload["integration"]["domain"] == "humidity_intelligence"
     assert payload["integration"]["integration_version"] == "2.0.12-rc.1"
     assert payload["integration"]["diagnostics_schema"] == 1
+    stability = payload["diagnostics_summary"]["stability_score"]
+    assert stability["schema"] == 3
+    assert stability["formula_version"] == 3
+    assert stability["score"]["display_score"] is None
+    assert stability["window"]["expected_samples"] == 432
     assert payload["integration"]["home_assistant_version"] == "2026.5.2"
     assert payload["configuration"]["selected_entity_summary"]["telemetry"]["count"] == 1
     assert payload["configuration"]["enabled_feature_areas"]["zone_control"] is True
