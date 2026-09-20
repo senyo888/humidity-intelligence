@@ -4461,7 +4461,7 @@ card:
     - type: custom:button-card
       entity: input_boolean.air_control_output_expanded
       name: Outputs
-      icon: mdi:devices
+      icon: mdi:hvac
       show_state: false
       show_label: true
       tap_action:

@@ -7,6 +7,7 @@ from copy import deepcopy
 import json
 from hashlib import sha256
 from .const import HELPERS, MAX_PAYLOAD_BYTES
+from .compact import build_compact
 from .config_adapter import extract_configured
 from .discovery import _rule, identity
 from .model import ENTITY, MAX_MAPPINGS
@@ -200,7 +201,16 @@ class ObservationBridge:
                         item['evidence'] = 'The entity state exists, but registry observation is awaiting a new Home Assistant report.'
         if not payload['runtime_context_complete']:
             payload['context_notice'] = 'HI control or isolation context is incomplete; observed output state and device signals are still shown.'
-        if len(json.dumps(payload, allow_nan=False, separators=(',', ':')).encode()) > MAX_PAYLOAD_BYTES:
+        compact = build_compact(payload)
+        if compact is not None:
+            payload['compact'] = compact
+        payload_size = len(json.dumps(payload, allow_nan=False, separators=(',', ':')).encode())
+        if payload_size > MAX_PAYLOAD_BYTES and 'compact' in payload:
+            # Optional convenience text must not make an otherwise valid full
+            # observation unavailable at the existing payload boundary.
+            payload.pop('compact')
+            payload_size = len(json.dumps(payload, allow_nan=False, separators=(',', ':')).encode())
+        if payload_size > MAX_PAYLOAD_BYTES:
             session.stop()
             raise ValueError('Output presentation exceeds the supported payload size.')
         if self.session:

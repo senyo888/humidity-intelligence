@@ -8,7 +8,7 @@ presentation. Installing beta.4 requires a full Home Assistant restart to load i
 
 The observer reads outputs already configured in HI, their Home Assistant states,
 and associated diagnostic entities. Shared outputs appear once, retaining their
-configured roles and each role's enable state. Outputs uses a neutral devices icon;
+configured roles and each role's enable state. Outputs uses the HVAC icon (`mdi:hvac`);
 individual rows use their HA entity domain (fan, switch, humidifier or light), with
 a generic fallback. A switch icon does not identify the appliance connected to it.
 Device icons describe the HA entity type, not availability, activity or health.
@@ -73,13 +73,28 @@ Assistant dashboard resources:
 /humidity_intelligence/hi-adaptive-output-card.js
 ```
 
-The optional resource renders the backend-authored status sensor and keeps the
-native entity controls inside its expanded view. HI serves the file but does not
-create or modify a dashboard or resource registration. The generator resolves the
-real registered status entity; it does not invent a placeholder entity ID.
-Enable/presentation changes regenerate the normal exports. Replace the complete
-Manual-card YAML in the dashboard using the new export. `refresh_ui` / `dump_cards`
-remain the recovery path if export regeneration is incomplete.
+The optional resource renders backend-authored status in a compact Outputs
+expansion. Up to two reports retain the backend's priority order, with exact
+condition and affected-output counts and a route to all remaining reports.
+Incomplete or lost monitoring remains visible independently of those reports.
+Routine state does not expand into the complete device inventory.
+
+**Outputs & controls** opens one detail window containing the preserved native
+entities card, including all configured outputs and supporting controls/readings.
+Attention and monitoring details open the same window at the relevant section.
+Rules, roles, source evidence and timestamps remain inspectable there. Moving
+these details does not change their meaning or add output writers. From the closed
+panel, controls take two activations; native entity more-info normally takes three.
+The controls entry remains available when observation is unavailable, using the
+saved native-card configuration independently of the status feed. If the window
+cannot open, the card exposes those native controls inline as a recovery path.
+
+HI serves the file but does not create or modify a dashboard or resource
+registration. The generator resolves the real registered status entity; it does
+not invent a placeholder entity ID. Enable/presentation changes regenerate the
+normal exports. Replace the complete Manual-card YAML in the dashboard using the
+new export. `refresh_ui` / `dump_cards` remain the recovery path if export
+regeneration is incomplete.
 
 If the resource is missing or cannot load, select native presentation, export again,
 and replace the Manual card to recover controls independently of the custom element.
@@ -146,16 +161,21 @@ with Home Assistant, pytest, and PyYAML installed:
 python -m pytest -q "tests 2/test_adaptive_options.py"
 python -m pytest -q "tests 2/test_adaptive_cards.py"
 python "tests 2/test_adaptive_model.py"
+python "tests 2/test_adaptive_compact.py"
 python "tests 2/test_adaptive_runtime.py"
 python "tests 2/test_adaptive_ha_native.py"
 python "tests 2/test_config_flow_sanity.py"
 python "tests 2/test_runtime_card_sanity.py"
+node --test "tests 2/test_adaptive_output_card.mjs"
 node --test "tests 2/test_stability_badge_renderer.mjs" "tests 2/test_reason_card_renderer.mjs"
 ```
 
 Run suites in separate processes where shown because existing tests install HA test
 doubles. The HA-native harness uses temporary storage and real HA registries/state
 callbacks; it does not boot HI's control engine or connect to a live installation.
-Synthetic browser fixtures exercise layout and interactions. These checks do not
+The compact-card JavaScript tests use a DOM test double for node ownership, focus
+paths and event handoff; they do not establish native browser sizing or Home
+Assistant dialog interoperability. Synthetic browser fixtures exercise layout and
+interactions separately. These checks do not
 establish live device compatibility, physical freshness, or a HA Lab/Stable deployment.
 A future deployment requires its own authority, target verification, and observation.

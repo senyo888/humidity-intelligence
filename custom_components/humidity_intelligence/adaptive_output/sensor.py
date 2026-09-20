@@ -41,7 +41,7 @@ class HIOutputStatusSensor(SensorEntity):
     _attr_should_poll = False
     _attr_has_entity_name = True
     _attr_translation_key = "output_status"
-    _attr_icon = "mdi:devices"
+    _attr_icon = "mdi:hvac"
     _attr_entity_category = EntityCategory.DIAGNOSTIC
     _unrecorded_attributes = frozenset({"payload", "error"})
 

@@ -239,7 +239,7 @@ def normalize(configured, states, mappings):
     state = 'not_configured' if not count and not attention else 'attention' if any(a['severity'] <= 5 for a in attention) else 'degraded' if attention else 'unmonitored' if mapped < count else 'clear'
     headline = f'{on}/{count} on' if count else 'No outputs configured'
     summary = 'Attention required' if attention else 'No mapped issues reported' if mapped else 'Monitoring not configured' if count else 'No outputs configured'
-    chips = [dict(label=headline, tone='active' if on else 'neutral', icon='devices', kind='fleet')]
+    chips = [dict(label=headline, tone='active' if on else 'neutral', icon='hvac', kind='fleet')]
     if affected:
         first = next(a for a in attention if a['entity_id'] == affected[0])
         chips.append(dict(label=f'{first["label"]} · {first["title"]}', tone=first['tone'], icon=first['icon'], kind='attention'))

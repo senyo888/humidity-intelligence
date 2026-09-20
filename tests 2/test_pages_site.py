@@ -155,7 +155,7 @@ class PagesSiteTests(unittest.TestCase):
         self.assertIn("v2.0.12 published Stable", html)
         self.assertIn("included in the HACS default integration repository", normalized_html)
         self.assertIn("Published Stable v2.0.12", normalized_html)
-        self.assertIn("v2.1.0-beta.4", normalized_html)
+        self.assertIn("v2.1.0-beta.5", normalized_html)
         self.assertIn("unpublished", normalized_html)
         self.assertNotIn("Install from GitHub", html)
         self.assertIn("Open in HACS", html)

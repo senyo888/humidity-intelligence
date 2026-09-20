@@ -6,7 +6,29 @@ All notable changes to Humidity Intelligence will be documented in this file.
 
 This project follows a practical changelog format for Home Assistant and HACS users. Add new entries under a fresh `Unreleased` section before publishing a future release.
 
-## Unreleased — v2.1.0-beta.4
+## Unreleased — v2.1.0-beta.5
+
+Unpublished development candidate based on beta.4 (`a3f135e`). Published Stable
+remains v2.0.12; no tag or HACS publication is implied.
+
+- Uses `mdi:hvac` for shared Outputs identity while retaining individual device icons.
+- Reduces the Outputs expansion to a compact backend-authored summary, up to two
+  conditions, exact totals, explicit overflow and important monitoring context.
+- Places complete evidence and preserved native controls in one on-demand window.
+  Missing observation keeps controls available and clears stale evidence; older
+  payloads retain the full fallback presentation.
+- Preserves control logic, lane ordering, thresholds, mappings and entity semantics.
+- Validated with focused backend, native HA API, export and frontend DOM tests;
+  actual target UI acceptance is recorded separately.
+
+### Upgrade from beta.4
+
+Install the complete package and restart Home Assistant, then refresh the frontend
+resource and regenerate saved mobile/tablet cards. Restart resets in-memory
+Stability collection. No entity or configuration migration is required. Rollback
+restores the complete beta.4 package and matching cards/resources.
+
+## v2.1.0-beta.4 — Earlier unpublished candidate
 
 Unpublished development candidate based on beta.3 (`345a840`). Published Stable
 remains v2.0.12. No release tag or HACS publication is implied.
