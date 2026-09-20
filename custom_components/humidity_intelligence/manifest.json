@@ -3,6 +3,7 @@
   "name": "Humidity Intelligence",
   "after_dependencies": [
     "diagnostics",
+    "http",
     "lovelace"
   ],
   "codeowners": [

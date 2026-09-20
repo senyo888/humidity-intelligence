@@ -22,6 +22,10 @@ This project follows a practical changelog format for Home Assistant and HACS us
   in-memory Stability history. No configuration migration or new frontend resource.
   [Revision contract and rollback](docs/ui-revision-status.md).
 
+- Declares the existing optional HTTP frontend dependency for Hassfest and setup
+  ordering when HTTP is configured. HTTP remains optional; runtime control and
+  entity semantics are unchanged.
+
 These changes do not assign a new package version or claim deployment/publication.
 
 Validation maintenance also replaces stale beta-version and whole-package-count
