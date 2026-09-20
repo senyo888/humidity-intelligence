@@ -263,6 +263,9 @@ class HIDiagnosticsSensor(SensorEntity):
             "config": _sanitize_json(_compact_ui_config(config, options)),
             "slope_map": _sanitize_json(data.get("slope_map") or {}),
             "cards": list(cards.keys()),
+            # Describes successfully generated compatible UI revisions only;
+            # exporting a file does not verify any saved or rendered dashboard.
+            "ui_revision": _sanitize_json(data.get("ui_revision") or {}),
             "unresolved_placeholders_count": len(unresolved),
             "unresolved_placeholders": _sanitize_json(unresolved[:20]),
             "unresolved_placeholders_by_card_count": len(unresolved_by_card),

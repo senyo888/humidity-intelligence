@@ -174,8 +174,16 @@ jobs:
           node --test "tests 2/test_drift_badge_renderer.mjs"
           node --test "tests 2/test_badge_summary_interaction.mjs"
           node --test "tests 2/test_badge_history.mjs"
+          node --test "tests 2/test_v2_display_truth.mjs"
+          node --test "tests 2/test_ui_revision_status.mjs"
           python scripts/sync_badge_history.py --check
+          python scripts/sync_ui_revision.py --check
           python "tests 2/test_badge_summary_export.py"
+
+      - name: Validate generated UI revision metadata
+        run: |
+          python -m pip install "pytest==9.1.1" "PyYAML==6.0.3"
+          python -m pytest -q "tests 2/test_ui_revision_contract.py"
 
       - name: Validate YAML if PyYAML is available
         shell: bash

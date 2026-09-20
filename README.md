@@ -942,7 +942,9 @@ Common post-configuration areas:
 - `Output monitoring`: configure optional reporting and exact source rules; use
   **Keep changes and return**, then **Save changes** to persist them. See the
   [output-monitoring guide](docs/output-observation.md) for discard and recovery details
-- generated UI: run `humidity_intelligence.dump_cards` and paste refreshed YAML into existing Manual cards when card visibility, template, backend entity mapping, or generated-card options change
+- UI: run `humidity_intelligence.dump_cards` and replace Manual-card YAML
+  after visibility, template, mapping or generated-card option changes.
+  [Revision footer](docs/ui-revision-status.md): rendered revision only
 
 Detailed manual:
 

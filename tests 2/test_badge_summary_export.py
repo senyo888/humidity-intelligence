@@ -74,6 +74,44 @@ class BadgeSummaryExportTests(unittest.TestCase):
             self.assertNotIn('__hiBadgeDetailsDispose', cards['v1_mobile'])
             self.assertNotIn('hiBadgeHistory', cards['v1_mobile'])
 
+    def test_native_output_names_follow_remapped_entities(self):
+        _, register = fixtures._load_target_modules()
+        entry = SimpleNamespace(entry_id=fixtures.ENTRY_ID, data={}, options={})
+        hass = fixtures._FakeHass(entry, {})
+        async def run():
+            mapping = await register.async_build_entity_mapping(hass, entry.entry_id)
+            mapping.update({"fan.kitchen_air": "fan.study_output", "fan.living_room_air": "fan.bedroom_output", "fan.upstairs_air": "fan.attic_output"})
+            return await register.async_register_cards(hass, entry.entry_id, mapping)
+        with patch.object(sys.modules['homeassistant.helpers.entity_registry'], 'async_get', return_value=fixtures._FakeRegistry()):
+            cards = asyncio.run(run())
+        for layout in ('v2_mobile', 'v2_tablet'):
+            source = cards[layout]
+            import json
+            inventory = re.search(r'const outputIds = (.*?); // HI native output inventory', source).group(1)
+            self.assertEqual(json.loads(inventory), ['fan.study_output', 'fan.bedroom_output', 'fan.attic_output'])
+            self.assertIn('states[id]?.attributes?.friendly_name', source)
+            for entity in ('fan.study_output', 'fan.bedroom_output', 'fan.attic_output'):
+                self.assertRegex(source, r'- entity: ' + re.escape(entity) + r'\n            -')
+            self.assertNotIn('Kitchen purifier', source)
+            self.assertNotIn('Living room purifier', source)
+
+    def test_native_inventory_preserves_missing_configured_output_and_omits_unmapped(self):
+        import json
+        _, register = fixtures._load_target_modules()
+        entry = SimpleNamespace(entry_id=fixtures.ENTRY_ID, data={}, options={})
+        hass = fixtures._FakeHass(entry, {})
+        async def run():
+            mapping = await register.async_build_entity_mapping(hass, entry.entry_id)
+            mapping['fan.kitchen_air'] = 'fan.configured_but_missing'
+            mapping['fan.living_room_air'] = 'fan.configured_but_missing'
+            mapping.pop('fan.upstairs_air', None)
+            return await register.async_register_cards(hass, entry.entry_id, mapping)
+        with patch.object(sys.modules['homeassistant.helpers.entity_registry'], 'async_get', return_value=fixtures._FakeRegistry()):
+            cards = asyncio.run(run())
+        for layout in ('v2_mobile', 'v2_tablet'):
+            inventory = re.search(r'const outputIds = (.*?); // HI native output inventory', cards[layout]).group(1)
+            self.assertEqual(json.loads(inventory), ['fan.configured_but_missing'])
+
     def test_all_v2_close_buttons_are_accessible_circles_and_v1_is_preserved(self):
         import hashlib
         for layout, folder in (('v2_mobile', 'default-v2-mobile-aq'), ('v2_tablet', 'default-v2-tablet-zone-1-cooking')):

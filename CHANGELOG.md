@@ -6,6 +6,30 @@ All notable changes to Humidity Intelligence will be documented in this file.
 
 This project follows a practical changelog format for Home Assistant and HACS users. Add new entries under a fresh `Unreleased` section before publishing a future release.
 
+## Unreleased — UI harmonisation after beta.6
+
+- Preserves V2 mobile/tablet geometry and actions while adding restrained neutral
+  depth and a small bottom-left rendered-UI-revision indicator.
+- Distinguishes matching, explicitly superseded, differing and unverified revisions
+  using additive Diagnostics metadata, independently of integration version.
+  Export/download success and browser refresh are not proof of YAML replacement.
+- Corrects unavailable System/Manual labels, missing or malformed humidity values,
+  frontend comfort action advice, and positional names in native Outputs.
+- Keeps control engine, lane priority, entity primary states, service schemas,
+  shared Outputs expansion and the accepted Stability presentation unchanged.
+- Activation requires the complete package and a restart for Python metadata,
+  then fresh export and full replacement of saved V2 cards. Restart resets
+  in-memory Stability history. No configuration migration or new frontend resource.
+  [Revision contract and rollback](docs/ui-revision-status.md).
+
+These changes do not assign a new package version or claim deployment/publication.
+
+Validation maintenance also replaces stale beta-version and whole-package-count
+assertions with manifest identity and exact tracked branding checks. Real-selector
+tests initialize Home Assistant before its validation-library compatibility layer;
+native tests run separately from lightweight HA scaffolds. These repairs change
+test setup and expectations, with no additional product behavior change.
+
 ## Unreleased — v2.1.0-beta.6
 
 Unpublished development candidate based on beta.5 (`f1d6f48`). Published Stable

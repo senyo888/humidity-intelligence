@@ -272,6 +272,16 @@ Dynamic state or attribute text rendered through generated-card HTML must be esc
 at the HTML sink. The V1 Mobile presentation remains available but deprecated in this candidate;
 any removal requires a separately approved migration contract.
 
+V2 generated cards carry an entry- and layout-scoped rendered UI revision, separate
+from the integration manifest. Additive Diagnostics metadata advertises compatible
+targets only for successful generation. The small footer compares declared revisions;
+it does not establish installed dashboard bytes, configuration freshness, arbitrary
+customization, cache state or integration-update availability. Missing/unsupported
+or disconnected evidence is unverified; an explicitly superseded revision is an
+update, while a rollback mismatch is a difference. Export success never proves card
+replacement. This observation adds no writer, lane input or frontend runtime
+dependency. See [the rendered UI revision contract](docs/ui-revision-status.md).
+
 ## Home Assistant And HACS Boundaries
 
 Config flow, options flow, entity registry behavior, services, translations,

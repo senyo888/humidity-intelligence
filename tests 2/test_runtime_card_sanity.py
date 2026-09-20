@@ -59,7 +59,8 @@ OUTPUT_EXPANDER_TOGGLE_ACTION = """      tap_action:
         service_data:
           entity_id: input_boolean.air_control_output_expanded"""
 V207_CONTROL_TOGGLE_ACTION = """          tap_action:
-            action: toggle"""
+            action: |
+              [[[ return ['on', 'off'].includes(entity?.state) ? 'toggle' : 'none'; ]]]"""
 V207_CONTROL_TOGGLE_ENTITIES = (
     "input_boolean.air_control_enabled",
     "input_boolean.air_control_manual_override",

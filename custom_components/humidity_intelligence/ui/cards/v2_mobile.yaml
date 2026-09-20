@@ -34,7 +34,7 @@ card_mod:
                   rgba(15,23,42,0.62);
       border-radius: 24px;
       border: 1px solid rgba(148,163,184,0.22);
-      box-shadow: 0 0 26px rgba(56,189,248,0.16);
+      box-shadow: 0 5px 14px rgba(0,0,0,0.24), inset 0 1px 0 rgba(255,255,255,0.05), 0 0 26px rgba(56,189,248,0.16);
       padding: 11px;
       overflow: hidden;
     }
@@ -57,9 +57,10 @@ card:
           show_label: false
           state_display: |
             [[[
-              const h = parseFloat(entity.state);
-              if (isNaN(h)) return '—%';
-              return `${Math.round(h)}%`;
+              const raw = typeof entity?.state === 'string' ? entity.state.trim() : '';
+              const numeric = /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$/.test(raw) && Number.isFinite(Number(raw));
+              if (!numeric) return '—%';
+              return `${Math.round(Number(raw))}%`;
             ]]]
           custom_fields:
             summary_open: |
@@ -210,11 +211,11 @@ card:
               - box-shadow: |
                   [[[
                     const state = String(states['sensor.house_humidity_state']?.state || '').toLowerCase();
-                    if (state === 'below_target') return '0 0 24px rgba(56,189,248,0.20)';
-                    if (state === 'in_target') return '0 0 24px rgba(74,222,128,0.20)';
-                    if (state === 'above_target') return '0 0 24px rgba(250,204,21,0.22)';
-                    if (state === 'high_risk') return '0 0 24px rgba(239,68,68,0.22)';
-                    return '0 0 16px rgba(148,163,184,0.18)';
+                    if (state === 'below_target') return '0 3px 8px rgba(0,0,0,0.24), inset 0 1px 0 rgba(255,255,255,0.05), 0 0 24px rgba(56,189,248,0.20)';
+                    if (state === 'in_target') return '0 3px 8px rgba(0,0,0,0.24), inset 0 1px 0 rgba(255,255,255,0.05), 0 0 24px rgba(74,222,128,0.20)';
+                    if (state === 'above_target') return '0 3px 8px rgba(0,0,0,0.24), inset 0 1px 0 rgba(255,255,255,0.05), 0 0 24px rgba(250,204,21,0.22)';
+                    if (state === 'high_risk') return '0 3px 8px rgba(0,0,0,0.24), inset 0 1px 0 rgba(255,255,255,0.05), 0 0 24px rgba(239,68,68,0.22)';
+                    return '0 3px 8px rgba(0,0,0,0.24), inset 0 1px 0 rgba(255,255,255,0.05), 0 0 16px rgba(148,163,184,0.18)';
                   ]]]
             grid:
               - grid-template-areas: "\"i\" \"n\" \"s\""
@@ -709,11 +710,11 @@ card:
               - box-shadow: |
                   [[[
                     const r = (states['sensor.worst_room_condensation']?.attributes?.risk || '').toLowerCase();
-                    if (!r) return '0 0 16px rgba(148,163,184,0.18)';
-                    if (r.includes('danger') || r.includes('risk')) return '0 0 24px rgba(239,68,68,0.22)';
-                    if (r.includes('watch') || r.includes('elev')) return '0 0 24px rgba(250,204,21,0.22)';
-                    if (r.includes('low') || r.includes('ok') || r.includes('safe')) return '0 0 24px rgba(74,222,128,0.22)';
-                    return '0 0 16px rgba(148,163,184,0.18)';
+                    if (!r) return '0 3px 8px rgba(0,0,0,0.24), inset 0 1px 0 rgba(255,255,255,0.05), 0 0 16px rgba(148,163,184,0.18)';
+                    if (r.includes('danger') || r.includes('risk')) return '0 3px 8px rgba(0,0,0,0.24), inset 0 1px 0 rgba(255,255,255,0.05), 0 0 24px rgba(239,68,68,0.22)';
+                    if (r.includes('watch') || r.includes('elev')) return '0 3px 8px rgba(0,0,0,0.24), inset 0 1px 0 rgba(255,255,255,0.05), 0 0 24px rgba(250,204,21,0.22)';
+                    if (r.includes('low') || r.includes('ok') || r.includes('safe')) return '0 3px 8px rgba(0,0,0,0.24), inset 0 1px 0 rgba(255,255,255,0.05), 0 0 24px rgba(74,222,128,0.22)';
+                    return '0 3px 8px rgba(0,0,0,0.24), inset 0 1px 0 rgba(255,255,255,0.05), 0 0 16px rgba(148,163,184,0.18)';
                   ]]]
             grid:
               - grid-template-areas: "\"i\" \"n\" \"s\""
@@ -1207,11 +1208,11 @@ card:
               - box-shadow: |
                   [[[
                     const r = (states['sensor.worst_room_mould']?.attributes?.risk || '').toLowerCase();
-                    if (!r) return '0 0 16px rgba(148,163,184,0.18)';
-                    if (r.includes('danger') || r.includes('risk')) return '0 0 24px rgba(239,68,68,0.22)';
-                    if (r.includes('watch') || r.includes('elev')) return '0 0 24px rgba(250,204,21,0.22)';
-                    if (r.includes('low') || r.includes('ok') || r.includes('safe')) return '0 0 24px rgba(74,222,128,0.22)';
-                    return '0 0 16px rgba(148,163,184,0.18)';
+                    if (!r) return '0 3px 8px rgba(0,0,0,0.24), inset 0 1px 0 rgba(255,255,255,0.05), 0 0 16px rgba(148,163,184,0.18)';
+                    if (r.includes('danger') || r.includes('risk')) return '0 3px 8px rgba(0,0,0,0.24), inset 0 1px 0 rgba(255,255,255,0.05), 0 0 24px rgba(239,68,68,0.22)';
+                    if (r.includes('watch') || r.includes('elev')) return '0 3px 8px rgba(0,0,0,0.24), inset 0 1px 0 rgba(255,255,255,0.05), 0 0 24px rgba(250,204,21,0.22)';
+                    if (r.includes('low') || r.includes('ok') || r.includes('safe')) return '0 3px 8px rgba(0,0,0,0.24), inset 0 1px 0 rgba(255,255,255,0.05), 0 0 24px rgba(74,222,128,0.22)';
+                    return '0 3px 8px rgba(0,0,0,0.24), inset 0 1px 0 rgba(255,255,255,0.05), 0 0 16px rgba(148,163,184,0.18)';
                   ]]]
             grid:
               - grid-template-areas: "\"i\" \"n\" \"s\""
@@ -1486,11 +1487,11 @@ card:
               - box-shadow: |
                   [[[
                     const d = variables.hi_drift.kind === 'ready' ? Number(entity.state) : NaN;
-                    if (isNaN(d)) return '0 0 16px rgba(148,163,184,0.18)';
-                    if (Math.abs(d) >= 5) return '0 0 24px rgba(239,68,68,0.22)';
-                    if (Math.abs(d) < 0.5) return '0 0 18px rgba(148,163,184,0.20)';
-                    if (d > 0) return '0 0 22px rgba(250,204,21,0.22)';
-                    return '0 0 22px rgba(125,211,252,0.22)';
+                    if (isNaN(d)) return '0 3px 8px rgba(0,0,0,0.24), inset 0 1px 0 rgba(255,255,255,0.05), 0 0 16px rgba(148,163,184,0.18)';
+                    if (Math.abs(d) >= 5) return '0 3px 8px rgba(0,0,0,0.24), inset 0 1px 0 rgba(255,255,255,0.05), 0 0 24px rgba(239,68,68,0.22)';
+                    if (Math.abs(d) < 0.5) return '0 3px 8px rgba(0,0,0,0.24), inset 0 1px 0 rgba(255,255,255,0.05), 0 0 18px rgba(148,163,184,0.20)';
+                    if (d > 0) return '0 3px 8px rgba(0,0,0,0.24), inset 0 1px 0 rgba(255,255,255,0.05), 0 0 22px rgba(250,204,21,0.22)';
+                    return '0 3px 8px rgba(0,0,0,0.24), inset 0 1px 0 rgba(255,255,255,0.05), 0 0 22px rgba(125,211,252,0.22)';
                   ]]]
             grid:
               - grid-template-areas: "\"i\" \"n\" \"s\""
@@ -1602,20 +1603,27 @@ card:
         ]]]
       label: |
         [[[
-          const low  = parseFloat(states['sensor.house_humidity_target_low']?.state);
-          const high = parseFloat(states['sensor.house_humidity_target_high']?.state);
-          const h    = parseFloat(states['sensor.house_average_humidity']?.state);
-          const season = String(states['sensor.house_humidity_target_season']?.state || 'Seasonal').trim() || 'Seasonal';
-
-          const bandTxt = (isNaN(low) || isNaN(high))
+          const finiteReading = (id) => {
+            const raw = states[id]?.state;
+            if (typeof raw !== 'string' || !/^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$/.test(raw.trim())) return null;
+            const value = Number(raw);
+            return Number.isFinite(value) ? value : null;
+          };
+          const low = finiteReading('sensor.house_humidity_target_low');
+          const high = finiteReading('sensor.house_humidity_target_high');
+          const h = finiteReading('sensor.house_average_humidity');
+          const rawSeason = String(states['sensor.house_humidity_target_season']?.state || '').trim();
+          const season = rawSeason && !['unknown', 'unavailable'].includes(rawSeason.toLowerCase()) ? rawSeason : 'Seasonal';
+          const validBand = low !== null && high !== null && low <= high;
+          const bandTxt = !validBand
             ? `Target humidity (${season}): —`
             : `Target humidity (${season}): ${low.toFixed(0)}–${high.toFixed(0)}%`;
 
-          let comfort = 'Comfort: —';
-          if (!isNaN(h) && !isNaN(low) && !isNaN(high)) {
-            if (h < low) comfort = 'Comfort: A bit dry — humidify / reduce extraction.';
-            else if (h <= high) comfort = 'Comfort: In the sweet spot — keep steady.';
-            else comfort = 'Comfort: High humidity — ventilate 30 to 45 min.';
+          let comfort = 'Humidity: Unavailable.';
+          if (h !== null && validBand) {
+            if (h < low) comfort = 'Humidity: Below seasonal target.';
+            else if (h <= high) comfort = 'Humidity: Within seasonal target.';
+            else comfort = 'Humidity: Above seasonal target.';
           }
 
           return `${bandTxt}\n${comfort}`;
@@ -3933,10 +3941,14 @@ card:
           show_state: true
           state_display: |
             [[[
-              return entity.state === 'on' ? 'ARMED' : 'DISABLED';
+              const state = entity?.state;
+              if (state === 'on') return 'ARMED';
+              if (state === 'off') return 'DISABLED';
+              return state === 'unknown' ? 'UNKNOWN' : 'UNAVAILABLE';
             ]]]
           tap_action:
-            action: toggle
+            action: |
+              [[[ return ['on', 'off'].includes(entity?.state) ? 'toggle' : 'none'; ]]]
           hold_action:
             action: more-info
           styles:
@@ -4436,11 +4448,15 @@ card:
           show_label: true
           state_display: |
             [[[
-              return entity.state === 'on' ? 'LOCKED' : 'AUTO';
+              const state = entity?.state;
+              if (state === 'on') return 'MANUAL';
+              if (state === 'off') return 'AUTO';
+              return state === 'unknown' ? 'UNKNOWN' : 'UNAVAILABLE';
             ]]]
           label: ""
           tap_action:
-            action: toggle
+            action: |
+              [[[ return ['on', 'off'].includes(entity?.state) ? 'toggle' : 'none'; ]]]
           hold_action:
             action: more-info
           styles:
@@ -4482,7 +4498,7 @@ card:
             const st = states[id]?.state;
             const pct = states[id]?.attributes?.percentage;
             const preset = states[id]?.attributes?.preset_mode;
-            if (!st) return '—';
+            if (!st) return 'UNAVAILABLE';
             if (st !== 'on') return st.toUpperCase();
             if (pct != null) return `${pct}%`;
             if (preset) return String(preset).toUpperCase();
@@ -4494,7 +4510,15 @@ card:
           const fanIso = states['input_boolean.air_isolate_fan_outputs']?.state === 'on';
           const humIso = states['input_boolean.air_isolate_humidifier_outputs']?.state === 'on';
           const iso = `${fanIso ? ' • FAN ISO' : ''}${humIso ? ' • HUM ISO' : ''}`;
-          return `Kitchen: ${fanTxt('fan.kitchen_air')} • Living: ${fanTxt('fan.living_room_air')} • Upstairs: ${fanTxt('fan.upstairs_air')}${co}${iso}`;
+          const fanName = (id) => {
+            const name = states[id]?.attributes?.friendly_name;
+            return typeof name === 'string' && name.trim() ? name.trim() : id;
+          };
+          const outputIds = ['fan.kitchen_air', 'fan.living_room_air', 'fan.upstairs_air']; // HI native output inventory
+          const outputText = outputIds
+            .filter((id, index, ids) => ids.indexOf(id) === index)
+            .map(id => `${fanName(id)}: ${fanTxt(id)}`).join(' • ');
+          return `${outputText || 'Output status unavailable'}${co}${iso}`;
         ]]]
       styles:
         card:
@@ -4576,11 +4600,8 @@ card:
           show_header_toggle: false
           entities:
             - entity: fan.kitchen_air
-              name: Kitchen purifier
             - entity: fan.living_room_air
-              name: Living room purifier
             - entity: fan.upstairs_air
-              name: Upstairs purifier
             - type: section
             - entity: input_boolean.air_aq_downstairs_active
               name: AQ Downstairs Active
@@ -4635,3 +4656,173 @@ card:
             - entity: humidifier.downstairs_humidifier
             - entity: humidifier.upstairs_humidifier
     # hi:output-details:end
+
+    # UI revision is display-only; the generated stamp is independent of package version.
+    - type: custom:button-card
+      entity: sensor.hi_diagnostics
+      variables:
+        hi_ui_stamp: |
+          [[[ try { return JSON.parse('__HI_UI_REVISION_STAMP__'); } catch (_) { return null; } ]]]
+      triggers_update: all
+      show_name: false
+      show_icon: false
+      show_state: false
+      tap_action:
+        action: none
+      hold_action:
+        action: none
+      double_tap_action:
+        action: none
+      custom_fields:
+        revision: |
+          [[[
+            // HI-UI-REVISION:START
+            /* Canonical read-only UI revision indicator, embedded into generated cards.
+             * Declared revisions describe the renderer, not cache health or arbitrary edits.
+             */
+            const hiUiRevision = (() => {
+              const KEY = Symbol.for('humidity_intelligence.ui_revision.lifecycle.v1');
+              const positive = value => Number.isSafeInteger(value) && value > 0;
+              const object = value => value && typeof value === 'object' && !Array.isArray(value);
+              const escape = value => String(value ?? '').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#039;');
+              const unknown = reason => ({kind:'unknown',label:'UI unverified',reason});
+              function classify(stamp, metadata, live = false) {
+                if (!live) return unknown('A live Home Assistant connection and current evidence are required.');
+                if (!object(stamp) || !object(metadata) || stamp.schema !== 1 || metadata.schema !== 1) return unknown('UI revision information is missing or uses an unsupported contract.');
+                if (typeof stamp.entry !== 'string' || !stamp.entry || stamp.entry !== metadata.entry) return unknown('This card cannot be matched to this integration entry.');
+                if (!['v2_mobile','v2_tablet'].includes(stamp.layout) || !object(metadata.layouts) || !Object.hasOwn(metadata.layouts,stamp.layout)) return unknown('Revision information for this layout is unavailable.');
+                const target = metadata.layouts[stamp.layout];
+                if (!object(target) || !positive(stamp.revision) || !positive(target.revision) || stamp.generator !== 1 || target.generator !== 1 || !Array.isArray(target.supersedes) || !target.supersedes.every(value => positive(value) && value < target.revision) || new Set(target.supersedes).size !== target.supersedes.length) return unknown('The renderer revision or generator contract is unsupported.');
+                if (stamp.revision === target.revision) return {kind:'current',label:'UI current',reason:'The declared renderer revision matches the UI advertised by this installed backend. Local YAML edits, mappings, options and frontend resources are not verified.'};
+                if (target.supersedes.includes(stamp.revision)) return {kind:'update',label:'UI update',reason:'This backend advertises a compatible UI revision that supersedes this displayed revision.'};
+                return {kind:'different',label:'UI differs',reason:'The displayed and backend-advertised revisions differ. This may be a rollback or a different revision; a newer release is not established.'};
+              }
+              function dispose(owner) { owner?.[KEY]?.dispose(); }
+              function render(owner, hass, entity, stamp) {
+                if (!owner || !owner.isConnected) return '';
+                const connection = hass?.connection;
+                let state = owner[KEY];
+                if (state && state.connection !== connection) { state.dispose(); state = null; }
+                if (!state) {
+                  state = {connection, blocked:connection?.connected !== true, blockedStates:hass?.states, blockedEntity:entity, ready:false, owner, hass, entity, stamp, button:null, disposed:false};
+                  owner[KEY] = state;
+                  const usable = () => !state.blocked && state.connection?.connected === true && typeof state.entity?.state === 'string' && Boolean(state.entity.state.trim()) && !['unknown','unavailable'].includes(state.entity.state);
+                  state.result = () => classify(state.stamp,state.entity?.attributes?.ui_revision,usable());
+                  state.paint = () => {
+                    const button = owner.shadowRoot?.querySelector('.hi-ui-revision');
+                    if (state.button !== button) {
+                      state.button?.removeEventListener('click',state.open);
+                      state.button = button;
+                      button?.addEventListener('click',state.open);
+                    }
+                    if (!button) return;
+                    const result=state.result();
+                    if (button.dataset.status !== result.kind) button.dataset.status=result.kind;
+                    const label=button.querySelector('.hi-ui-revision-label');
+                    if (label && label.textContent !== result.label) label.textContent=result.label;
+                    const accessible=result.label+'. Open UI revision details';
+                    if (button.getAttribute('aria-label') !== accessible) button.setAttribute('aria-label',accessible);
+                  };
+                  state.open = () => {
+                    window.__hiBadgeDetailsDispose?.(false);
+                    const dialog=document.createElement('dialog');
+                    if (typeof dialog.showModal !== 'function') {
+                      if (state.entity?.entity_id) owner.dispatchEvent(new CustomEvent('hass-more-info',{detail:{entityId:state.entity.entity_id},bubbles:true,composed:true}));
+                      return;
+                    }
+                    const result=state.result();
+                    dialog.className='hi-ui-revision-details';
+                    dialog.setAttribute('aria-label','UI revision details');
+                    const validStamp=object(state.stamp);
+                    const target=state.entity?.attributes?.ui_revision?.layouts?.[state.stamp?.layout];
+                    dialog.innerHTML=`<style>.hi-ui-revision-details{box-sizing:border-box;width:min(460px,calc(100vw - 32px));max-height:calc(100dvh - 32px);overflow:auto;padding:20px;border:1px solid #64748b;border-radius:20px;background:#0d1522;color:#e2e8f0;font:14px/1.6 system-ui,sans-serif}.hi-ui-revision-details::backdrop{background:rgba(0,0,0,.55)}.hi-ui-revision-details button{min-width:44px;min-height:44px;float:right;border:1px solid #64748b;border-radius:50%;background:#18253a;color:#e2e8f0;font:inherit}.hi-ui-revision-details button:focus-visible{outline:2px solid #38bdf8;outline-offset:2px}.hi-ui-revision-details p{overflow-wrap:anywhere}</style><button type="button" aria-label="Close" autofocus>×</button><h2>${escape(result.label)}</h2><p>${escape(result.reason)}</p><p>Displayed revision: ${validStamp && positive(state.stamp.revision)?state.stamp.revision:'Unavailable'}. Backend-advertised revision: ${positive(target?.revision)?target.revision:'Unavailable'}.</p><p>To replace the UI, export the selected layout, replace the complete Manual-card YAML, and save the dashboard. Refresh the browser or app if the old UI remains cached.</p><p>This indicator does not diagnose browser caching or confirm that a downloaded file was installed. These details are a snapshot; reopen to check again.</p>`;
+                    const previous=owner.shadowRoot?.activeElement || document.activeElement;
+                    let cleaned=false;
+                    const close=(restore=true)=>{
+                      if(cleaned)return;cleaned=true;
+                      if(dialog.open)dialog.close();dialog.remove();
+                      if(window.__hiBadgeDetailsDispose===close)delete window.__hiBadgeDetailsDispose;
+                      if(state.close===close)state.close=null;
+                      if(restore && owner.isConnected && previous?.isConnected)previous.focus();
+                    };
+                    state.close=close; window.__hiBadgeDetailsDispose=close;
+                    dialog.querySelector('button').addEventListener('click',()=>close());
+                    dialog.addEventListener('close',()=>close(),{once:true});
+                    dialog.addEventListener('click',event=>{if(event.target!==dialog)return;const b=dialog.getBoundingClientRect();if(event.clientX<b.left||event.clientX>b.right||event.clientY<b.top||event.clientY>b.bottom)close();});
+                    document.body.appendChild(dialog);
+                    try {dialog.showModal();} catch (_) {close();}
+                  };
+                  // button-card's ancestor keyboard handler can consume native activation.
+                  // Capture only this exact footer button; leave pointer actions unchanged.
+                  state.keyRoot=owner.shadowRoot;
+                  state.keydown=event=>{
+                    if(!['Enter',' '].includes(event.key) || !state.button || !event.composedPath?.().includes(state.button))return;
+                    event.preventDefault();event.stopPropagation();
+                    if(!event.repeat)state.open();
+                  };
+                  state.keyRoot?.addEventListener('keydown',state.keydown,true);
+                  state.disconnected=()=>{state.blocked=true;state.ready=false;state.blockedStates=state.hass?.states;state.blockedEntity=state.entity;state.paint();};
+                  state.connected=()=>{state.ready=true;state.paint();};
+                  state.navigation=()=>state.dispose();
+                  state.observer=new MutationObserver(()=>{if(!owner.isConnected)state.dispose();else state.paint();});
+                  let root=owner.shadowRoot || owner.getRootNode();
+                  while(root){state.observer.observe(root,{childList:true,subtree:true});root=root.host?root.host.getRootNode():null;}
+                  state.dispose=()=>{
+                    if(state.disposed)return;state.disposed=true;
+                    state.observer.disconnect();state.close?.(false);
+                    state.button?.removeEventListener('click',state.open);
+                    state.keyRoot?.removeEventListener('keydown',state.keydown,true);
+                    connection?.removeEventListener?.('disconnected',state.disconnected);
+                    connection?.removeEventListener?.('ready',state.connected);
+                    for(const name of ['location-changed','popstate','pagehide'])window.removeEventListener(name,state.navigation);
+                    if(owner[KEY]===state)delete owner[KEY];
+                  };
+                  connection?.addEventListener?.('disconnected',state.disconnected);
+                  connection?.addEventListener?.('ready',state.connected);
+                  for(const name of ['location-changed','popstate','pagehide'])window.addEventListener(name,state.navigation);
+                }
+                state.hass=hass;state.entity=entity;state.stamp=stamp;
+                if(connection?.connected!==true)state.disconnected();
+                else if(state.blocked && state.ready && hass?.states && hass.states!==state.blockedStates && entity!==state.blockedEntity)state.blocked=false;
+                const result=state.result();
+                queueMicrotask(()=>{if(!state.disposed)state.paint();});
+                return `<button type="button" class="hi-ui-revision" data-status="${result.kind}" aria-label="${escape(result.label)}. Open UI revision details"><span class="hi-ui-revision-led" aria-hidden="true"></span><span class="hi-ui-revision-label">${escape(result.label)}</span></button>`;
+              }
+              return {classify,render,dispose};
+            })();
+            // HI-UI-REVISION:END
+            return hiUiRevision.render(this, hass, entity, variables.hi_ui_stamp);
+          ]]]
+      styles:
+        card:
+          - background: transparent
+          - border: none
+          - border-radius: 0
+          - box-shadow: none
+          - padding: 0
+          - height: 24px
+          - margin-top: 12px
+          - overflow: visible
+        grid:
+          - grid-template-areas: '"revision"'
+          - grid-template-columns: 1fr
+          - grid-template-rows: 24px
+        custom_fields:
+          revision:
+            - justify-self: start
+            - align-self: center
+            - text-align: left
+            - overflow: visible
+      extra_styles: |
+        .hi-ui-revision {
+          position: relative; display: inline-flex; align-items: center; gap: 6px;
+          height: 20px; padding: 0 2px; border: 0; background: transparent; pointer-events: auto;
+          color: #b9c7d6; font: 11px/20px system-ui,sans-serif; cursor: pointer;
+        }
+        /* The hit area occupies the footer's empty margin and shell padding. */
+        .hi-ui-revision::after { content: ''; position: absolute; inset: -12px -4px; }
+        .hi-ui-revision:focus-visible { outline: 2px solid #38bdf8; outline-offset: 3px; border-radius: 3px; }
+        .hi-ui-revision-led { width: 8px; height: 8px; flex: none; border-radius: 50%; background: #94a3b8; box-shadow: inset 0 1px 1px rgba(255,255,255,.28); }
+        .hi-ui-revision[data-status="current"] .hi-ui-revision-led { background: #4ade80; }
+        .hi-ui-revision[data-status="update"] .hi-ui-revision-led,
+        .hi-ui-revision[data-status="different"] .hi-ui-revision-led { background: #fbbf24; }

@@ -40,6 +40,18 @@ Difference:
 
 Feature parity is maintained.
 
+## Compact UI revision footer
+
+The bottom-left LED compares this rendered card's revision with its backend's
+compatible target. It distinguishes current, update, differing revision and
+unverified evidence. It does not verify downloaded files, browser caches or saved
+dashboard contents. See [revision meanings and replacement steps](../../../docs/ui-revision-status.md).
+
+Mobile and tablet retain their existing footprints and actions with restrained
+neutral depth. System/Manual unknown states remain explicit, humidity requires
+finite evidence, comfort text describes the seasonal band, and native Outputs use
+mapped entity names. The Stability badge and its independent LEDs are unchanged.
+
 ---
 
 ## Seven-day humidity drift — v2.1.0-beta.2
