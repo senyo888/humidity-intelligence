@@ -57,9 +57,9 @@ It gives you:
 - native Home Assistant diagnostics for support and triage
 - services for dashboard export, self-check, diagnostics, pause/resume, and release validation
 
-Current development manifest version: **v2.1.0-beta.8**, an unpublished candidate.
-It adds reusable custom monitoring meanings and optional guidance, retaining beta.7’s
-UI revision indicator, output observation, histories and observational Stability.
+Current development manifest version: **v2.1.0-beta.9**, an unpublished candidate.
+It repairs V2 touch interactions while retaining reusable custom monitoring meanings,
+UI revision evidence, output observation, histories and observational Stability.
 The current published Stable is **v2.0.12**, released on 9 September 2026 and available
 through HACS. See [Release Notes](#release-notes) for beta scope and upgrade steps.
 
@@ -454,9 +454,9 @@ must be reviewable from tracked repository files.
 
 ## Current Release Highlights
 
-- unpublished candidate `2.1.0-beta.8` adds reusable monitoring names and optional
-  guidance, preserving per-source rules, output observation and beta.7 UI behavior;
-  deterministic control remains authoritative
+- unpublished candidate `2.1.0-beta.9` repairs V2 touch activation while retaining
+  existing control actions and reusable monitoring meanings; see the
+  [interaction contract and touch checks](docs/ui-interactions.md)
 - published Stable `2.0.12` improves Manual handover, Home Assistant-local time gates,
   lifecycle-safe timers and Home Assistant 2026.9 setup assistance
 - preceding Stable `2.0.11` restores the centred passive Stability preview; those
@@ -982,7 +982,7 @@ Notes:
   workflows. Dashboard creation and editing remain in Home Assistant's dashboard UI.
   System and Manual buttons keep the
   v2.0.7 helper-toggle behavior.
-- **v2.1.0-beta.8 candidate:** the accepted badge shows backend-owned
+- **v2.1.0-beta.9 candidate:** the accepted badge shows backend-owned
   score, evidence and Recent trend details. It remains observational. See the
   [accepted contract](docs/stability-score-accepted-baseline.md) for thresholds,
   incomplete AQ, restart history reset, client support and card refresh, and the
@@ -1233,22 +1233,22 @@ CO emergency pressure. Details are in
 
 ## Release Notes
 
-### v2.1.0-beta.8 (Unpublished candidate)
+### v2.1.0-beta.9 (Unpublished candidate)
 
-- reusable entry-local monitoring meanings pair a name with an existing HI
-  classification and optional **What to do** guidance; source rules stay independent
-- previews cover rename, reclassification and guarded deletion; changes remain
-  staged until the main **Save changes** action
-- missing meanings remain explicit monitoring gaps; built-in guidance and existing
-  severity/icon behavior remain authoritative, with custom instructions shown alongside
-- preserves beta.7 UI behavior, renderer revisions, control ownership and Stability
-  scoring; existing settings require no manual migration
-- install the complete package and restart; restart resets in-memory Stability
-  history. Compatible adaptive cards receive the added backend text without re-export
-- downgrade restores the earlier package, matching saved options and monitoring
-  custody together; [configuration and recovery](docs/custom-monitoring-meanings.md)
-- [Complete beta.8 changes](CHANGELOG.md#unreleased--v210-beta8). Published Stable
-  remains v2.0.12; candidate preparation does not establish deployment or publication
+- repairs touch activation in V2 mobile/tablet HI-owned native buttons while
+  preserving existing System/Manual actions and native Home Assistant controls
+- restores revision verification after reconnect using fresh available Diagnostics
+  evidence, including button-card's persistent state wrapper
+- retains details/history navigation, manual dismissal and the two-minute inactivity
+  contract; [interaction inventory and touch evidence](docs/ui-interactions.md)
+- advances both V2 layouts to UI revision 4, generator contract 1; install the complete
+  package, restart, then export and replace saved mobile/tablet Manual-card YAML
+- retains beta.8 reusable monitoring meanings and guidance, backend control, entity
+  primary states and Stability scoring; restart resets in-memory Stability history
+- no configuration migration is required; rollback restores the preceding complete
+  package and matching card YAML
+- [Complete beta.9 changes](CHANGELOG.md#unreleased--v210-beta9). Published Stable
+  remains v2.0.12; source preparation does not establish live deployment or publication
 
 ### v2.0.12 (Current Published Stable)
 
@@ -1308,6 +1308,23 @@ displaced older summaries into this container as new releases are added. CHANGEL
 remains the complete detailed history. -->
 <details>
 <summary>Previous Releases</summary>
+
+### v2.1.0-beta.8 (Earlier unpublished candidate)
+
+- reusable entry-local monitoring meanings pair a name with an existing HI
+  classification and optional **What to do** guidance; source rules stay independent
+- previews cover rename, reclassification and guarded deletion; changes remain
+  staged until the main **Save changes** action
+- missing meanings remain explicit monitoring gaps; built-in guidance and existing
+  severity/icon behavior remain authoritative, with custom instructions shown alongside
+- preserves beta.7 UI behavior, renderer revisions, control ownership and Stability
+  scoring; existing settings require no manual migration
+- install the complete package and restart; restart resets in-memory Stability
+  history. Compatible adaptive cards receive the added backend text without re-export
+- downgrade restores the earlier package, matching saved options and monitoring
+  custody together; [configuration and recovery](docs/custom-monitoring-meanings.md)
+- [Complete beta.8 changes](CHANGELOG.md#v210-beta8--earlier-unpublished-candidate). Published Stable
+  remains v2.0.12; candidate preparation does not establish deployment or publication
 
 ### v2.1.0-beta.7 (Earlier unpublished candidate)
 

@@ -5135,8 +5135,12 @@ card:
               }
               // HI-INACTIVITY:END
               const KEY = Symbol.for('humidity_intelligence.ui_revision.lifecycle.v1');
+              // Ancestor button-card consumes touchend and suppresses the native click.
+              // Isolate this button without cancelling browser scrolling or synthesizing taps.
+              const nativeEvents = ['touchstart','touchend','touchcancel','mousedown','mouseup','keyup'];
               const positive = value => Number.isSafeInteger(value) && value > 0;
               const object = value => value && typeof value === 'object' && !Array.isArray(value);
+              const available = entity => typeof entity?.state === 'string' && Boolean(entity.state.trim()) && !['unknown','unavailable'].includes(entity.state);
               const escape = value => String(value ?? '').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#039;');
               const unknown = reason => ({kind:'unknown',label:'UI unverified',reason});
               function classify(stamp, metadata, live = false) {
@@ -5157,16 +5161,18 @@ card:
                 let state = owner[KEY];
                 if (state && state.connection !== connection) { state.dispose(); state = null; }
                 if (!state) {
-                  state = {connection, blocked:connection?.connected !== true, blockedStates:hass?.states, blockedEntity:entity, ready:false, owner, hass, entity, stamp, button:null, disposed:false};
+                  state = {connection, blocked:connection?.connected !== true, blockedEntity:entity, ready:false, owner, hass, entity, stamp, button:null, disposed:false};
                   owner[KEY] = state;
-                  const usable = () => !state.blocked && state.connection?.connected === true && typeof state.entity?.state === 'string' && Boolean(state.entity.state.trim()) && !['unknown','unavailable'].includes(state.entity.state);
+                  const usable = () => !state.blocked && state.connection?.connected === true && available(state.entity);
                   state.result = () => classify(state.stamp,state.entity?.attributes?.ui_revision,usable());
                   state.paint = () => {
                     const button = owner.shadowRoot?.querySelector('.hi-ui-revision');
                     if (state.button !== button) {
-                      state.button?.removeEventListener('click',state.open);
+                      state.button?.removeEventListener('click',state.activate);
+                      for (const name of nativeEvents) state.button?.removeEventListener(name,state.isolate);
                       state.button = button;
-                      button?.addEventListener('click',state.open);
+                      button?.addEventListener('click',state.activate);
+                      for (const name of nativeEvents) button?.addEventListener(name,state.isolate,{passive:true});
                     }
                     if (!button) return;
                     const result=state.result();
@@ -5207,8 +5213,13 @@ card:
                     document.body.appendChild(dialog);
                     try {dialog.showModal();stopIdle=hiDialogInactivity(dialog,owner,close,connection);} catch (_) {close();}
                   };
+                  state.isolate=event=>{
+                    if(event?.type==='keyup' && !['Enter',' '].includes(event.key))return;
+                    event?.stopPropagation();
+                  };
+                  state.activate=event=>{event?.stopPropagation();state.open();};
                   // button-card's ancestor keyboard handler can consume native activation.
-                  // Capture only this exact footer button; leave pointer actions unchanged.
+                  // Preserve the footer's one-shot keyboard behavior, including key repeats.
                   state.keyRoot=owner.shadowRoot;
                   state.keydown=event=>{
                     if(!['Enter',' '].includes(event.key) || !state.button || !event.composedPath?.().includes(state.button))return;
@@ -5216,7 +5227,7 @@ card:
                     if(!event.repeat)state.open();
                   };
                   state.keyRoot?.addEventListener('keydown',state.keydown,true);
-                  state.disconnected=()=>{state.close?.(false);state.blocked=true;state.ready=false;state.blockedStates=state.hass?.states;state.blockedEntity=state.entity;state.paint();};
+                  state.disconnected=()=>{state.close?.(false);state.blocked=true;state.ready=false;state.blockedEntity=state.entity;state.paint();};
                   state.connected=()=>{state.ready=true;state.paint();};
                   state.navigation=()=>state.dispose();
                   state.observer=new MutationObserver(()=>{if(!owner.isConnected)state.dispose();else state.paint();});
@@ -5225,7 +5236,8 @@ card:
                   state.dispose=()=>{
                     if(state.disposed)return;state.disposed=true;
                     state.observer.disconnect();state.close?.(false);
-                    state.button?.removeEventListener('click',state.open);
+                    state.button?.removeEventListener('click',state.activate);
+                    for (const name of nativeEvents) state.button?.removeEventListener(name,state.isolate);
                     state.keyRoot?.removeEventListener('keydown',state.keydown,true);
                     connection?.removeEventListener?.('disconnected',state.disconnected);
                     connection?.removeEventListener?.('ready',state.connected);
@@ -5238,7 +5250,9 @@ card:
                 }
                 state.hass=hass;state.entity=entity;state.stamp=stamp;
                 if(connection?.connected!==true)state.disconnected();
-                else if(state.blocked && state.ready && hass?.states && hass.states!==state.blockedStates && entity!==state.blockedEntity)state.blocked=false;
+                // button-card keeps a persistent states Proxy across live updates. Require a
+                // fresh available Diagnostics entity after ready, not a new container object.
+                else if(state.blocked && state.ready && available(entity) && entity!==state.blockedEntity)state.blocked=false;
                 const result=state.result();
                 queueMicrotask(()=>{if(!state.disposed)state.paint();});
                 return `<button type="button" class="hi-ui-revision" data-status="${result.kind}" aria-label="${escape(result.label)}. Open UI revision details"><span class="hi-ui-revision-led" aria-hidden="true"></span><span class="hi-ui-revision-label">${escape(result.label)}</span></button>`;

@@ -32,7 +32,7 @@ class Events {
  listeners=new Map();connected=true;
  addEventListener(name,fn){if(!this.listeners.has(name))this.listeners.set(name,new Set());this.listeners.get(name).add(fn);}
  removeEventListener(name,fn){this.listeners.get(name)?.delete(fn);}
- emit(name){for(const fn of [...(this.listeners.get(name)||[])])fn();}
+ emit(name,event){for(const fn of [...(this.listeners.get(name)||[])])fn(event);}
  count(){return [...this.listeners.values()].reduce((sum,set)=>sum+set.size,0);}
 }
 function harness(){
@@ -57,6 +57,28 @@ test('disconnect paints unknown immediately; ready alone cannot bless cached evi
 });
 test('unavailable Diagnostics remains unknown with live connection',()=>{
  const h=harness();assert.match(h.model.render(h.owner,h.hass,{...h.entity,state:'unavailable'},stamp),/data-status="unknown"/);h.model.dispose(h.owner);
+});
+test('reconnect accepts fresh Diagnostics through a persistent states proxy without accepting cached evidence',async()=>{
+ const h=harness();const target={diagnostics:h.entity};const proxy=new Proxy(target,{});h.hass.states=proxy;
+ h.model.render(h.owner,h.hass,h.entity,stamp);await Promise.resolve();assert.equal(h.button.dataset.status,'current');
+ h.connection.connected=false;h.connection.emit('disconnected');assert.equal(h.button.dataset.status,'unknown');
+ h.connection.connected=true;
+ const fresh=structuredClone(h.entity);target.diagnostics=fresh;
+ assert.match(h.model.render(h.owner,h.hass,fresh,stamp),/data-status="unknown"/,'fresh entity alone does not replace the ready gate');
+ h.connection.emit('ready');assert.equal(h.button.dataset.status,'unknown','ready alone cannot certify the cached render');
+ assert.match(h.model.render(h.owner,h.hass,h.entity,stamp),/data-status="unknown"/,'original cached entity stays blocked');
+ for(const state of ['unknown','unavailable','', ' ']){
+  const invalid={...fresh,state};target.diagnostics=invalid;
+  assert.match(h.model.render(h.owner,h.hass,invalid,stamp),/data-status="unknown"/);
+  assert.match(h.model.render(h.owner,h.hass,h.entity,stamp),/data-status="unknown"/,'invalid entity must not release the stale-evidence guard');
+ }
+ target.diagnostics=fresh;
+ assert.equal(h.hass.states,proxy);
+ assert.match(h.model.render(h.owner,h.hass,fresh,stamp),/data-status="current"/);
+ await Promise.resolve();assert.equal(h.button.dataset.status,'current');
+ h.connection.connected=false;h.connection.emit('disconnected');h.connection.connected=true;h.connection.emit('ready');
+ assert.match(h.model.render(h.owner,h.hass,fresh,stamp),/data-status="unknown"/,'every reconnect requires another fresh entity');
+ h.model.dispose(h.owner);assert.equal(h.connection.count(),0);assert.equal(h.button.count(),0);
 });
 test('repeated render uses one lifecycle; navigation and removal clean up all subscriptions',()=>{
  for(const exit of ['location-changed','popstate','pagehide','removal']){
@@ -93,4 +115,29 @@ test('supersession excludes duplicate older revisions and cannot mislabel a roll
  item.layouts.v2_mobile.supersedes=[1,1];assert.equal(ui.classify(stamp,item,true).kind,'unknown');
  item.layouts.v2_mobile.supersedes=[4];assert.equal(ui.classify({...stamp,revision:4},item,true).kind,'unknown');
  assert.match(ui.classify(stamp,metadata,true).reason,/mappings, options and frontend resources are not verified/);
+});
+
+test('footer isolates ancestor gestures without cancelling native defaults or opening on touch',async()=>{
+ const h=harness();h.model.render(h.owner,h.hass,h.entity,stamp);await Promise.resolve();
+ const state=h.owner[Symbol.for('humidity_intelligence.ui_revision.lifecycle.v1')];let opened=0;state.open=()=>opened++;
+ const event=(type,key)=>({type,key,stopPropagation(){this.stopped=true;},preventDefault(){this.prevented=true;}});
+ for(const type of ['touchstart','touchend','touchcancel','mousedown','mouseup']){
+  const e=event(type);h.button.emit(type,e);assert.equal(e.stopped,true);assert.equal(e.prevented,undefined);assert.equal(opened,0);
+ }
+ for(const type of ['touchmove','scroll']){const e=event(type);h.button.emit(type,e);assert.equal(e.stopped,undefined);assert.equal(e.prevented,undefined);}
+ const click=event('click');h.button.emit('click',click);assert.equal(opened,1);assert.equal(click.stopped,true);assert.equal(click.prevented,undefined);
+ const enter=event('keyup','Enter');h.button.emit('keyup',enter);assert.equal(enter.stopped,true);assert.equal(opened,1);
+ const tab=event('keyup','Tab');h.button.emit('keyup',tab);assert.equal(tab.stopped,undefined);
+ h.model.dispose(h.owner);assert.equal(h.button.count(),0);
+});
+
+test('footer replacement detaches every guard and repeated paints do not duplicate activation',async()=>{
+ const h=harness();h.model.render(h.owner,h.hass,h.entity,stamp);await Promise.resolve();
+ const state=h.owner[Symbol.for('humidity_intelligence.ui_revision.lifecycle.v1')];let opened=0;state.open=()=>opened++;
+ const replacement=harness().button;h.owner.shadowRoot.querySelector=()=>replacement;
+ for(let i=0;i<5;i++)h.observers[0].callback();
+ assert.equal(h.button.count(),0);assert.equal(replacement.listeners.get('click').size,1);
+ for(const name of ['touchstart','touchend','touchcancel','mousedown','mouseup','keyup'])assert.equal(replacement.listeners.get(name).size,1);
+ replacement.emit('click',{stopPropagation(){}});assert.equal(opened,1);
+ h.model.dispose(h.owner);assert.equal(replacement.count(),0);assert.equal(h.owner.shadowRoot.count(),0);
 });

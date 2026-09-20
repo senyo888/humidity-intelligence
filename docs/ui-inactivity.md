@@ -42,3 +42,7 @@ Validate inactivity, trusted interaction reset, passive updates, manual closing,
 reopening, stale callbacks, parent/child timing, disconnection and removal. Check
 both generated layouts and gallery mirrors, preserving controls and metadata.
 The history request timeout is a separate network error boundary, not this timer.
+
+Use the [V2 interaction inventory and touch matrix](ui-interactions.md) alongside
+these timer checks. Mouse or synthetic-click success does not establish mobile
+touch activation through the actual card host.

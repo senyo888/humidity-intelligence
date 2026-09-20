@@ -28,7 +28,18 @@
   };
 
   const entityId = value => typeof value === 'string' && /^[a-z_]+\.[a-z0-9_]+$/.test(value);
-  const node = (tag, text, cls) => { const n=document.createElement(tag); if(text!==undefined)n.textContent=String(text);if(cls)n.className=cls;return n; };
+  // Only buttons constructed here belong to HI. Native HA child controls keep
+  // their own routing. Let the browser produce (or cancel) the sole native click;
+  // button-card ancestors must not consume touchend or start hold actions first.
+  const isolateNativeButton = event => {
+    if (['keydown','keyup'].includes(event.type) && !['Enter',' '].includes(event.key)) return;
+    event.stopPropagation();
+  };
+  const node = (tag, text, cls) => {
+    const n=document.createElement(tag);
+    if(tag==='button')for(const name of ['touchstart','touchend','touchcancel','mousedown','mouseup','click','keydown','keyup'])n.addEventListener(name,isolateNativeButton,{passive:true});
+    if(text!==undefined)n.textContent=String(text);if(cls)n.className=cls;return n;
+  };
   const tone = value => ['active','warning','danger','context','neutral'].includes(value)?value:'neutral';
   const icon = name => { const n=node('ha-icon');n.setAttribute('icon','mdi:'+(/^[a-z0-9-]+$/.test(name||'')?name:'information-outline'));return n; };
   const object = x => x!==null&&typeof x==='object'&&!Array.isArray(x);

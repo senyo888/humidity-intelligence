@@ -55,3 +55,7 @@ scripts/local/
 # --- Node / build (future-safe) ---
 node_modules/
 dist/
+
+# Local browser validation artifacts
+/.playwright-cli/
+/output/playwright/

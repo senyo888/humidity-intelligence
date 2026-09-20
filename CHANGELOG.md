@@ -6,7 +6,26 @@ All notable changes to Humidity Intelligence will be documented in this file.
 
 This project follows a practical changelog format for Home Assistant and HACS users. Add new entries under a fresh `Unreleased` section before publishing a future release.
 
-## Unreleased — v2.1.0-beta.8
+## Unreleased — v2.1.0-beta.9
+
+Unpublished candidate extending beta.8. Published Stable remains v2.0.12;
+no tag, GitHub Release, HACS publication or deployment is claimed here.
+
+- Repairs native-button touch activation in canonical V2 mobile/tablet surfaces,
+  preserving existing button-card control actions and Home Assistant handoffs.
+- Restores UI revision verification after reconnect when button-card reuses its
+  states wrapper; connected, ready and fresh available Diagnostics evidence remain required.
+- Retains mouse/keyboard activation, details/history navigation, manual dismissal
+  and existing inactivity custody. [Interaction contract and evidence limits](docs/ui-interactions.md).
+- Advances both V2 layout revisions to 4 with generator contract 1. Activation
+  requires the complete package and restart, followed by fresh export and full
+  saved-YAML replacement for both layouts; refresh cached clients as needed.
+- Preserves beta.8 custom monitoring meanings/guidance, deterministic control,
+  entity primary states and Stability scoring. Restart resets in-memory history.
+  No configuration migration is required; retain the preceding package and card YAML
+  for rollback.
+
+## v2.1.0-beta.8 — Earlier unpublished candidate
 
 Unpublished candidate extending beta.7. Published Stable remains v2.0.12;
 no tag, GitHub Release, HACS publication or deployment is claimed here.

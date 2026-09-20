@@ -23,7 +23,7 @@ function harness({modalFailure=false,deferHelpers=false}={}){
   getAttribute(k){return this.attributes[k]??null;}
   addEventListener(t,f){(this.listeners[t]??=[]).push(f);}
   removeEventListener(t,f){this.listeners[t]=(this.listeners[t]||[]).filter(fn=>fn!==f);}
-  dispatchEvent(e){e.target??=this;for(const fn of this.listeners[e.type]||[])fn(e);if(e.bubbles&&this.parentNode)this.parentNode.dispatchEvent(e);return true;}
+  dispatchEvent(e){e.target??=this;e.stopPropagation??=()=>{e.cancelBubble=true;};e.preventDefault??=()=>{e.defaultPrevented=true;};for(const fn of this.listeners[e.type]||[])fn(e);this['on'+e.type]?.(e);if(e.bubbles&&!e.cancelBubble&&this.parentNode)this.parentNode.dispatchEvent(e);return !e.defaultPrevented;}
   contains(n){return this===n||this.children.some(c=>c.contains(n));}
   matches(s){if(s.startsWith('.'))return this.className.split(' ').includes(s.slice(1));if(s.startsWith('[data-focus-key')){const key=s.match(/="([^"]+)"/);return this.dataset.focusKey!==undefined&&(!key||this.dataset.focusKey===key[1]);}return this.tagName===s;}
   querySelectorAll(s){return this.children.flatMap(c=>[...(c.matches(s)?[c]:[]),...c.querySelectorAll(s)]);}
@@ -50,6 +50,33 @@ function payload(count=0){
  return {schema_version:2,synthetic:false,summary:'No mapped issues reported',attention_label:'Attention required',counts:{configured:10,affected:count},coverage:{label:'Monitoring 2/10 mapped',detail:'Only mapped conditions covered'},chips:[{kind:'fleet',label:'1/10 on',icon:'devices'}],attention,records:[{entity_id:'fan.example',label:'Example fan',roles:['ventilation_zone_1'],operation:{label:'On'},context:'Observed state is not command success',device_icon:'fan'}],discovery:{summary:'Sources',detail:'Source details',sources:[],gaps:[],notices:[]},compact:{schema_version:1,title:count?`${count} conditions · ${count} outputs affected`:'Monitoring incomplete',tone:'warning',condition_count:count,affected_output_count:count,shown_condition_count:Math.min(2,count),remaining_condition_count:Math.max(0,count-2),remainder_label:count>2?`Showing 2 of ${count} conditions · ${count-2} more`:'',monitoring_lines:['2/10 outputs mapped','3 meanings need confirmation'],context_lines:['Partial isolation reported']}};
 }
 const tick=()=>new Promise(r=>setImmediate(r));
+test('HI native buttons isolate ancestor actions but touch and keyboard retain browser defaults',async()=>{
+ const h=harness();await tick();h.update(payload());const c=h.card;let ancestor=0;
+ for(const type of ['touchstart','touchend','touchcancel','mousedown','mouseup','click','keydown','keyup'])h.root.addEventListener(type,()=>ancestor++);
+ for(const type of ['touchstart','touchend','touchcancel','mousedown','mouseup']){
+  const event={type,bubbles:true};c._header.dispatchEvent(event);assert.equal(event.cancelBubble,true);assert.equal(event.defaultPrevented,undefined);assert.equal(c._open,false);
+ }
+ // The unit DOM deliberately does not synthesize a browser compatibility click.
+ // Exactly one native click toggles once; no touch handler activates anything.
+ c._header.dispatchEvent({type:'click',bubbles:true});assert.equal(c._open,true);assert.equal(ancestor,0);
+ for(const type of ['keydown','keyup'])for(const key of ['Enter',' ']){
+  const event={type,key,bubbles:true};c._header.dispatchEvent(event);assert.equal(event.cancelBubble,true);assert.equal(event.defaultPrevented,undefined);assert.equal(c._open,true);
+ }
+ c._header.dispatchEvent({type:'keydown',key:'Tab',bubbles:true});assert.equal(ancestor,1);
+ const footer=c._body.querySelector('.footer');footer.dispatchEvent({type:'click',bubbles:true});assert.equal(c._dialog.open,true);assert.equal(ancestor,1);
+ c._dialogClose.dispatchEvent({type:'click',bubbles:true});assert.equal(c._dialog.open,false);assert.equal(ancestor,1);
+});
+test('native HA child controls retain all gesture routing and owned guards do not stack',async()=>{
+ const h=harness();await tick();h.update(payload());const c=h.card;let received=0;
+ const native=new h.N('button');c._nativeCard.append(native);
+ for(const type of ['touchstart','touchend','touchcancel','mousedown','mouseup','click','keydown','keyup']){
+  h.root.addEventListener(type,()=>received++);
+  const event={type,key:'Enter',bubbles:true};native.dispatchEvent(event);assert.equal(event.cancelBubble,undefined);assert.equal(event.defaultPrevented,undefined);
+ }
+ assert.equal(received,8);
+ for(let i=0;i<3;i++){h.update(payload(i));c.disconnectedCallback();c.connectedCallback();}
+ for(const button of c.shadowRoot.querySelectorAll('button').filter(b=>b!==native))for(const type of ['touchstart','touchend','touchcancel','mousedown','mouseup','click','keydown','keyup'])assert.equal(button.listeners[type]?.length,1);
+});
 test('summary prefix/totals/context, HVAC and one footer; complete details retained',async()=>{
  const h=harness();await tick();h.update(payload(7));const c=h.card;
  assert.equal(c._body.querySelectorAll('.compact-report').length,2);assert.match(c._body.querySelector('.reason').getAttribute('aria-label'),/Condition 0/);assert.match(c._body.textContent,/5 more/);assert.match(c._chips.textContent,/7 conditions · 7 outputs affected/);assert.equal(c._chips.children.length,2);assert.match(c._body.textContent,/Partial isolation/);assert.equal(c._body.querySelectorAll('.footer').length,1);assert.equal(c._body.querySelectorAll('.row').length,0);assert.equal(c._evidence.querySelectorAll('.attention').length,7);
