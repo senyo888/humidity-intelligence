@@ -1,9 +1,9 @@
 # Optional output monitoring
 
-This guide describes the unpublished beta.6 candidate. Output monitoring, introduced
+This guide describes the unpublished beta.8 candidate. Output monitoring, introduced
 in beta.4, is opt-in and is not part of published Stable v2.0.12. Existing installations
-default to monitoring disabled and native Outputs presentation. Installing beta.6
-requires a full Home Assistant restart to load its Python modules.
+default to monitoring disabled and native Outputs presentation. Installing the complete
+candidate package requires a Home Assistant restart to load its Python modules.
 
 ## What it observes
 
@@ -44,6 +44,12 @@ view**, enable monitoring and choose **Native Outputs panel** or **Adaptive Outp
 panel**. Use **Add a monitoring rule** to select a configured output, a monitoring
 source, a meaning, and an exact rule. Review the preview before confirming. Enumeration rules require both active and clear values. Numeric rules
 use strict below/above comparisons; units are not guessed.
+
+Reusable custom meanings add entry-local names, existing classifications and optional
+**What to do** guidance. Reusing a meaning leaves each source's detection rule
+independent. Rename, reclassification and in-use deletion are reviewed within the
+same staged options transaction. See [custom monitoring meanings](custom-monitoring-meanings.md)
+for nested cancellation, bounds, missing references and downgrade recovery.
 
 Manage existing or discovered associations to edit a rule, revoke confirmation,
 replace a source, mark it context-only, or explicitly resume interpretation.
@@ -186,7 +192,7 @@ interactions separately. These checks do not
 establish live device compatibility, physical freshness, or a HA Lab/Stable deployment.
 A future deployment requires its own authority, target verification, and observation.
 
-For complete Python coverage, run the scaffold-based suite separately from the four
+For complete Python coverage, run the scaffold-based suite separately from the five
 real-HA modules. The latter require Home Assistant and its real selectors; installing
 pytest alone is insufficient. A validated development environment uses Python 3.14,
 Home Assistant 2026.9.3, pytest 9.1.1, pytest-subtests 0.15.0 and PyYAML 6.0.3.
@@ -195,11 +201,12 @@ These are development dependencies, not new integration requirements.
 ```sh
 python -m pytest -q "tests 2" \
   --ignore="tests 2/test_adaptive_options.py" \
+  --ignore="tests 2/test_custom_meaning_options.py" \
   --ignore="tests 2/test_adaptive_config_copy.py" \
   --ignore="tests 2/test_adaptive_ha_native.py" \
   --ignore="tests 2/test_config_flow_cancel_native.py"
 # Use the real-HA development environment for each fresh process below.
-python -m pytest -q "tests 2/test_adaptive_options.py" "tests 2/test_adaptive_config_copy.py"
+python -m pytest -q "tests 2/test_adaptive_options.py" "tests 2/test_custom_meaning_options.py" "tests 2/test_adaptive_config_copy.py"
 python "tests 2/test_adaptive_ha_native.py"
 python "tests 2/test_config_flow_cancel_native.py"
 ```

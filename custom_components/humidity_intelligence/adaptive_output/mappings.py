@@ -4,9 +4,10 @@ from copy import deepcopy
 from .config_adapter import extract_configured
 from .discovery import identity, _rule
 from .model import ENTITY, MAX_MAPPINGS
+from .meanings import validate_library
 
 SECTION = 'output_observation'
-DEFAULTS = {'enabled': False, 'presentation': 'native', 'confirmations': [], 'retired': []}
+DEFAULTS = {'enabled': False, 'presentation': 'native', 'confirmations': [], 'retired': [], 'custom_meanings': {}}
 PAIR_FIELDS = ('output', 'source', 'output_identity', 'source_identity')
 
 
@@ -23,6 +24,7 @@ def section(value):
     result = {**deepcopy(DEFAULTS), **deepcopy(value)}
     if type(result['enabled']) is not bool or result['presentation'] not in ('native', 'adaptive'):
         raise ValueError('invalid_observation')
+    result['custom_meanings'] = validate_library(result['custom_meanings'])
     for key in ('confirmations', 'retired'):
         rows = result[key]
         if not isinstance(rows, list) or len(rows) > MAX_MAPPINGS:
@@ -50,7 +52,7 @@ def section(value):
             entity_pairs.add(entity_pair)
             allowed = set(PAIR_FIELDS)
             if key == 'confirmations':
-                allowed |= {'semantic', 'rule', 'active_values', 'clear_values', 'threshold', 'origin', 'scope'}
+                allowed |= {'semantic', 'rule', 'active_values', 'clear_values', 'threshold', 'origin', 'scope', 'custom_meaning_id'}
                 _rule(row)
             if set(row) - allowed:
                 raise ValueError('invalid_observation')
@@ -78,7 +80,7 @@ def resolve(row, registry):
     return result, usable
 
 
-def bind(data, options, registry, draft):
+def bind(data, options, registry, draft, custom_meanings=None):
     """Bind a user-selected interpretation to current identities explicitly."""
     outputs = {r['entity_id'] for r in extract_configured(data, options)}
     if not isinstance(draft, dict) or draft.get('output') not in outputs:
@@ -92,6 +94,13 @@ def bind(data, options, registry, draft):
         if entry is None or entry.get('disabled_by') is not None or not identity(entry):
             raise ValueError('unavailable_binding')
         result[field + '_identity'] = identity(entry)
+    draft = deepcopy(draft)
+    if 'custom_meaning_id' in draft:
+        library = validate_library(custom_meanings or {})
+        definition = library.get(draft['custom_meaning_id'])
+        if definition is None:
+            raise ValueError('unknown_meaning')
+        draft['semantic'] = definition['classification']
     result.update(_rule(draft))
     # Reuse saved-schema bounds and reject unsupported extraneous form state.
     section({'confirmations': [result]})
@@ -137,6 +146,8 @@ def import_bindings(settings, bindings, data, options, registry):
     rebound to a replacement. Source companion configuration is never modified.
     """
     source = section({'confirmations': bindings})
+    if any('custom_meaning_id' in row for row in source['confirmations']):
+        raise ValueError('import_custom_meaning')
     result = section(settings)
     for saved in source['confirmations']:
         current, usable = resolve(saved, registry)

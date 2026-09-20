@@ -6,7 +6,28 @@ All notable changes to Humidity Intelligence will be documented in this file.
 
 This project follows a practical changelog format for Home Assistant and HACS users. Add new entries under a fresh `Unreleased` section before publishing a future release.
 
-## Unreleased — v2.1.0-beta.7
+## Unreleased — v2.1.0-beta.8
+
+Unpublished candidate extending beta.7. Published Stable remains v2.0.12;
+no tag, GitHub Release, HACS publication or deployment is claimed here.
+
+- Adds entry-local reusable monitoring meanings: a custom name, an existing HI
+  classification and optional plain-text **What to do** guidance. Each source keeps
+  its own detection rule; guidance supplements the standard device advice.
+- Stages creation, reuse, rename, reclassification and guarded deletion in the
+  existing options transaction. Previews show affected rules; only the main
+  **Save changes** persists edits. Nested cancellation preserves earlier drafts.
+- Preserves explicit gaps for missing saved meanings and distinguishes shared-source
+  associations. Existing configurations continue with built-in meanings and an empty
+  library; no manual migration is required.
+- Keeps output control, lane ordering, entity primary states and Stability scoring
+  unchanged. Backend-authored text uses the existing frontend contract.
+- Activation requires the complete package and restart; options save retains the
+  existing reload lifecycle and its in-memory-history reset. Downgrade requires the
+  matching prior settings and monitoring custody, as well as the earlier package.
+  [Configuration, lifecycle and rollback](docs/custom-monitoring-meanings.md).
+
+## v2.1.0-beta.7 — Earlier unpublished candidate
 
 - Adds two-minute inactivity closing to HI-owned details and adaptive Outputs.
   Real interaction renews the timer; manual dismissal remains immediate. Native HA

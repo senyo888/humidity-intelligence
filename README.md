@@ -57,9 +57,9 @@ It gives you:
 - native Home Assistant diagnostics for support and triage
 - services for dashboard export, self-check, diagnostics, pause/resume, and release validation
 
-Current development manifest version: **v2.1.0-beta.7**, an unpublished candidate.
-It adds optional output observation and adaptive Outputs cards, retaining beta.3’s
-badge summaries, histories, drift progress and observational Stability.
+Current development manifest version: **v2.1.0-beta.8**, an unpublished candidate.
+It adds reusable custom monitoring meanings and optional guidance, retaining beta.7’s
+UI revision indicator, output observation, histories and observational Stability.
 The current published Stable is **v2.0.12**, released on 9 September 2026 and available
 through HACS. See [Release Notes](#release-notes) for beta scope and upgrade steps.
 
@@ -454,9 +454,9 @@ must be reviewable from tracked repository files.
 
 ## Current Release Highlights
 
-- unpublished candidate `2.1.0-beta.7` adds restrained V2 styling and a truthful UI
-  revision indicator, preserving optional output observation, histories, drift and
-  Stability details; deterministic control remains authoritative
+- unpublished candidate `2.1.0-beta.8` adds reusable monitoring names and optional
+  guidance, preserving per-source rules, output observation and beta.7 UI behavior;
+  deterministic control remains authoritative
 - published Stable `2.0.12` improves Manual handover, Home Assistant-local time gates,
   lifecycle-safe timers and Home Assistant 2026.9 setup assistance
 - preceding Stable `2.0.11` restores the centred passive Stability preview; those
@@ -941,7 +941,8 @@ Common post-configuration areas:
 - `Temperature change settings`: configure temperature-trend calculation and source overrides
 - `Output monitoring`: configure optional reporting and exact source rules; use
   **Keep changes and return**, then **Save changes** to persist them. See the
-  [output-monitoring guide](docs/output-observation.md) for discard and recovery details
+  [output-monitoring guide](docs/output-observation.md) for discard and recovery details;
+  beta.8 adds [reusable meanings and optional guidance](docs/custom-monitoring-meanings.md)
 - UI: run `humidity_intelligence.dump_cards` and replace Manual-card YAML
   after visibility, template, mapping or generated-card option changes.
   [Revision footer](docs/ui-revision-status.md): rendered revision only
@@ -981,7 +982,7 @@ Notes:
   workflows. Dashboard creation and editing remain in Home Assistant's dashboard UI.
   System and Manual buttons keep the
   v2.0.7 helper-toggle behavior.
-- **v2.1.0-beta.7 candidate:** the accepted badge shows backend-owned
+- **v2.1.0-beta.8 candidate:** the accepted badge shows backend-owned
   score, evidence and Recent trend details. It remains observational. See the
   [accepted contract](docs/stability-score-accepted-baseline.md) for thresholds,
   incomplete AQ, restart history reset, client support and card refresh, and the
@@ -1232,22 +1233,22 @@ CO emergency pressure. Details are in
 
 ## Release Notes
 
-### v2.1.0-beta.7 (Unpublished candidate)
+### v2.1.0-beta.8 (Unpublished candidate)
 
-- two-minute inactivity closing for HI-owned details and adaptive Outputs, with
-  manual dismissal retained; [scope and legacy/native exceptions](docs/ui-inactivity.md)
-- restrained V2 mobile/tablet depth and a compact bottom-left UI revision indicator;
-  current, update, differing and unverified states reflect the declared UI contract
-- corrects unavailable System/Manual and humidity displays, removes frontend comfort
-  advice, and preserves configured native/adaptive Outputs alongside the UI footer
-- maintains UI revisions independently of package versions, with release checks for
-  revision updates; this package advances the layouts to revision 3 and generator contract 1
-- preserves deterministic control, entity primary states, existing controls and
-  accepted Stability behavior; no configuration or entity migration is required
-- install the complete package and restart, then export and replace the full saved
-  V2 Manual-card YAML; refresh cached clients if needed. Restart resets Stability history
-- [Complete beta.7 changes](CHANGELOG.md#unreleased--v210-beta7). Published Stable
-  remains v2.0.12; package preparation does not establish installation or publication
+- reusable entry-local monitoring meanings pair a name with an existing HI
+  classification and optional **What to do** guidance; source rules stay independent
+- previews cover rename, reclassification and guarded deletion; changes remain
+  staged until the main **Save changes** action
+- missing meanings remain explicit monitoring gaps; built-in guidance and existing
+  severity/icon behavior remain authoritative, with custom instructions shown alongside
+- preserves beta.7 UI behavior, renderer revisions, control ownership and Stability
+  scoring; existing settings require no manual migration
+- install the complete package and restart; restart resets in-memory Stability
+  history. Compatible adaptive cards receive the added backend text without re-export
+- downgrade restores the earlier package, matching saved options and monitoring
+  custody together; [configuration and recovery](docs/custom-monitoring-meanings.md)
+- [Complete beta.8 changes](CHANGELOG.md#unreleased--v210-beta8). Published Stable
+  remains v2.0.12; candidate preparation does not establish deployment or publication
 
 ### v2.0.12 (Current Published Stable)
 
@@ -1307,6 +1308,23 @@ displaced older summaries into this container as new releases are added. CHANGEL
 remains the complete detailed history. -->
 <details>
 <summary>Previous Releases</summary>
+
+### v2.1.0-beta.7 (Earlier unpublished candidate)
+
+- two-minute inactivity closing for HI-owned details and adaptive Outputs, with
+  manual dismissal retained; [scope and legacy/native exceptions](docs/ui-inactivity.md)
+- restrained V2 mobile/tablet depth and a compact bottom-left UI revision indicator;
+  current, update, differing and unverified states reflect the declared UI contract
+- corrects unavailable System/Manual and humidity displays, removes frontend comfort
+  advice, and preserves configured native/adaptive Outputs alongside the UI footer
+- maintains UI revisions independently of package versions, with release checks for
+  revision updates; this package advances the layouts to revision 3 and generator contract 1
+- preserves deterministic control, entity primary states, existing controls and
+  accepted Stability behavior; no configuration or entity migration is required
+- install the complete package and restart, then export and replace the full saved
+  V2 Manual-card YAML; refresh cached clients if needed. Restart resets Stability history
+- [Complete beta.7 changes](CHANGELOG.md#v210-beta7--earlier-unpublished-candidate). Published Stable
+  remains v2.0.12; package preparation does not establish installation or publication
 
 ### v2.1.0-beta.6 (Earlier unpublished candidate)
 

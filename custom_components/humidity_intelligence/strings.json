@@ -790,7 +790,8 @@
           "options_output_manage": "Manage monitoring rules",
           "options_output_import": "Import companion rules",
           "options_output_back": "Keep changes and return",
-          "options_output_cancel": "Discard this visit's monitoring edits"
+          "options_output_cancel": "Discard this visit's monitoring edits",
+          "options_output_meanings": "Manage reusable meanings"
         }
       },
       "options_output_settings": {
@@ -853,6 +854,32 @@
       "options_output_observation_error": {
         "title": "Saved monitoring settings need review",
         "description": "Existing monitoring settings cannot be interpreted. They have been preserved. Return to the main settings without replacing them."
+      },
+      "options_output_meanings": {
+        "title": "Reusable monitoring meanings",
+        "description": "Names belong to this HI entry. Each source keeps its own detection rule. Add a meaning, or choose a saved meaning to rename, reclassify or delete. Changes remain staged until Save changes on the main settings page.",
+        "data": {
+          "meaning": "Meaning",
+          "action": "Action"
+        }
+      },
+      "options_output_meaning_edit": {
+        "title": "Custom monitoring meaning",
+        "description": "Use a short, plain name. Classification supplies the existing HI severity, icon and device guidance; it does not define when a source triggers. Other attention is the neutral default. When adding a source rule, the new name and rule are kept together only after the rule preview is confirmed. Select Return without changing to cancel this step. Optional What to do text (up to 240 characters) appears alongside standard HI guidance; it never replaces that guidance or issues commands.",
+        "data": {
+          "name": "Name",
+          "classification": "Classification",
+          "cancel": "Return without changing",
+          "instructions": "What to do (optional)"
+        }
+      },
+      "options_output_meaning_delete": {
+        "title": "Delete reusable meaning",
+        "description": "Meaning: {name}\nAffected rules: {count}\n\nAn in-use meaning needs a replacement or explicit removal of all rules using it. Removing rules does not stop automatic monitoring: standard automatic discovery may still apply. The next page previews every affected rule before confirmation.",
+        "data": {
+          "replacement": "How to handle existing rules",
+          "cancel": "Return without changing"
+        }
       }
     },
     "error": {
@@ -868,7 +895,16 @@
       "invalid_rule": "Use disjoint nonempty active/clear values (at most 32 values, 120 characters each), or a finite numeric threshold.",
       "unavailable_binding": "The selected binding is unavailable or changed. Review the current entities explicitly.",
       "identity_changed": "An entity changed after the preview. Cancel this change and review its new identity.",
-      "import_unresolved": "Import contains missing, replaced, unsupported or conflicting bindings. Review the companion meanings individually; nothing has been imported."
+      "import_unresolved": "Import contains missing, replaced, unsupported or conflicting bindings. Review the companion meanings individually; nothing has been imported.",
+      "invalid_meanings": "The custom meaning library is invalid. Existing settings have been preserved.",
+      "invalid_meaning_name": "Enter a plain name of 1 to 80 characters without control characters.",
+      "duplicate_meaning_name": "That name is already used by a saved meaning or a standard meaning. Choose another name.",
+      "invalid_classification": "Choose a supported HI classification.",
+      "unknown_meaning": "This meaning is no longer available. Return and choose a saved meaning.",
+      "meaning_limit": "This entry already has 32 custom meanings. Manage an existing meaning first.",
+      "meaning_in_use": "This meaning is used by saved rules. Choose a replacement or explicitly remove those rules.",
+      "invalid_replacement": "Choose a different saved meaning or a standard classification as the replacement.",
+      "invalid_instructions": "Use at most 240 characters of plain text. Line breaks are allowed; other control characters are not."
     },
     "abort": {
       "user_cancelled": "Options closed without saving."
@@ -914,6 +950,12 @@
         "revoke": "Remove custom rule",
         "retire": "Pause monitoring; keep as context",
         "resume": "Resume monitoring"
+      }
+    },
+    "output_meaning_action": {
+      "options": {
+        "edit": "Rename or reclassify",
+        "delete": "Delete"
       }
     }
   },

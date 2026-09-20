@@ -345,5 +345,12 @@ without the custom frontend. Export transforms preserve surrounding card content
 and resolve the registered sensor; dashboards and Lovelace resources remain
 user-managed. Observation does not change lane priority, humidifier independence,
 Manual ownership, entity semantics of existing entities, or Stability calculations.
+Reusable custom monitoring meanings are entry-scoped library definitions with stable
+references. Backend classification owns severity, icon and standard guidance; names
+and optional plain-text instructions are additive presentation. Each source retains
+its own identity-bound detection rule. Missing definitions produce explicit monitoring
+gaps. Rename, reclassification and guarded deletion use the existing staged options
+transaction; they introduce no control authority. See
+[custom monitoring meanings](docs/custom-monitoring-meanings.md).
 See [output observation](docs/output-observation.md) for lifecycle, limits,
 prototype migration, and rollback boundaries.

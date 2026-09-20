@@ -9,10 +9,11 @@ import importlib
 from pathlib import Path
 import sys
 import tempfile
-from types import ModuleType, SimpleNamespace
+from types import MappingProxyType, ModuleType, SimpleNamespace
 import unittest
 
 from homeassistant.core import HomeAssistant
+from homeassistant.config_entries import ConfigEntries, ConfigEntry
 from homeassistant.helpers import area_registry, device_registry, entity_registry
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -126,6 +127,61 @@ class NativeCancelTests(unittest.IsolatedAsyncioTestCase):
             result = await getattr(flow, 'async_step_' + prefix + 'cancel_confirm')({'action': 'return'})
             self.assertEqual(result['step_id'], prefix + 'telemetry')
             self.assertEqual(self.entry.options, {})
+
+    async def test_custom_meaning_main_save_persists_and_reopens_from_native_entry_store(self):
+        """Exercise HI Save changes and HA's real finish/persistence boundary."""
+        manager = ConfigEntries(self.hass, {})
+        self.hass.config_entries = manager
+        await manager.async_initialize()
+        registry = entity_registry.async_get(self.hass)
+        output = registry.async_get_or_create('fan', 'test', 'example_output',
+                                              suggested_object_id='example_output')
+        source = registry.async_get_or_create('sensor', 'test', 'example_filter',
+                                              suggested_object_id='example_filter')
+        entry = ConfigEntry(domain='humidity_intelligence', version=1, minor_version=1,
+            title='Example HI', source='user', unique_id=None, discovery_keys=MappingProxyType({}),
+            subentries_data=[], data={'zones': {'zone1': {'outputs': [output.entity_id]}}}, options={})
+        # Register only fixture custody: no integration setup or device calls.
+        manager._entries[entry.entry_id] = entry
+        flow = config_flow.HumidityIntelligenceOptionsFlow(entry)
+        flow.hass = self.hass
+        flow.handler = entry.entry_id
+        await flow.async_step_options_output_add({'output': output.entity_id,
+            'source': source.entity_id, 'semantic': '__add_custom__', 'rule': 'enum_active_values'})
+        await flow.async_step_options_output_meaning_edit({'name': 'Check media',
+            'classification': 'replace_filter', 'instructions': 'Inspect using the device manual.'})
+        await flow.async_step_options_output_rule({'active_values': ['replace'], 'clear_values': ['clear']})
+        self.assertEqual(dict(entry.options), {})
+        self.assertEqual(flow._observation()['custom_meanings'], {})
+        await flow.async_step_options_output_confirm({'confirm': True})
+        await flow.async_step_options_output_back()
+        staged = copy.deepcopy(flow._options['output_observation'])
+        self.assertEqual(dict(entry.options), {})
+        ident = next(iter(staged['custom_meanings']))
+        self.assertEqual(staged['confirmations'][0]['custom_meaning_id'], ident)
+
+        # This is the actual main-menu Save changes step, followed by HA's
+        # unmodified options-flow manager which commits its CREATE_ENTRY result.
+        result = await flow.async_step_options_done()
+        self.assertEqual(result['type'], 'create_entry')
+        self.assertEqual(dict(entry.options), {})
+        await manager.options.async_finish_flow(flow, result)
+        self.assertEqual(entry.options['output_observation'], staged)
+        # Flush the real store directly instead of waiting its delayed timer.
+        await manager._store.async_save(manager._data_to_save())
+        reloaded = ConfigEntries(self.hass, {})
+        self.hass.config_entries = reloaded
+        await reloaded.async_initialize()
+        persisted = reloaded.async_get_known_entry(entry.entry_id)
+        self.assertIsNot(persisted, entry)
+        reopened = config_flow.HumidityIntelligenceOptionsFlow(persisted)
+        reopened.hass = self.hass
+        self.assertEqual(reopened._observation(), staged)
+        self.assertEqual(reopened._observation()['custom_meanings'][ident]['instructions'],
+                         'Inspect using the device manual.')
+        self.assertEqual(reopened._observation()['confirmations'][0]['active_values'], ['replace'])
+        self.assertEqual(reopened._observation()['confirmations'][0]['source_identity'],
+                         staged['confirmations'][0]['source_identity'])
 
 
 if __name__ == '__main__':

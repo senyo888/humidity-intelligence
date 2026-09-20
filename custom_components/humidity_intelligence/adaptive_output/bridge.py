@@ -23,7 +23,7 @@ REGISTRY_IDENTITY_FIELDS = ('id', 'platform', 'unique_id', 'device_id', 'disable
 def validate_bindings(bindings):
     if not isinstance(bindings, list) or len(bindings) > MAX_MAPPINGS:
         raise ValueError('Explicit monitoring bindings exceed supported bounds.')
-    allowed = {'output', 'source', 'semantic', 'rule', 'active_values', 'clear_values', 'threshold', 'output_identity', 'source_identity', 'origin', 'scope'}
+    allowed = {'output', 'source', 'semantic', 'rule', 'active_values', 'clear_values', 'threshold', 'output_identity', 'source_identity', 'origin', 'scope', 'custom_meaning_id'}
     pairs = set()
     for binding in bindings:
         if not isinstance(binding, dict) or set(binding) - allowed:
@@ -125,7 +125,7 @@ class ObservationBridge:
             raise ValueError('Stored monitoring custody exceeds supported size.')
         return result
 
-    def evaluate(self, data, options, registry, states, helper_ids, confirmations=None, registry_event=False, fresh_entity=None, retired=None):
+    def evaluate(self, data, options, registry, states, helper_ids, confirmations=None, registry_event=False, fresh_entity=None, retired=None, custom_meanings=None):
         self.reconcile_registry(registry, registry_event=registry_event)
         quarantine = set(self.quarantined)
         if fresh_entity:
@@ -170,7 +170,7 @@ class ObservationBridge:
         confirmed_identities = {(m.get('output_identity'), m.get('source_identity')) for m in (confirmations or [])}
         known = {pair: deepcopy(m) for pair, m in self.known.items()
                          if m.get('origin') != 'confirmed' or (m.get('output_identity'), m.get('source_identity')) in confirmed_identities}
-        session = DiscoverySession(configured, registry, clean_states, confirmations or [], known=known, retired=retired)
+        session = DiscoverySession(configured, registry, clean_states, confirmations or [], known=known, retired=retired, custom_meanings=custom_meanings)
         payload = deepcopy(session.snapshot['payload'])
         payload['synthetic'] = False
         payload['experimental'] = False
@@ -222,7 +222,8 @@ class ObservationBridge:
         return payload
 
     def bindings(self):
-        return [deepcopy(value) for _, value in sorted(self.known.items())]
+        return [{k: deepcopy(v) for k, v in value.items() if k not in ('custom_label', 'custom_instructions', 'meaning_unresolved')}
+                for _, value in sorted(self.known.items())]
 
     def stop(self):
         if self.session:

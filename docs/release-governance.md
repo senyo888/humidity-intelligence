@@ -5,7 +5,8 @@ testing and validation branches.
 
 ## Canonical Version Model
 
-- `2.1.0-beta.7`: current unpublished candidate with restrained V2 styling, a truthful UI revision indicator, preserved native/adaptive Outputs and two-minute inactivity dismissal for custom HI details (manual closing retained; see [scope and exceptions](ui-inactivity.md)).
+- `2.1.0-beta.8`: current unpublished candidate with reusable entry-local monitoring meanings and optional plain-text guidance alongside the existing classification advice. Source rules and control ownership remain unchanged; see [lifecycle and rollback](custom-monitoring-meanings.md).
+- `2.1.0-beta.7`: earlier unpublished candidate with restrained V2 styling, a truthful UI revision indicator, preserved native/adaptive Outputs and two-minute inactivity dismissal for custom HI details (manual closing retained; see [scope and exceptions](ui-inactivity.md)).
 - `2.1.0-beta.6`: earlier unpublished candidate with clearer Outputs/settings wording and bounded cancel-return correction.
 - `2.1.0-beta.5`: earlier unpublished candidate with compact Outputs summaries and on-demand controls.
 - `2.1.0-beta.4`: earlier unpublished candidate with optional output observation and adaptive Outputs.
@@ -29,7 +30,7 @@ must remain aligned with the
 published GitHub Release/tag.
 
 Published Stable is [v2.0.12](https://github.com/senyo888/humidity-intelligence/releases/tag/v2.0.12),
-released on 2026-09-09. The current `2.1.0-beta.7` candidate is unpublished.
+released on 2026-09-09. The current `2.1.0-beta.8` candidate is unpublished.
 The earlier `2.1.0-beta.1` source was committed and pushed through `144570b` on
 `senyo888-patch-1`; beta.2 began at `76285b0`, and beta.3 collects the subsequent UI work through `4f86e66`. There is no v2.1 tag,
 GitHub Release or HACS offering.

@@ -17,7 +17,7 @@ def observation_settings(data, options):
     value = options.get(CONF_SECTION) if CONF_SECTION in options else data.get(CONF_SECTION, {})
     if not isinstance(value, dict):
         raise ValueError('Output observation settings must be a dictionary.')
-    result = {'enabled': False, 'presentation': 'native', 'confirmations': [], 'retired': [], **value}
+    result = {'enabled': False, 'presentation': 'native', 'confirmations': [], 'retired': [], 'custom_meanings': {}, **value}
     if type(result['enabled']) is not bool or result['presentation'] not in ('native', 'adaptive'):
         raise ValueError('Invalid output observation enable or presentation setting.')
     return result

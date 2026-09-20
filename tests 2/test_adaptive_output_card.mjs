@@ -122,3 +122,37 @@ test('actual connection event collapses and removes subscription without telemet
  const h=harness();await tick();h.update(payload());const c=h.card,connection=new h.N('connection');connection.connected=true;c.hass={...c.hass,connection};c._header.onclick();c._openDetails('controls','outputs-controls');assert.equal(connection.listeners.disconnected.length,1);
  connection.connected=false;connection.dispatchEvent({type:'disconnected'});assert.equal(c._open,false);assert.equal(c._dialog.open,false);assert.equal(h.timers.size,0);assert.equal(connection.listeners.disconnected.length,0);
 });
+
+test('custom title and standard plus 240-character user guidance render as literal text',async()=>{
+ const h=harness();await tick();const p=payload(1);
+ const title='<img src=x onerror=alert(1)> & custom';
+ const standard='Check the source details and the device instructions.';
+ const instructions='<script>alert(1)</script>\nFollow <b>local</b> guidance & keep quotes "literal".'.padEnd(240,'!');
+ assert.equal(instructions.length,240);
+ p.attention[0].title=title;p.attention[0].action=standard+'\nYour guidance: '+instructions;
+ h.update(p);
+ const article=h.card._evidence.querySelector('.attention');assert.ok(article,'valid additive text must remain visible');
+ assert.equal(article.querySelector('h4').textContent,'Output 0 · '+title);
+ assert.equal(article.querySelector('p').textContent,standard+'\nYour guidance: '+instructions);
+ assert.match(h.card._body.textContent,/<img src=x onerror=alert\(1\)> & custom/);
+ for(const tag of ['img','script','b'])assert.equal(h.card.shadowRoot.querySelectorAll(tag).length,0);
+ assert.equal(h.mounts(),1);assert.equal(h.seenConfigs[0],h.config.control_context);
+});
+
+test('custom association text and maximum 34 enum-rule lines remain literal and complete',async()=>{
+ const h=harness();await tick();const p=payload();
+ const meaning='Meaning: <b>Custom & shared</b>';
+ const reason='Source is active.\nConfigured guidance: <script>no execution</script> & check locally.';
+ const lines=['Active values:',...Array.from({length:16},(_,i)=>`<active-${i}> & literal`),'Clear values:',...Array.from({length:16},(_,i)=>`<clear-${i}> & literal`)];
+ assert.equal(lines.length,34);
+ p.discovery.sources=[{label:'Shared source',title:'Different meanings by output',state:'active',association_label:'Output A',reason:'Configured source',scope_label:'Shared',associations:[{label:'Output A',title:'<img src=x> custom',reason,scope_label:'This output',meaning_label:meaning,origin_label:'Explicit confirmation',rule_summary:'Exact enumeration values',rule_lines:lines}]}];
+ h.update(p);
+ const association=h.card._sources.querySelector('.association');assert.ok(association,'34 valid enum lines must not invalidate payload');
+ const paragraphs=association.querySelectorAll('p').map(node=>node.textContent);
+ assert.ok(paragraphs.includes(meaning));assert.ok(paragraphs.includes(reason));
+ for(const line of lines)assert.ok(association.textContent.includes(line),line);
+ assert.equal(association.querySelector('h4').textContent,'Output A · <img src=x> custom');
+ for(const tag of ['img','script','b'])assert.equal(h.card.shadowRoot.querySelectorAll(tag).length,0);
+ p.discovery.sources[0].associations[0].rule_lines.push('Out of bounds');h.update(p);
+ assert.equal(h.card._sources.querySelector('.association'),null);assert.match(h.card._body.textContent,/Monitoring unavailable/);
+});

@@ -13,6 +13,7 @@ from .bridge import ObservationBridge, validate_bindings
 from .const import DOMAIN, HI_DOMAIN, CONF_CONFIRMATIONS, HELPERS, observation_settings
 from .config_adapter import extract_configured
 from .discovery import MAX_REGISTRY, identity, validate_retired
+from .meanings import validate_library
 
 _LOGGER = logging.getLogger(__name__)
 STATE_ATTRIBUTES = ('device_class', 'percentage', 'action', 'preset_mode')
@@ -121,6 +122,7 @@ class OutputObserver:
         settings = observation_settings(target.data, target.options)
         confirmations = validate_bindings(settings[CONF_CONFIRMATIONS])
         retired = validate_retired(settings['retired'])
+        validate_library(settings['custom_meanings'])
         bindings = confirmations + retired
         cache_key = (tuple(sorted(output_ids)), tuple(sorted(
             (row['output'], row['source'], row['output_identity'], row['source_identity']) for row in bindings)))
@@ -224,7 +226,8 @@ class OutputObserver:
                          else not self._registry_event or sequence > self._registry_sequence)
                 if later:
                     self.bridge.quarantined.discard(entity)
-            payload = self.bridge.evaluate(dict(target.data), dict(target.options), registry, states, helpers, confirmations, retired=retired)
+            payload = self.bridge.evaluate(dict(target.data), dict(target.options), registry, states, helpers, confirmations, retired=retired,
+                                           custom_meanings=observation_settings(target.data, target.options)['custom_meanings'])
             watch = set(self.bridge.session.snapshot['watch_entities']) | set(helpers.values())
             if watch != self._watch:
                 if self._state_unsub:

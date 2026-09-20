@@ -177,7 +177,7 @@ def normalize(configured, states, mappings):
         if not isinstance(mapping, dict):
             raise ValueError('Every mapping must be a dictionary.')
         parts = []
-        for field in ('output', 'source', 'semantic', 'rule', 'active_values', 'clear_values', 'threshold'):
+        for field in ('output', 'source', 'semantic', 'rule', 'active_values', 'clear_values', 'threshold', 'custom_meaning_id', 'custom_label', 'custom_instructions', 'meaning_unresolved'):
             value = mapping.get(field)
             if isinstance(value, list):
                 value = tuple(_text(v, '<invalid>') for v in value[:33])
@@ -209,7 +209,7 @@ def normalize(configured, states, mappings):
             continue
         record['mapping_count'] += 1
         value = _state(states, source)
-        valid = isinstance(semantic, str) and semantic in SEMANTICS and source.split('.')[0] in ('sensor', 'binary_sensor')
+        valid = mapping.get('meaning_unresolved') is not True and isinstance(semantic, str) and semantic in SEMANTICS and source.split('.')[0] in ('sensor', 'binary_sensor')
         result = _rule(mapping, value) if valid and value not in (None, '', 'unknown', 'unavailable') else None
         if result is None:
             add(record, 'monitoring_unknown', 'Monitoring result unknown', f'Source state: {_text(value, "missing")}. Explicit monitoring rule cannot be evaluated.', 'Check the source reading and its monitoring rule.', 6, source)
@@ -217,6 +217,11 @@ def normalize(configured, states, mappings):
             record['reporting_count'] += 1
             if result:
                 title, action, severity, icon = SEMANTICS[semantic]
+                if mapping.get('custom_meaning_id') and isinstance(mapping.get('custom_label'), str):
+                    title = _text(mapping['custom_label'])
+                    instructions = mapping.get('custom_instructions')
+                    if isinstance(instructions, str) and instructions:
+                        action += '\nYour guidance: ' + instructions
                 rule = mapping['rule']
                 criterion = (f'Below the configured threshold of {mapping["threshold"]}.' if rule == 'numeric_below'
                              else f'Above the configured threshold of {mapping["threshold"]}.' if rule == 'numeric_above'
