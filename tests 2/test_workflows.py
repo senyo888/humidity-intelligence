@@ -161,7 +161,18 @@ class WorkflowConfigurationTests(unittest.TestCase):
             ],
             cwd=ROOT,
         ).split(b"\0")
-        self.assertEqual(55, len([path for path in tracked_component_files if path]))
+        # Check the tracked brand layout itself: unrelated module additions must
+        # not invalidate this branding contract, and untracked copies cannot pass.
+        tracked = {path.decode("utf-8") for path in tracked_component_files if path}
+        component_prefix = "custom_components/humidity_intelligence/"
+        expected_brand = {component_prefix + "brand/" + name for name in ("icon.png", "logo.png")}
+        self.assertEqual(
+            expected_brand,
+            {path for path in tracked if path.startswith(component_prefix + "brand/")},
+        )
+        self.assertTrue(
+            tracked.isdisjoint({component_prefix + name for name in ("icon.png", "logo.png")})
+        )
 
         for workflow_name in ("hassfest.yaml", "release.yml", "validate.yml"):
             workflow = (

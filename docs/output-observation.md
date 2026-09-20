@@ -156,6 +156,8 @@ normal setup and keeps the established engine path. Rolling back to older compan
 code does not preserve the new custody safeguards; disabling observation is safer
 than presenting older monitoring as equivalent.
 
+## Validation
+
 Local automated tests cover pure classification, identity custody, staged mappings,
 generated-card preservation, optional failure handling, and HA API integration.
 Run the focused checks from the repository root in a disposable Python environment
@@ -183,6 +185,28 @@ Assistant dialog interoperability. Synthetic browser fixtures exercise layout an
 interactions separately. These checks do not
 establish live device compatibility, physical freshness, or a HA Lab/Stable deployment.
 A future deployment requires its own authority, target verification, and observation.
+
+For complete Python coverage, run the scaffold-based suite separately from the four
+real-HA modules. The latter require Home Assistant and its real selectors; installing
+pytest alone is insufficient. A validated development environment uses Python 3.14,
+Home Assistant 2026.9.3, pytest 9.1.1, pytest-subtests 0.15.0 and PyYAML 6.0.3.
+These are development dependencies, not new integration requirements.
+
+```sh
+python -m pytest -q "tests 2" \
+  --ignore="tests 2/test_adaptive_options.py" \
+  --ignore="tests 2/test_adaptive_config_copy.py" \
+  --ignore="tests 2/test_adaptive_ha_native.py" \
+  --ignore="tests 2/test_config_flow_cancel_native.py"
+# Use the real-HA development environment for each fresh process below.
+python -m pytest -q "tests 2/test_adaptive_options.py" "tests 2/test_adaptive_config_copy.py"
+python "tests 2/test_adaptive_ha_native.py"
+python "tests 2/test_config_flow_cancel_native.py"
+```
+
+This grouping exercises every module without sharing the scaffold's replacement HA
+modules with native tests. Do not replace native selector assertions with stubs to
+make a combined in-process run pass.
 
 ## Display wording and compatibility
 

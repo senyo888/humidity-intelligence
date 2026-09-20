@@ -15,6 +15,11 @@ NAME = 'hi_adaptive_options_test'
 
 @pytest.fixture
 def modules(monkeypatch):
+    # Match the host's import order. HA installs its schema compatibility layer
+    # before loading integrations; importing options/voluptuous first bypasses
+    # that initialization on newer HA versions. Run this group separately from
+    # the stub-based tests, using a real Home Assistant environment.
+    importlib.import_module('homeassistant')
     package = types.ModuleType(NAME)
     package.__path__ = [str(PATH)]
     monkeypatch.setitem(sys.modules, NAME, package)
