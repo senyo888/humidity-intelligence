@@ -3,7 +3,9 @@
 The V2 mobile and tablet cards include a small bottom-left UI indicator. Open it
 for revision details and the next step. It reports the revision declared by this
 rendered card, compared with the compatible target advertised by its HI backend.
-It is independent of environmental alerts, Stability and control health.
+It is independent of environmental alerts, Stability and control health. Its 4px
+top margin keeps the footer close to Outputs; the 44px interaction target, LED,
+label and bottom inset retain their sizes.
 
 | Indicator | Meaning |
 |---|---|

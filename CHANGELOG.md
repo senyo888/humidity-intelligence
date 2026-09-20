@@ -9,7 +9,8 @@ This project follows a practical changelog format for Home Assistant and HACS us
 ## Unreleased — UI harmonisation after beta.6
 
 - Preserves V2 mobile/tablet geometry and actions while adding restrained neutral
-  depth and a small bottom-left rendered-UI-revision indicator.
+  depth and a small bottom-left rendered-UI-revision indicator. The footer uses
+  a 4px top margin while retaining its 44px hit area and existing bottom inset.
 - Distinguishes matching, explicitly superseded, differing and unverified revisions
   using additive Diagnostics metadata, independently of integration version.
   Export/download success and browser refresh are not proof of YAML replacement.
