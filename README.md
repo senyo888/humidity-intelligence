@@ -57,7 +57,7 @@ It gives you:
 - native Home Assistant diagnostics for support and triage
 - services for dashboard export, self-check, diagnostics, pause/resume, and release validation
 
-Current development manifest version: **v2.1.0-beta.6**, an unpublished candidate.
+Current development manifest version: **v2.1.0-beta.7**, an unpublished candidate.
 It adds optional output observation and adaptive Outputs cards, retaining beta.3’s
 badge summaries, histories, drift progress and observational Stability.
 The current published Stable is **v2.0.12**, released on 9 September 2026 and available
@@ -454,9 +454,9 @@ must be reviewable from tracked repository files.
 
 ## Current Release Highlights
 
-- unpublished candidate `2.1.0-beta.6` adds optional output observation to V2 summaries, histories,
-  clearer navigation and source-room colours alongside drift and Stability details;
-  deterministic control remains authoritative
+- unpublished candidate `2.1.0-beta.7` adds restrained V2 styling and a truthful UI
+  revision indicator, preserving optional output observation, histories, drift and
+  Stability details; deterministic control remains authoritative
 - published Stable `2.0.12` improves Manual handover, Home Assistant-local time gates,
   lifecycle-safe timers and Home Assistant 2026.9 setup assistance
 - preceding Stable `2.0.11` restores the centred passive Stability preview; those
@@ -981,7 +981,7 @@ Notes:
   workflows. Dashboard creation and editing remain in Home Assistant's dashboard UI.
   System and Manual buttons keep the
   v2.0.7 helper-toggle behavior.
-- **v2.1.0-beta.6 candidate:** the accepted badge shows backend-owned
+- **v2.1.0-beta.7 candidate:** the accepted badge shows backend-owned
   score, evidence and Recent trend details. It remains observational. See the
   [accepted contract](docs/stability-score-accepted-baseline.md) for thresholds,
   incomplete AQ, restart history reset, client support and card refresh, and the
@@ -1232,18 +1232,20 @@ CO emergency pressure. Details are in
 
 ## Release Notes
 
-### v2.1.0-beta.6 (Unpublished candidate)
+### v2.1.0-beta.7 (Unpublished candidate)
 
-- clearer Outputs maintenance suggestions, neutral configured-rule names and source
-  details; faults, unknown readings and incomplete monitoring remain explicit
-- native settings use clearer labels and staged-save guidance; Keep editing returns
-  to the sensor form being edited, while Save changes remains the final options save
-- retains compact Outputs, accepted Stability, **Baseline** drift progress, badge
-  summaries and histories; control logic, entity semantics and mappings are unchanged
-- install the full package, restart Home Assistant and refresh frontend resources
-  and saved cards; no migration is required. Restart resets Stability collection
-- [Complete beta.6 changes](CHANGELOG.md#unreleased--v210-beta6). Published Stable
-  remains v2.0.12; earlier beta evidence does not establish beta.6 validation
+- restrained V2 mobile/tablet depth and a compact bottom-left UI revision indicator;
+  current, update, differing and unverified states reflect the declared UI contract
+- corrects unavailable System/Manual and humidity displays, removes frontend comfort
+  advice, and preserves configured native/adaptive Outputs alongside the UI footer
+- maintains UI revisions independently of package versions, with release checks for
+  revision updates; this package retains layout revision 2 and generator contract 1
+- preserves deterministic control, entity primary states, existing controls and
+  accepted Stability behavior; no configuration or entity migration is required
+- install the complete package and restart, then export and replace the full saved
+  V2 Manual-card YAML; refresh cached clients if needed. Restart resets Stability history
+- [Complete beta.7 changes](CHANGELOG.md#unreleased--v210-beta7). Published Stable
+  remains v2.0.12; package preparation does not establish installation or publication
 
 ### v2.0.12 (Current Published Stable)
 
@@ -1303,6 +1305,19 @@ displaced older summaries into this container as new releases are added. CHANGEL
 remains the complete detailed history. -->
 <details>
 <summary>Previous Releases</summary>
+
+### v2.1.0-beta.6 (Earlier unpublished candidate)
+
+- clearer Outputs maintenance suggestions, neutral configured-rule names and source
+  details; faults, unknown readings and incomplete monitoring remain explicit
+- native settings use clearer labels and staged-save guidance; Keep editing returns
+  to the sensor form being edited, while Save changes remains the final options save
+- retains compact Outputs, accepted Stability, **Baseline** drift progress, badge
+  summaries and histories; control logic, entity semantics and mappings are unchanged
+- install the full package, restart Home Assistant and refresh frontend resources
+  and saved cards; no migration is required. Restart resets Stability collection
+- [Complete beta.6 changes](CHANGELOG.md#v210-beta6--earlier-unpublished-candidate). Published Stable
+  remains v2.0.12; earlier beta evidence does not establish beta.6 validation
 
 ### v2.1.0-beta.5 (Earlier unpublished candidate)
 

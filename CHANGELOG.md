@@ -6,7 +6,10 @@ All notable changes to Humidity Intelligence will be documented in this file.
 
 This project follows a practical changelog format for Home Assistant and HACS users. Add new entries under a fresh `Unreleased` section before publishing a future release.
 
-## Unreleased — UI harmonisation after beta.6
+## Unreleased — v2.1.0-beta.7
+
+Unpublished candidate packaging the reviewed UI harmonisation after beta.6. Published
+Stable remains v2.0.12; no tag, GitHub Release or HACS publication is implied.
 
 - Preserves V2 mobile/tablet geometry and actions while adding restrained neutral
   depth and a small bottom-left rendered-UI-revision indicator. The footer uses
@@ -31,7 +34,9 @@ This project follows a practical changelog format for Home Assistant and HACS us
   ordering when HTTP is configured. HTTP remains optional; runtime control and
   entity semantics are unchanged.
 
-These changes do not assign a new package version or claim deployment/publication.
+The package identity advances to `2.1.0-beta.7`; the existing V2 layout revisions
+remain `2` with generator contract `1`, each explicitly superseding revision `1`.
+This package-only version change does not claim installation or publication.
 
 Validation maintenance also replaces stale beta-version and whole-package-count
 assertions with manifest identity and exact tracked branding checks. Real-selector
@@ -39,7 +44,14 @@ tests initialize Home Assistant before its validation-library compatibility laye
 native tests run separately from lightweight HA scaffolds. These repairs change
 test setup and expectations, with no additional product behavior change.
 
-## Unreleased — v2.1.0-beta.6
+### Upgrade from beta.6
+
+Install the complete package and restart Home Assistant, then export and replace
+the complete saved V2 Manual-card YAML. Refresh the client if older content remains
+cached. No configuration or entity migration is required. Restart resets in-memory
+Stability history. Rollback restores the prior full package and matching saved cards.
+
+## v2.1.0-beta.6 — Earlier unpublished candidate
 
 Unpublished development candidate based on beta.5 (`f1d6f48`). Published Stable
 remains v2.0.12; no tag or HACS publication is implied.
