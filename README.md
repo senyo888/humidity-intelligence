@@ -30,7 +30,7 @@
 - [Public Architecture Contract](#public-architecture-contract)
 - [Current Release Highlights](#current-release-highlights)
 - [Installation](#installation)
-- [Frontend Dependencies](#frontend-dependencies)
+- [Dashboard add-ons](#dashboard-add-ons)
 - [Migration Guide - v1 to v2](#migration-guide---v1-to-v2)
 - [Full Configuration Flow](#full-configuration-flow)
 - [UI Gallery](#ui-gallery)
@@ -483,10 +483,10 @@ must be reviewable from tracked repository files.
   and `view_cards` call now requires an authenticated admin user context; trusted
   setup/options/release-check regeneration calls the internal exporter directly,
   while startup refresh remains cache-only
-- first-run setup now starts with a welcome/setup-strategy page before Frontend
-  Dependencies, so users can save a small initial sensor set and return through
+- first-run setup now starts with a welcome/setup-strategy page before Dashboard
+  add-ons, so users can save a small initial sensor set and return through
   Options for deeper tuning
-- Temperature Slope setup/options now handles collapsed Advanced source lists safely:
+- Temperature change settings now handle collapsed Advanced source lists safely:
   empty submitted source lists fall back to the configured temperature sensors or
   saved source defaults instead of hiding a required-source validation loop
 - default generated V2 dashboards lean into status and review: pause/resume and
@@ -614,7 +614,9 @@ no v2.0.12 data migration is required.
 
 ---
 
-## Frontend Dependencies
+<a id="frontend-dependencies"></a>
+
+## Dashboard add-ons
 
 Humidity Intelligence runs fully at the backend level. The richer dashboard experience depends on a small set of frontend cards.
 
@@ -624,7 +626,7 @@ You can complete setup without them, but if you want the **full visual system (b
 
 Install via HACS before anything else.
 
-### Frontend Dependencies (UI Layer)
+### Optional frontend cards
 
 The following projects power the visual layer of Humidity Intelligence:
 
@@ -775,7 +777,7 @@ sensor:
       days: 7
 ```
 
-Since v2.0.6, HI reports missing-helper guidance through the drift sensor attributes, diagnostics, `self_check`, `v205_release_check`, and Home Assistant Repairs. The setup/options Frontend Dependencies pages remain frontend-only; drift helper truth belongs on diagnostics and repair surfaces.
+Since v2.0.6, HI reports missing-helper guidance through the drift sensor attributes, diagnostics, `self_check`, `v205_release_check`, and Home Assistant Repairs. The setup/options Dashboard add-ons pages remain frontend-only; drift helper truth belongs on diagnostics and repair surfaces.
 
 Do not fabricate history. If the helper is missing, warming up, unavailable, or not
 numeric, HI reports it as not ready or unavailable instead of synthesizing a drift
@@ -844,15 +846,15 @@ First install follows a staged setup path. Essentials stay visible first; expert
 Setup shape:
 
 1. Welcome and setup strategy
-2. Frontend Dependencies
-3. Global Gates
-4. Telemetry Inputs
-5. Temperature Slope
+2. Dashboard add-ons
+3. Operating schedule & limits
+4. Sensors
+5. Temperature change settings
 6. Zones
 7. Humidifiers
 8. Air Quality
 9. Alerts and CO Emergency
-10. UI Deployment
+10. UI Cards
 
 Key setup guidance:
 
@@ -862,7 +864,7 @@ Key setup guidance:
 - assign telemetry to stable, readable rooms and levels
 - review any Home Assistant Area/Label setup suggestions before saving them as
   explicit HI room or level values; Area and Label metadata is advisory only
-- let HI calculate Temperature Slope from configured temperature sensors unless you
+- let HI calculate temperature trends from configured temperature sensors unless you
   already have trusted slope entities; if the collapsed Advanced source list submits
   empty, HI falls back to the configured/saved temperature sources instead of
   inventing a hidden source or re-rendering a confusing validation error
@@ -917,19 +919,29 @@ YAML as canonical install guidance.
 When modifying options:
 
 1. change one section at a time
-2. save
+2. choose **Save changes** on the main settings menu to persist the staged changes
 3. run `humidity_intelligence.refresh_ui` or export cards where the current release guidance calls for it
 4. verify Current Air Control mode, gate chips, reason text, and output behavior
+
+Sensor **Keep sensor changes** and monitoring-rule confirmation stage edits only.
+**Keep editing** on the close confirmation returns to the originating sensor form
+with entered values retained. **Close without saving** abandons the unsaved
+session. Home Assistant's own close button also discards the unsaved session.
 
 Common post-configuration areas:
 
 - `Sensors`: add, edit, or delete telemetry rows; Area/Label suggestions are
   advisory defaults only and become HI truth only if saved into explicit fields
-- `Global Gates`: edit time, presence, alert-only, and target-profile behavior
+- `Operating schedule & limits`: edit time, presence, alert-only, and target-profile behavior
 - `Zones`: edit display-only Level 1 / Level 2 labels before Zone 1 / Zone 2 configuration
-- `Thresholds & Comfort`: review comfort mode and zone thresholds
-- `Humidifiers`: add or edit per-level humidifier lanes
-- `Air Quality`: add or edit AQ lanes, triggers, outputs, and thresholds
+- `Comfort and thresholds`: review comfort mode and zone thresholds
+- `Humidifier control`: add or edit per-level humidifier lanes
+- `Air quality control`: add or edit AQ lanes, triggers, outputs, and thresholds
+- `Dashboard add-ons`: inspect optional frontend-card availability
+- `Temperature change settings`: configure temperature-trend calculation and source overrides
+- `Output monitoring`: configure optional reporting and exact source rules; use
+  **Keep changes and return**, then **Save changes** to persist them. See the
+  [output-monitoring guide](docs/output-observation.md) for discard and recovery details
 - generated UI: run `humidity_intelligence.dump_cards` and paste refreshed YAML into existing Manual cards when card visibility, template, backend entity mapping, or generated-card options change
 
 Detailed manual:

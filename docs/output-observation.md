@@ -1,8 +1,9 @@
-# Optional output observation
+# Optional output monitoring
 
-This beta.4 feature is opt-in and is not part of the current published Stable
-release. Existing installations default to observation disabled and native Outputs
-presentation. Installing beta.4 requires a full Home Assistant restart to load its Python modules.
+This guide describes the unpublished beta.6 candidate. Output monitoring, introduced
+in beta.4, is opt-in and is not part of published Stable v2.0.12. Existing installations
+default to monitoring disabled and native Outputs presentation. Installing beta.6
+requires a full Home Assistant restart to load its Python modules.
 
 ## What it observes
 
@@ -38,10 +39,10 @@ visible as incomplete coverage.
 
 ## Configure and recover mappings
 
-Open HI **Configure**, then **Output observation**. Enable observation and choose
-native or adaptive presentation. Add a mapping by selecting a configured output,
-a diagnostic source, a meaning, and an exact rule. Review the preview before
-confirming. Enumeration rules require both active and clear values. Numeric rules
+Open HI **Configure**, then **Output monitoring**. In **Monitoring and dashboard
+view**, enable monitoring and choose **Native Outputs panel** or **Adaptive Outputs
+panel**. Use **Add a monitoring rule** to select a configured output, a monitoring
+source, a meaning, and an exact rule. Review the preview before confirming. Enumeration rules require both active and clear values. Numeric rules
 use strict below/above comparisons; units are not guessed.
 
 Manage existing or discovered associations to edit a rule, revoke confirmation,
@@ -49,15 +50,16 @@ replace a source, mark it context-only, or explicitly resume interpretation.
 Context-only retirement is bound to the particular output/source identities; it
 does not globally ignore a shared diagnostic source. Missing mappings remain
 reviewable. To manage a formerly automatic source while observation is disabled,
-enable observation and Save changes first, then reopen Manage; this loads its saved
+enable monitoring, choose **Keep changes and return**, then **Save changes**. Reopen
+**Manage monitoring rules**; this loads its saved
 monitoring history through the observer. Registry replacements require explicit revalidation instead of silently
 inheriting the old entity's meaning.
 
 These forms stage changes. Confirming a rule adds it to the monitoring draft;
 **Keep changes and return** retains that draft in the main options transaction.
-Only **Save changes** (the existing final Finish step) persists the options.
-Discarding monitoring changes removes edits made since entering that subflow while
-preserving earlier staged settings. Closing the unsaved flow writes nothing.
+Only **Save changes** on the main settings menu persists the options.
+**Discard this visit's monitoring edits** removes edits made since entering that
+subflow while preserving earlier staged settings. Closing the unsaved flow writes nothing.
 Saving uses HI's existing entry-reload behavior. It does not restart Home Assistant;
 existing in-memory runtime history has the same reload lifecycle as other HI options.
 

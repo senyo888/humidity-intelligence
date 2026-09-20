@@ -22,6 +22,10 @@ remains v2.0.12; no tag or HACS publication is implied.
 - Preserves configuration keys, defaults, strict comparisons, lane ordering, existing
   entity semantics, native output controls and backend ownership of UI meaning.
 
+- Aligns current README, output-monitoring instructions and website candidate copy
+  with beta.6 labels and the final Save changes boundary. Historical release notes
+  retain their original wording.
+
 ### Upgrade from beta.5
 
 Install the complete package and restart Home Assistant, then refresh the frontend
