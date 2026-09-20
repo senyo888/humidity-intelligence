@@ -23,6 +23,8 @@ This project follows a practical changelog format for Home Assistant and HACS us
   in-memory Stability history. No configuration migration or new frontend resource.
   [Revision contract and rollback](docs/ui-revision-status.md).
 
+- Makes UI compatibility review and revision/stamp validation part of every
+  version update, with a source-change guard and LED contract checks in CI.
 - Preserves the revision footer comments while generating configured native and
   adaptive Outputs, preventing fallback from dropping the observation summary.
 - Declares the existing optional HTTP frontend dependency for Hassfest and setup

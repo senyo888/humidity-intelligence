@@ -96,6 +96,8 @@ Humidity Intelligence is a deterministic Home Assistant environmental control en
 
 ## Documentation and Release Expectations
 
+- Treat the rendered UI revision LED as a canonical release-maintenance contract. Every version update must record UI compatibility, run `scripts/check_ui_revision_governance.py` against the previous source, and validate generated stamps/Diagnostics targets. Advance changed layout revisions; review schema/generator compatibility explicitly. A manifest-only bump must not make unchanged UI stale. Follow `docs/release-governance.md`.
+
 - Keep `README.md`, `manifest.json`, `hacs.json`, docs, release notes, UI examples, and runtime behavior aligned.
 - Keep the current candidate, current Stable release, and immediately preceding Stable release summaries expanded in the README `Release Notes` section. When a newer release displaces one of those three positions, move the older summary into the collapsible `Previous Releases` container; retain that container as the canonical older-release structure. `CHANGELOG.md` remains the complete detailed release and legacy-migration history.
 - Keep the Wiki UI Gallery as a browseable mirror/index only; repository `ui-gallery/` remains canonical for reviewed YAML, preview assets, and contribution rules.

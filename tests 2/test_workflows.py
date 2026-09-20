@@ -25,6 +25,19 @@ MUTABLE_ACTION_REF_RE = re.compile(
 
 
 class WorkflowConfigurationTests(unittest.TestCase):
+    def test_every_version_update_checks_rendered_ui_contract(self) -> None:
+        workflow = (ROOT / ".github/workflows/version-governance.yml").read_text()
+        for required in (
+            "fetch-depth: 0", "check_ui_revision_governance.py",
+            "sync_ui_revision.py --check", "sync_badge_history.py --check",
+            "test_ui_revision_governance.py", "test_ui_revision_contract.py",
+            "test_adaptive_cards.py", "test_ui_revision_status.mjs",
+        ):
+            self.assertIn(required, workflow)
+        self.assertRegex(workflow, r"(?m)^  push:$")
+        self.assertRegex(workflow, r"(?m)^  pull_request:$")
+
+
     def test_secret_scan_fails_closed_when_tracked_mode_has_no_files(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             workdir = pathlib.Path(tmpdir)

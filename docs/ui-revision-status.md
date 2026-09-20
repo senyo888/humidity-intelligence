@@ -33,6 +33,8 @@ or an available integration release. Continue to regenerate and replace cards
 after UI-affecting configuration changes even if their UI revision is unchanged.
 An integration update that changes no UI need not change the UI revision.
 
+Every package version update includes the [canonical release revision check](release-governance.md#rendered-ui-revision-check-for-every-version-update). The LED is maintained with HI; its revision is not a copy of the package version.
+
 ## Contributor contract
 
 `ui/revision.py` owns the metadata schema, generator contract and separate mobile

@@ -366,6 +366,40 @@ and post-release observation as separate evidence states.
 - [ ] Bella, Aetherwing, AetherCore, release-sanity, and final maintainer README/release
   approval gates are complete for the exact final head.
 
+## Rendered UI revision check for every version update
+
+The V2 LED is a canonical integration contract, maintained with every candidate
+and release. Record one explicit outcome: **UI unchanged and compatible**, or
+**UI revision advanced**. A manifest-only version bump must not mark unchanged
+compatible cards stale.
+
+Before each version update or release:
+
+- Compare the candidate with the preceding candidate/release source. If either
+  rendered layout changes, advance its revision in `ui/revision.py`. Shared
+  renderer or card-generator changes require both layout revisions to advance.
+- Review the schema and generator contract explicitly. Advance the relevant
+  contract when stamp interpretation or compatibility changes; do not bump it
+  merely for a bug fix that preserves that contract.
+- List older revisions in `supersedes` only when compatibility establishes a real
+  update relationship. Preserve a truthful differing/unverified result otherwise.
+- Synchronise canonical templates and gallery mirrors. Validate both native and
+  adaptive Outputs, generated entry-scoped stamps, Diagnostics targets and LED
+  match/update/difference/unverified behaviour.
+- State whether saved cards require full regeneration/replacement and whether
+  backend metadata requires restart. Preserve the separate activation authority.
+
+Run `python scripts/check_ui_revision_governance.py --base <previous-source>`
+against the previous reviewed candidate/release, then the checks in
+[the revision contract](ui-revision-status.md#validation-and-activation). CI runs
+this policy on every push and pull request: push events use the previous head,
+pull requests use the base SHA, and new branches use their merge-base with the
+repository's default branch. Local/manual runs default to `HEAD^`; always supply
+`--base` for the preceding candidate/release comparison. CI also runs renderer
+synchronisation, generated-card contract tests and LED lifecycle tests.
+The source-change guard is deliberately conservative; it cannot infer semantic
+compatibility, so the explicit release review remains required.
+
 ## Enforcement
 
 `scripts/check_version_governance.py` validates the branch/version contract locally and
