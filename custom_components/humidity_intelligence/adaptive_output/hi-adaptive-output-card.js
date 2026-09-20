@@ -6,18 +6,18 @@
   // Shipped translations only. Unsupported HA locales use reviewed English copy.
   // Backend observation strings remain backend-owned; this dictionary owns chrome.
   const MESSAGES = Object.freeze({en:Object.freeze({
-    outputs:'Outputs', outputs_controls:'Outputs & controls', details:'Output details', review_details:'View all output evidence and monitoring details', review_link:'View details', view_conditions:'View all {count} conditions', shown_counts:'{conditions} conditions · {outputs} outputs affected', shown_reports:'Showing {shown} of {total} reports', diagnostic_sources:'Diagnostic sources', close:'Close',
+    outputs:'Outputs', outputs_controls:'Outputs & controls', details:'Output details', review_details:'View all output evidence and monitoring details', review_link:'View details', view_conditions:'View all {count} conditions', shown_counts:'{conditions} conditions · {outputs} outputs affected', shown_reports:'Showing {shown} of {total} reports', diagnostic_sources:'Monitoring sources', close:'Close',
     controls:'Controls and supporting readings',
-    controls_unavailable:'Native controls unavailable. Reload the dashboard to retry.',
-    catalogue_unavailable:'Diagnostic sources unavailable',
+    controls_unavailable:'Controls could not load. Reload the dashboard to try again.',
+    catalogue_unavailable:'Monitoring sources unavailable',
     status_unavailable:'Output status unavailable', monitoring_unavailable:'Monitoring unavailable',
-    feed_unavailable:'The output-status feed is missing or unavailable. No cached output or device-health claims are shown. Open Outputs & controls to use the existing native controls.',
-    configured_outputs:'Configured outputs', control_context:'Control context', inspect:'Inspect',
-    unknown:'Unknown', evidence:'Evidence', source:'Source', reported_state:'Reported state',
-    ha_reported:'HA last reported', ha_updated:'HA last updated', ha_changed:'HA last changed',
-    restored:'HA restored state', yes:'Yes', no:'No',
-    inspect_evidence:'Inspect {label} evidence', inspect_diagnostic:'Inspect {label} diagnostic',
-    open_controls:'Open {label} controls', inspect_sources:'Inspect {count} diagnostic sources',
+    feed_unavailable:'Output monitoring is unavailable. Open Outputs & controls to access the existing controls.',
+    configured_outputs:'Configured outputs', control_context:'HI control state', inspect:'Inspect',
+    unknown:'Unknown', evidence:'Why this is shown', source:'Source', reported_state:'Source reading',
+    ha_reported:'Last reported to Home Assistant', ha_updated:'Last updated in Home Assistant', ha_changed:'Last changed in Home Assistant',
+    restored:'Restored by Home Assistant', yes:'Yes', no:'No',
+    inspect_evidence:'Why {label} is shown', inspect_diagnostic:'Open {label} details',
+    open_controls:'Open {label} controls', inspect_sources:'Inspect {count} monitoring sources',
     preview:'Synthetic rendering harness · No live Home Assistant data',
     observation:'Output observation · Home Assistant state evidence'
   })});

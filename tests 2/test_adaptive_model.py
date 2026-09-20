@@ -204,7 +204,7 @@ class AdaptiveOutputTests(unittest.TestCase):
         scenario=next(f for f in build_scenarios() if f['id']=='humidifier_retry_refill')
         p=scenario['payload']
         self.assertEqual(p['records'][2]['operation']['state'],'off')
-        self.assertEqual(p['attention'][0]['title'],'Refill reported')
+        self.assertEqual(p['attention'][0]['title'],'Refill suggested')
         self.assertEqual(scenario['control_context'],fixture['control_context'])
         self.assertNotIn('Retrying',json.dumps(p))
         self.assertIn('causation is not established',scenario['control_context']['detail'])
@@ -213,7 +213,7 @@ class AdaptiveOutputTests(unittest.TestCase):
         p=next(s['payload'] for s in build_scenarios() if s['id']=='partial_mapping_only')
         self.assertEqual(p['state'],'unmonitored')
         self.assertEqual(p['coverage']['state'],'incomplete')
-        self.assertEqual(p['coverage']['label'],'Monitoring 3/4 mapped')
+        self.assertEqual(p['coverage']['label'],'Monitoring configured: 3/4 outputs')
         self.assertEqual(p['attention'],[])
         self.assertEqual(p['records'][-1]['monitoring']['state'],'unmonitored')
 
@@ -739,6 +739,37 @@ class PresentationTests(unittest.TestCase):
         self.assertEqual(association['origin_label'], 'Explicit confirmation')
         self.assertEqual(association['rule_lines'], ['Attention values:', 'replace', 'Clear values:', 'clear'])
 
+    def test_configured_meanings_stay_neutral_for_clear_active_and_unknown(self):
+        from adaptive_test_support import model
+        expected = {
+            'replace_filter': ('Filter replacement', 'Filter replacement suggested'),
+            'refill': ('Refilling', 'Refill suggested'),
+            'clean': ('Cleaning', 'Cleaning suggested'),
+            'fault': ('Fault', 'Fault reported'),
+            'problem': ('Problem', 'Problem reported'),
+            'obstruction': ('Obstruction', 'Obstruction reported'),
+            'battery_low': ('Low battery', 'Low battery reported'),
+            'disconnected': ('Connection loss', 'Connection loss reported'),
+            'generic_attention': ('Other attention', 'Attention needed'),
+        }
+        self.assertEqual(set(expected), set(model.SEMANTICS))
+        for semantic, (neutral, active) in expected.items():
+            for reading in ('clear', 'replace', 'unfamiliar', 'unavailable'):
+                with self.subTest(semantic=semantic, reading=reading):
+                    self.states[self.source] = reading
+                    session = self.session([self.rule(semantic=semantic)])
+                    payload = session.snapshot['payload']
+                    self.assertEqual(self.association(session)['meaning_label'], neutral)
+                    if reading == 'clear':
+                        self.assertEqual(payload['attention'], [])
+                    elif reading == 'replace':
+                        self.assertEqual(payload['attention'][0]['title'], active)
+                        self.assertEqual(payload['attention'][0]['code'], semantic)
+                        self.assertEqual(payload['attention'][0]['severity'], model.SEMANTICS[semantic][2])
+                    else:
+                        self.assertEqual(payload['attention'][0]['code'], 'monitoring_unknown')
+                        self.assertNotIn(active, [a['title'] for a in payload['attention']])
+
     def test_shared_confirmed_meanings_are_not_flattened_by_equal_status(self):
         display = self.session([self.rule(), self.rule(1, 'clean')]).snapshot['payload']['discovery']
         source = display['sources'][0]
@@ -763,15 +794,15 @@ class PresentationTests(unittest.TestCase):
         association = self.association(self.session())
         self.assertIsNone(association['semantic'])
         self.assertEqual(association['rule_lines'], [])
-        self.assertEqual(association['meaning_label'], 'Meaning not configured')
+        self.assertEqual(association['meaning_label'], 'Monitoring rule not configured')
 
     def test_numeric_boundaries_are_explicit_and_do_not_invent_units(self):
         for kind, comparator in [('numeric_below', '<'), ('numeric_above', '>')]:
             with self.subTest(kind=kind):
                 association = self.association(self.session([self.rule(rule=kind, threshold=10)]))
                 self.assertEqual(association['rule_lines'][0], f'Attention when value {comparator} 10')
-                self.assertIn('Equality does not match', association['rule_lines'][1])
-                self.assertIn('Units are not bound', association['rule_lines'][1])
+                self.assertIn('A value equal to the threshold does not trigger this rule', association['rule_lines'][1])
+                self.assertIn('Units are not checked or converted', association['rule_lines'][1])
 
     def test_binary_rule_has_exact_polarity(self):
         association = self.association(self.session([self.rule(rule='binary_active')]))

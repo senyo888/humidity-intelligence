@@ -124,7 +124,7 @@ class AdaptiveCoreTests(unittest.TestCase):
         self.assertEqual(payload['attention'],[])
         self.assertEqual(payload['state'],'unmonitored')
         self.assertEqual(payload['coverage']['state'],'incomplete')
-        self.assertEqual(payload['discovery']['sources'][0]['title'],'Interpretation paused')
+        self.assertEqual(payload['discovery']['sources'][0]['title'],'Monitoring paused for this link')
         self.assertEqual(bridge.bindings(),[])
         self.assertEqual(self.evaluate(bridge)['attention'][0]['code'],'problem')
 
@@ -139,10 +139,10 @@ class AdaptiveCoreTests(unittest.TestCase):
         self.registry[1]['entity_id']='binary_sensor.hi_example_new'
         self.states['binary_sensor.hi_example_new']={'state':'on'}
         payload=self.evaluate(retired=self.retired)
-        self.assertEqual(payload['discovery']['sources'][0]['title'],'Interpretation paused')
+        self.assertEqual(payload['discovery']['sources'][0]['title'],'Monitoring paused for this link')
         self.registry.pop()
         payload=self.evaluate(retired=self.retired)
-        self.assertEqual(payload['discovery']['sources'][0]['title'],'Interpretation paused')
+        self.assertEqual(payload['discovery']['sources'][0]['title'],'Monitoring paused for this link')
         self.assertEqual(payload['discovery']['review_count'],0)
         self.assertEqual(payload['discovery']['sources'][0]['state'],'Not used as current evidence')
 

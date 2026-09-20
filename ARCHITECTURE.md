@@ -269,8 +269,8 @@ dashboard documents and must not be written to `<config>/dashboards/`; dashboard
 creation, registration, editing, and deletion stay within Home Assistant's UI.
 
 Dynamic state or attribute text rendered through generated-card HTML must be escaped
-at the HTML sink. The V1 Mobile presentation remains available but deprecated through
-v2.0.9; any removal requires a separately approved v2.1 migration contract.
+at the HTML sink. The V1 Mobile presentation remains available but deprecated in this candidate;
+any removal requires a separately approved migration contract.
 
 ## Home Assistant And HACS Boundaries
 

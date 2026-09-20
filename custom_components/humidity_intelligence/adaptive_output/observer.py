@@ -6,7 +6,7 @@ explicit watch set. No source writes, polling, credentials or device operations.
 """
 from copy import deepcopy
 from .discovery import discover, validate_retired
-from .model import normalize, MAX_MAPPINGS, MAX_TEXT, SEMANTICS
+from .model import normalize, MAX_MAPPINGS, MAX_TEXT, MEANING_LABELS
 
 
 def _display(value):
@@ -17,11 +17,11 @@ def _display(value):
 def _meaning(mapping):
     """Presentation of an applicable rule, separate from custody and raw config."""
     if not mapping:
-        return dict(semantic=None, meaning_label='Meaning not configured',
-                    rule_summary='No interpretation applied', rule_lines=[])
+        return dict(semantic=None, meaning_label='Monitoring rule not configured',
+                    rule_summary='No monitoring rule applied', rule_lines=[])
     semantic = mapping['semantic']
     rule = mapping['rule']
-    result = dict(semantic=semantic, meaning_label=SEMANTICS[semantic][0], rule_lines=[])
+    result = dict(semantic=semantic, meaning_label=MEANING_LABELS[semantic], rule_lines=[])
     if rule == 'binary_active':
         result.update(rule_summary='Binary state interpretation',
                       rule_lines=['Attention when: on', 'Clear when: off'])
@@ -39,8 +39,8 @@ def _meaning(mapping):
         line = f'Attention when value {comparator} {threshold}'
         if len(line) > 400:
             raise ValueError('Numeric rule presentation exceeds supported text bounds.')
-        result.update(rule_summary='Strict numeric comparison',
-                      rule_lines=[line, 'Equality does not match. Units are not bound by this rule.'])
+        result.update(rule_summary='Numeric threshold rule',
+                      rule_lines=[line, 'A value equal to the threshold does not trigger this rule. Units are not checked or converted.'])
     else:
         return _meaning(None)
     return result
@@ -57,7 +57,7 @@ def _presentation(found, gaps, labels):
         gaps=[{key: _display(gap.get(key)) for key in ('output_label', 'label', 'detail')} for gap in gaps],
         notices=[{key: _display(notice.get(key)) for key in ('output_label', 'code', 'title', 'reason')}
                  for notice in found['notices']],
-        summary=f"Device diagnostics · {found['counts']['sources']} sources found",
+        summary=f"Monitoring sources · {found['counts']['sources']} sources found",
         detail='Automatically found through output device associations. Recognised meanings are monitored; other readings remain explicit.')
     mappings = {(m['output'], m['source']): m for m in found['mappings']}
     grouped = {}

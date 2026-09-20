@@ -25,7 +25,7 @@ class CompactTests(unittest.TestCase):
         result=build_compact(fixture())
         self.assertEqual(result['title'],'Monitoring incomplete')
         self.assertEqual(result['condition_count'],0)
-        self.assertIn('2/10 outputs mapped',result['monitoring_lines'][0])
+        self.assertIn('Monitoring configured: 2/10 outputs',result['monitoring_lines'][0])
         self.assertEqual(len(result['monitoring_lines']),1)
         self.assertNotIn('healthy',json.dumps(result).lower())
 
@@ -33,13 +33,13 @@ class CompactTests(unittest.TestCase):
         payload=fixture()
         payload['discovery']={'setup_count':3,'review_count':3}
         result=build_compact(payload)
-        self.assertEqual(result['monitoring_lines'],['2/10 outputs mapped · 3 source meanings need setup'])
+        self.assertEqual(result['monitoring_lines'],['Monitoring configured: 2/10 outputs · 3 readings need a monitoring rule'])
         payload['counts']['reporting']=1
         result=build_compact(payload)
-        self.assertIn('1/10 fully reporting',result['monitoring_lines'][0])
+        self.assertIn('Readings usable for 1/10 outputs',result['monitoring_lines'][0])
 
     def test_complete_unmonitored_and_empty_are_distinct(self):
-        cases=[(fixture(10,10),'No mapped issues reported'),(fixture(10,0),'Monitoring not configured'),(fixture(0,0),'No outputs configured')]
+        cases=[(fixture(10,10),'No monitored issues reported'),(fixture(10,0),'Monitoring not configured'),(fixture(0,0),'No outputs configured')]
         for payload,title in cases:
             with self.subTest(title=title):
                 result=build_compact(payload)
@@ -59,8 +59,8 @@ class CompactTests(unittest.TestCase):
         self.assertEqual(result['remaining_condition_count'],5)
         self.assertEqual(result['remainder_label'],'Showing 2 of 7 conditions · 5 more')
         self.assertEqual(result['monitoring_lines'][0],'1 previously monitored source is no longer usable.')
-        self.assertTrue(any('3 source meanings need setup' in line for line in result['monitoring_lines']))
-        self.assertTrue(any('2 output/source interpretations are intentionally paused' in line for line in result['monitoring_lines']))
+        self.assertTrue(any('3 readings need a monitoring rule' in line for line in result['monitoring_lines']))
+        self.assertTrue(any('Monitoring is paused for 2 output/source links' in line for line in result['monitoring_lines']))
 
     def test_monitoring_unknown_is_visible_without_lost_source_inference(self):
         payload=fixture(1,1)
@@ -105,7 +105,7 @@ class CompactTests(unittest.TestCase):
         self.assertTrue(any('Manual control is active' in line for line in context))
         self.assertTrue(any('Automatic air control is disabled' in line for line in context))
         self.assertTrue(any('some roles isolated' in line for line in context))
-        self.assertTrue(any('awaiting a new HA report' in line for line in context))
+        self.assertTrue(any('waiting for a new Home Assistant report' in line for line in context))
         self.assertTrue(any('only disabled configured roles' in line for line in context))
         self.assertEqual(payload['records'][0]['availability']['state'],'unknown')
         self.assertTrue(payload['records'][0]['observation_pending'])

@@ -189,12 +189,12 @@ def discover(configured, registry_entries, states, confirmations=None, retired=N
                          scope=scope, hidden=bool(entry and entry.get('hidden_by')),
                          output_identity=identity(out), source_identity=identity(entry),
                          origin='confirmed' if item else 'auto',
-                         status='needs_confirmation', title='Meaning needs confirmation',
-                         reason='Source discovered automatically. Its class does not define an attention rule.')
+                         status='needs_confirmation', title='Choose a monitoring rule',
+                         reason='This reading was found automatically. Choose how HI should interpret it.')
         retirement = retired_pairs.get((output, source))
         retired_match = (identity(out), identity(entry)) in retired_identities
         if retired_match:
-            candidate.update(status='context_only', title='Interpretation paused', recognized=False,
+            candidate.update(status='context_only', title='Monitoring paused for this link', recognized=False,
                              reason='Monitoring intentionally not interpreted for this output. Device health is not established.')
             if entry and entry.get('disabled_by') is None:
                 watch.add(source)
@@ -203,7 +203,7 @@ def discover(configured, registry_entries, states, confirmations=None, retired=N
         elif retirement and (not out or not entry) and all(
                 actual is None or identity(actual) == retirement[field + '_identity']
                 for field, actual in (('output', out), ('source', entry))):
-            candidate.update(status='context_only', title='Interpretation paused', recognized=False, state='Not used as current evidence',
+            candidate.update(status='context_only', title='Monitoring paused for this link', recognized=False, state='Not used as current evidence',
                              reason='The saved interpretation is intentionally paused. Its source or output is absent; no current evidence is claimed.')
         elif retirement:
             candidate.update(status='identity_changed', title='Paused association needs review',
@@ -211,9 +211,9 @@ def discover(configured, registry_entries, states, confirmations=None, retired=N
         elif not entry or not out or output not in outputs:
             candidate.update(status='missing', title='Saved source or output missing', reason='Saved binding is retained for review and has not been reassigned.')
         elif item and (not identity(out) or not identity(entry) or item.get('output_identity') != identity(out) or item.get('source_identity') != identity(entry)):
-            candidate.update(status='identity_changed', title='Binding needs confirmation', reason='Stable identity is absent or changed. Saved meaning has not been applied.')
+            candidate.update(status='identity_changed', title='Linked entity changed — review the link', reason='The source or output identity changed or is missing. Review the link before the saved rule is used.')
         elif entry.get('disabled_by') is not None:
-            candidate.update(status='disabled', title='Diagnostic disabled', reason='This source is disabled in Home Assistant. HI does not enable it.')
+            candidate.update(status='disabled', title='Monitoring source disabled', reason='This source is disabled in Home Assistant. HI does not enable it.')
         else:
             watch.add(source)
             cls = _class(entry, states)
@@ -226,15 +226,15 @@ def discover(configured, registry_entries, states, confirmations=None, retired=N
                 mapping = dict(output=output, source=source, **rule, origin=candidate['origin'], scope=scope,
                                source_identity=identity(entry), output_identity=identity(out))
                 mappings.append(mapping)
-                candidate.update(status='confirmed' if item else 'auto_mapped', title='Confirmed meaning' if item else 'Automatically monitored', semantic=rule['semantic'],
-                                 reason='Explicitly confirmed source meaning.' if item else 'Recognized Home Assistant binary device class; no name or threshold inference.')
+                candidate.update(status='confirmed' if item else 'auto_mapped', title='Confirmed monitoring rule' if item else 'Standard monitoring rule', semantic=rule['semantic'],
+                                 reason='This rule explicitly defines how the reading is interpreted.' if item else 'This rule uses the source standard Home Assistant device class.')
             elif source.startswith('sensor.') and cls in ('battery', 'signal_strength'):
                 candidate.update(status='context_only', title='Supporting reading', reason='Reading discovered automatically. No attention threshold is invented.')
-        candidate['scope_label'] = 'Device-level evidence; does not identify which output has a hardware fault.' if same_device else 'Explicit association outside the output device.'
+        candidate['scope_label'] = 'This report applies to the device; it does not identify the affected component.' if same_device else 'This source was explicitly linked to this output.'
         candidates.append(candidate)
     for output in sorted(outputs):
         if not any(m['output'] == output for m in mappings):
-            notices.append(dict(output=output, code='unmonitored', title='No interpreted monitoring sources', reason='Operating state remains observable. Device health has not been established.'))
+            notices.append(dict(output=output, code='unmonitored', title='No monitoring sources set up', reason='Operating state remains observable. Device health has not been established.'))
     return dict(mappings=mappings, candidates=candidates, notices=notices, watch_entities=sorted(watch),
                 counts=dict(outputs=len(outputs), candidates=len(candidates), mapped=len(mappings),
                             sources=len({c['source'] for c in candidates}),

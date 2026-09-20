@@ -5,7 +5,8 @@ testing and validation branches.
 
 ## Canonical Version Model
 
-- `2.1.0-beta.5`: current unpublished candidate with compact Outputs summaries and on-demand controls.
+- `2.1.0-beta.6`: current unpublished candidate with clearer Outputs/settings wording and bounded cancel-return correction.
+- `2.1.0-beta.5`: earlier unpublished candidate with compact Outputs summaries and on-demand controls.
 - `2.1.0-beta.4`: earlier unpublished candidate with optional output observation and adaptive Outputs.
 - `2.1.0-beta.3`: earlier unpublished candidate with V2 summaries, recorded histories and source-room colours.
 - `2.1.0-beta.2`: earlier unpublished candidate, introduced at `76285b0`, with seven-day drift progress/details.
@@ -27,7 +28,7 @@ must remain aligned with the
 published GitHub Release/tag.
 
 Published Stable is [v2.0.12](https://github.com/senyo888/humidity-intelligence/releases/tag/v2.0.12),
-released on 2026-09-09. The current `2.1.0-beta.5` candidate is unpublished.
+released on 2026-09-09. The current `2.1.0-beta.6` candidate is unpublished.
 The earlier `2.1.0-beta.1` source was committed and pushed through `144570b` on
 `senyo888-patch-1`; beta.2 began at `76285b0`, and beta.3 collects the subsequent UI work through `4f86e66`. There is no v2.1 tag,
 GitHub Release or HACS offering.

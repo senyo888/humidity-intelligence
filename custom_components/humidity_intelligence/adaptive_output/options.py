@@ -21,9 +21,9 @@ def _select(values, key, **kwargs):
 
 def _preview(row):
     meaning = _meaning(row)
-    return '\n'.join([f"Output: {row['output']}", f"Source: {row['source']}", meaning['meaning_label'],
+    return '\n'.join([f"Output: {row['output']}", f"Monitoring source: {row['source']}", meaning['meaning_label'],
                       meaning['rule_summary'], *meaning['rule_lines'],
-                      'Observed reports do not prove device health or command success.'])
+                      'These readings do not prove device health or that a command succeeded.'])
 
 
 class OutputObservationOptionsMixin:
@@ -196,9 +196,9 @@ class OutputObservationOptionsMixin:
                 if action == 'resume' and not usable:
                     raise ValueError('unavailable_binding')
                 self._observation_pending = transition(self._observation(), current, action)
-                message = {'revoke': 'Remove the explicit meaning. Standard automatic meanings may still apply.',
-                           'retire': 'Keep this source as context only. Its saved explicit meaning remains dormant. Coverage remains incomplete.',
-                           'resume': 'Resume the saved explicit meaning below, or standard automatic discovery if no meaning is saved.'}[action]
+                message = {'revoke': 'Remove the custom rule. Standard automatic meanings may still apply.',
+                           'retire': 'Pause monitoring for this source and keep it as context. Its saved rule is kept. Monitoring coverage remains incomplete.',
+                           'resume': 'Resume the saved rule below, or standard automatic discovery if no rule is saved.'}[action]
                 self._observation_preview = '\n'.join([message, f"Output: {current['output']}", f"Source: {current['source']}"] + ([_preview(saved)] if saved else []))
                 self._observation_check = [current] if action == 'resume' else []
                 return await self.async_step_options_output_confirm()
@@ -208,7 +208,7 @@ class OutputObservationOptionsMixin:
             return await self.async_step_options_output_empty(user_input)
         return self.async_show_form(step_id='options_output_manage', errors=errors, data_schema=vol.Schema({
             vol.Required('binding'): selector.SelectSelector(selector.SelectSelectorConfig(options=choices)),
-            vol.Required('action', default='edit'): _select(['edit', 'revoke', 'retire', 'resume'], 'output_action'),
+            vol.Required('action', default='edit'): _select(['edit', 'revoke', 'retire', 'resume'], 'output_action', mode=selector.SelectSelectorMode.LIST),
         }))
 
     async def async_step_options_output_import(self, user_input=None):
@@ -225,7 +225,7 @@ class OutputObservationOptionsMixin:
                 # unresolved bindings remain intact and must not block import.
                 registry = self._observation_registry()
                 self._observation_check = [resolve(row, registry)[0] for row in bindings]
-                self._observation_preview = '\n\n'.join(_preview(row) for row in self._observation_check) or 'No explicit meanings to import.'
+                self._observation_preview = '\n\n'.join(_preview(row) for row in self._observation_check) or 'No custom rules to import.'
                 return await self.async_step_options_output_confirm()
             except (ValueError, TypeError, KeyError):
                 errors['base'] = 'import_unresolved'

@@ -58,7 +58,7 @@ def _build(payload):
     elif not configured:
         title, tone = 'No outputs configured', 'neutral'
     elif coverage == 'complete':
-        title, tone = 'No mapped issues reported', 'neutral'
+        title, tone = 'No monitored issues reported', 'neutral'
     elif not mapped and not (lost or retired or review):
         title, tone = 'Monitoring not configured', 'neutral'
     else:
@@ -74,15 +74,15 @@ def _build(payload):
         monitoring.append(_number(unknown, 'monitoring source') + (' cannot currently be interpreted.'))
     routine = []
     if configured and coverage != 'complete':
-        routine.append(f'{mapped}/{configured} outputs mapped')
+        routine.append(f'Monitoring configured: {mapped}/{configured} outputs')
         if reporting != mapped:
-            routine.append(f'{reporting}/{configured} fully reporting')
+            routine.append(f'Readings usable for {reporting}/{configured} outputs')
     if setup:
-        routine.append(_number(setup, 'source meaning') + (' needs setup' if setup == 1 else ' need setup'))
+        routine.append(_number(setup, 'reading') + (' needs a monitoring rule' if setup == 1 else ' need a monitoring rule'))
     if routine:
         monitoring.append(' · '.join(routine))
     if retired:
-        monitoring.append(_number(retired, 'output/source interpretation') + (' is' if retired == 1 else ' are') + ' intentionally paused.')
+        monitoring.append('Monitoring is paused for ' + _number(retired, 'output/source link') + '.')
     if review > setup + lost:
         monitoring.append(_number(review, 'diagnostic source') + (' needs' if review == 1 else ' need') + ' review in total.')
 
@@ -104,7 +104,7 @@ def _build(payload):
         context.append(' · '.join(parts) + '.')
     pending = sum(row.get('observation_pending') is True for row in records)
     if pending:
-        context.append(_number(pending, 'output') + (' is' if pending == 1 else ' are') + ' awaiting a new HA report.')
+        context.append(_number(pending, 'output') + (' is' if pending == 1 else ' are') + ' waiting for a new Home Assistant report.')
     disabled = sum(bool(row.get('configured_roles')) and all(role.get('enabled') is False for role in row['configured_roles']) for row in records)
     if disabled:
         context.append(_number(disabled, 'output') + (' has' if disabled == 1 else ' have') + ' only disabled configured roles.')

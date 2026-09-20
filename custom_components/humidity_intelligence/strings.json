@@ -4,20 +4,20 @@
     "step": {
       "welcome": {
         "title": "Welcome to Humidity Intelligence",
-        "description": "Humidity Intelligence is a deterministic Home Assistant control engine for humidity, air quality, condensation, mould risk, and carbon monoxide safety. It uses configured sensors, room mappings, zones, outputs, and runtime gates to make one explainable control decision per cycle.\n\nRecommended setup method\n\nFor most homes, start small. Add a few core sensors first, ideally one humidity sensor and one temperature sensor for a main room. Continue through setup and save the integration. You can then return to Options to add more rooms, sensors, zones, air-quality inputs, humidifiers, alerts, and dashboard exports.\n\nThis staged method gives you a saved baseline to return to, makes setup easier to validate, and avoids losing a long first-run configuration.\n\nAdvanced setup method\n\nIf you already know your full sensor layout, you can add all sensors during first setup and configure everything in one pass.\n\nNext, Humidity Intelligence will check optional Frontend Dependencies. Backend control does not require these cards, but generated dashboards look best when they are installed.\n\nFull Configuration Walkthrough: {walkthrough_url}"
+        "description": "Humidity Intelligence is a deterministic Home Assistant control engine for humidity, air quality, condensation, mould risk, and carbon monoxide safety. It uses configured sensors, room mappings, zones, outputs, and runtime gates to make one explainable control decision per cycle.\n\nRecommended setup method\n\nFor most homes, start small. Add a few core sensors first, ideally one humidity sensor and one temperature sensor for a main room. Continue through setup and save the integration. You can then return to Options to add more rooms, sensors, zones, air-quality inputs, humidifiers, alerts, and dashboard exports.\n\nThis staged method gives you a saved baseline to return to, makes setup easier to validate, and avoids losing a long first-run configuration.\n\nAdvanced setup method\n\nIf you already know your full sensor layout, you can add all sensors during first setup and configure everything in one pass.\n\nNext, Humidity Intelligence will check optional dashboard add-ons. Backend control does not require these cards, but generated dashboards look best when they are installed.\n\nFull Configuration Walkthrough: {walkthrough_url}"
       },
       "dependencies": {
-        "title": "Frontend Dependencies",
+        "title": "Dashboard add-ons",
         "description": "Optional frontend custom cards used by the Humidity Intelligence dashboards.\n\n{dependencies}\n\nBackend control works without optional frontend cards, but dashboard visuals may degrade until they are installed. If a status is Unknown, verify manually in HACS and Dashboard resources.\n\nNeed help finishing setup? Open the Configuration Walkthrough for the recommended dependency, dashboard, and first-run checks: {walkthrough_url}\n\nThanks to Home Assistant, HACS, and the community developers that make these cards possible.",
         "data": {
           "skip": "Skip frontend dependency checks and continue"
         }
       },
       "gates": {
-        "title": "Global Gates",
+        "title": "Operating schedule & limits",
         "description": "Configure the essential operating gates for Humidity Intelligence.\n\n{advanced_note}\n\nAdvanced tuning contains control-loop timing, startup UI mapping refresh, custom target bands, and generated-card output details visibility.",
         "data": {
-          "enable_time_gate": "Enable time gate",
+          "enable_time_gate": "Use an operating schedule",
           "start_time": "Start time",
           "end_time": "End time",
           "outside_action": "Outside window action",
@@ -31,7 +31,7 @@
           "temperature_comfort_mode": "Temperature comfort mode",
           "temperature_comfort_custom_low": "Custom temperature comfort low (°C)",
           "temperature_comfort_custom_high": "Custom temperature comfort high (°C)",
-          "enable_presence_gate": "Enable presence gate",
+          "enable_presence_gate": "Use presence conditions",
           "presence_entities": "Presence entities (any helper/entity)",
           "show_advanced_options": "Show advanced tuning"
         },
@@ -60,15 +60,15 @@
         }
       },
       "telemetry": {
-        "title": "Telemetry Inputs",
+        "title": "Sensors",
         "description": "Select humidity, temperature and air quality sensors. You can start with a small core set, finish setup, and return later from Options to add more sensors. Add all sensors now only if you already know the full layout.\n\nExisting sensors:\n{existing}\n\nYou can manage/edit/delete existing sensors before continuing.\n\nYou do not need to add condensation or mould sensors; HI will generate these automatically.",
         "data": {
           "action": "Next action"
         }
       },
       "telemetry_add": {
-        "title": "Add Telemetry Sensor",
-        "description": "Add a humidity, temperature or air-quality sensor.\n\nExisting sensors:\n{existing}\n\nHome Assistant setup assistance:\n{setup_assist}\n\nCancel returns to Telemetry Inputs without saving this sensor.",
+        "title": "Add sensor",
+        "description": "Add a humidity, temperature or air-quality sensor.\n\nExisting sensors:\n{existing}\n\nHome Assistant setup assistance:\n{setup_assist}\n\nKeep sensor changes keeps this edit in the current session. Cancel opens the close confirmation. Choose Keep editing there to return to this form with your entered values, or close to discard the unsaved session.",
         "data": {
           "action": "Action",
           "entity_id": "Sensor entity",
@@ -78,7 +78,7 @@
         }
       },
       "telemetry_manage": {
-        "title": "Manage Telemetry Sensors",
+        "title": "Manage sensors",
         "description": "Edit or delete an existing sensor.\n\nExisting sensors:\n{existing}",
         "data": {
           "selection": "Sensor",
@@ -86,8 +86,8 @@
         }
       },
       "telemetry_edit": {
-        "title": "Edit Telemetry Sensor",
-        "description": "Update the selected sensor entry.\n\nHome Assistant setup assistance:\n{setup_assist}\n\nCancel returns to Telemetry Inputs without saving changes to this sensor.",
+        "title": "Edit sensor",
+        "description": "Update the selected sensor entry.\n\nHome Assistant setup assistance:\n{setup_assist}\n\nKeep sensor changes keeps this edit in the current session. Cancel opens the close confirmation. Choose Keep editing there to return to this form with your entered values, or close to discard the unsaved session.",
         "data": {
           "action": "Action",
           "entity_id": "Sensor entity",
@@ -98,16 +98,16 @@
       },
       "cancel_confirm": {
         "title": "Close Setup?",
-        "description": "This setup has not been saved. Closing will lose entered information.\n\nHome Assistant controls the top-left close button directly, so Humidity Intelligence can show this warning only from its own Cancel actions.",
+        "description": "These changes have not been saved. Choose Keep editing to return to the previous form with your entered values. Closing discards the unsaved session.\n\nHome Assistant controls the top-left close button directly, so Humidity Intelligence can show this warning only from its own Cancel actions.",
         "data": {
           "action": "Action"
         }
       },
       "slope": {
-        "title": "Temperature Slope",
-        "description": "Choose the slope mode. HI can calculate slope automatically from configured temperature telemetry.\n\n{advanced_note}\n\nUse source overrides, provided slope sensors, or the optional temperature chip row only when you need custom UI/runtime tuning.",
+        "title": "Temperature change settings",
+        "description": "Temperature trend describes how quickly temperature is rising or falling. HI can calculate it from configured temperature sensors, use existing trend sensors, or leave it disabled.\n\n{advanced_note}\n\nAdvanced tuning contains source overrides and the optional Air Control temperature chip row.",
         "data": {
-          "slope_mode": "Slope mode",
+          "slope_mode": "Temperature trend source",
           "slope_sources": "Temperature sensors for HI slope",
           "slope_sensors": "Existing slope sensors",
           "show_temperature_chips": "Show temperature chip row in Air Control",
@@ -407,7 +407,7 @@
       },
       "ui_install": {
         "title": "UI Cards",
-        "description": "Select the Manual-card layouts to export. The tablet layout is selected by default for initial setup. Later, dump_cards without a layout exports all cached layouts; supply layout to export one layout only.\n\nV1 Mobile is deprecated in v2.0.9 but remains available through the v2.0.9 line. Use V2 Mobile for new dashboards; planned V1 removal is v2.1 and will require a separate approved migration.\n\nHI writes card fragments under /config/humidity_intelligence/ui/ and posts a notification with every exact path created during setup. It does not create, register, replace, or delete Home Assistant dashboards. Multi-entry installations add an entry-qualified token to the filename.\n\nUpdating from an older HI release: a file such as /config/humidity_intelligence_cards_v2_mobile.yaml is a retained legacy root file and is no longer refreshed. Do not copy that old root file after upgrading. Use only the exact /config/humidity_intelligence/ui/... path in the new notification. If File Editor was already open, refresh its file tree after export.\n\nConfigured alerts:\n{configured_alerts}\n\nWarning: The backend logic will work without frontend dependencies, but the UI cards may render incorrectly unless the required custom cards are installed (card-mod, button-card, mod-card, apexcharts-card).\n\nTo load a card: open the exact /config/humidity_intelligence/ui/... path from the notification in File Editor → copy the complete YAML → create or open a Home Assistant dashboard → Edit dashboard → Add card → Manual → paste YAML. The export is a card fragment; do not copy it to /config/dashboards/.\n\nNext step: Configuration Walkthrough: {walkthrough_url}",
+        "description": "Select the Manual-card layouts to export. The tablet layout is selected by default for initial setup. Later, dump_cards without a layout exports all cached layouts; supply layout to export one layout only.\n\nV1 Mobile remains available in this candidate but is deprecated for new dashboards. Use V2 Mobile for new dashboards. Removing V1 Mobile requires a separate approved migration.\n\nHI writes card fragments under /config/humidity_intelligence/ui/ and posts a notification with every exact path created during setup. It does not create, register, replace, or delete Home Assistant dashboards. Multi-entry installations add an entry-qualified token to the filename.\n\nUpdating from an older HI release: a file such as /config/humidity_intelligence_cards_v2_mobile.yaml is a retained legacy root file and is no longer refreshed. Do not copy that old root file after upgrading. Use only the exact /config/humidity_intelligence/ui/... path in the new notification. If File Editor was already open, refresh its file tree after export.\n\nConfigured alerts:\n{configured_alerts}\n\nWarning: The backend logic will work without frontend dependencies, but the UI cards may render incorrectly unless the required custom cards are installed (card-mod, button-card, mod-card, apexcharts-card).\n\nTo load a card: open the exact /config/humidity_intelligence/ui/... path from the notification in File Editor → copy the complete YAML → create or open a Home Assistant dashboard → Edit dashboard → Add card → Manual → paste YAML. The export is a card fragment; do not copy it to /config/dashboards/.\n\nNext step: Configuration Walkthrough: {walkthrough_url}",
         "data": {
           "ui_layouts": "UI layouts to export"
         }
@@ -429,34 +429,35 @@
   "options": {
     "step": {
       "init": {
-        "title": "Options",
+        "title": "Settings",
         "menu_options": {
-          "options_dependencies": "Frontend Dependencies",
+          "options_dependencies": "Dashboard add-ons",
           "options_sensors": "Sensors",
-          "options_gates": "Global Gates",
-          "options_thresholds": "Thresholds & Comfort",
+          "options_gates": "Operating schedule & limits",
+          "options_thresholds": "Comfort and thresholds",
           "options_telemetry": "Sensors",
           "options_zones": "Zones",
-          "options_humidifiers": "Humidifiers",
-          "options_aq": "Air Quality",
+          "options_humidifiers": "Humidifier control",
+          "options_aq": "Air quality control",
           "options_alerts": "Alerts",
-          "options_slope": "Temperature Slope",
-          "options_done": "Finish",
-          "options_output_observation": "Output observation"
-        }
+          "options_slope": "Temperature change settings",
+          "options_done": "Save changes",
+          "options_output_observation": "Output monitoring"
+        },
+        "description": "Changes stay in this settings session until you choose Save changes. Closing without saving discards them."
       },
       "options_dependencies": {
-        "title": "Frontend Dependency Options",
+        "title": "Dashboard add-ons",
         "description": "Optional frontend custom cards used by the Humidity Intelligence dashboards.\n\n{dependencies}\n\nCustom card lines include upstream repo links for quick install/verification in HACS and Dashboard resources.\n\nNeed help finishing setup? Open the Configuration Walkthrough for the recommended dependency, dashboard, and first-run checks: {walkthrough_url}",
         "data": {
           "skip": "Skip frontend dependency checks in setup"
         }
       },
       "options_gates": {
-        "title": "Global Gates Options",
+        "title": "Operating schedule & limits",
         "description": "Edit the essential operating gates. Presence can use person, device_tracker, alarm panel, or helper entities. Humidity Intelligence target profile mode controls seasonal vs custom humidity interpretation.\n\n{advanced_note}\n\nAdvanced tuning contains control-loop timing, startup UI mapping refresh, custom target bands, and generated-card output details visibility.",
         "data": {
-          "enable_time_gate": "Enable time gate",
+          "enable_time_gate": "Use an operating schedule",
           "start_time": "Start time",
           "end_time": "End time",
           "outside_action": "Outside window action",
@@ -467,7 +468,7 @@
           "target_profile": "Humidity Intelligence target profile mode",
           "custom_target_low": "Humidity custom target low (%)",
           "custom_target_high": "Humidity custom target high (%)",
-          "enable_presence_gate": "Enable presence gate",
+          "enable_presence_gate": "Use presence conditions",
           "presence_entities": "Presence/alarm entities",
           "show_advanced_options": "Show advanced tuning"
         },
@@ -486,7 +487,7 @@
         }
       },
       "options_thresholds": {
-        "title": "Thresholds & Comfort",
+        "title": "Comfort and thresholds",
         "description": "Review comfort mode first. Custom comfort levels and deterministic zone thresholds are advanced tuning controls.\n\n{advanced_note}\n\nConfigured zones:\n{configured_zones}",
         "data": {
           "temperature_comfort_mode": "Temperature comfort mode",
@@ -530,15 +531,15 @@
         }
       },
       "options_telemetry": {
-        "title": "Telemetry Options",
-        "description": "Add, edit, or delete telemetry sensors.\n\nConfigured telemetry:\n{telemetry_summary}",
+        "title": "Sensor settings",
+        "description": "Add, edit, or delete sensors.\n\nConfigured sensors:\n{telemetry_summary}",
         "data": {
           "action": "Sensor action"
         }
       },
       "options_telemetry_add": {
-        "title": "Add Telemetry Sensor",
-        "description": "Add a sensor and knit it into HI telemetry.\n\nConfigured telemetry:\n{telemetry_summary}\n\nHome Assistant setup assistance:\n{setup_assist}\n\nCancel returns to Telemetry Options without saving this sensor.",
+        "title": "Add sensor",
+        "description": "Add a sensor for HI to use.\n\nConfigured sensors:\n{telemetry_summary}\n\nHome Assistant setup assistance:\n{setup_assist}\n\nKeep sensor changes keeps this edit in the current session. Cancel opens the close confirmation. Choose Keep editing there to return to this form with your entered values, or close to discard the unsaved session.",
         "data": {
           "action": "Action",
           "entity_id": "Sensor entity",
@@ -548,16 +549,16 @@
         }
       },
       "options_telemetry_manage": {
-        "title": "Manage Telemetry Sensors",
-        "description": "Edit or delete an existing telemetry sensor.\n\nConfigured telemetry:\n{telemetry_summary}",
+        "title": "Manage sensors",
+        "description": "Edit or delete an existing sensor.\n\nConfigured sensors:\n{telemetry_summary}",
         "data": {
           "selection": "Sensor",
           "action": "Action"
         }
       },
       "options_telemetry_edit": {
-        "title": "Edit Telemetry Sensor",
-        "description": "Editing sensor {sensor_position} of {sensor_total}.\n\n{selected_sensor}\n\nHome Assistant setup assistance:\n{setup_assist}\n\nCancel returns to Telemetry Options without saving changes to this sensor.",
+        "title": "Edit sensor",
+        "description": "Editing sensor {sensor_position} of {sensor_total}.\n\n{selected_sensor}\n\nHome Assistant setup assistance:\n{setup_assist}\n\nKeep sensor changes keeps this edit in the current session. Cancel opens the close confirmation. Choose Keep editing there to return to this form with your entered values, or close to discard the unsaved session.",
         "data": {
           "action": "Action",
           "entity_id": "Sensor entity",
@@ -568,7 +569,7 @@
       },
       "options_cancel_confirm": {
         "title": "Close Options?",
-        "description": "These configuration changes have not been saved. Closing will lose entered information.\n\nHome Assistant controls the top-left close button directly, so Humidity Intelligence can show this warning only from its own Cancel actions.",
+        "description": "These changes have not been saved. Choose Keep editing to return to the previous form with your entered values. Closing discards the unsaved session.\n\nHome Assistant controls the top-left close button directly, so Humidity Intelligence can show this warning only from its own Cancel actions.",
         "data": {
           "action": "Action"
         }
@@ -759,10 +760,10 @@
         }
       },
       "options_slope": {
-        "title": "Temperature Slope Options",
-        "description": "Edit how HI handles temperature slope mode. Source overrides, provided slope sensors, and the optional Air Control temperature chip row are advanced tuning.\n\n{advanced_note}\n\nCurrent slope configuration:\n{configured_slope}",
+        "title": "Temperature change settings",
+        "description": "Temperature trend describes how quickly temperature is rising or falling. HI can calculate it from configured temperature sensors, use existing trend sensors, or leave it disabled.\n\n{advanced_note}\n\nAdvanced tuning contains source overrides and the optional Air Control temperature chip row.\n\nCurrent slope configuration:\n{configured_slope}",
         "data": {
-          "slope_mode": "Slope mode",
+          "slope_mode": "Temperature trend source",
           "slope_sources": "Temperature sensors used as slope sources",
           "slope_sensors": "Provided slope sensor entities",
           "show_temperature_chips": "Show temperature chip row in Air Control",
@@ -781,77 +782,77 @@
         }
       },
       "options_output_observation": {
-        "title": "Output observation",
-        "description": "Optional reporting only. These settings never change output commands. Return to the main options and choose Finish to save.",
+        "title": "Output monitoring",
+        "description": "Optional monitoring only. These settings never change output commands. Changes stay in this session: choose Keep changes and return, then choose Save changes on the main settings page to apply them. Discard removes monitoring edits made since you last kept changes and returned to the main settings; earlier kept changes remain in the session.",
         "menu_options": {
-          "options_output_settings": "Enable and presentation",
-          "options_output_add": "Add a diagnostic meaning",
-          "options_output_manage": "Review, edit or pause a meaning",
-          "options_output_import": "Import companion meanings",
-          "options_output_back": "Keep changes and return to options",
-          "options_output_cancel": "Discard these changes"
+          "options_output_settings": "Monitoring and dashboard view",
+          "options_output_add": "Add a monitoring rule",
+          "options_output_manage": "Manage monitoring rules",
+          "options_output_import": "Import companion rules",
+          "options_output_back": "Keep changes and return",
+          "options_output_cancel": "Discard this visit's monitoring edits"
         }
       },
       "options_output_settings": {
-        "title": "Output observation settings",
-        "description": "Observation is optional. Native presentation retains the existing Outputs panel. Adaptive presentation requires the packaged frontend resource and a fresh card export. Disabling observation never changes device control.",
+        "title": "Monitoring and dashboard view",
+        "description": "Monitoring is optional. Native presentation keeps the existing Outputs panel. Adaptive presentation needs the packaged dashboard resource and a fresh card export. Turning monitoring off never changes device control. These changes are not saved until you choose Save changes on the main settings page.",
         "data": {
-          "enabled": "Enable output observation",
-          "presentation": "Outputs presentation"
+          "enabled": "Enable output monitoring",
+          "presentation": "Outputs dashboard view"
         }
       },
       "options_output_binding": {
-        "title": "Diagnostic meaning",
-        "description": "Select an output configured in HI and an explicit source. Device association does not prove a component-specific fault. Editing a replacement requires reviewing and confirming its current identity on the next page.",
+        "title": "Monitoring rule",
+        "description": "Choose an output already configured in HI, the reading to monitor, and what that reading means. A reading from a shared device does not identify which output has a fault. Review the selected entities and exact rule on the next page, including the current identity when replacing an entity.",
         "data": {
           "output": "Configured output",
-          "source": "Diagnostic source",
-          "semantic": "Reported condition",
-          "rule": "Interpretation rule"
+          "source": "Monitoring source",
+          "semantic": "Meaning",
+          "rule": "When to show a notice"
         }
       },
       "options_output_rule": {
-        "title": "Exact interpretation",
-        "description": "Enter exact case-sensitive values. Active and clear values must be distinct; any other value remains unknown. Numeric comparisons are strict: equality does not match. Numeric units are not bound or converted by this rule.",
+        "title": "When should HI show a notice?",
+        "description": "For a value rule, enter exact case-sensitive values for attention and clear. The two lists must not overlap; any other value remains unknown. For a number rule, choose the threshold using your device guidance. Comparisons are strict: a value equal to the threshold does not trigger the notice. This rule does not bind or convert units.",
         "data": {
-          "active_values": "Values reporting attention",
-          "clear_values": "Values explicitly reporting clear",
+          "active_values": "Show the notice for these values",
+          "clear_values": "Clear the notice for these values",
           "threshold": "Numeric threshold"
         }
       },
       "options_output_manage": {
-        "title": "Review saved and discovered sources",
-        "description": "Unresolved bindings remain saved until explicitly changed. Context only pauses interpretation while preserving any saved meaning. Resume reapplies that meaning or standard automatic discovery. Revoking a custom meaning does not suppress a standard automatic meaning.",
+        "title": "Manage monitoring rules",
+        "description": "Rules with missing or changed sources stay saved until you change them. Pausing keeps the reading as context and preserves its saved rule; monitoring coverage stays incomplete. Resume uses the saved rule, or standard automatic discovery if none is saved. Removing a custom rule does not suppress a standard automatic meaning.",
         "data": {
-          "binding": "Output and diagnostic source",
+          "binding": "Output and monitoring source",
           "action": "Action"
         }
       },
       "options_output_import": {
-        "title": "Import experimental companion meanings",
+        "title": "Import experimental companion rules",
         "description": "Choose a companion explicitly bound to this HI entry. Only matching current identities are eligible. The preview never modifies the companion. Historical pending observation custody is not imported: the integrated observer starts from the current Home Assistant snapshot. Disable the companion separately after validating a migration.",
         "data": {
           "companion": "Experimental companion"
         }
       },
       "options_output_confirm": {
-        "title": "Confirm observation change",
-        "description": "{preview}\n\nConfirm only after reviewing the selected entities and exact interpretation. This stages options only; choose Finish in the main options to save. Uncheck to discard this change.",
+        "title": "Review monitoring change",
+        "description": "{preview}\n\nReview the selected entities and exact rule. Confirming keeps this change in the current session; it does not save it. Choose Keep changes and return, then choose Save changes on the main settings page to apply them. Leave the box unchecked to discard only this proposed change.",
         "data": {
-          "confirm": "Confirm this exact change"
+          "confirm": "Confirm and keep this change for now"
         }
       },
       "options_output_empty": {
         "title": "No choices available",
-        "description": "No eligible configured outputs, associated diagnostics or companion entries are available for this action. Return to output observation."
+        "description": "No eligible configured outputs, monitoring sources or companion entries are available for this action. Return to output monitoring."
       },
       "options_output_binding_error": {
-        "title": "Binding cannot be confirmed",
+        "title": "Monitoring rule cannot be confirmed",
         "description": "The selected entity is missing, disabled or has no stable registry identity. Return to select its current identity explicitly."
       },
       "options_output_observation_error": {
-        "title": "Saved observation settings need review",
-        "description": "Existing observation settings cannot be interpreted. They have been preserved. Return to the main options without replacing them."
+        "title": "Saved monitoring settings need review",
+        "description": "Existing monitoring settings cannot be interpreted. They have been preserved. Return to the main settings without replacing them."
       }
     },
     "error": {
@@ -888,30 +889,30 @@
     },
     "output_semantic": {
       "options": {
-        "fault": "Fault reported",
-        "problem": "Problem reported",
-        "obstruction": "Obstruction reported",
-        "replace_filter": "Filter replacement reported",
-        "refill": "Refill reported",
-        "clean": "Cleaning reported",
-        "generic_attention": "Attention reported",
-        "battery_low": "Low battery reported",
-        "disconnected": "Connection lost reported"
+        "fault": "Fault",
+        "problem": "Problem",
+        "obstruction": "Obstruction",
+        "replace_filter": "Filter replacement",
+        "refill": "Refilling",
+        "clean": "Cleaning",
+        "generic_attention": "Other attention",
+        "battery_low": "Low battery",
+        "disconnected": "Connection loss"
       }
     },
     "output_rule": {
       "options": {
-        "binary_active": "Binary: on means attention, off means clear",
-        "enum_active_values": "Explicit active and clear values",
+        "binary_active": "On/off: on means attention, off means clear",
+        "enum_active_values": "Exact attention and clear values",
         "numeric_below": "Value strictly below threshold",
         "numeric_above": "Value strictly above threshold"
       }
     },
     "output_action": {
       "options": {
-        "edit": "Edit or explicitly bind replacement",
-        "revoke": "Revoke custom meaning",
-        "retire": "Keep as context only",
+        "edit": "Edit rule or confirm a replacement",
+        "revoke": "Remove custom rule",
+        "retire": "Pause monitoring; keep as context",
         "resume": "Resume monitoring"
       }
     }

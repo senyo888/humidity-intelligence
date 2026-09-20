@@ -57,7 +57,7 @@ It gives you:
 - native Home Assistant diagnostics for support and triage
 - services for dashboard export, self-check, diagnostics, pause/resume, and release validation
 
-Current development manifest version: **v2.1.0-beta.5**, an unpublished candidate.
+Current development manifest version: **v2.1.0-beta.6**, an unpublished candidate.
 It adds optional output observation and adaptive Outputs cards, retaining beta.3’s
 badge summaries, histories, drift progress and observational Stability.
 The current published Stable is **v2.0.12**, released on 9 September 2026 and available
@@ -454,7 +454,7 @@ must be reviewable from tracked repository files.
 
 ## Current Release Highlights
 
-- unpublished candidate `2.1.0-beta.5` adds optional output observation to V2 summaries, histories,
+- unpublished candidate `2.1.0-beta.6` adds optional output observation to V2 summaries, histories,
   clearer navigation and source-room colours alongside drift and Stability details;
   deterministic control remains authoritative
 - published Stable `2.0.12` improves Manual handover, Home Assistant-local time gates,
@@ -502,9 +502,9 @@ must be reviewable from tracked repository files.
   context. `create_dashboard` is retained as a compatibility-only guidance action and
   performs no file or dashboard writes; purge previews and removes only owned files,
   never Home Assistant dashboards
-- the V1 Mobile skin remains available through the v2.0.9 line but is deprecated for
+- the V1 Mobile skin remains available in this candidate but is deprecated for
   new dashboards; its dynamic room/risk/profile HTML is escaped, and V2 Mobile is the
-  recommended replacement ahead of a separately reviewed v2.1 removal
+  recommended replacement. Removal requires a separately approved migration
 - native diagnostics and support-oriented exports now favor sanitized structure,
   counts, statuses, and summaries instead of raw entity maps, state dumps, room
   names, or Lovelace resource URLs; validation reports may still include configured
@@ -801,15 +801,14 @@ It does not remove the V2-generated `v1_mobile` compatibility skin described bel
 
 ### v1 UI Compatibility And Deprecation
 
-The classic four-badge + Comfort Band layout remains compatible on the V2 engine
-through the v2.0.9 line, but it is deprecated for new dashboards. Use V2 Mobile for
-new installs. V1 Mobile removal is proposed for v2.1 and requires a separate approved
-migration; it is not removed by v2.0.9.
+The classic four-badge + Comfort Band layout remains available in this candidate,
+but it is deprecated for new dashboards. Use V2 Mobile for new installs. V1 Mobile
+removal requires a separately approved migration.
 
 - V1 UI = presentation skin
 - V2 = runtime engine
 
-Classic visual layouts remain available during v2.0.9. Re-export and re-copy the V1
+Classic visual layouts remain available in this build. Re-export and re-copy the V1
 card after updating so existing pasted dashboards receive the dynamic-text HTML
 escaping fix.
 
@@ -968,7 +967,7 @@ Notes:
   workflows. Dashboard creation and editing remain in Home Assistant's dashboard UI.
   System and Manual buttons keep the
   v2.0.7 helper-toggle behavior.
-- **v2.1.0-beta.5 candidate:** the accepted badge shows backend-owned
+- **v2.1.0-beta.6 candidate:** the accepted badge shows backend-owned
   score, evidence and Recent trend details. It remains observational. See the
   [accepted contract](docs/stability-score-accepted-baseline.md) for thresholds,
   incomplete AQ, restart history reset, client support and card refresh, and the
@@ -1219,17 +1218,18 @@ CO emergency pressure. Details are in
 
 ## Release Notes
 
-### v2.1.0-beta.5 (Unpublished candidate)
+### v2.1.0-beta.6 (Unpublished candidate)
 
-- compact Outputs summaries highlight conditions and monitoring gaps, with full
-  evidence and existing native controls available in one on-demand window
-- shared Outputs identity uses `mdi:hvac`; individual device icons remain specific
-- retains accepted Stability, **Baseline** drift progress, badge summaries and histories
-- control behavior, existing entity semantics and configured mappings are unchanged
+- clearer Outputs maintenance suggestions, neutral configured-rule names and source
+  details; faults, unknown readings and incomplete monitoring remain explicit
+- native settings use clearer labels and staged-save guidance; Keep editing returns
+  to the sensor form being edited, while Save changes remains the final options save
+- retains compact Outputs, accepted Stability, **Baseline** drift progress, badge
+  summaries and histories; control logic, entity semantics and mappings are unchanged
 - install the full package, restart Home Assistant and refresh frontend resources
   and saved cards; no migration is required. Restart resets Stability collection
-- [Complete beta.5 changes](CHANGELOG.md#unreleased--v210-beta5). Published Stable
-  remains v2.0.12; previous beta observation does not establish beta.5 validation
+- [Complete beta.6 changes](CHANGELOG.md#unreleased--v210-beta6). Published Stable
+  remains v2.0.12; earlier beta evidence does not establish beta.6 validation
 
 ### v2.0.12 (Current Published Stable)
 
@@ -1289,6 +1289,19 @@ displaced older summaries into this container as new releases are added. CHANGEL
 remains the complete detailed history. -->
 <details>
 <summary>Previous Releases</summary>
+
+### v2.1.0-beta.5 (Earlier unpublished candidate)
+
+- compact Outputs summaries highlight conditions and monitoring gaps, with full
+  evidence and existing native controls available in one on-demand window
+- shared Outputs identity uses `mdi:hvac`; individual device icons remain specific
+- retains accepted Stability, **Baseline** drift progress, badge summaries and histories
+- control behavior, existing entity semantics and configured mappings are unchanged
+- install the full package, restart Home Assistant and refresh frontend resources
+  and saved cards; no migration is required. Restart resets Stability collection
+- [Complete beta.5 changes](CHANGELOG.md#v210-beta5--earlier-unpublished-candidate). Published Stable
+  remains v2.0.12; previous beta observation does not establish beta.5 validation
+
 
 ### v2.1.0-beta.4 (Earlier unpublished candidate)
 

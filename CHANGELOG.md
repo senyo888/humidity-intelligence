@@ -6,7 +6,30 @@ All notable changes to Humidity Intelligence will be documented in this file.
 
 This project follows a practical changelog format for Home Assistant and HACS users. Add new entries under a fresh `Unreleased` section before publishing a future release.
 
-## Unreleased — v2.1.0-beta.5
+## Unreleased — v2.1.0-beta.6
+
+Unpublished development candidate based on beta.5 (`f1d6f48`). Published Stable
+remains v2.0.12; no tag or HACS publication is implied.
+
+- Separates neutral configured meanings such as Filter replacement from active
+  Filter replacement suggested alerts. Faults remain explicitly reported.
+- Clarifies monitoring coverage, source readings and detail-window labels while
+  preserving exact rules, counts, severity, unavailable states and isolation truth.
+- Uses task-oriented native configuration labels and explains which changes are
+  staged, retained by Back, discarded locally, or persisted by Save changes.
+- Returns Keep editing to the originating sensor form after the flow's close
+  confirmation, retaining its draft without saving the options transaction.
+- Preserves configuration keys, defaults, strict comparisons, lane ordering, existing
+  entity semantics, native output controls and backend ownership of UI meaning.
+
+### Upgrade from beta.5
+
+Install the complete package and restart Home Assistant, then refresh the frontend
+resource and regenerate saved mobile/tablet cards. Restart resets in-memory
+Stability collection. No entity or configuration migration is required. Rollback
+restores the complete beta.5 package and matching cards/resources.
+
+## v2.1.0-beta.5 — Earlier unpublished candidate
 
 Unpublished development candidate based on beta.4 (`a3f135e`). Published Stable
 remains v2.0.12; no tag or HACS publication is implied.

@@ -49,13 +49,15 @@ replace a source, mark it context-only, or explicitly resume interpretation.
 Context-only retirement is bound to the particular output/source identities; it
 does not globally ignore a shared diagnostic source. Missing mappings remain
 reviewable. To manage a formerly automatic source while observation is disabled,
-enable observation and Finish first, then reopen Manage; this loads its saved
+enable observation and Save changes first, then reopen Manage; this loads its saved
 monitoring history through the observer. Registry replacements require explicit revalidation instead of silently
 inheriting the old entity's meaning.
 
-These forms stage changes. Keep changes returns to the main options menu; the
-existing Finish action saves the options transaction. Cancel observation changes
-returns without staging that draft. Closing the unsaved flow writes nothing.
+These forms stage changes. Confirming a rule adds it to the monitoring draft;
+**Keep changes and return** retains that draft in the main options transaction.
+Only **Save changes** (the existing final Finish step) persists the options.
+Discarding monitoring changes removes edits made since entering that subflow while
+preserving earlier staged settings. Closing the unsaved flow writes nothing.
 Saving uses HI's existing entry-reload behavior. It does not restart Home Assistant;
 existing in-memory runtime history has the same reload lifecycle as other HI options.
 
@@ -179,3 +181,14 @@ Assistant dialog interoperability. Synthetic browser fixtures exercise layout an
 interactions separately. These checks do not
 establish live device compatibility, physical freshness, or a HA Lab/Stable deployment.
 A future deployment requires its own authority, target verification, and observation.
+
+## Display wording and compatibility
+
+Configured rule names stay neutral: **Filter replacement** describes a saved rule,
+whereas **Filter replacement suggested** appears only when that rule matches.
+Faults remain **Fault reported**. **Why this is shown**, **Source reading** and
+**Monitoring sources** expose backend evidence, including the exact comparison or
+active/clear values. A clear rule does not establish overall device health.
+Maintenance display text says **Maintenance suggested**; its existing machine state
+`required` is retained for compatibility. No rule, threshold, severity or control
+behavior changes with these labels.

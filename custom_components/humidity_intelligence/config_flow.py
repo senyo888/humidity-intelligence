@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from copy import deepcopy
 from typing import Any, Dict, List, Optional, Tuple
 
 import voluptuous as vol
@@ -493,7 +494,7 @@ class HumidityIntelligenceConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             vol.Required("action", default="add"): selector.SelectSelector(
                 selector.SelectSelectorConfig(
                     options=options,
-                    mode=selector.SelectSelectorMode.DROPDOWN,
+                    mode=selector.SelectSelectorMode.LIST,
                 )
             ),
         })
@@ -513,7 +514,7 @@ class HumidityIntelligenceConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         if user_input is not None:
             action = user_input.get("action", FORM_ACTION_SAVE)
             if action == FORM_ACTION_CANCEL:
-                return await self._async_show_cancel_confirm("telemetry")
+                return await self._async_show_cancel_confirm("telemetry_add", user_input)
 
             entity_id = _sanitize_optional_entity_id(user_input.get("entity_id"))
             if preview_only:
@@ -544,8 +545,8 @@ class HumidityIntelligenceConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         schema = vol.Schema({
             vol.Optional("action", default=FORM_ACTION_SAVE): selector.SelectSelector(
                 selector.SelectSelectorConfig(
-                    options=_save_preview_cancel_options("Save sensor"),
-                    mode=selector.SelectSelectorMode.DROPDOWN,
+                    options=_save_preview_cancel_options("Keep sensor changes"),
+                    mode=selector.SelectSelectorMode.LIST,
                 )
             ),
             _optional_entity_selector_key("entity_id", preview_entity_id): selector.EntitySelector(
@@ -591,8 +592,12 @@ class HumidityIntelligenceConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     async def async_step_telemetry_back(self, user_input: Optional[Dict[str, Any]] = None):
         return await self.async_step_gates()
 
-    async def _async_show_cancel_confirm(self, return_step: str = "telemetry"):
+    async def _async_show_cancel_confirm(
+        self, return_step: str = "telemetry", user_input: Optional[Dict[str, Any]] = None
+    ):
         self._cancel_return_step = return_step
+        self._cancel_return_input = deepcopy(user_input or {})
+        self._cancel_return_input.pop("action", None)
         return await self.async_step_cancel_confirm()
 
     async def async_step_cancel_confirm(self, user_input: Optional[Dict[str, Any]] = None):
@@ -601,13 +606,27 @@ class HumidityIntelligenceConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             action = user_input.get("action", FORM_ACTION_RETURN)
             if action == FORM_ACTION_CLOSE:
                 return self.async_abort(reason="user_cancelled")
-            return await self.async_step_telemetry()
+            # Only redisplay known forms; never dispatch to a saving step.
+            destinations = {
+                "telemetry": self.async_step_telemetry,
+                "telemetry_add": self.async_step_telemetry_add,
+                "telemetry_manage": self.async_step_telemetry_manage,
+                "telemetry_edit": self.async_step_telemetry_edit,
+            }
+            handler = destinations.get(self._cancel_return_step, self.async_step_telemetry)
+            result = await handler()
+            draft = getattr(self, "_cancel_return_input", {})
+            if draft and result.get("step_id") == self._cancel_return_step:
+                result["data_schema"] = self.add_suggested_values_to_schema(
+                    result["data_schema"], draft
+                )
+            return result
 
         schema = vol.Schema({
             vol.Required("action", default=FORM_ACTION_RETURN): selector.SelectSelector(
                 selector.SelectSelectorConfig(
-                    options=_cancel_confirm_options("Cancel close / return to setup"),
-                    mode=selector.SelectSelectorMode.DROPDOWN,
+                    options=_cancel_confirm_options("Keep editing"),
+                    mode=selector.SelectSelectorMode.LIST,
                 )
             ),
         })
@@ -623,7 +642,7 @@ class HumidityIntelligenceConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             selection = user_input.get("selection")
             action = user_input.get("action")
             if action == FORM_ACTION_CANCEL:
-                return await self._async_show_cancel_confirm("telemetry")
+                return await self._async_show_cancel_confirm("telemetry_manage", user_input)
             if selection is None:
                 errors["selection"] = "required"
             else:
@@ -652,7 +671,7 @@ class HumidityIntelligenceConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                         SelectOptionDict(value="delete", label="Delete"),
                         SelectOptionDict(value=FORM_ACTION_CANCEL, label="Cancel"),
                     ],
-                    mode=selector.SelectSelectorMode.DROPDOWN,
+                    mode=selector.SelectSelectorMode.LIST,
                 )
             ),
         })
@@ -676,7 +695,7 @@ class HumidityIntelligenceConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         if user_input is not None:
             action = user_input.get("action", FORM_ACTION_SAVE)
             if action == FORM_ACTION_CANCEL:
-                return await self._async_show_cancel_confirm("telemetry")
+                return await self._async_show_cancel_confirm("telemetry_edit", user_input)
 
             entity_id = _sanitize_optional_entity_id(user_input.get("entity_id"))
             if not entity_id:
@@ -707,8 +726,8 @@ class HumidityIntelligenceConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         schema = vol.Schema({
             vol.Optional("action", default=FORM_ACTION_SAVE): selector.SelectSelector(
                 selector.SelectSelectorConfig(
-                    options=_save_cancel_options("Save sensor"),
-                    mode=selector.SelectSelectorMode.DROPDOWN,
+                    options=_save_cancel_options("Keep sensor changes"),
+                    mode=selector.SelectSelectorMode.LIST,
                 )
             ),
             vol.Optional("entity_id", default=current.get("entity_id")): selector.EntitySelector(
@@ -1500,8 +1519,12 @@ class HumidityIntelligenceOptionsFlow(OutputObservationOptionsMixin, config_entr
         config.update(dict(self._options))
         return config
 
-    async def _async_show_options_cancel_confirm(self, return_step: str = "options_telemetry"):
+    async def _async_show_options_cancel_confirm(
+        self, return_step: str = "options_telemetry", user_input: Optional[Dict[str, Any]] = None
+    ):
         self._cancel_return_step = return_step
+        self._cancel_return_input = deepcopy(user_input or {})
+        self._cancel_return_input.pop("action", None)
         return await self.async_step_options_cancel_confirm()
 
     async def async_step_options_cancel_confirm(self, user_input: Optional[Dict[str, Any]] = None):
@@ -1510,13 +1533,27 @@ class HumidityIntelligenceOptionsFlow(OutputObservationOptionsMixin, config_entr
             action = user_input.get("action", FORM_ACTION_RETURN)
             if action == FORM_ACTION_CLOSE:
                 return self.async_abort(reason="user_cancelled")
-            return await self.async_step_options_telemetry()
+            # Only redisplay known forms; never dispatch to a saving step.
+            destinations = {
+                "options_telemetry": self.async_step_options_telemetry,
+                "options_telemetry_add": self.async_step_options_telemetry_add,
+                "options_telemetry_manage": self.async_step_options_telemetry_manage,
+                "options_telemetry_edit": self.async_step_options_telemetry_edit,
+            }
+            handler = destinations.get(self._cancel_return_step, self.async_step_options_telemetry)
+            result = await handler()
+            draft = getattr(self, "_cancel_return_input", {})
+            if draft and result.get("step_id") == self._cancel_return_step:
+                result["data_schema"] = self.add_suggested_values_to_schema(
+                    result["data_schema"], draft
+                )
+            return result
 
         schema = vol.Schema({
             vol.Required("action", default=FORM_ACTION_RETURN): selector.SelectSelector(
                 selector.SelectSelectorConfig(
-                    options=_cancel_confirm_options("Cancel close / return to options"),
-                    mode=selector.SelectSelectorMode.DROPDOWN,
+                    options=_cancel_confirm_options("Keep editing"),
+                    mode=selector.SelectSelectorMode.LIST,
                 )
             ),
         })
@@ -2034,7 +2071,7 @@ class HumidityIntelligenceOptionsFlow(OutputObservationOptionsMixin, config_entr
             vol.Required("action", default="add"): selector.SelectSelector(
                 selector.SelectSelectorConfig(
                     options=options,
-                    mode=selector.SelectSelectorMode.DROPDOWN,
+                    mode=selector.SelectSelectorMode.LIST,
                 )
             )
         })
@@ -2054,7 +2091,7 @@ class HumidityIntelligenceOptionsFlow(OutputObservationOptionsMixin, config_entr
         if user_input is not None:
             action = user_input.get("action", FORM_ACTION_SAVE)
             if action == FORM_ACTION_CANCEL:
-                return await self._async_show_options_cancel_confirm("options_telemetry")
+                return await self._async_show_options_cancel_confirm("options_telemetry_add", user_input)
 
             entity_id = _sanitize_optional_entity_id(user_input.get("entity_id"))
             if preview_only:
@@ -2091,8 +2128,8 @@ class HumidityIntelligenceOptionsFlow(OutputObservationOptionsMixin, config_entr
         schema = vol.Schema({
             vol.Optional("action", default=FORM_ACTION_SAVE): selector.SelectSelector(
                 selector.SelectSelectorConfig(
-                    options=_save_preview_cancel_options("Save sensor"),
-                    mode=selector.SelectSelectorMode.DROPDOWN,
+                    options=_save_preview_cancel_options("Keep sensor changes"),
+                    mode=selector.SelectSelectorMode.LIST,
                 )
             ),
             _optional_entity_selector_key("entity_id", preview_entity_id): selector.EntitySelector(
@@ -2140,7 +2177,7 @@ class HumidityIntelligenceOptionsFlow(OutputObservationOptionsMixin, config_entr
             selection = user_input.get("selection")
             action = user_input.get("action")
             if action == FORM_ACTION_CANCEL:
-                return await self._async_show_options_cancel_confirm("options_telemetry")
+                return await self._async_show_options_cancel_confirm("options_telemetry_manage", user_input)
             try:
                 idx = int(selection)
             except (TypeError, ValueError):
@@ -2176,7 +2213,7 @@ class HumidityIntelligenceOptionsFlow(OutputObservationOptionsMixin, config_entr
                         SelectOptionDict(value="delete", label="Delete"),
                         SelectOptionDict(value=FORM_ACTION_CANCEL, label="Cancel"),
                     ],
-                    mode=selector.SelectSelectorMode.DROPDOWN,
+                    mode=selector.SelectSelectorMode.LIST,
                 )
             ),
         })
@@ -2200,7 +2237,7 @@ class HumidityIntelligenceOptionsFlow(OutputObservationOptionsMixin, config_entr
         if user_input is not None:
             action = user_input.get("action", FORM_ACTION_SAVE)
             if action == FORM_ACTION_CANCEL:
-                return await self._async_show_options_cancel_confirm("options_telemetry")
+                return await self._async_show_options_cancel_confirm("options_telemetry_edit", user_input)
 
             selected_entity = _sanitize_optional_entity_id(user_input.get("entity_id"))
             if selected_entity and any(i != idx and item.get("entity_id") == selected_entity for i, item in enumerate(telemetry)):
@@ -2235,8 +2272,8 @@ class HumidityIntelligenceOptionsFlow(OutputObservationOptionsMixin, config_entr
         schema = vol.Schema({
             vol.Optional("action", default=FORM_ACTION_SAVE): selector.SelectSelector(
                 selector.SelectSelectorConfig(
-                    options=_save_cancel_options("Save sensor"),
-                    mode=selector.SelectSelectorMode.DROPDOWN,
+                    options=_save_cancel_options("Keep sensor changes"),
+                    mode=selector.SelectSelectorMode.LIST,
                 )
             ),
             vol.Optional("entity_id", default=entity_default): selector.EntitySelector(
@@ -2303,7 +2340,7 @@ class HumidityIntelligenceOptionsFlow(OutputObservationOptionsMixin, config_entr
             vol.Required("action", default="level_labels"): selector.SelectSelector(
                 selector.SelectSelectorConfig(
                     options=options,
-                    mode=selector.SelectSelectorMode.DROPDOWN,
+                    mode=selector.SelectSelectorMode.LIST,
                 )
             )
         })
@@ -2504,7 +2541,7 @@ class HumidityIntelligenceOptionsFlow(OutputObservationOptionsMixin, config_entr
             vol.Required("action", default=levels[0]): selector.SelectSelector(
                 selector.SelectSelectorConfig(
                     options=options,
-                    mode=selector.SelectSelectorMode.DROPDOWN,
+                    mode=selector.SelectSelectorMode.LIST,
                 )
             )
         })
@@ -2611,7 +2648,7 @@ class HumidityIntelligenceOptionsFlow(OutputObservationOptionsMixin, config_entr
             vol.Required("action", default=levels[0]): selector.SelectSelector(
                 selector.SelectSelectorConfig(
                     options=options,
-                    mode=selector.SelectSelectorMode.DROPDOWN,
+                    mode=selector.SelectSelectorMode.LIST,
                 )
             )
         })
@@ -2777,7 +2814,7 @@ class HumidityIntelligenceOptionsFlow(OutputObservationOptionsMixin, config_entr
             vol.Required("action", default=default_action): selector.SelectSelector(
                 selector.SelectSelectorConfig(
                     options=options,
-                    mode=selector.SelectSelectorMode.DROPDOWN,
+                    mode=selector.SelectSelectorMode.LIST,
                 )
             )
         })

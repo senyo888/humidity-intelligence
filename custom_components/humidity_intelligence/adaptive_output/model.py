@@ -17,15 +17,24 @@ MAX_MAPPINGS = 256
 MAX_TEXT = 120
 ENTITY = re.compile(r'^[a-z_]+\.[a-z0-9_]{1,96}$')
 SEMANTICS = {
-    'fault': ('Fault reported', 'Inspect the mapped fault source and device instructions.', 4, 'alert-circle'),
-    'problem': ('Problem reported', 'Inspect the mapped problem source and device instructions.', 4, 'alert-circle'),
-    'obstruction': ('Obstruction reported', 'Inspect the device safely using its obstruction instructions.', 4, 'alert-circle'),
-    'replace_filter': ('Filter replacement reported', 'Check the filter and follow the device replacement instructions.', 5, 'filter'),
-    'refill': ('Refill reported', 'Check the reservoir and follow the device refill instructions.', 5, 'water'),
-    'clean': ('Cleaning reported', 'Follow the device cleaning instructions.', 5, 'brush'),
-    'generic_attention': ('Attention reported', 'Inspect the explicitly mapped source and device instructions.', 5, 'information'),
+    'fault': ('Fault reported', 'Check the fault details and the device instructions.', 4, 'alert-circle'),
+    'problem': ('Problem reported', 'Check the problem details and the device instructions.', 4, 'alert-circle'),
+    'obstruction': ('Obstruction reported', 'Follow the device safety instructions before checking for an obstruction.', 4, 'alert-circle'),
+    'replace_filter': ('Filter replacement suggested', 'Check the filter and follow the device replacement guidance.', 5, 'filter'),
+    'refill': ('Refill suggested', 'Check the water level and follow the device refill instructions.', 5, 'water'),
+    'clean': ('Cleaning suggested', 'Follow the device cleaning instructions.', 5, 'brush'),
+    'generic_attention': ('Attention needed', 'Check the source details and the device instructions.', 5, 'information'),
     'battery_low': ('Low battery reported', 'Check the device battery and its replacement instructions.', 5, 'battery'),
-    'disconnected': ('Connection lost reported', 'Check the device connection and its integration.', 6, 'wifi-off'),
+    'disconnected': ('Connection loss reported', 'Check the device connection and its integration.', 6, 'wifi-off'),
+}
+
+
+# Configured rule names must remain neutral when their condition is clear.
+MEANING_LABELS = {
+    'fault': 'Fault', 'problem': 'Problem', 'obstruction': 'Obstruction',
+    'replace_filter': 'Filter replacement', 'refill': 'Refilling', 'clean': 'Cleaning',
+    'generic_attention': 'Other attention', 'battery_low': 'Low battery',
+    'disconnected': 'Connection loss',
 }
 
 
@@ -196,14 +205,14 @@ def normalize(configured, states, mappings):
             continue
         seen_mappings.add(key)
         if record is None:
-            add(None, 'orphaned_mapping', 'Orphaned mapping', 'Mapping refers to an output absent from this configured inventory.', 'Review or remove the saved mapping; it has not been reassigned.', 6, source)
+            add(None, 'orphaned_mapping', 'Saved monitoring link needs review', 'Mapping refers to an output absent from this configured inventory.', 'Review or remove the saved mapping; it has not been reassigned.', 6, source)
             continue
         record['mapping_count'] += 1
         value = _state(states, source)
         valid = isinstance(semantic, str) and semantic in SEMANTICS and source.split('.')[0] in ('sensor', 'binary_sensor')
         result = _rule(mapping, value) if valid and value not in (None, '', 'unknown', 'unavailable') else None
         if result is None:
-            add(record, 'monitoring_unknown', 'Monitoring unknown', f'Source state: {_text(value, "missing")}. Explicit monitoring rule cannot be evaluated.', 'Inspect the saved monitoring source and explicit rule.', 6, source)
+            add(record, 'monitoring_unknown', 'Monitoring result unknown', f'Source state: {_text(value, "missing")}. Explicit monitoring rule cannot be evaluated.', 'Check the source reading and its monitoring rule.', 6, source)
         else:
             record['reporting_count'] += 1
             if result:
@@ -226,7 +235,7 @@ def normalize(configured, states, mappings):
         monitoring = 'unmonitored' if not mapped else 'reporting' if reporting == mapped else 'incomplete'
         record['monitoring'] = _facet(monitoring, 'Not monitored' if not mapped else f'{reporting}/{mapped} sources reporting')
         record['fault'] = _facet('reported' if any(a['code'] == 'fault' for a in items) else 'not_reported', 'Fault reported' if any(a['code'] == 'fault' for a in items) else 'No mapped fault reported')
-        record['maintenance'] = _facet('required' if any(a['severity'] == 5 for a in items) else 'not_reported', 'Maintenance required' if any(a['severity'] == 5 for a in items) else 'No mapped maintenance reported')
+        record['maintenance'] = _facet('required' if any(a['severity'] == 5 for a in items) else 'not_reported', 'Maintenance suggested' if any(a['severity'] == 5 for a in items) else 'No mapped maintenance reported')
         record['status'] = _facet(items[0]['code'], items[0]['title'], items[0]['tone'], items[0]['icon']) if items else record['isolation'] if record['isolated'] else record['operation']
         record['attention'] = items
     count = len(records)
@@ -235,10 +244,10 @@ def normalize(configured, states, mappings):
     on = sum(r['operation']['state'] == 'on' for r in records)
     counts = dict(configured=count, supported=sum(r['supported'] for r in records), available=sum(r['availability']['state'] == 'available' for r in records), on=on, mapped=mapped, reporting=reporting, affected=len(affected), conditions=len(attention), isolated=sum(r['isolated'] for r in records))
     coverage_state = 'not_configured' if not count else 'unmonitored' if not mapped else 'complete' if reporting == count else 'incomplete'
-    coverage = dict(state=coverage_state, label=f'Monitoring {mapped}/{count} mapped', detail=f'{reporting}/{count} outputs have all mapped sources reporting. Only explicitly mapped conditions are covered.')
+    coverage = dict(state=coverage_state, label=f'Monitoring configured: {mapped}/{count} outputs', detail=f'All linked readings can be interpreted for {reporting} of {count} outputs. Other conditions may not be monitored.')
     state = 'not_configured' if not count and not attention else 'attention' if any(a['severity'] <= 5 for a in attention) else 'degraded' if attention else 'unmonitored' if mapped < count else 'clear'
     headline = f'{on}/{count} on' if count else 'No outputs configured'
-    summary = 'Attention required' if attention else 'No mapped issues reported' if mapped else 'Monitoring not configured' if count else 'No outputs configured'
+    summary = 'Attention required' if attention else 'No monitored issues reported' if mapped else 'Monitoring not configured' if count else 'No outputs configured'
     chips = [dict(label=headline, tone='active' if on else 'neutral', icon='hvac', kind='fleet')]
     if affected:
         first = next(a for a in attention if a['entity_id'] == affected[0])

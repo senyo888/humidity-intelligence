@@ -139,7 +139,7 @@ def _install_homeassistant_stubs() -> None:
     selector.SelectOptionDict = SelectOptionDict
     selector.SelectSelector = _Selector
     selector.SelectSelectorConfig = _SelectorConfig
-    selector.SelectSelectorMode = SimpleNamespace(DROPDOWN="dropdown")
+    selector.SelectSelectorMode = SimpleNamespace(DROPDOWN="dropdown", LIST="list")
     selector.BooleanSelector = _Selector
     selector.EntitySelector = _Selector
     selector.EntitySelectorConfig = _SelectorConfig
@@ -344,14 +344,14 @@ def test_setup_add_sensor_cancel_requires_confirmation_and_preserves_entries():
     assert result["step_id"] == "cancel_confirm"
     assert _schema_select_values(result, "action") == ["return", "close"]
     assert _schema_select_labels(result, "action") == [
-        "Cancel close / return to setup",
+        "Keep editing",
         "Close without saving",
     ]
 
     returned = asyncio.run(flow.async_step_cancel_confirm({"action": "return"}))
 
     assert returned["type"] == "form"
-    assert returned["step_id"] == "telemetry"
+    assert returned["step_id"] == "telemetry_add"
     assert flow._telemetry == [existing]
     assert flow._data["telemetry"] == [existing]
 
@@ -518,14 +518,14 @@ def test_options_add_sensor_cancel_requires_confirmation_and_preserves_options()
     assert result["step_id"] == "options_cancel_confirm"
     assert _schema_select_values(result, "action") == ["return", "close"]
     assert _schema_select_labels(result, "action") == [
-        "Cancel close / return to options",
+        "Keep editing",
         "Close without saving",
     ]
 
     returned = asyncio.run(flow.async_step_options_cancel_confirm({"action": "return"}))
 
     assert returned["type"] == "form"
-    assert returned["step_id"] == "options_telemetry"
+    assert returned["step_id"] == "options_telemetry_add"
     assert flow._options == {}
 
     closed = asyncio.run(flow.async_step_options_cancel_confirm({"action": "close"}))
@@ -930,7 +930,7 @@ def test_welcome_and_telemetry_copy_support_staged_setup_method():
         assert "return to Options" in welcome_description
         assert "saved baseline" in welcome_description
         assert "Advanced setup method" in welcome_description
-        assert "Frontend Dependencies" in welcome_description
+        assert "dashboard add-ons" in welcome_description
         assert "{walkthrough_url}" in welcome_description
 
         assert "start with a small core set" in telemetry_description
@@ -1606,7 +1606,7 @@ def test_alert_form_input_payload_helper_preserves_add_and_edit_semantics():
     }
 
 
-def test_v1_mobile_is_deprecated_but_available_through_v209():
+def test_v1_mobile_is_deprecated_but_available_in_candidate():
     config_source = (INTEGRATION_ROOT / "config_flow.py").read_text(encoding="utf-8")
     strings = json.loads((INTEGRATION_ROOT / "strings.json").read_text(encoding="utf-8"))
     translations = json.loads(
@@ -1624,10 +1624,10 @@ def test_v1_mobile_is_deprecated_but_available_through_v209():
 
     for payload in (strings, translations):
         description = payload["config"]["step"]["ui_install"]["description"]
-        assert "V1 Mobile is deprecated in v2.0.9" in description
-        assert "remains available through the v2.0.9 line" in description
+        assert "V1 Mobile remains available in this candidate" in description
+        assert "deprecated for new dashboards" in description
         assert "Use V2 Mobile for new dashboards" in description
-        assert "planned V1 removal is v2.1" in description
+        assert "Removing V1 Mobile requires a separate approved migration" in description
         assert "Manual-card layouts" in description
         assert "does not create, register, replace, or delete" in description
         assert "card fragment" in description
