@@ -2,6 +2,61 @@
  * Declared revisions describe the renderer, not cache health or arbitrary edits.
  */
 const hiUiRevision = (() => {
+  // HI-INACTIVITY:START
+  /* Self-contained inactivity custody for HI-owned details; no runtime writes. */
+  function hiDialogInactivity(dialog, owner, close, connection) {
+    const idleMs = 120000;
+    const activity = ['pointerdown', 'touchstart', 'touchmove', 'keydown', 'input', 'wheel', 'scroll'];
+    const navigation = ['location-changed', 'popstate', 'pagehide'];
+    let timer, generation = 0, disposed = false, lastIntent = -Infinity;
+    const observer = new MutationObserver(() => {
+      if (!owner.isConnected || !dialog.isConnected) finish();
+    });
+    function dispose() {
+      if (disposed) return;
+      disposed = true; generation++; clearTimeout(timer);
+      observer.disconnect();
+      for (const name of activity) dialog.removeEventListener(name, interact, true);
+      for (const name of navigation) window.removeEventListener(name, finish);
+      connection?.removeEventListener?.('disconnected', finish);
+      dialog.removeEventListener('close', dispose);
+    }
+    function finish() {
+      if (disposed) return;
+      dispose(); close();
+    }
+    function arm() {
+      if (disposed) return;
+      clearTimeout(timer); const current = ++generation;
+      timer = setTimeout(() => {
+        if (!disposed && current === generation) finish();
+      }, idleMs);
+    }
+    function interact(event) {
+      // Programmatic clicks/keyboard dispatch and telemetry never extend custody.
+      if (event.isTrusted !== true) return;
+      // Browser-generated scroll can follow programmatic focus/telemetry changes.
+      // Only count it in the wake of actual input within this panel.
+      if (event.type === 'scroll') {
+        if (Date.now() - lastIntent <= 1000) arm();
+      } else {
+        lastIntent = Date.now(); arm();
+      }
+    }
+    for (const name of activity) dialog.addEventListener(name, interact, {capture:true, passive:name !== 'keydown'});
+    for (const name of navigation) window.addEventListener(name, finish);
+    connection?.addEventListener?.('disconnected', finish);
+    dialog.addEventListener('close', dispose);
+    let root = owner.getRootNode();
+    while (root) {
+      observer.observe(root, {childList:true, subtree:true});
+      root = root.host ? root.host.getRootNode() : null;
+    }
+    arm();
+    if (connection?.connected === false) finish();
+    return dispose;
+  }
+  // HI-INACTIVITY:END
   const KEY = Symbol.for('humidity_intelligence.ui_revision.lifecycle.v1');
   const positive = value => Number.isSafeInteger(value) && value > 0;
   const object = value => value && typeof value === 'object' && !Array.isArray(value);
@@ -59,8 +114,10 @@ const hiUiRevision = (() => {
         dialog.innerHTML=`<style>.hi-ui-revision-details{box-sizing:border-box;width:min(460px,calc(100vw - 32px));max-height:calc(100dvh - 32px);overflow:auto;padding:20px;border:1px solid #64748b;border-radius:20px;background:#0d1522;color:#e2e8f0;font:14px/1.6 system-ui,sans-serif}.hi-ui-revision-details::backdrop{background:rgba(0,0,0,.55)}.hi-ui-revision-details button{min-width:44px;min-height:44px;float:right;border:1px solid #64748b;border-radius:50%;background:#18253a;color:#e2e8f0;font:inherit}.hi-ui-revision-details button:focus-visible{outline:2px solid #38bdf8;outline-offset:2px}.hi-ui-revision-details p{overflow-wrap:anywhere}</style><button type="button" aria-label="Close" autofocus>×</button><h2>${escape(result.label)}</h2><p>${escape(result.reason)}</p><p>Displayed revision: ${validStamp && positive(state.stamp.revision)?state.stamp.revision:'Unavailable'}. Backend-advertised revision: ${positive(target?.revision)?target.revision:'Unavailable'}.</p><p>To replace the UI, export the selected layout, replace the complete Manual-card YAML, and save the dashboard. Refresh the browser or app if the old UI remains cached.</p><p>This indicator does not diagnose browser caching or confirm that a downloaded file was installed. These details are a snapshot; reopen to check again.</p>`;
         const previous=owner.shadowRoot?.activeElement || document.activeElement;
         let cleaned=false;
+        let stopIdle=()=>{};
         const close=(restore=true)=>{
           if(cleaned)return;cleaned=true;
+          stopIdle();
           if(dialog.open)dialog.close();dialog.remove();
           if(window.__hiBadgeDetailsDispose===close)delete window.__hiBadgeDetailsDispose;
           if(state.close===close)state.close=null;
@@ -71,7 +128,7 @@ const hiUiRevision = (() => {
         dialog.addEventListener('close',()=>close(),{once:true});
         dialog.addEventListener('click',event=>{if(event.target!==dialog)return;const b=dialog.getBoundingClientRect();if(event.clientX<b.left||event.clientX>b.right||event.clientY<b.top||event.clientY>b.bottom)close();});
         document.body.appendChild(dialog);
-        try {dialog.showModal();} catch (_) {close();}
+        try {dialog.showModal();stopIdle=hiDialogInactivity(dialog,owner,close,connection);} catch (_) {close();}
       };
       // button-card's ancestor keyboard handler can consume native activation.
       // Capture only this exact footer button; leave pointer actions unchanged.
@@ -82,7 +139,7 @@ const hiUiRevision = (() => {
         if(!event.repeat)state.open();
       };
       state.keyRoot?.addEventListener('keydown',state.keydown,true);
-      state.disconnected=()=>{state.blocked=true;state.ready=false;state.blockedStates=state.hass?.states;state.blockedEntity=state.entity;state.paint();};
+      state.disconnected=()=>{state.close?.(false);state.blocked=true;state.ready=false;state.blockedStates=state.hass?.states;state.blockedEntity=state.entity;state.paint();};
       state.connected=()=>{state.ready=true;state.paint();};
       state.navigation=()=>state.dispose();
       state.observer=new MutationObserver(()=>{if(!owner.isConnected)state.dispose();else state.paint();});

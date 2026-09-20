@@ -5,7 +5,7 @@ testing and validation branches.
 
 ## Canonical Version Model
 
-- `2.1.0-beta.7`: current unpublished candidate with restrained V2 styling, a truthful UI revision indicator and preserved native/adaptive Outputs.
+- `2.1.0-beta.7`: current unpublished candidate with restrained V2 styling, a truthful UI revision indicator, preserved native/adaptive Outputs and two-minute inactivity dismissal for custom HI details (manual closing retained; see [scope and exceptions](ui-inactivity.md)).
 - `2.1.0-beta.6`: earlier unpublished candidate with clearer Outputs/settings wording and bounded cancel-return correction.
 - `2.1.0-beta.5`: earlier unpublished candidate with compact Outputs summaries and on-demand controls.
 - `2.1.0-beta.4`: earlier unpublished candidate with optional output observation and adaptive Outputs.

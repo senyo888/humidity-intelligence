@@ -30,6 +30,9 @@ function harness({ supported = true, deferredClose = false, showThrows = false, 
   const observers = new Set();
   const queuedCloseEvents = [];
   const window = new EventTarget();
+  const connection = new EventTarget(); connection.connected = true;
+  const timers = new Map(); let timerSequence = 0;
+  const schedule = callback => { const id = ++timerSequence; timers.set(id, callback); return id; };
   class Node extends EventTarget {
     constructor(tagName = 'div') {
       super(); this.tagName = tagName.toUpperCase(); this.children = [];
@@ -96,10 +99,10 @@ function harness({ supported = true, deferredClose = false, showThrows = false, 
     const routes = {Humidity:'sensor.house_average_humidity',Condensation:'sensor.worst_room_condensation',Mould:'sensor.worst_room_mould','Current Air Control':'sensor.air_control_mode',Ready:'sensor.house_average_humidity','Zone 1':'sensor.kitchen_humidity','Zone 2':'sensor.bathroom_humidity',AQ:'sensor.air_control_house_iaq_average'};
     const history = routes[title] || (title === 'Stability Score' ? 'sensor.hi_diagnostics' : 'sensor.house_humidity_drift_7d');
     const summary = routes[title] ? new Function(rendererBody(source,title,'hi_summary'))() : {history,title};
-    new Function('document', 'window', 'MutationObserver', 'CustomEvent', 'entity', 'variables', 'states', body)
-      .call(card, document, window, Observer, DetailEvent, { entity_id: history }, {hi_summary:summary}, statesOverride || (missing ? {} : {[history]:{state:'normal'}}));
+    new Function('document', 'window', 'MutationObserver', 'CustomEvent', 'entity', 'variables', 'states', 'hass', 'setTimeout', 'clearTimeout', body)
+      .call(card, document, window, Observer, DetailEvent, { entity_id: history }, {hi_summary:summary}, statesOverride || (missing ? {} : {[history]:{state:'normal'}}), {connection}, schedule, id => timers.delete(id));
   }
-  return { document, window, owner, invoke, observers,
+  return { document, window, owner, invoke, observers, timers, connection,
     dialogs: () => document.querySelectorAll('[data-hi-summary-dialog]'),
     flushClose: () => queuedCloseEvents.splice(0).forEach(fire => fire()),
     flushObservers: () => [...observers].forEach(observer => observer.callback()),
@@ -108,6 +111,16 @@ function harness({ supported = true, deferredClose = false, showThrows = false, 
 
 
 const TITLES = ['Humidity','Condensation','Mould','Current Air Control','Ready','Zone 1','Zone 2','AQ'];
+test('all ten dialog actions expire through existing focus-restoring cleanup',()=>{
+  for(const source of SURFACES) for(const title of [...TITLES,'7 Day Drift','Stability Score']){
+    const h=harness();const card=h.owner(title==='7 Day Drift'?'drift':title==='Stability Score'?'stability':'summary');
+    h.invoke(card,source,title);assert.equal(h.timers.size,1,title);
+    [...h.timers.values()][0]();
+    assert.equal(h.document.querySelectorAll('dialog').length,0,title);
+    assert.equal(h.document.activeElement,card,title);
+    assert.equal(h.timers.size,0,title);assert.equal(h.observers.size,0,title);
+  }
+});
 test('each summary action matches all maintained layout and gallery counterparts', () => {
   for (const title of TITLES) assert.equal(new Set(SURFACES.map(source => actionBody(source,title).trim().split('\n').map(line=>line.trim()).join('\n'))).size, 1,title);
 });
@@ -146,7 +159,7 @@ test('relevant rendered evidence changes close summary; unchanged evidence remai
 });
 test('cross-badge replacement owns one dialog and deferred cleanup cannot steal focus',()=>{
   const h=harness({deferredClose:true});const one=h.owner();const two=h.owner();h.invoke(one);h.invoke(two,SURFACES[0],'AQ');
-  assert.equal(h.dialogs().length,1);assert.equal(h.observers.size,1);const d=h.dialogs()[0];h.flushClose();
+  assert.equal(h.dialogs().length,1);assert.equal(h.observers.size,2);const d=h.dialogs()[0];h.flushClose();
   assert.equal(h.document.activeElement,d.querySelector('.hi-summary-close'));assert.equal(h.dialogs().length,1);
 });
 test('fallback only dispatches an existing mapped entity and leaks no nodes',()=>{
@@ -194,11 +207,11 @@ test('new summaries, drift and Stability dispose one another without changing sn
  for(const source of SURFACES){
   const h=harness();const regular=h.owner();const drift=h.owner('drift');const stability=h.owner('stability');
   h.invoke(regular,source);h.invoke(drift,source,'7 Day Drift');
-  assert.equal(h.dialogs().length,0);assert.equal(h.document.querySelectorAll('[data-hi-drift-dialog]').length,1);assert.equal(h.observers.size,1);
+  assert.equal(h.dialogs().length,0);assert.equal(h.document.querySelectorAll('[data-hi-drift-dialog]').length,1);assert.equal(h.observers.size,2);
   h.invoke(stability,source,'Stability Score');
-  assert.equal(h.document.querySelectorAll('[data-hi-drift-dialog]').length,0);assert.equal(h.document.querySelectorAll('[data-hi-stability-dialog]').length,1);assert.equal(h.observers.size,1);
+  assert.equal(h.document.querySelectorAll('[data-hi-drift-dialog]').length,0);assert.equal(h.document.querySelectorAll('[data-hi-stability-dialog]').length,1);assert.equal(h.observers.size,2);
   stability.shadowRoot.replaceChildren();h.flushObservers();assert.equal(h.document.querySelectorAll('[data-hi-stability-dialog]').length,1);
-  h.invoke(regular,source);assert.equal(h.document.querySelectorAll('[data-hi-stability-dialog]').length,0);assert.equal(h.dialogs().length,1);assert.equal(h.observers.size,1);
+  h.invoke(regular,source);assert.equal(h.document.querySelectorAll('[data-hi-stability-dialog]').length,0);assert.equal(h.dialogs().length,1);assert.equal(h.observers.size,2);
   h.invoke(drift,source,'7 Day Drift');drift.shadowRoot.querySelector('template.hi-drift-details-template').innerHTML+='new evidence';h.flushObservers();assert.equal(h.observers.size,0);assert.equal(h.document.querySelectorAll('[data-hi-drift-dialog]').length,0);
  }
 });

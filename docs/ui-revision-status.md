@@ -58,6 +58,9 @@ integration manifest, export timestamp or file download. Unknown schema/generato
 contracts remain unverified. A valid newer card against an older backend remains a
 revision difference, never a fabricated update or healthy match.
 
+Revision details use the [two-minute inactivity policy](ui-inactivity.md), while
+Close, Escape and backdrop dismissal remain available.
+
 The self-contained footer uses the existing button-card dependency and its live HA
 connection. Disconnection invalidates current status even if old entities remain
 cached; reconnect requires fresh evidence. It creates no output commands, automatic

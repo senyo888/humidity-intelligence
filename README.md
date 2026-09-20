@@ -1234,12 +1234,14 @@ CO emergency pressure. Details are in
 
 ### v2.1.0-beta.7 (Unpublished candidate)
 
+- two-minute inactivity closing for HI-owned details and adaptive Outputs, with
+  manual dismissal retained; [scope and legacy/native exceptions](docs/ui-inactivity.md)
 - restrained V2 mobile/tablet depth and a compact bottom-left UI revision indicator;
   current, update, differing and unverified states reflect the declared UI contract
 - corrects unavailable System/Manual and humidity displays, removes frontend comfort
   advice, and preserves configured native/adaptive Outputs alongside the UI footer
 - maintains UI revisions independently of package versions, with release checks for
-  revision updates; this package retains layout revision 2 and generator contract 1
+  revision updates; this package advances the layouts to revision 3 and generator contract 1
 - preserves deterministic control, entity primary states, existing controls and
   accepted Stability behavior; no configuration or entity migration is required
 - install the complete package and restart, then export and replace the full saved

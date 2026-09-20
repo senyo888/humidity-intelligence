@@ -21,6 +21,7 @@ LAYOUT_FILES = {
     "v2_tablet": ("custom_components/humidity_intelligence/ui/cards/v2_tablet.yaml", "ui-gallery/default-v2-tablet-zone-1-cooking/card.yaml"),
 }
 SHARED_FILES = (
+    "custom_components/humidity_intelligence/ui/inactivity.js",
     "custom_components/humidity_intelligence/ui/register.py",
     "custom_components/humidity_intelligence/ui/revision_status.js",
     "custom_components/humidity_intelligence/adaptive_output/cards.py",

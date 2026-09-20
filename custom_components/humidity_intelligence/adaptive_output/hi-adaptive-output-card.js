@@ -90,7 +90,7 @@
       this._dialogBody.append(this._evidence,this._sources);
       // Native host never belongs to a replaceChildren evidence subtree.
       this._dialog.append(bar,this._native,this._dialogBody);
-      this._dialog.addEventListener('close',()=>{if(this._skipCloseFocus){this._skipCloseFocus=false;return;}if(!this._dialog.open)this._restoreFocus();});
+      this._dialog.addEventListener('close',()=>{if(!this._dialog.open){this._cancelIdle('details');this._stopIdleIfClosed();}if(this._skipCloseFocus){this._skipCloseFocus=false;return;}if(!this._dialog.open)this._restoreFocus();});
       this._dialog.addEventListener('click',event=>{if(event.target===this._dialog){const r=this._dialog.getBoundingClientRect();if(event.clientX<r.left||event.clientX>r.right||event.clientY<r.top||event.clientY>r.bottom)this._closeDetails();}});
       this._fallbackClose=node('button',this._t('close'),'inspect');this._fallbackClose.type='button';this._fallbackClose.onclick=()=>this._closeDetails();
       // Before HA receives a native more-info event, dismiss our modal and focus
@@ -100,11 +100,58 @@
       this._header.onclick=()=>{this._open=!this._open;this._expanded();};this._expanded();
     }
     connectedCallback(){if(this._config&&!this._nativeCard){this._generation++;this._mountNative(this._generation);}}
-    disconnectedCallback(){this._generation++;this._closeDetails(false);}
+    disconnectedCallback(){this._generation++;this._collapseIdle();}
+    _cancelIdle(kind){
+      this._idleVersions??={};this._idleVersions[kind]=(this._idleVersions[kind]||0)+1;
+      this._idleTimers??={};clearTimeout(this._idleTimers[kind]);delete this._idleTimers[kind];
+    }
+    _renewIdle(kind){
+      this._cancelIdle(kind);const version=this._idleVersions[kind];
+      this._idleTimers[kind]=setTimeout(()=>{
+        if(this._idleVersions[kind]!==version)return;
+        if(kind==='expansion'){const focused=this.shadowRoot.activeElement;const restore=focused&&(this._detail.contains(focused)||this._dialog.contains(focused));this._open=false;this._expanded();if(restore&&this.isConnected)this._header.focus();}
+        else this._closeDetails();
+      },120000);
+    }
+    _collapseIdle(){this._open=false;this._expanded();this._cancelIdle('expansion');this._cancelIdle('details');this._stopIdleIfClosed();}
+    _bindIdleConnection(){
+      const connection=this._hass?.connection;
+      if(this._idleConnection===connection)return;
+      this._idleConnection?.removeEventListener?.('disconnected',this._idleNavigation);
+      this._idleConnection=connection;
+      connection?.addEventListener?.('disconnected',this._idleNavigation);
+    }
+    _ensureIdle(){
+      if(this._idleActivity)return;
+      this._idleNavigation=()=>this._collapseIdle();
+      this._idleActivity=event=>{
+        if(event.isTrusted!==true)return;
+        const now=Date.now();
+        // Programmatic focus/scroll during passive rendering is not activity.
+        if(event.type==='scroll'){if(this._idleIntentAt===undefined||now-this._idleIntentAt>1000)return;}
+        else this._idleIntentAt=now;
+        if(this._open)this._renewIdle('expansion');
+        const path=event.composedPath?.()||[];
+        if((this._dialog.open||this._inline)&&(path.includes(this._dialog)||path.includes(this._fallback)))this._renewIdle('details');
+      };
+      this._idleEvents=['pointerdown','pointermove','touchstart','touchmove','keydown','wheel','scroll','click','input'];
+      for(const name of this._idleEvents)this.shadowRoot.addEventListener(name,this._idleActivity,{capture:true,passive:true});
+      for(const name of ['location-changed','popstate','pagehide'])window.addEventListener(name,this._idleNavigation);
+      this._bindIdleConnection();
+    }
+    _stopIdleIfClosed(){
+      if(this._open||this._dialog.open||this._inline||!this._idleActivity)return;
+      for(const name of this._idleEvents)this.shadowRoot.removeEventListener(name,this._idleActivity,true);
+      for(const name of ['location-changed','popstate','pagehide'])window.removeEventListener(name,this._idleNavigation);
+      this._idleConnection?.removeEventListener?.('disconnected',this._idleNavigation);
+      this._idleConnection=null;this._idleActivity=null;this._idleIntentAt=undefined;
+    }
     _restoreFocus(){if(!this.isConnected)return;const target=this._open&&this._body.querySelector('[data-focus-key="'+(this._openerKey||'outputs-controls')+'"]');(target||this._header).focus();}
     _closeDetails(restore=true){
+      this._cancelIdle('details');
       if(this._dialog.open){this._skipCloseFocus=!restore;this._dialog.close();}
       if(this._inline){this._inline=false;this._dialog.append(this._native,this._dialogBody);this._fallback.replaceChildren();this._fallback.hidden=true;if(restore)this._restoreFocus();}
+      this._stopIdleIfClosed();
     }
     _openDetails(section,openerKey){
       this._openerKey=openerKey;
@@ -113,14 +160,15 @@
         this._inline=true;this._fallback.hidden=false;this._fallback.append(this._fallbackClose,this._native,this._dialogBody);
       }}
       target.scrollIntoView?.({block:'start'});target.focus();
+      this._ensureIdle();this._renewIdle('details');if(this._open)this._renewIdle('expansion');
     }
-    _expanded(){if(!this._open)this._closeDetails(false);this._header.setAttribute('aria-expanded',String(this._open));this._detail.hidden=!this._open;this._path.setAttribute('transform',this._open?'rotate(180 12 12)':'');}
+    _expanded(){if(!this._open){this._cancelIdle('expansion');this._closeDetails(false);}else{this._ensureIdle();this._renewIdle('expansion');}this._header.setAttribute('aria-expanded',String(this._open));this._detail.hidden=!this._open;this._path.setAttribute('transform',this._open?'rotate(180 12 12)':'');}
     setConfig(config){
       if(!config||!entityId(config.entity))throw new Error('HI Adaptive Output requires a backend sensor entity.');
       if(config.control_context&&config.control_context.type!=='entities')throw new Error('Control context must retain the native entities card.');
-      this._closeDetails(false);this._config={...config};this._signature=null;this._generation++;this._mountNative(this._generation);this._render();
+      this._collapseIdle();this._config={...config};this._signature=null;this._generation++;this._mountNative(this._generation);this._render();
     }
-    set hass(hass){this._hass=hass;if(this._nativeCard)this._nativeCard.hass=hass;this._render();}
+    set hass(hass){this._hass=hass;if(this._idleActivity){this._bindIdleConnection();if(hass?.connected===false||hass?.connection?.connected===false)this._collapseIdle();}if(this._nativeCard)this._nativeCard.hass=hass;this._render();}
     get hass(){return this._hass;}
     getCardSize(){return this._open?4:2;}
     async _mountNative(generation){

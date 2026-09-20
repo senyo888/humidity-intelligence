@@ -28,6 +28,7 @@ jobs:
 
       - name: Verify canonical renderer and gallery synchronisation
         run: |
+          python scripts/sync_ui_inactivity.py --check
           python scripts/sync_ui_revision.py --check
           python scripts/sync_badge_history.py --check
 
@@ -42,4 +43,4 @@ jobs:
           node-version: "24"
 
       - name: Validate revision LED and connection lifecycle
-        run: node --test "tests 2/test_ui_revision_status.mjs"
+        run: node --test "tests 2/test_ui_revision_status.mjs" "tests 2/test_ui_revision_idle.mjs" "tests 2/test_ui_inactivity.mjs" "tests 2/test_adaptive_output_card.mjs"

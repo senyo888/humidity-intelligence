@@ -177,6 +177,7 @@ jobs:
           node --test "tests 2/test_v2_display_truth.mjs"
           node --test "tests 2/test_ui_revision_status.mjs"
           python scripts/sync_badge_history.py --check
+          python scripts/sync_ui_inactivity.py --check
           python scripts/sync_ui_revision.py --check
           python "tests 2/test_badge_summary_export.py"
 

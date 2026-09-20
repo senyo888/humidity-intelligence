@@ -30,6 +30,9 @@ function harness({ supported = true, deferredClose = false, showThrows = false }
   const observers = new Set();
   const queuedCloseEvents = [];
   const window = new EventTarget();
+  const connection = new EventTarget(); connection.connected = true;
+  const timers = new Map(); let timerSequence = 0;
+  const schedule = (callback, delay) => { const id = ++timerSequence; timers.set(id, {callback, delay}); return id; };
   class Node extends EventTarget {
     constructor(tagName = 'div') {
       super(); this.tagName = tagName.toUpperCase(); this.children = [];
@@ -94,10 +97,10 @@ function harness({ supported = true, deferredClose = false, showThrows = false }
   }
   function invoke(card, source = SURFACES[0]) {
     const body = actionBody(source);
-    new Function('document', 'window', 'MutationObserver', 'CustomEvent', 'entity', 'requestAnimationFrame', body)
-      .call(card, document, window, Observer, DetailEvent, { entity_id: 'sensor.hi_diagnostics' }, callback => callback());
+    new Function('document', 'window', 'MutationObserver', 'CustomEvent', 'entity', 'requestAnimationFrame', 'hass', 'setTimeout', 'clearTimeout', body)
+      .call(card, document, window, Observer, DetailEvent, { entity_id: 'sensor.hi_diagnostics' }, callback => callback(), {connection}, schedule, id => timers.delete(id));
   }
-  return { document, window, owner, invoke, observers,
+  return { document, window, owner, invoke, observers, timers, connection,
     dialogs: () => document.querySelectorAll('[data-hi-stability-dialog]'),
     flushClose: () => queuedCloseEvents.splice(0).forEach(fire => fire()),
     flushObservers: () => [...observers].forEach(observer => observer.callback()),
@@ -125,7 +128,7 @@ test('two badges replace the active snapshot and do not leak observers', () => {
   const h = harness(); const one = h.owner(); const two = h.owner();
   h.invoke(one); const first = h.dialogs()[0]; h.invoke(two);
   assert.equal(h.dialogs().length, 1); assert.notEqual(h.dialogs()[0], first);
-  assert.equal(first.isConnected, false); assert.equal(h.observers.size, 1);
+  assert.equal(first.isConnected, false); assert.equal(h.observers.size, 2);
   h.dialogs()[0].close(); assert.equal(h.observers.size, 0);
 });
 
@@ -169,11 +172,11 @@ test('native show failure falls back after disposing all dialog resources', () =
 test('asynchronous replaced-dialog close cannot steal focus from its successor', () => {
   const h = harness({ deferredClose: true }); const one = h.owner(); const two = h.owner();
   h.invoke(one); h.invoke(two); const active = h.dialogs()[0];
-  assert.equal(h.dialogs().length, 1); assert.equal(h.observers.size, 1);
+  assert.equal(h.dialogs().length, 1); assert.equal(h.observers.size, 2);
   assert.equal(h.document.activeElement, active.querySelector('.hi-stability-close'));
   h.flushClose();
   assert.equal(h.document.activeElement, active.querySelector('.hi-stability-close'));
-  assert.equal(h.dialogs().length, 1); assert.equal(h.observers.size, 1);
+  assert.equal(h.dialogs().length, 1); assert.equal(h.observers.size, 2);
 });
 
 test('owner removal observation includes enclosing shadow roots and outer document', () => {
@@ -183,4 +186,20 @@ test('owner removal observation includes enclosing shadow roots and outer docume
   h.invoke(card); const [observer] = h.observers;
   assert.ok(observer.targets.has(root)); assert.ok(observer.targets.has(outer));
   card.remove(); h.flushObservers(); assert.equal(h.dialogs().length, 0);
+});
+
+test('Stability inactivity cleanup restores focus and cannot close a reopened snapshot',()=>{
+ for(const source of SURFACES){
+  const h=harness();const card=h.owner();h.invoke(card,source);
+  const first=[...h.timers.values()][0];assert.equal(first.delay,120000);
+  h.dialogs()[0].close();assert.equal(h.timers.size,0);
+  h.invoke(card,source);first.callback();assert.equal(h.dialogs().length,1);
+  const current=[...h.timers.values()][0];current.callback();
+  assert.equal(h.dialogs().length,0);assert.equal(h.observers.size,0);assert.equal(h.timers.size,0);assert.equal(h.document.activeElement,card);
+ }
+});
+test('Stability connection loss closes its snapshot and cancels its idle timer',()=>{
+ const h=harness();const card=h.owner();h.invoke(card);
+ h.connection.dispatchEvent(new Event('disconnected'));
+ assert.equal(h.dialogs().length,0);assert.equal(h.timers.size,0);assert.equal(h.observers.size,0);
 });

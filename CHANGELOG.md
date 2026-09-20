@@ -8,6 +8,11 @@ This project follows a practical changelog format for Home Assistant and HACS us
 
 ## Unreleased — v2.1.0-beta.7
 
+- Adds two-minute inactivity closing to HI-owned details and adaptive Outputs.
+  Real interaction renews the timer; manual dismissal remains immediate. Native HA
+  more-info and the existing shared legacy Outputs timer retain their ownership.
+  [Inactivity contract](docs/ui-inactivity.md).
+
 Unpublished candidate packaging the reviewed UI harmonisation after beta.6. Published
 Stable remains v2.0.12; no tag, GitHub Release or HACS publication is implied.
 

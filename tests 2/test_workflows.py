@@ -32,6 +32,8 @@ class WorkflowConfigurationTests(unittest.TestCase):
             "sync_ui_revision.py --check", "sync_badge_history.py --check",
             "test_ui_revision_governance.py", "test_ui_revision_contract.py",
             "test_adaptive_cards.py", "test_ui_revision_status.mjs",
+            "sync_ui_inactivity.py --check", "test_ui_inactivity.mjs",
+            "test_ui_revision_idle.mjs", "test_adaptive_output_card.mjs",
         ):
             self.assertIn(required, workflow)
         self.assertRegex(workflow, r"(?m)^  push:$")

@@ -7,7 +7,10 @@ import test from 'node:test';
 // native browser dialogs, actual HA nested controls or physical touch behavior.
 const source=fs.readFileSync(new URL('../custom_components/humidity_intelligence/adaptive_output/hi-adaptive-output-card.js',import.meta.url),'utf8');
 function harness({modalFailure=false,deferHelpers=false}={}){
- let root,resolveHelpers,mounts=0,seenConfigs=[];const registry=new Map();
+ let root,resolveHelpers,mounts=0,seenConfigs=[];let now=0,nextTimer=1;const timers=new Map(),callbacks=[];
+ const setTimeout=(fn,delay)=>{const id=nextTimer++;timers.set(id,{fn,at:now+delay});callbacks.push(fn);return id;};
+ const clearTimeout=id=>timers.delete(id);
+ const advance=ms=>{const end=now+ms;while(true){const due=[...timers].filter(([,t])=>t.at<=end).sort((a,b)=>a[1].at-b[1].at)[0];if(!due)break;now=due[1].at;timers.delete(due[0]);due[1].fn();}now=end;};const registry=new Map();
  class N {
   constructor(tag='host'){this.tagName=tag;this.children=[];this.parentNode=null;this.dataset={};this.attributes={};this.listeners={};this.hidden=false;this.open=false;this.className='';this._text='';}
   get isConnected(){return this===root||!!this.parentNode?.isConnected;}
@@ -19,6 +22,7 @@ function harness({modalFailure=false,deferHelpers=false}={}){
   setAttribute(k,v){this.attributes[k]=String(v);}
   getAttribute(k){return this.attributes[k]??null;}
   addEventListener(t,f){(this.listeners[t]??=[]).push(f);}
+  removeEventListener(t,f){this.listeners[t]=(this.listeners[t]||[]).filter(fn=>fn!==f);}
   dispatchEvent(e){e.target??=this;for(const fn of this.listeners[e.type]||[])fn(e);if(e.bubbles&&this.parentNode)this.parentNode.dispatchEvent(e);return true;}
   contains(n){return this===n||this.children.some(c=>c.contains(n));}
   matches(s){if(s.startsWith('.'))return this.className.split(' ').includes(s.slice(1));if(s.startsWith('[data-focus-key')){const key=s.match(/="([^"]+)"/);return this.dataset.focusKey!==undefined&&(!key||this.dataset.focusKey===key[1]);}return this.tagName===s;}
@@ -33,13 +37,13 @@ function harness({modalFailure=false,deferHelpers=false}={}){
  }
  root=new N('document');const document={createElement:t=>new N(t),createElementNS:(ns,t)=>{const n=new N(t);n.namespaceURI=ns;return n;}};
  const helpers={createCardElement(config){mounts++;seenConfigs.push(config);return new N('native-card');}};
- const window={customCards:[],loadCardHelpers:()=>deferHelpers?new Promise(r=>resolveHelpers=r):Promise.resolve(helpers)};
- vm.runInNewContext(source,{HTMLElement:N,document,window,customElements:{get:t=>registry.get(t),define:(t,c)=>registry.set(t,c)},CustomEvent:class {constructor(type,opts){this.type=type;Object.assign(this,opts);}},console});
+ const window=new N('window');window.customCards=[];window.loadCardHelpers=()=>deferHelpers?new Promise(r=>resolveHelpers=r):Promise.resolve(helpers);
+ vm.runInNewContext(source,{setTimeout,clearTimeout,Date:{now:()=>now},HTMLElement:N,document,window,customElements:{get:t=>registry.get(t),define:(t,c)=>registry.set(t,c)},CustomEvent:class {constructor(type,opts){this.type=type;Object.assign(this,opts);}},console});
  const C=registry.get('hi-adaptive-output-card'),card=new C();root.append(card);
  const config={entity:'sensor.example_status',control_context:{type:'entities',show_header_toggle:false,card_mod:{style:'test'},entities:[{entity:'fan.example',name:'Native fan',tap_action:{action:'more-info'}},{entity:'switch.example_isolation'},{entity:'sensor.example_support'}]}};
  card.setConfig(config);
  const update=p=>card.hass={connected:true,states:{'sensor.example_status':{state:'ready',attributes:{payload:p}}}};
- return {card,C,root,N,update,config,mounts:()=>mounts,seenConfigs,finishHelpers:()=>resolveHelpers(helpers)};
+ return {card,C,root,N,window,advance,timers,callbacks,update,config,mounts:()=>mounts,seenConfigs,finishHelpers:()=>resolveHelpers(helpers)};
 }
 function payload(count=0){
  const attention=Array.from({length:count},(_,i)=>({label:`Output ${i}`,title:`Condition ${i}`,action:`Action ${i}`,evidence:`Evidence ${i}`,source:`binary_sensor.source_${i}`,tone:'warning'}));
@@ -54,7 +58,7 @@ test('summary prefix/totals/context, HVAC and one footer; complete details retai
 });
 test('native config/node survives dialog toggles, payload and feed loss',async()=>{
  const h=harness();await tick();h.update(payload());const c=h.card,n=c._nativeCard;c._open=true;c._expanded();c._openDetails('controls','outputs-controls');n.focus();h.update(payload(3));assert.equal(c._nativeCard,n);assert.equal(h.mounts(),1);assert.equal(h.seenConfigs[0],h.config.control_context);assert.equal(c.shadowRoot.activeElement,n);
- c.hass={connected:false,states:{}};assert.equal(c._nativeCard,n);assert.match(c._body.textContent,/Monitoring unavailable/);assert.equal(c._evidence.querySelectorAll('.attention').length,0);assert.equal(c._body.querySelector('.footer').textContent,'Outputs & controls');assert.equal(c._dialog.open,true);
+ c.hass={connected:true,states:{}};assert.equal(c._nativeCard,n);assert.match(c._body.textContent,/Monitoring unavailable/);assert.equal(c._evidence.querySelectorAll('.attention').length,0);assert.equal(c._body.querySelector('.footer').textContent,'Outputs & controls');assert.equal(c._dialog.open,true);
  c._closeDetails();c._openDetails('controls','outputs-controls');assert.equal(h.mounts(),1);h.update(payload());assert.equal(h.mounts(),1);
 });
 test('single event handoff closes custom modal before HA receiver; no controls interception',async()=>{
@@ -78,4 +82,43 @@ test('independent instances and deleted evidence focus recovery',async()=>{
 test('legacy overflow and monitoring entry remain truthful',async()=>{
  const h=harness();await tick();const p=payload(7);delete p.compact;p.chips.push({label:'First report'},{label:'+6 more outputs'});p.discovery.lost_notice='1 source lost';h.update(p);const c=h.card;assert.equal(c._chips.children.length,3);assert.match(c._chips.textContent,/6 more/);assert.match(c._sources.textContent,/1 source lost/);assert.match(c._sources.textContent,/Monitoring 2\/10/);
  h.update(payload(0));assert.match(c._body.querySelector('.reason').className,/quiet/);c._body.querySelector('.reason').onclick();assert.equal(c.shadowRoot.activeElement,c._sources);
+});
+
+function activity(card,target,type='pointerdown',isTrusted=true){card.shadowRoot.dispatchEvent({type,isTrusted,composedPath:()=>[target,target===card._dialog?card._dialog:card._detail,card.shadowRoot]});}
+test('120-second expansion inactivity ignores telemetry and starts fresh after reopen',async()=>{
+ const h=harness();await tick();const c=h.card;c._header.onclick();h.advance(60000);h.update(payload(3));h.advance(59999);assert.equal(c._open,true);h.advance(1);assert.equal(c._open,false);assert.equal(h.timers.size,0);
+ c._header.onclick();h.advance(119999);assert.equal(c._open,true);h.advance(1);assert.equal(c._open,false);
+});
+test('trusted child activity keeps child and parent alive; untrusted or passive scroll does not',async()=>{
+ const h=harness();await tick();h.update(payload());const c=h.card;c._header.onclick();c._openDetails('controls','outputs-controls');
+ for(const type of ['pointerdown','touchstart','touchmove','keydown','wheel','input']){h.advance(119000);activity(c,c._dialog,type);assert.equal(c._open,true);assert.equal(c._dialog.open,true);}
+ h.advance(119000);activity(c,c._dialog,'scroll');activity(c,c._dialog,'pointerdown',false);h.advance(1000);assert.equal(c._open,false);assert.equal(c._dialog.open,false);assert.equal(h.timers.size,0);
+});
+test('manual close Escape backdrop and chevron preserve behavior and invalidate old deadlines',async()=>{
+ for(const close of ['close','escape','backdrop','chevron']){
+  const h=harness();await tick();h.update(payload());const c=h.card;c._header.onclick();c._openDetails('evidence','output-reason');const stale=[...h.callbacks];
+  if(close==='close')c._dialogClose.onclick();else if(close==='escape')c._dialog.close();else if(close==='backdrop')c._dialog.dispatchEvent({type:'click',clientX:150,clientY:150});else c._header.onclick();
+  assert.equal(c._dialog.open,false);assert.equal(h.timers.size,close==='chevron'?0:1);
+  if(!c._open)c._header.onclick();c._openDetails('monitoring','output-reason');for(const fn of stale)fn();assert.equal(c._dialog.open,true);assert.equal(c._open,true);
+  h.advance(120000);assert.equal(c._dialog.open,false);assert.equal(c._open,false);
+ }
+});
+test('parent can collapse independently and always cleans child; child expiry retains active parent',async()=>{
+ const h=harness();await tick();h.update(payload());const c=h.card;c._header.onclick();c._openDetails('controls','outputs-controls');h.advance(60000);activity(c,c._detail);h.advance(60000);assert.equal(c._dialog.open,false);assert.equal(c._open,true);h.advance(60000);assert.equal(c._open,false);
+});
+test('config navigation disconnect and removal clear timers and activity subscriptions',async()=>{
+ for(const mode of ['config','navigation','disconnect','removal']){
+  const h=harness();await tick();h.update(payload());const c=h.card;c._header.onclick();c._openDetails('controls','outputs-controls');
+  if(mode==='config')c.setConfig(h.config);else if(mode==='navigation')h.window.dispatchEvent({type:'location-changed'});else if(mode==='disconnect')c.hass={connected:false,states:{}};else{c.remove();c.disconnectedCallback();}
+  assert.equal(c._open,false);assert.equal(c._dialog.open,false);assert.equal(h.timers.size,0);assert.equal(c._idleActivity,null);
+  assert.equal((h.window.listeners['location-changed']||[]).length,0);
+ }
+});
+test('inline fallback uses same inactivity deadline and preserved native node',async()=>{
+ const h=harness({modalFailure:true});await tick();h.update(payload());const c=h.card,n=c._nativeCard;c._header.onclick();c._openDetails('controls','outputs-controls');h.advance(120000);assert.equal(c._inline,false);assert.equal(c._open,false);assert.equal(c._nativeCard,n);assert.equal(h.timers.size,0);
+});
+
+test('actual connection event collapses and removes subscription without telemetry render',async()=>{
+ const h=harness();await tick();h.update(payload());const c=h.card,connection=new h.N('connection');connection.connected=true;c.hass={...c.hass,connection};c._header.onclick();c._openDetails('controls','outputs-controls');assert.equal(connection.listeners.disconnected.length,1);
+ connection.connected=false;connection.dispatchEvent({type:'disconnected'});assert.equal(c._open,false);assert.equal(c._dialog.open,false);assert.equal(h.timers.size,0);assert.equal(connection.listeners.disconnected.length,0);
 });

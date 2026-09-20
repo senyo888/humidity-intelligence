@@ -491,3 +491,7 @@ plan; v2.0.9 does not remove it.
 - reason text remains readable
 
 Humidity Intelligence V2 UI is a structured runtime interface for a deterministic environmental engine.
+
+HI-owned detail dialogs and adaptive Outputs now use two-minute inactivity closing,
+with manual dismissal preserved. See [the timeout contract](../../../docs/ui-inactivity.md)
+for the unchanged shared native expander and Home Assistant more-info exceptions.
