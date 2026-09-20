@@ -138,9 +138,20 @@ def with_configured_controls(source, configured):
     entities_node = _fields(card).get('entities')
     if not isinstance(entities_node, SequenceNode):
         raise ValueError('Expected native entity rows.')
-    node_start = source.rfind('\n', 0, entities_node.start_mark.index) + 1
-    node_text = source[node_start:entities_node.end_mark.index]
-    existing = yaml.safe_load('\n'.join(line[entities_node.start_mark.column:] for line in node_text.splitlines()))
+    # PyYAML end marks can extend across comments up to the next sibling.
+    # Keep those trailing lines outside the rows span before de-indentation;
+    # otherwise a shallower footer comment becomes malformed bare YAML text.
+    lines = source.splitlines(keepends=True)
+    first = entities_node.start_mark.line
+    last = entities_node.end_mark.line
+    if last < len(lines) and lines[last][:entities_node.end_mark.column].strip():
+        last += 1
+    while last > first and (not lines[last - 1].strip() or lines[last - 1].lstrip().startswith('#')):
+        last -= 1
+    start = sum(map(len, lines[:first]))
+    end = sum(map(len, lines[:last]))
+    indent = entities_node.start_mark.column
+    existing = yaml.safe_load(''.join(line[indent:] if line.strip() else line for line in lines[first:last]))
     inventory = list(dict.fromkeys(row['entity_id'] for row in configured))
     by_entity = {}
     supporting = []
@@ -158,13 +169,6 @@ def with_configured_controls(source, configured):
             row.pop('name', None)
         controls.append(row)
     rows = controls + supporting
-    start = source.rfind('\n', 0, entities_node.start_mark.index) + 1
-    end = entities_node.end_mark.index
-    # YAML node end may include indentation of the following sibling.
-    end_line = source.rfind('\n', 0, end) + 1
-    if not source[end_line:end].strip():
-        end = end_line
-    indent = entities_node.start_mark.column
     rendered = yaml.safe_dump(rows, sort_keys=False, allow_unicode=True, width=10000)
     rendered = ''.join(' ' * indent + line if line.strip() else line for line in rendered.splitlines(keepends=True))
     return source[:start] + rendered + source[end:]

@@ -206,3 +206,21 @@ def test_ha_readonly_config_mappings_generate_adaptive_outputs():
     result = asyncio.run(generate(register, config))
     assert "custom:hi-adaptive-output-card" in result["v2_mobile"]
     assert "custom:hi-adaptive-output-card" in result["v2_tablet"]
+
+
+def test_revision_footer_survives_native_and_adaptive_output_generation():
+    _, cards_mod = load()
+    inventory = [{"entity_id": "fan.example_added"}]
+    for layout in ("v2_mobile", "v2_tablet"):
+        source = (fixtures.INTEGRATION_ROOT / "ui" / "cards" / f"{layout}.yaml").read_text()
+        marker = "    # hi:output-details:end"
+        suffix = source[source.index(marker):]
+        assert "# UI revision is display-only" in suffix
+        for feed in (None, "sensor.hi_output_status"):
+            rendered = cards_mod.render_output_card(source, inventory, feed)
+            assert rendered.endswith(suffix)
+            parsed = yaml.safe_load(rendered)
+            assert "fan.example_added" in rendered
+            assert sum(n.get("type") == "custom:hi-adaptive-output-card" for n in nodes(parsed)) == bool(feed)
+            footer = [n for n in nodes(parsed) if "hi_ui_stamp" in n.get("variables", {})]
+            assert len(footer) == 1

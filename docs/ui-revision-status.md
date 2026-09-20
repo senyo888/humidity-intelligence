@@ -67,7 +67,10 @@ entries, missing or malformed metadata, match/update/rollback, unavailable
 Diagnostics, disconnect/reconnect and duplicate cards. Export without replacement
 must leave an old card old. Check native button activation, dialog Close/Escape,
 focus restoration and removal/navigation cleanup. Verify narrow phones, tablet
-orientation and expanded Outputs without covering any existing action.
+orientation and expanded Outputs without covering any existing action. Validate
+both native and adaptive output generation: trailing footer comments must remain
+outside the rewritten output rows, and configured observation summaries and
+controls must survive the full export path.
 
 The associated display fixes preserve controls: System and Manual explicitly show
 unknown input, humidity uses finite numeric evidence, comfort describes position
@@ -88,7 +91,7 @@ Run the focused regression checks from the repository root with pytest and PyYAM
 installed in a development environment:
 
 ```sh
-python -m pytest -q "tests 2/test_ui_revision_contract.py" "tests 2/test_badge_summary_export.py" "tests 2/test_runtime_card_sanity.py"
+python -m pytest -q "tests 2/test_adaptive_cards.py" "tests 2/test_ui_revision_contract.py" "tests 2/test_badge_summary_export.py" "tests 2/test_runtime_card_sanity.py"
 node --test "tests 2/test_ui_revision_status.mjs" "tests 2/test_v2_display_truth.mjs"
 python scripts/sync_ui_revision.py --check
 python scripts/sync_badge_history.py --check
