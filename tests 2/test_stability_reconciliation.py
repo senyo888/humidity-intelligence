@@ -31,6 +31,11 @@ def test_scheduled_observation_grace_is_inclusive_at_sixty_seconds(
     runtime = hass.data[DOMAIN][entry.entry_id]
     assert len(captures) == expected_count
     assert len(runtime.get("movement_recorded_at", [])) == expected_count
+    if expected_count:
+        assert runtime["movement_capture_available"] == [True]
+    else:
+        assert runtime["published_updates"][-1]["history_available"] is False
+        assert "capture_available" not in runtime["published_updates"][-1]
     assert runtime["stability_sampling"]["missed_buckets_since_setup"] == 1 - expected_count
     assert registrations["points"][-1]["point_in_time"] == scheduled + timedelta(minutes=10)
 

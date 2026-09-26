@@ -23,9 +23,14 @@ truth.
 ## Observational Stability Score (unreleased)
 
 The [accepted Stability contract](docs/stability-score-accepted-baseline.md) defines
-backend schema 3/formula 3, six weighted components, evidence states, safety caps,
-classification and presentation. It is implemented in the unreleased 2.1.0-beta.1
-candidate; deployment to an instance does not change published release identity. Stability cannot select lanes, change gates or
+backend schema 3/formula 4, six weighted components, evidence states, safety caps,
+classification and presentation. Formula 4 selects individual AQ conditions per level,
+with configured IAQ fallback only when no individual conditions are configured.
+Routine AQ uses an additional 12-point adjustment recovering over six observed-clear
+hours; missing evidence pauses recovery. CO protections and engine trigger evaluation
+remain independent. It is implemented in the current unreleased candidate; deployment
+to an instance does not change published release identity. Stability cannot select
+lanes, change gates or
 write outputs. Existing control entities/native states remain unchanged; Diagnostics
 adds structured Stability telemetry and a readable summary.
 
@@ -37,7 +42,10 @@ is incomplete evidence, never clean air. Excellent/Good/Unstable/Poor boundaries
 92/70/55/0; caps and explanatory text belong to the backend.
 
 The four generated/gallery renderers preserve the accepted 82px badge, independent
-LED palette and retained signed ±360 movement. Movement reflects score changes, not
+LED palette and retained signed ±360 movement. Movement and score are published
+atomically, including between samples. LED intensity reflects point change per update,
+independently of retained arc side. Bounded ten-minute score history preserves gaps
+and resets on restart. Movement reflects score changes, not
 elapsed time. While collecting, the blue LEDs instead fill clockwise from backend
 valid-sample progress toward 303; collection details use the same minimum target.
 Each valid sample illuminates one centred collection slot; the fixed origin hides

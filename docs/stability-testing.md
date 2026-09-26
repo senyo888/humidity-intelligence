@@ -1,16 +1,18 @@
 # Stability Score testing
 
-Status: implemented in the unreleased 2.1.0-beta.3 candidate. This guide describes
+Status: local formula-4 refinement in the current unreleased candidate. This guide describes
 validation of [the canonical contract](stability-score-accepted-baseline.md); it is
 not a release, deployment or live-observation claim.
 
 ## Offline validation
 
-Run from the repository root in the project test environment:
+Run from the repository root in the project test environment. Native Home Assistant
+options/config-flow suites require a supported Home Assistant installation and must
+run separately from the stub-based suites below:
 
 ```sh
-python3 -m pytest "tests 2/test_stability_score.py" "tests 2/test_stability_scheduler.py" "tests 2/test_stability_fault_isolation.py" "tests 2/test_stability_readable_diagnostics.py" "tests 2/test_stability_failure_history.py" "tests 2/test_stability_live_pipeline.py"
-node --test "tests 2/test_stability_badge_renderer.mjs"
+python3 -m pytest "tests 2"/test_stability_*.py tools/stability-scenario/test_scenario.py
+node --test "tests 2/test_stability_badge_renderer.mjs" "tests 2/test_stability_badge_interaction.mjs"
 python3 scripts/stability_scenario.py --output /tmp/hi-stability-scenario.html
 ```
 
@@ -23,16 +25,17 @@ speeds, scrubbing, stage jumps and all four LED-colour moments. The full replay 
 | Area | Required regression evidence |
 | --- | --- |
 | Formula | All six components; inclusive seasonal/custom bounds; nearest-rank p95; timestamp-based recovery through gaps; missing drift treatment |
-| AQ | Configured conditions, per-level averaging, IAQ direction, PM2.5/VOC/CO2/CO thresholds and units; unmapped, unsupported, partial, unavailable and no-hardware states |
+| AQ | Per-level individual-first selection; configured IAQ fallback only without individual conditions; no outage fallback; selected-input coverage and consistent clearance/recovery/adjustment; CO isolation; configured thresholds/units, unmapped and partial evidence; fresh baseline after policy change |
 | Coverage | 432 expected buckets, 303 valid eligibility, consecutive-pair and balance eligibility, fixed 144-bucket sustained-risk denominator |
-| Caps | Current CO 0; current danger/AQ 54; prior-12h CO 54 and danger/AQ 69; incomplete AQ and sustained risk 91; strictest cap and backend headline |
+| Caps/adjustment | Retained CO/danger/incomplete-evidence safeguards; routine AQ has no 54/69/91 ceiling; 12-point additional adjustment at crossing, six observed-clear hours, missing/gap pause, repeated crossing reset, no unknown-interval credit; valid live observations may support recovery despite a missing scheduled graph point |
 | Availability | Collecting, evidence gaps, balance evidence, live required data absent, malformed/missing payload, boolean/array/string/non-finite/out-of-range scores and contradictory availability; never invented health |
 | Scheduler | UTC boundaries, first strictly future sample, 60-second grace, no backfill, invalid/duplicate buckets, exceptions, unload and reload |
 | Failure history | Unique observed failures only; late-range bounds; no future or pre-setup inference; valid-bucket reconciliation; expiry and reset; missing history unavailable |
-| Movement | Signed ±360 endpoints; retained position/colour on steady; reversal and origin crossing; saturation; unavailable resets versus read-time hiding; skipped callback no movement |
-| Rendering | Four identical Mobile/Tablet/gallery renderers; 82px footprint; classification halo; independent blue/green/orange/red LEDs; 6s Partial pulse and reduced motion |
+| Movement | Atomic headline/delta/colour publication within a sampling bucket; signed ±360 endpoints; left-side rise/right-side decline; 1–4 versus 5+ point intensity; saturation; unchanged reads; unavailable/reset; ordered timestamps |
+| Rendering | Four identical Mobile/Tablet/gallery renderers; 82px footprint; classification halo; independent soft-green/bright-green/orange/red LEDs; blue baseline collection; 6s Partial pulse and reduced motion |
 | Collection rendering | One blue tick per valid sample at 0, 1, 4, 151, 302 and 303; centred slots and hidden origin after first tick; strict integer count/target bounds and matching rounded backend ratio; no early full circle; separate red fixed-slot history; malformed history fails closed |
 | Interaction | Whole-badge tap/click/keyboard; detached snapshot dialog; sticky Close/Escape/backdrop; focus restoration; deduplication; refresh, navigation and owner-removal cleanup; unsupported-modal Diagnostics fallback; hold opens Diagnostics |
+| Score history | Actual ten-minute scores, 432-slot bound, gaps, no read-driven growth/backfill, restart reset, local-time labels and accessible graph; full Stability attribute excluded from Recorder, no history duplication in the legacy summary |
 | Control/privacy | No Stability output writes, lane/gate changes or humidifier authority; canonical Manual/CO regressions; sanitized support exports |
 
 Classifications are Excellent 92–100, Good 70–91, Unstable 55–69 and Poor 0–54.

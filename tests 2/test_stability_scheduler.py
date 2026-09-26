@@ -36,7 +36,8 @@ def _load_sensor_module(registrations, captures, repair_updates):
     device_registry = types.ModuleType("homeassistant.helpers.device_registry")
 
     class SensorEntity:
-        pass
+        def async_write_ha_state(self):
+            pass
 
     class ConfigEntry:
         pass
@@ -161,13 +162,16 @@ def _load_sensor_module(registrations, captures, repair_updates):
         return capture
 
     stability.capture_stability_snapshot = capture_stability_snapshot
-    stability.record_stability_score_movement = (
-        lambda runtime_data, *, observed_at: runtime_data.setdefault(
-            "movement_recorded_at",
-            [],
-        ).append(observed_at)
-    )
-    stability.stability_diagnostics_payload = lambda _runtime_data: {}
+    def record_movement(runtime_data, *, observed_at, capture_available=True):
+        runtime_data.setdefault("movement_recorded_at", []).append(observed_at)
+        runtime_data.setdefault("movement_capture_available", []).append(capture_available)
+
+    stability.record_stability_score_movement = record_movement
+    def publish_stability_score(runtime_data, **kwargs):
+        runtime_data.setdefault("published_updates", []).append(kwargs)
+        return {}
+    stability.publish_stability_score = publish_stability_score
+    stability.stability_diagnostics_payload = lambda _runtime_data, **kwargs: {}
     sys.modules[f"{PKG}.helpers.stability"] = stability
 
     zone_validation = types.ModuleType(f"{PKG}.helpers.zone_validation")
@@ -435,7 +439,8 @@ def test_late_scheduler_callback_is_missing_without_backfill():
     assert runtime_data["stability_snapshot_ring"].pruned_at == [
         datetime(2026, 7, 30, 10, 30, 30, tzinfo=timezone.utc)
     ]
-    assert "movement_recorded_at" not in runtime_data
+    assert runtime_data.get("movement_recorded_at", []) == []
+    assert runtime_data["published_updates"] == [{"observed_at": sensor_mod._utc_now(), "sample_history": True, "history_available": False}]
     assert len(registrations["points"]) == 2
     assert registrations["points"][1]["point_in_time"] == datetime(
         2026,

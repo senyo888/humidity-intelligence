@@ -17,7 +17,8 @@ def test_full_scenario_uses_real_backend_transitions():
     assert ends['Deterioration']['score']['display_score'] < ends['Excellent baseline']['score']['display_score']
     assert ends['Sustained Risk']['score']['display_score'] <= 91
     assert ends['Current Danger']['score']['display_score'] <= 54
-    assert ends['AQ crossing']['score']['display_score'] <= 54
+    assert ends['AQ crossing']['aq_adjustment']['points'] == 12
+    assert not any('air_quality_bad' in reason for reason in ends['AQ crossing']['caps']['classification_cap_reasons'])
     assert ends['CO emergency']['score']['display_score'] == 0
     assert ends['Recovery']['score']['display_classification'] == 'Excellent'
     assert ends['Partial AQ evidence']['presentation']['tone'] == 'incomplete'

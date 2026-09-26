@@ -4302,14 +4302,17 @@ card:
           entity: sensor.hi_diagnostics
           name: |
             [[[
-              const stability = entity?.attributes?.diagnostics_summary?.stability_score || {};
+              const hasDedicated = Object.prototype.hasOwnProperty.call(entity?.attributes || {}, 'stability_score');
+              const source = hasDedicated ? entity.attributes.stability_score : entity?.attributes?.diagnostics_summary?.stability_score;
+              const stability = source && typeof source === 'object' && !Array.isArray(source) ? source : {};
+              const malformedDedicated = hasDedicated && (!source || typeof source !== 'object' || Array.isArray(source) || typeof source.availability !== 'string' || !source.score || typeof source.score !== 'object' || Array.isArray(source.score));
               const rawValue = stability.score?.display_score ?? stability.display_score
-                ?? entity?.attributes?.stability_score_display_score;
+                ?? (hasDedicated ? undefined : entity?.attributes?.stability_score_display_score);
               const availability = stability.availability
-                || entity?.attributes?.stability_score_availability || '';
+                || (hasDedicated ? '' : entity?.attributes?.stability_score_availability) || '';
               const validScore = typeof rawValue === 'number' && Number.isInteger(rawValue)
                 && rawValue >= 0 && rawValue <= 100;
-              const invalidScore = (rawValue != null && !validScore)
+              const invalidScore = malformedDedicated || (rawValue != null && !validScore)
                 || (availability === 'available' && !validScore)
                 || (rawValue != null && availability !== '' && availability !== 'available');
               const presentation = invalidScore ? {} : stability.presentation || {};
@@ -4320,34 +4323,40 @@ card:
           show_label: true
           label: |
             [[[
-              const stability = entity?.attributes?.diagnostics_summary?.stability_score || {};
+              const hasDedicated = Object.prototype.hasOwnProperty.call(entity?.attributes || {}, 'stability_score');
+              const source = hasDedicated ? entity.attributes.stability_score : entity?.attributes?.diagnostics_summary?.stability_score;
+              const stability = source && typeof source === 'object' && !Array.isArray(source) ? source : {};
+              const malformedDedicated = hasDedicated && (!source || typeof source !== 'object' || Array.isArray(source) || typeof source.availability !== 'string' || !source.score || typeof source.score !== 'object' || Array.isArray(source.score));
               const rawValue = stability.score?.display_score ?? stability.display_score
-                ?? entity?.attributes?.stability_score_display_score;
+                ?? (hasDedicated ? undefined : entity?.attributes?.stability_score_display_score);
               const availability = stability.availability
-                || entity?.attributes?.stability_score_availability || '';
+                || (hasDedicated ? '' : entity?.attributes?.stability_score_availability) || '';
               const validScore = typeof rawValue === 'number' && Number.isInteger(rawValue)
                 && rawValue >= 0 && rawValue <= 100;
-              const invalidScore = (rawValue != null && !validScore)
+              const invalidScore = malformedDedicated || (rawValue != null && !validScore)
                 || (availability === 'available' && !validScore)
                 || (rawValue != null && availability !== '' && availability !== 'available');
               if (invalidScore) return 'Unavailable';
-              const text = String(entity?.attributes?.diagnostics_summary?.stability_score?.presentation?.compact_text || 'Unavailable');
+              const text = String(stability.presentation?.compact_text || 'Unavailable');
               const escaped = text.replaceAll('&', '&amp;').replaceAll('<', '&lt;')
                 .replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#039;');
-              const partial = entity?.attributes?.diagnostics_summary?.stability_score?.presentation?.tone === 'incomplete';
+              const partial = stability.presentation?.tone === 'incomplete';
               return partial ? `<span class="hi-stability-partial-label">${escaped}</span>` : escaped;
             ]]]
           custom_fields:
             gauge: |
               [[[
-                const stability = entity?.attributes?.diagnostics_summary?.stability_score || {};
+                const hasDedicated = Object.prototype.hasOwnProperty.call(entity?.attributes || {}, 'stability_score');
+              const source = hasDedicated ? entity.attributes.stability_score : entity?.attributes?.diagnostics_summary?.stability_score;
+              const stability = source && typeof source === 'object' && !Array.isArray(source) ? source : {};
+              const malformedDedicated = hasDedicated && (!source || typeof source !== 'object' || Array.isArray(source) || typeof source.availability !== 'string' || !source.score || typeof source.score !== 'object' || Array.isArray(source.score));
                 const rawValue = stability.score?.display_score ?? stability.display_score
-                  ?? entity?.attributes?.stability_score_display_score;
+                  ?? (hasDedicated ? undefined : entity?.attributes?.stability_score_display_score);
                 const availability = stability.availability
-                  || entity?.attributes?.stability_score_availability || '';
+                  || (hasDedicated ? '' : entity?.attributes?.stability_score_availability) || '';
                 const validScore = typeof rawValue === 'number' && Number.isInteger(rawValue)
                   && rawValue >= 0 && rawValue <= 100;
-                const invalidScore = (rawValue != null && !validScore)
+                const invalidScore = malformedDedicated || (rawValue != null && !validScore)
                   || (availability === 'available' && !validScore)
                   || (rawValue != null && availability !== '' && availability !== 'available');
                 const score = stability.score || {};
@@ -4439,7 +4448,7 @@ card:
                     `<i class="hi-stability-failure-mark" style="--hi-failure-angle:${angle}deg;"></i>`
                   ).join('')}</div>` : '';
                 const movementColors = {
-                  rise_gentle: '#38bdf8',
+                  rise_gentle: '#86bfa0',
                   rise_strong: '#4ade80',
                   fall_gentle: '#fb923c',
                   fall_strong: '#ef4444',
@@ -4454,6 +4463,13 @@ card:
                 const startPosition = positionsAvailable ? movement.start_position_degrees : 0;
                 const endPosition = positionsAvailable ? movement.end_position_degrees : 0;
                 const activeLedSteps = Math.abs(endPosition);
+                // Presentation-only custody prevents replay on unrelated dashboard redraws.
+                const pulseKey = JSON.stringify([movement.current_bucket_start_utc, movement.previous_display_score, movement.current_display_score, startPosition, endPosition]);
+                const pulseHost = this && this.isConnected === true ? this : null;
+                const pulse = positionsAvailable && movement.saturated === true
+                  && Number.isInteger(movement.delta_points) && movement.delta_points !== 0
+                  && (!pulseHost || pulseHost.__hiStabilityPulseKey !== pulseKey);
+                if (pulseHost) pulseHost.__hiStabilityPulseKey = pulseKey;
                 const ledArcs = [1, -1].map((side) => {
                   const fromExtent = Math.max(0, startPosition * side);
                   const toExtent = Math.max(0, endPosition * side);
@@ -4463,11 +4479,12 @@ card:
                     const from = angle < fromExtent ? 1 : 0;
                     const to = angle < toExtent ? 1 : 0;
                     const distance = Math.abs(angle * side - startPosition);
-                    const delay = Math.max(0, Math.ceil(distance / 3) - (from > to ? 1 : 0)) * 18;
+                    const step = Math.max(0, Math.ceil(distance / 3) - (from > to ? 1 : 0));
+                    const delay = Math.round(162 * Math.min(1, step / Math.max(1, Math.ceil(Math.abs(endPosition - startPosition) / 3) - 1)));
                     const animation = from === to ? 'animation:none;' : '';
                     return `<i class="hi-stability-mark" style="--hi-mark-angle:${angle}deg;--hi-mark-delay:${delay}ms;--hi-mark-from:${from};--hi-mark-to:${to};${animation}"></i>`;
                   }).join('');
-                  return `<div class="hi-stability-direction hi-stability-direction-${side === 1 ? 'higher' : 'lower'}" aria-hidden="true">${marks}</div>`;
+                  return `<div class="hi-stability-direction${pulse ? ' hi-stability-change-pulse' : ''} hi-stability-direction-${side === 1 ? 'higher' : 'lower'}" aria-hidden="true">${marks}</div>`;
                 }).join('');
                 const movementDetail = String(movement.detail_text || '');
                 const fullDetailText = movementDetail ? `${detailText} ${movementDetail}` : detailText;
@@ -4486,9 +4503,81 @@ card:
                 const evidenceText = evidenceValid
                   ? `${collecting ? 'Baseline progress' : 'Rolling-window coverage'}: ${evidenceCount} of ${evidenceTarget} valid samples.`
                   : 'Sample progress unavailable.';
+                const localTime = (value) => {
+                  if (typeof value !== 'string' || !/(?:Z|[+-]\d{2}:\d{2})$/.test(value)) return '';
+                  const date = new Date(value);
+                  if (!Number.isFinite(date.getTime())) return '';
+                  const zone = typeof hass !== 'undefined' ? hass?.config?.time_zone : undefined;
+                  try { return new Intl.DateTimeFormat(undefined, {month:'short',day:'numeric',hour:'2-digit',minute:'2-digit',timeZoneName:'short',...(zone ? {timeZone:zone} : {})}).format(date); }
+                  catch (_) { return date.toLocaleString(); }
+                };
+                const updateTime = localTime(movement.current_bucket_start_utc);
                 const arcDetails = collecting
-                  ? '<h3>Baseline collection</h3><p>The blue LEDs fill clockwise as valid samples accumulate toward the baseline requirement. They show valid-sample progress. The score appears when the backend evidence requirements are met.</p>'
-                  : `<h3>Recent trend</h3><p>The arc retains accumulated score movement. Its colour shows the latest change: blue or green indicates recovery, even while an earlier downward arc is still retracting. Orange or red indicates a decline. Arc position represents accumulated score movement.</p><p>${escapeHtml(movementDetail || 'Movement unavailable.')}</p>`;
+                  ? '<h3>Building your baseline</h3><p>Each illuminated mark represents a valid reading. Your score appears once there are enough readings for the required parts of the calculation.</p>'
+                  : `<h3>Recent trend</h3><p>${escapeHtml(movementDetail || 'Movement unavailable.')}</p>${updateTime ? `<p class="hi-stability-muted">Latest update: ${escapeHtml(updateTime)}</p>` : ''}<details class="hi-stability-help"><summary>How the LEDs work</summary><p>Arc position represents accumulated score movement. A rise moves clockwise and a fall moves counterclockwise. Soft green shows a small rise and brighter green a stronger rise; orange or red shows the latest fall, whichever side the arc is on. A change of five or more points uses the stronger colour. An unchanged score holds its position with neutral LEDs. At the arc limit, a brief pulse acknowledges a further change.</p></details>`;
+                const numericPoints = (value) => typeof value === 'number' && Number.isFinite(value) && value >= 0 && value <= 100;
+                const pointsText = (value) => Number.isInteger(value) ? String(value) : value.toFixed(2);
+                const explanation = !invalidScore && hasValue ? stability.explanation : null;
+                const equationValid = explanation && explanation.final_score === value
+                  && [explanation.maximum_points, explanation.component_shortfall_points, explanation.evidence_deduction_points, explanation.aq_adjustment_points, explanation.pre_cap_score].every(numericPoints)
+                  && explanation.maximum_points === 100;
+                const contributionRows = (items) => Array.isArray(items) ? items.filter(item => item && typeof item.label === 'string' && numericPoints(item.points)).map(item => `<tr><th scope="row">${escapeHtml(item.label)}</th><td>${item.points === 0 ? '0' : `−${pointsText(item.points)}`}</td></tr>`).join('') : '';
+                const equationHtml = equationValid ? `<section class="hi-stability-calculation"><h3>Your score</h3><p class="hi-stability-equation">${explanation.clamped_at_zero === true ? 'max(0, ' : ''}${pointsText(explanation.maximum_points)} − ${pointsText(explanation.component_shortfall_points)} − ${pointsText(explanation.evidence_deduction_points)} − ${pointsText(explanation.aq_adjustment_points)}${explanation.clamped_at_zero === true ? ')' : ''} = <strong>${pointsText(explanation.pre_cap_score)}</strong></p><p class="hi-stability-muted">Maximum − component shortfalls − evidence adjustments − recent AQ adjustment = calculated score.${explanation.clamped_at_zero === true ? ' The score stops at zero.' : ''}</p><table class="hi-stability-table"><caption>What contributes to the calculation</caption><tbody>${contributionRows(explanation.component_shortfalls)}${contributionRows(explanation.evidence_deductions)}<tr><th scope="row">Recent AQ adjustment</th><td>${explanation.aq_adjustment_points === 0 ? '0' : `−${pointsText(explanation.aq_adjustment_points)}`}</td></tr></tbody></table><p>${numericPoints(explanation.safety_ceiling) ? `The current ceiling is ${pointsText(explanation.safety_ceiling)}. The lower of the calculated score and this ceiling is shown, rounded to a whole point: <strong>${escapeHtml(explanation.final_score)}</strong>.` : `Rounded to a whole point: <strong>${escapeHtml(explanation.final_score)}</strong>.`}</p></section>` : '';
+                const selection = stability.aq_selection;
+                const triggerLabels = {co2_high:'CO₂',pm25_high:'PM2.5',voc_bad:'VOC',iaq_bad:'IAQ'};
+                const selectionRows = selection?.policy === 'raw_first_per_level_v1' && Array.isArray(selection.levels) ? selection.levels.filter(item => item && ['raw','iaq_fallback','unconfigured'].includes(item.basis) && Array.isArray(item.selected_triggers)).map(item => {
+                  const names = item.selected_triggers.map(code => triggerLabels[code] || String(code)).join(', ');
+                  return `<li>${escapeHtml(item.level)}: ${item.basis === 'unconfigured' ? 'no AQ conditions configured' : `${escapeHtml(names || 'selected readings')}${item.basis === 'iaq_fallback' ? ' (index fallback)' : ''}`}${item.excluded_iaq ? '. IAQ is shown separately and does not also count here' : ''}${item.complete === false && item.basis !== 'unconfigured' ? '. Some selected readings are unavailable' : ''}.</li>`;
+                }).join('') : '';
+                const adjustment = stability.aq_adjustment;
+                const adjustmentValid = adjustment && numericPoints(adjustment.points) && adjustment.points <= 12
+                  && adjustment.max_points === 12 && adjustment.required_clear_seconds === 21600
+                  && typeof adjustment.remaining_clear_seconds === 'number' && Number.isFinite(adjustment.remaining_clear_seconds)
+                  && adjustment.remaining_clear_seconds >= 0 && adjustment.remaining_clear_seconds <= 21600;
+                const remainingMinutes = adjustmentValid ? Math.ceil(adjustment.remaining_clear_seconds / 60) : 0;
+                const remainingText = `${Math.floor(remainingMinutes / 60)}h ${remainingMinutes % 60}m`;
+                const adjustmentCopy = adjustmentValid ? {
+                  inactive:'No recent AQ adjustment is active.',
+                  crossed:`A selected AQ threshold is crossed. The additional adjustment is ${pointsText(adjustment.points)} points. Recovery starts with valid clear readings.`,
+                  recovering:`The recent AQ adjustment is ${pointsText(adjustment.points)} points, with ${remainingText} of observed clear readings remaining.`,
+                  paused_missing:`Recovery is paused because selected AQ readings are missing. The adjustment stays at ${pointsText(adjustment.points)} points; ${remainingText} of observed clear readings remain.`
+                }[adjustment.status] || '' : '';
+                const aqHtml = selectionRows || adjustmentCopy ? `<h3>Air quality in this score</h3>${selectionRows ? `<ul class="hi-stability-scope">${selectionRows}</ul><p>Individual measurements are used where configured. The IAQ index is the fallback only where no individual measurement is configured; it does not replace a missing reading.</p>` : ''}${adjustmentCopy ? `<p>${escapeHtml(adjustmentCopy)}</p><p class="hi-stability-muted">This additional adjustment is at most 12 points. It eases over six hours of observed clear readings; missing readings pause recovery and a new crossing restarts it. AQ also contributes to the underlying components.</p>` : ''}` : '';
+                const history = stability.score_history;
+                const historyValid = history?.status === 'available' && history.reset_on_restart === true && history.capacity === 432 && history.sample_minutes === 10 && history.window_hours === 72
+                  && Array.isArray(history.points) && history.points.length <= 432
+                  && history.points.every((point, index, items) => point && typeof point.at === 'string' && /(?:Z|[+-]\d{2}:\d{2})$/.test(point.at)
+                    && Number.isFinite(Date.parse(point.at)) && Date.parse(point.at) % 600000 === 0
+                    && (point.score === null || (Number.isInteger(point.score) && point.score >= 0 && point.score <= 100))
+                    && (!index || Date.parse(point.at) > Date.parse(items[index - 1].at)))
+                  && (!history.points.length || Date.parse(history.points[history.points.length - 1].at) - Date.parse(history.points[0].at) <= 431 * 600000);
+                let historyHtml = '<p>Score history is not available in this snapshot.</p>';
+                if (historyValid) {
+                  const samples = history.points;
+                  const recorded = samples.filter(point => point.score !== null);
+                  if (!recorded.length) historyHtml = '<p>No scored observations yet. The graph starts when a score is available.</p>';
+                  else {
+                    const firstAt = Date.parse(samples[0].at), lastAt = Date.parse(samples[samples.length - 1].at);
+                    const x = at => lastAt === firstAt ? 220 : 36 + (Date.parse(at) - firstAt) / (lastAt - firstAt) * 376;
+                    const y = score => 154 - score / 100 * 136;
+                    let previous = null;
+                    const lines = [], dots = [];
+                    for (const point of samples) {
+                      if (point.score === null) { previous = null; continue; }
+                      if (previous && Date.parse(point.at) - Date.parse(previous.at) === 600000) lines.push(`<path d="M${x(previous.at).toFixed(2)} ${y(previous.score).toFixed(2)} L${x(point.at).toFixed(2)} ${y(point.score).toFixed(2)}"/>`);
+                      dots.push(`<circle cx="${x(point.at).toFixed(2)}" cy="${y(point.score).toFixed(2)}" r="2"><title>${escapeHtml(localTime(point.at))}: ${point.score}</title></circle>`);
+                      previous = point;
+                    }
+                    const latest = recorded[recorded.length - 1];
+                    const summary = `${recorded.length} scored observations. Latest recorded score: ${latest.score} at ${localTime(latest.at)}. Gaps are left empty.`;
+                    historyHtml = `<p>${escapeHtml(summary)}</p><svg class="hi-stability-history-graph" viewBox="0 0 440 182" role="img" aria-label="${escapeHtml(summary)}"><title>Recorded Stability Score</title><g class="hi-stability-history-grid">${[0,50,100].map(level => `<path d="M36 ${y(level)}H412"/><text x="28" y="${y(level)+4}" text-anchor="end">${level}</text>`).join('')}</g><g class="hi-stability-history-line">${lines.join('')}</g><g class="hi-stability-history-points">${dots.join('')}</g></svg><div class="hi-stability-history-times"><span>${escapeHtml(localTime(samples[0].at))}</span><span>${escapeHtml(localTime(samples[samples.length - 1].at))}</span></div>`;
+                  }
+                }
+                const latestLive = historyValid ? history.current : null;
+                const latestLiveTime = localTime(latestLive?.at);
+                const latestLiveValid = latestLiveTime && latestLive && (latestLive.score === null || (Number.isInteger(latestLive.score) && latestLive.score >= 0 && latestLive.score <= 100));
+                const latestLiveHtml = latestLiveValid ? `<p class="hi-stability-live-score">Latest update: ${latestLive.score === null ? 'score unavailable' : latestLive.score} at ${escapeHtml(latestLiveTime)}. This is separate from the ten-minute samples.</p>` : '';
+                const historySection = `<details class="hi-stability-history"><summary>Score history <span aria-hidden="true">↗</span></summary>${historyHtml}${latestLiveHtml}<p class="hi-stability-muted">Score sampled every 10 minutes, for up to 72 hours. Changes between samples are not shown. Gaps mean no recorded score. History resets when HI restarts or reloads.</p></details>`;
                 const gaugeClass = [
                   'hi-stability-gauge',
                   tone === 'excellent' ? 'hi-stability-gauge-white' : '',
@@ -4508,14 +4597,38 @@ card:
                   dialog.hi-stability-details h3 { font-size:15px; }
                   dialog.hi-stability-details p { overflow-wrap:anywhere; }
                   dialog.hi-stability-details .hi-stability-close { display:grid; place-items:center; position:sticky; top:0; margin:0 0 12px auto; z-index:1; box-sizing:border-box; width:44px; height:44px; min-width:44px; min-height:44px; padding:0; border:0; border-radius:50%; background:transparent; color:#e2e8f0; cursor:pointer; } dialog.hi-stability-details .hi-stability-close::before { content:""; position:absolute; inset:6px; border:1px solid #64748b; border-radius:50%; background:#18253a; } dialog.hi-stability-details .hi-stability-close svg { position:relative; pointer-events:none; }
-                  dialog.hi-stability-details .hi-stability-close:focus-visible { outline:2px solid #38bdf8; outline-offset:4px; }</style>
+                  dialog.hi-stability-details .hi-stability-close:focus-visible, dialog.hi-stability-details summary:focus-visible { outline:2px solid #38bdf8; outline-offset:4px; }
+                  dialog.hi-stability-details .hi-stability-muted, dialog.hi-stability-details .hi-stability-snapshot { color:#a8b6ca; font-size:12px; }
+                  dialog.hi-stability-details .hi-stability-equation { padding:14px; border:1px solid #354762; border-radius:12px; font-size:18px; line-height:1.7; font-variant-numeric:tabular-nums; background:#101e30; }
+                  dialog.hi-stability-details .hi-stability-table { width:100%; border-collapse:collapse; font-size:13px; }
+                  dialog.hi-stability-details caption { text-align:left; color:#a8b6ca; padding:6px 0; }
+                  dialog.hi-stability-details th { text-align:left; font-weight:500; }
+                  dialog.hi-stability-details td { text-align:right; font-variant-numeric:tabular-nums; white-space:nowrap; }
+                  dialog.hi-stability-details th, dialog.hi-stability-details td { padding:5px 0; border-bottom:1px solid #253247; }
+                  dialog.hi-stability-details summary { min-height:44px; box-sizing:border-box; padding:10px 2px; cursor:pointer; font-weight:600; }
+                  dialog.hi-stability-details .hi-stability-history { border-top:1px solid #354762; margin-top:18px; padding-top:4px; }
+                  dialog.hi-stability-details .hi-stability-history summary span { float:right; color:#7dd3fc; }
+                  dialog.hi-stability-details .hi-stability-history-graph { display:block; width:100%; height:auto; overflow:visible; }
+                  dialog.hi-stability-details .hi-stability-history-grid path { stroke:#354762; stroke-width:1; }
+                  dialog.hi-stability-details .hi-stability-history-grid text { fill:#a8b6ca; font-size:11px; }
+                  dialog.hi-stability-details .hi-stability-history-line { fill:none; stroke:#7dd3fc; stroke-width:2; }
+                  dialog.hi-stability-details .hi-stability-history-points { fill:#7dd3fc; }
+                  dialog.hi-stability-details .hi-stability-history-times { display:flex; justify-content:space-between; gap:20px; color:#a8b6ca; font-size:11px; }
+                  dialog.hi-stability-details .hi-stability-history-times span:last-child { text-align:right; }
+                  @media (max-width:400px) { dialog.hi-stability-details .hi-stability-history-grid text { font-size:18px; } }</style>
                   <button type="button" class="hi-stability-close" aria-label="Close" title="Close" autofocus><svg aria-hidden="true" viewBox="0 0 24 24" width="18" height="18"><path d="m6 6 12 12M18 6 6 18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
                   <h2>Stability Score</h2>
+                  <p>Your score brings together the last three days of observations. Follow how it changes, and see what contributed to the latest result.</p>
+                  ${equationHtml}
                   <p>${escapeHtml(detailText)}</p>
                   <p>${escapeHtml(evidenceText)}</p>
+                  <p>New readings enter the 72-hour window as older ones leave. Coverage describes how much evidence is available, not how healthy the air is.</p>
+                  <p>${Number.isInteger(windowData.minimum_valid_samples) ? `At least ${windowData.minimum_valid_samples} valid readings are needed, alongside enough consecutive and room-balance readings.` : 'The score needs enough valid readings for each required part of its calculation.'}</p>
+                  ${aqHtml}
                   ${arcDetails}
                   ${showFailureHistory ? `<h3>Collection history</h3><p>${escapeHtml(failureHistoryValid && typeof failureHistory.detail_text === 'string' ? failureHistory.detail_text : 'Failed collection history unavailable.')}</p><p>Inner red marks retain failed or missed scheduled samples in the last 72 hours of this runtime. Blue baseline progress reflects valid samples; the score reflects scored evidence. Red marks occupy fixed sampling slots. History resets when the integration restarts.</p>` : ''}
                   <p class="hi-stability-snapshot">These details capture the moment you opened this panel. Reopen it to see the latest readings.</p>
+                  ${historySection}
                 </template></div>`;
               ]]]
           tap_action:
@@ -4763,6 +4876,11 @@ card:
               opacity: var(--hi-mark-to);
               animation: hi-stability-mark-on 138ms ease-out var(--hi-mark-delay) both;
             }
+            .hi-stability-direction.hi-stability-change-pulse { animation:hi-stability-change-pulse 300ms ease-out 1; }
+            @keyframes hi-stability-change-pulse {
+              0%, 100% { filter:drop-shadow(0 0 1px var(--hi-stability-led-color)); }
+              50% { filter:brightness(1.6) drop-shadow(0 0 3px var(--hi-stability-led-color)); }
+            }
             @keyframes hi-stability-mark-on {
               from { opacity: var(--hi-mark-from); }
               to { opacity: var(--hi-mark-to); }
@@ -4822,6 +4940,7 @@ card:
                 margin-right: 4px;
                 vertical-align: middle;
               }
+              .hi-stability-direction.hi-stability-change-pulse { animation:none !important; }
               .hi-stability-mark {
                 animation: none !important;
                 opacity: var(--hi-mark-to);

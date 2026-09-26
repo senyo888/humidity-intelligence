@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from copy import deepcopy
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from math import ceil, isfinite
@@ -27,6 +28,9 @@ DIRECTIONAL_STRONG_RATE_POINTS_PER_10_MINUTES = 5.0
 DIRECTIONAL_LED_STEPS_PER_POINT = 3.6
 AQ_COMPONENT_MINIMUM_COVERAGE_RATIO = 0.70
 AQ_EVIDENCE_PENALTY_MAX_POINTS = 3.0
+FORMULA_VERSION = 4
+AQ_ADJUSTMENT_MAX_POINTS = 12.0
+AQ_CLEAR_SECONDS = 6 * 60 * 60
 SCORE_WEIGHTS = {
     "target_adherence": 0.30,
     "volatility": 0.15,
@@ -102,6 +106,9 @@ class StabilitySnapshot:
     air_quality_invalid_threshold_count: int = 0
     air_quality_bad_trigger_codes: tuple[str, ...] = ()
     co_emergency_active: bool = False
+    co_warning_active: bool = False
+    air_quality_evidence_complete: bool = True
+    formula_version: int = FORMULA_VERSION
 
 
 class StabilitySnapshotRing:
@@ -168,12 +175,14 @@ def evaluate_stability_window(
     current_air_quality_bad: Optional[bool] = None,
     current_air_quality_evidence_available: Optional[bool] = None,
     current_co_emergency: Optional[bool] = None,
+    current_co_warning: Optional[bool] = None,
+    aq_adjustment: Optional[dict[str, Any]] = None,
     current_required_inputs_available: Optional[bool] = None,
     current_invalid_reasons: Optional[Iterable[str]] = None,
     observed_at: Optional[datetime] = None,
 ) -> dict[str, Any]:
     ordered = _windowed_samples(samples, observed_at=observed_at)
-    valid = [sample for sample in ordered if _valid_sample(sample)]
+    valid = [sample for sample in ordered if _valid_sample(sample) and sample.formula_version == FORMULA_VERSION]
     coverage_ratio = round(min(1.0, len(valid) / EXPECTED_SAMPLES), 4)
     base = _base_payload(len(valid), coverage_ratio)
     live_invalid_reasons = [
@@ -260,7 +269,13 @@ def evaluate_stability_window(
         air_quality_evidence_penalty = AQ_EVIDENCE_PENALTY_MAX_POINTS
     coverage_penalty = round((1 - coverage_ratio) * 10, 2)
     drift_penalty = 3.0 if not drift_available else 0.0
-    additional_penalty = drift_penalty + air_quality_evidence_penalty
+    if aq_adjustment is None:
+        aq_adjustment = _adjustment_from_samples(valid, bool(current_air_quality_bad), bool(current_air_quality_evidence_available))
+    aq_points = round(float(aq_adjustment["points"]), 2)
+    aq_adjustment = {**aq_adjustment, "points": aq_points}
+    additional_penalty = drift_penalty + air_quality_evidence_penalty + aq_points
+    # Round the displayed operands before subtraction so the equation reconciles.
+    raw_score = round(raw_score, 2)
     window_score = round(
         _clamp(raw_score - coverage_penalty - additional_penalty, 0.0, 100.0),
         2,
@@ -278,6 +293,7 @@ def evaluate_stability_window(
             current_air_quality_evidence_available
         ),
         current_co_emergency=bool(current_co_emergency),
+        current_co_warning=latest.co_warning_active if current_co_warning is None else bool(current_co_warning),
         observed_at=observed_at,
     )
     uncapped_display_score = int(round(window_score))
@@ -299,6 +315,7 @@ def evaluate_stability_window(
         coverage_penalty=coverage_penalty,
         drift_penalty=drift_penalty,
         air_quality_evidence_penalty=air_quality_evidence_penalty,
+        aq_adjustment=aq_adjustment,
     )
     base.update(
         {
@@ -337,6 +354,7 @@ def evaluate_stability_window(
                 "drift_unavailable_penalty_points": drift_penalty,
                 "air_quality_evidence_penalty_points": air_quality_evidence_penalty,
                 "additional_penalty_points": additional_penalty,
+                "air_quality_adjustment_points": aq_points,
             },
             "score_basis": score_basis,
             "environmental_evidence": air_quality_coverage["status"],
@@ -344,15 +362,17 @@ def evaluate_stability_window(
             if not drift_available
             else "available",
             "recovery": recovery_details,
+            "aq_adjustment": dict(aq_adjustment),
         }
     )
+    base["explanation"] = _score_explanation(base)
     base["presentation"] = _available_presentation(
         display_score,
         display_classification,
         message,
         cap_applied=bool(caps["score_cap_applied"]),
-        partial_evidence=air_quality_coverage["status"] != "complete",
-        condition_truth_active=(
+        partial_evidence=air_quality_coverage["status"] != "complete" or not current_air_quality_evidence_available,
+        condition_truth_active=bool(current_air_quality_bad) or (
             caps.get("headline_cap_reason")
             not in {None, "air_quality_evidence_incomplete"}
         ),
@@ -360,7 +380,151 @@ def evaluate_stability_window(
     return base
 
 
-def stability_diagnostics_payload(
+def _advance_aq_adjustment(previous: dict[str, Any], *, observed_at: datetime, crossed: bool, complete: bool) -> dict[str, Any]:
+    """Credit only adjacent, fully observed clear intervals; unknown time earns none."""
+    previous = previous if isinstance(previous, dict) else {}
+    now = _as_utc(observed_at)
+    last = _parse_timestamp(previous.get("observed_at"))
+    if last is not None and now <= last:
+        return dict(previous)
+    active = bool(previous.get("event_active"))
+    clear_seconds = float(previous.get("clear_seconds", 0))
+    if crossed:
+        active, clear_seconds = True, 0.0
+    elif complete and previous.get("previous_clear") and last is not None:
+        elapsed = (now - last).total_seconds()
+        if 0 < elapsed <= (BUCKET_MINUTES * 60 + SNAPSHOT_LATE_GRACE_SECONDS):
+            clear_seconds = min(AQ_CLEAR_SECONDS, clear_seconds + elapsed)
+    if clear_seconds >= AQ_CLEAR_SECONDS:
+        active = False
+    points = round(AQ_ADJUSTMENT_MAX_POINTS * (1 - clear_seconds / AQ_CLEAR_SECONDS), 2) if active else 0.0
+    status = "crossed" if crossed else "inactive" if not active else "paused_missing" if not complete else "recovering"
+    return {
+        "points": points, "max_points": AQ_ADJUSTMENT_MAX_POINTS,
+        "status": status, "clear_seconds": round(clear_seconds, 2),
+        "required_clear_seconds": AQ_CLEAR_SECONDS,
+        "remaining_clear_seconds": round(max(0, AQ_CLEAR_SECONDS - clear_seconds), 2) if active else 0,
+        "event_active": active, "previous_clear": complete and not crossed,
+        "observed_at": now.isoformat(),
+    }
+
+
+def _parse_timestamp(value: Any) -> Optional[datetime]:
+    try:
+        parsed = datetime.fromisoformat(str(value))
+        return parsed.astimezone(timezone.utc) if parsed.tzinfo is not None else None
+    except (TypeError, ValueError):
+        return None
+
+
+def _adjustment_from_samples(valid: list[StabilitySnapshot], current_bad: bool, current_complete: bool) -> dict[str, Any]:
+    state: dict[str, Any] = {}
+    for sample in valid:
+        state = _advance_aq_adjustment(state, observed_at=sample.observed_at,
+            crossed=sample.air_quality_bad_condition_count > 0,
+            complete=sample.air_quality_evidence_complete and sample.air_quality_configured_condition_count > 0 and sample.air_quality_evaluated_condition_count == sample.air_quality_configured_condition_count)
+    # Live changes cannot retrospectively certify another clear interval.
+    if current_bad:
+        state.update(points=AQ_ADJUSTMENT_MAX_POINTS, clear_seconds=0, remaining_clear_seconds=AQ_CLEAR_SECONDS, event_active=True, status="crossed", previous_clear=False)
+    elif not current_complete:
+        state.update(status="paused_missing", previous_clear=False)
+    return state
+
+
+def _score_explanation(payload: dict[str, Any]) -> dict[str, Any]:
+    score, subscores, penalties = payload["score"], payload["subscores"], payload["penalties"]
+    names = [("target_adherence", "Humidity target", "target_adherence"),
+        ("volatility", "Humidity consistency", "volatility_score"),
+        ("balance", "Balance across rooms", "balance_score"),
+        ("risk_clearance", "Moisture risk", "risk_clearance_score"),
+        ("air_quality_clearance", "Air quality", "air_quality_clearance_score"),
+        ("recovery", "Recovery time", "recovery_score")]
+    non_aq = payload["score_basis"] == "non_aq_renormalized"
+    rows = []
+    for key, label, subkey in names:
+        if non_aq and key == "air_quality_clearance":
+            continue
+        weight = SCORE_WEIGHTS[key] / (NON_AQ_WEIGHT_TOTAL if non_aq else 1)
+        rows.append({"key": key, "label": label, "points": round(100 * weight * (1 - subscores[subkey]), 2)})
+    shortfall = round(100 - score["raw_score"], 2)
+    # Displayed rows reconcile exactly with the independently rounded formula total.
+    remainder = round(shortfall - sum(row["points"] for row in rows), 2)
+    correction = max(rows, key=lambda row: row["points"])
+    correction["points"] = round(correction["points"] + remainder, 2)
+    evidence = [{"key": key, "label": label, "points": penalties[key]} for key, label in [
+        ("coverage_penalty_points", "Window coverage"),
+        ("drift_unavailable_penalty_points", "Longer-term humidity data"),
+        ("air_quality_evidence_penalty_points", "Air-quality data")]]
+    return {"maximum_points": 100, "component_shortfalls": rows,
+        "component_shortfall_points": shortfall, "evidence_deductions": evidence,
+        "evidence_deduction_points": round(sum(row["points"] for row in evidence), 2),
+        "aq_adjustment_points": round(penalties["air_quality_adjustment_points"], 2),
+        "pre_cap_score": score["window_score"], "final_score": score["display_score"],
+        "clamped_at_zero": score["window_score"] == 0,
+        "safety_ceiling": payload["caps"]["score_cap_ceiling"]}
+
+
+def stability_diagnostics_payload(runtime_data: dict[str, Any], *, observed_at: Optional[datetime] = None) -> dict[str, Any]:
+    """Read the last atomic publication; readers never advance movement or recovery."""
+    published = runtime_data.get("stability_published")
+    if isinstance(published, dict):
+        return deepcopy(published)
+    return _calculate_stability_payload(runtime_data, observed_at=observed_at)
+
+
+def publish_stability_score(runtime_data: dict[str, Any], *, observed_at: datetime,
+        sample_history: bool = False, capture_available: bool = True,
+        history_available: bool = True) -> dict[str, Any]:
+    """Publish one coherent score/movement snapshot on an owned update, never a read."""
+    now = _as_utc(observed_at)
+    previous = runtime_data.get("stability_published", {})
+    previous_at = _parse_timestamp(previous.get("published_at"))
+    if previous_at is not None and now <= previous_at:
+        return deepcopy(previous)
+    selected = runtime_data.get("stability_selected_aq")
+    if isinstance(selected, dict):
+        runtime_data["stability_aq_adjustment"] = _advance_aq_adjustment(
+            runtime_data.get("stability_aq_adjustment", {}), observed_at=now,
+            crossed=bool(selected.get("bad_trigger_count")),
+            complete=bool(selected.get("complete")) and capture_available)
+    payload = _calculate_stability_payload(runtime_data, observed_at=now)
+    current_score = _available_display_score(payload) if capture_available else None
+    previous_score = _available_display_score(previous)
+    old_movement = previous.get("movement", {})
+    movement = _directional_movement(previous_score, current_score,
+        previous_bucket_start_utc=previous.get("published_at"), current_bucket_start_utc=now.isoformat(),
+        previous_position_degrees=old_movement.get("end_position_degrees", 0),
+        previous_color_token=old_movement.get("color_token", "neutral"))
+    if not capture_available:
+        payload = _unavailable(payload, "suppressed", "current_telemetry_unavailable")
+    payload["movement"] = movement
+    payload["published_at"] = now.isoformat()
+    if isinstance(selected, dict):
+        payload["aq_selection"] = {**deepcopy(selected.get("selection", {})), "co_warning_active": bool(selected.get("co_warning_active")), "co_evidence_complete": bool(selected.get("co_evidence_complete", True)), "complete": bool(selected.get("complete"))}
+        payload["aq_adjustment"] = deepcopy(runtime_data["stability_aq_adjustment"])
+    history = runtime_data.setdefault("stability_score_history", {})
+    bucket = bucket_start_for(now)
+    cutoff = bucket - timedelta(hours=WINDOW_HOURS) + timedelta(minutes=BUCKET_MINUTES)
+    if sample_history:
+        if history:
+            start = max(max(history) + timedelta(minutes=BUCKET_MINUTES), cutoff)
+            while start < bucket:
+                history[start] = None
+                start += timedelta(minutes=BUCKET_MINUTES)
+        history[bucket] = current_score if history_available else None
+    runtime_data["stability_score_history"] = history = {at: value for at, value in history.items() if cutoff <= at <= bucket}
+    payload["score_history"] = {"status": "available", "sample_minutes": BUCKET_MINUTES,
+        "window_hours": WINDOW_HOURS, "capacity": EXPECTED_SAMPLES, "reset_on_restart": True,
+        "points": [{"at": at.isoformat(), "score": value} for at, value in sorted(history.items())],
+        "current": {"at": now.isoformat(), "score": current_score}}
+    runtime_data["stability_score_movement"] = deepcopy(movement)
+    runtime_data["stability_movement_last_score"] = current_score
+    runtime_data["stability_movement_last_bucket_start_utc"] = now.isoformat()
+    runtime_data["stability_published"] = deepcopy(payload)
+    return deepcopy(payload)
+
+
+def _calculate_stability_payload(
     runtime_data: dict[str, Any],
     *,
     observed_at: Optional[datetime] = None,
@@ -398,6 +562,8 @@ def stability_diagnostics_payload(
         if current_air_quality
         else None,
         current_co_emergency=current_runtime_mode == "co_emergency",
+        current_co_warning=bool(runtime_data.get("stability_selected_aq", {}).get("co_warning_active", False)),
+        aq_adjustment=runtime_data.get("stability_aq_adjustment"),
         current_required_inputs_available=not live_invalid_reasons,
         current_invalid_reasons=live_invalid_reasons,
         observed_at=observed_at or datetime.now(timezone.utc),
@@ -413,50 +579,9 @@ def record_stability_score_movement(
     observed_at: datetime,
     capture_available: bool = True,
 ) -> dict[str, Any]:
-    """Record one score comparison for an actual fixed-UTC scheduler runtime."""
-    current_bucket = bucket_start_for(observed_at).isoformat()
-    existing = runtime_data.get("stability_score_movement")
-    if (
-        isinstance(existing, dict)
-        and existing.get("current_bucket_start_utc") == current_bucket
-    ):
-        return dict(existing)
-    current_score = (
-        _available_display_score(
-            stability_diagnostics_payload(runtime_data, observed_at=observed_at)
-        )
-        if capture_available
-        else None
-    )
-    previous_score = runtime_data.get("stability_movement_last_score")
-    previous_score = (
-        int(previous_score)
-        if isinstance(previous_score, (int, float))
-        and _finite_number(previous_score)
-        else None
-    )
-    previous_bucket = runtime_data.get("stability_movement_last_bucket_start_utc")
-    movement = _directional_movement(
-        previous_score,
-        current_score,
-        previous_bucket_start_utc=previous_bucket
-        if isinstance(previous_bucket, str)
-        else None,
-        current_bucket_start_utc=current_bucket,
-        previous_position_degrees=existing.get("end_position_degrees", 0)
-        if isinstance(existing, dict) else 0,
-        previous_color_token=existing.get("color_token", "neutral")
-        if isinstance(existing, dict) else "neutral",
-    )
-    if not capture_available:
-        movement["detail_text"] = (
-            "Directional movement unavailable because the scheduled Stability "
-            "snapshot failed; the next valid runtime establishes a new baseline."
-        )
-    runtime_data["stability_score_movement"] = movement
-    runtime_data["stability_movement_last_score"] = current_score
-    runtime_data["stability_movement_last_bucket_start_utc"] = current_bucket
-    return dict(movement)
+    """Compatibility entry point for the owned ten-minute publisher."""
+    return publish_stability_score(runtime_data, observed_at=observed_at,
+        sample_history=True, capture_available=capture_available)["movement"]
 
 
 def capture_stability_snapshot(
@@ -482,7 +607,7 @@ def capture_stability_snapshot(
         hass,
         config,
     )
-    air_quality = capture_configured_aq_evidence(hass, config)
+    air_quality = capture_configured_aq_evidence(hass, config, stability_selection=True)
     runtime_mode = str(runtime_data.get("runtime_mode") or "normal")
     return StabilitySnapshot(
         observed_at=_as_utc(observed_at or datetime.now(timezone.utc)),
@@ -508,13 +633,15 @@ def capture_stability_snapshot(
         air_quality_invalid_threshold_count=air_quality["invalid_threshold_count"],
         air_quality_bad_trigger_codes=tuple(air_quality["bad_trigger_codes"]),
         co_emergency_active=runtime_mode == "co_emergency",
+        co_warning_active=air_quality["co_warning_active"],
+        air_quality_evidence_complete=air_quality["complete"],
     )
 
 
 def _base_payload(valid_samples: int, coverage_ratio: float) -> dict[str, Any]:
     return {
         "schema": 3,
-        "formula_version": 3,
+        "formula_version": FORMULA_VERSION,
         "phase": "v2.1_diagnostics_only",
         "missing_data_policy": MISSING_DATA_POLICY,
         "snapshot": {
@@ -537,6 +664,7 @@ def _base_payload(valid_samples: int, coverage_ratio: float) -> dict[str, Any]:
 
 
 def _unavailable(base: dict[str, Any], availability: str, reason: str) -> dict[str, Any]:
+    base.pop("explanation", None)
     message = SUPPRESSION_MESSAGES.get(
         reason,
         f"Stability Score unavailable: {reason}.",
@@ -872,7 +1000,7 @@ def _air_quality_coverage(valid: list[StabilitySnapshot]) -> dict[str, Any]:
         )
     elif ratio < AQ_COMPONENT_MINIMUM_COVERAGE_RATIO:
         status = "insufficient_window_coverage"
-    elif ratio < 1.0:
+    elif ratio < 1.0 or any(not sample.air_quality_evidence_complete for sample in valid):
         status = "partial"
     else:
         status = "complete"
@@ -940,6 +1068,7 @@ def _classification_caps(
     current_air_quality_bad: bool = False,
     current_air_quality_evidence_available: bool = False,
     current_co_emergency: bool = False,
+    current_co_warning: bool = False,
     observed_at: Optional[datetime] = None,
 ) -> dict[str, Any]:
     reasons: list[str] = []
@@ -961,8 +1090,8 @@ def _classification_caps(
         reasons.append("current_condensation_danger")
     if live_mould == "Danger":
         reasons.append("current_mould_danger")
-    if current_air_quality_bad:
-        reasons.append("current_air_quality_bad")
+    if current_co_warning:
+        reasons.append("current_co_warning")
     if not current_air_quality_evidence_available:
         reasons.append("air_quality_evidence_incomplete")
 
@@ -981,10 +1110,10 @@ def _classification_caps(
     ):
         reasons.append("recent_co_emergency_12h")
     if (
-        any(sample.air_quality_bad_condition_count > 0 for sample in recent)
-        and "current_air_quality_bad" not in reasons
+        any(sample.co_warning_active for sample in recent)
+        and "current_co_warning" not in reasons
     ):
-        reasons.append("recent_air_quality_bad_12h")
+        reasons.append("recent_co_warning_12h")
 
     risk_cutoff = evaluation_bucket - timedelta(
         hours=RISK_CAP_WINDOW_HOURS
@@ -1000,10 +1129,10 @@ def _classification_caps(
         air_quality_bad = sum(
             1
             for sample in risk_window
-            if sample.air_quality_bad_condition_count > 0
+            if sample.co_warning_active
         )
         if air_quality_bad / RISK_CAP_EXPECTED_SAMPLES >= 0.10:
-            reasons.append("air_quality_bad_duration_24h")
+            reasons.append("co_warning_duration_24h")
 
     cap = _cap_for_reasons(reasons)
     capped = _apply_cap(display_classification, cap)
@@ -1028,7 +1157,7 @@ def _cap_for_reasons(reasons: list[str]) -> Optional[str]:
     if (
         "air_quality_evidence_incomplete" in reasons
         or any(reason.endswith("_risk_duration_24h") for reason in reasons)
-        or "air_quality_bad_duration_24h" in reasons
+        or "co_warning_duration_24h" in reasons
     ):
         return "Good"
     return None
@@ -1064,15 +1193,15 @@ def _headline_reason(reasons: list[str]) -> Optional[str]:
         "current_co_emergency",
         "current_condensation_danger",
         "current_mould_danger",
-        "current_air_quality_bad",
+        "current_co_warning",
         "recent_co_emergency_12h",
         "recent_condensation_danger_12h",
         "recent_mould_danger_12h",
-        "recent_air_quality_bad_12h",
+        "recent_co_warning_12h",
         "air_quality_evidence_incomplete",
         "condensation_risk_duration_24h",
         "mould_risk_duration_24h",
-        "air_quality_bad_duration_24h",
+        "co_warning_duration_24h",
     )
     for reason in priority:
         if reason in reasons:
@@ -1097,6 +1226,8 @@ def _classification_rank(classification: str) -> int:
 
 
 def _full_envelope_stable(sample: StabilitySnapshot) -> bool:
+    if not sample.air_quality_evidence_complete:
+        return False
     if sample.house_humidity is None or sample.target_low is None or sample.target_high is None:
         return False
     if not sample.target_low <= sample.house_humidity <= sample.target_high:
@@ -1237,6 +1368,9 @@ def _runtime_risk_state(
 
 
 def _runtime_air_quality_truth(runtime_data: dict[str, Any]) -> dict[str, int]:
+    selected = runtime_data.get("stability_selected_aq")
+    if isinstance(selected, dict):
+        return {"configured_trigger_count": selected.get("configured_trigger_count", 0), "evaluated_trigger_count": selected.get("evaluated_trigger_count", 0) if selected.get("complete") and selected.get("co_evidence_complete", True) else -1, "crossed_trigger_count": selected.get("bad_trigger_count", 0)}
     value = (
         runtime_data.get("stability_current_air_quality")
         if isinstance(runtime_data, dict)
@@ -1342,7 +1476,7 @@ def _directional_movement(
     previous_color_token: str = "neutral",
 ) -> dict[str, Any]:
     base = {
-        "basis": "fixed_utc_runtime_display_score",
+        "basis": "published_display_score",
         "origin": "twelve_oclock",
         "led_steps_total": DIRECTIONAL_LED_STEPS_TOTAL,
         "led_steps_per_side": DIRECTIONAL_LED_STEPS_PER_SIDE,
@@ -1378,26 +1512,21 @@ def _directional_movement(
             "direction": "none",
             "active_led_steps": 0,
             "saturated": False,
-            "detail_text": "Directional movement baseline recorded; a second valid fixed-UTC runtime is required.",
+            "detail_text": "Your first score is ready. The next score change will show its direction.",
         }
     delta = int(current_score) - int(previous_score)
     start_position = (
         int(_clamp(previous_position_degrees, -360, 360))
         if _finite_number(previous_position_degrees) else 0
     )
-    if not delta and previous_color_token in {
-        "rise_gentle", "rise_strong", "fall_gentle", "fall_strong",
-    }:
-        base["color_token"] = previous_color_token
-        base["intensity"] = previous_color_token.rsplit("_", 1)[1]
     rate = _movement_rate_points_per_10_minutes(
         delta, previous_bucket_start_utc, current_bucket_start_utc,
     )
     base["rate_points_per_10_minutes"] = rate
-    if delta and rate is not None:
+    if delta:
         intensity = (
             "strong"
-            if abs(rate) >= DIRECTIONAL_STRONG_RATE_POINTS_PER_10_MINUTES
+            if abs(delta) >= 5
             else "gentle"
         )
         base["intensity"] = intensity
@@ -1415,36 +1544,17 @@ def _directional_movement(
         "arc_side": side,
     })
     if direction == "steady":
-        detail = (
-            "Stability Score is steady since the previous fixed-UTC runtime; "
-            f"the arc holds its {end_position}-degree position and previous colour "
-            f"with {active_led_steps} active virtual LED positions."
-        )
+        detail = "Holding steady. The score is unchanged since the previous update."
     else:
-        detail = (
-            f"Stability Score moved {direction} by {abs(delta)} point"
-            f"{'s' if abs(delta) != 1 else ''} since the previous fixed-UTC runtime; "
-        )
-        detail += (
-            f"{active_led_steps} of {DIRECTIONAL_LED_STEPS_PER_SIDE} {side}-side virtual LED positions are active."
-            if active_led_steps else "the arc is at the origin with no active virtual LED positions."
-        )
-        detail += f" The arc moved from {start_position} to {end_position} degrees."
-        if abs(raw_endpoint) >= DIRECTIONAL_LED_STEPS_PER_SIDE:
-            detail += " The arc has completed a full circle back to the top and is saturated."
-        if rate is None:
-            detail += " Movement rate is unknown because a valid positive timestamp interval is unavailable; the arc colour is neutral."
-        else:
-            detail += (
-                f" Score movement rate is {rate:+g} points per 10 minutes "
-                f"over the actual observation interval ({base['intensity']})."
-            )
-        detail += " Arc position represents accumulated displayed score movement, not elapsed time. This is displayed score change, including cap changes; it is not a physical environmental rate or health assessment."
+        detail = f"The score {'increased' if delta > 0 else 'decreased'} by {abs(delta)} point{'s' if abs(delta) != 1 else ''} since the previous update."
     return {
         **base,
         "status": "available",
         "previous_display_score": int(previous_score),
         "current_display_score": int(current_score),
+        "summary_text": (f"↑ {delta} · Improving" if delta > 0 else
+                         f"↓ {abs(delta)} · {'Slight dip' if abs(delta) < 5 else 'Decreasing'}" if delta < 0 else
+                         "— Holding steady"),
         "delta_points": delta,
         "direction": direction,
         "active_led_steps": active_led_steps,
@@ -1486,13 +1596,14 @@ def _available_message(
     coverage_penalty: float,
     drift_penalty: float,
     air_quality_evidence_penalty: float,
+    aq_adjustment: Optional[dict[str, Any]] = None,
 ) -> str:
     message = f"Stability Score {display_score} — {display_classification}."
     details: list[str] = []
     headline_reason = caps.get("headline_cap_reason")
     if caps.get("score_cap_applied"):
         details.append(
-            f"Underlying 72-hour score {window_score:.2f}; "
+            f"Calculated score {window_score:.2f}; "
             f"capped because {_cap_reason_text(headline_reason)}."
         )
     elif (
@@ -1500,10 +1611,13 @@ def _available_message(
         and headline_reason != "air_quality_evidence_incomplete"
     ):
         details.append(
-            f"The backend cap condition remains active because "
-            f"{_cap_reason_text(headline_reason)}; the underlying 72-hour score "
+            f"A safety ceiling remains active because "
+            f"{_cap_reason_text(headline_reason)}; the calculated score "
             f"{window_score:.2f} was already at or below that ceiling."
         )
+    if aq_adjustment and aq_adjustment.get("points"):
+        details.append(f"Includes a {aq_adjustment['points']:.2f}-point air-quality adjustment (maximum 12 additional points).")
+        details.append("A selected air-quality threshold is currently crossed." if aq_adjustment.get("status") == "crossed" else "The adjustment eases during six hours of observed clear readings; missing readings pause progress.")
     penalties: list[str] = []
     if coverage_penalty:
         penalties.append(f"{coverage_penalty:.2f}-point coverage penalty")
@@ -1534,9 +1648,9 @@ def _cap_reason_text(reason: Any) -> str:
         "recent_mould_danger_12h": "mould Danger occurred within the last 12 hours",
         "current_co_emergency": "the backend CO-emergency state is active",
         "recent_co_emergency_12h": "a backend CO-emergency state occurred within the last 12 hours",
-        "current_air_quality_bad": "a configured AQ threshold is currently crossed",
-        "recent_air_quality_bad_12h": "a configured AQ threshold was crossed within the last 12 hours",
-        "air_quality_bad_duration_24h": "configured AQ threshold crossings met the 24-hour duration threshold",
+        "current_co_warning": "a configured CO warning threshold is currently crossed",
+        "recent_co_warning_12h": "a configured CO warning threshold was crossed within the last 12 hours",
+        "co_warning_duration_24h": "configured CO warning crossings met the 24-hour duration threshold",
         "air_quality_evidence_incomplete": "AQ evidence is incomplete",
         "condensation_risk_duration_24h": "condensation Risk met the 24-hour duration threshold",
         "mould_risk_duration_24h": "mould Risk met the 24-hour duration threshold",

@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import logging
+import hashlib
+import json
 from datetime import datetime, timedelta, timezone
 from functools import partial
 from math import ceil
@@ -20,7 +22,9 @@ from homeassistant.util import dt as dt_util
 from .const import DOMAIN
 from .helpers.drift_repairs import async_update_humidity_drift_repair_issue
 from .helpers.level_labels import resolve_level_label_details
+from .helpers.air_quality import capture_configured_aq_evidence
 from .helpers.stability import (
+    publish_stability_score,
     SNAPSHOT_LATE_GRACE_SECONDS,
     StabilitySnapshotRing,
     bucket_start_for,
@@ -94,6 +98,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
         for sensor in binary_sensors:
             sensor.update_from_hass()
             sensor.async_write_ha_state()
+        # Publish only after the dependent core sensors have refreshed.
+        diagnostics.update()
+        diagnostics.async_write_ha_state()
         await async_update_humidity_drift_repair_issue(hass)
 
     stopped = False
@@ -142,6 +149,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
                 sampling["last_invalid_reasons"] = []
                 runtime_data["stability_snapshot_ring"].prune(observed_at)
                 return
+            _refresh_stability_aq(hass, runtime_data)
             snapshot = capture_stability_snapshot(
                 hass,
                 entry,
@@ -177,13 +185,20 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
                 )
             except Exception:
                 _LOGGER.exception("Unable to record Stability collection history")
-            if 0 <= lateness <= SNAPSHOT_LATE_GRACE_SECONDS:
+            if lateness >= 0:
                 try:
-                    record_stability_score_movement(
-                        runtime_data,
-                        observed_at=observed_at,
-                        **({"capture_available": False} if capture_failed else {}),
-                    )
+                    if sampling["last_capture_status"] == "late_skipped":
+                        # A missed history sample is not proof that live inputs failed.
+                        _refresh_stability_aq(hass, runtime_data)
+                        publish_stability_score(runtime_data, observed_at=observed_at,
+                            sample_history=True, history_available=False)
+                    else:
+                        record_stability_score_movement(
+                            runtime_data, observed_at=observed_at,
+                            capture_available=not capture_failed and sampling["last_capture_status"] == "captured",
+                        )
+                    diagnostics.update(publish=False)
+                    diagnostics.async_write_ha_state()
                 except Exception:
                     _LOGGER.exception(
                         "Unable to record Stability Score movement for HI entry %s",
@@ -225,9 +240,33 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
             _LOGGER.exception("Optional output-status setup failed; existing HI sensors remain available")
 
 
+def _refresh_stability_aq(hass, runtime_data: dict) -> None:
+    """Capture score-specific evidence without changing engine AQ configuration."""
+    config = dict(runtime_data.get("config") or {})
+    config.update(dict(runtime_data.get("options") or {}))
+    policy = {
+        "aq": {str(level): {key: value.get(key) for key in ("enabled", "triggers", "thresholds")}
+            for level, value in (config.get("aq", {}) or {}).items() if isinstance(value, dict)},
+        "telemetry": [{key: item.get(key) for key in ("entity_id", "sensor_type", "level")}
+            for item in config.get("telemetry", []) or [] if isinstance(item, dict)
+            and item.get("sensor_type") in {"co2", "pm25", "voc", "iaq", "co"}],
+    }
+    fingerprint = hashlib.sha256(json.dumps(policy, sort_keys=True, default=str).encode()).hexdigest()
+    previous = runtime_data.get("stability_source_fingerprint")
+    if previous is not None and previous != fingerprint:
+        runtime_data["stability_snapshot_ring"] = StabilitySnapshotRing()
+        runtime_data["stability_failed_buckets"] = set()
+        for key in ("stability_published", "stability_aq_adjustment", "stability_score_movement", "stability_score_history"):
+            runtime_data.pop(key, None)
+    runtime_data["stability_source_fingerprint"] = fingerprint
+    runtime_data["stability_selected_aq"] = capture_configured_aq_evidence(hass, config, stability_selection=True)
+
+
 class HIDiagnosticsSensor(SensorEntity):
     """Expose configuration and entity mapping diagnostics."""
     _attr_should_poll = True
+    _unrecorded_attributes = frozenset({"stability_score"})
+
     def __init__(self, hass: HomeAssistant, entry_id: str) -> None:
         self.hass = hass
         self.entry_id = entry_id
@@ -236,8 +275,11 @@ class HIDiagnosticsSensor(SensorEntity):
         self._attr_icon = "mdi:clipboard-text"
         self._attr_native_value = "ok"
 
-    def update(self) -> None:
+    def update(self, *, publish: bool = True) -> None:
         data = self.hass.data.get(DOMAIN, {}).get(self.entry_id, {})
+        if publish:
+            _refresh_stability_aq(self.hass, data)
+            publish_stability_score(data, observed_at=_utc_now())
         config = data.get("config", {})
         options = data.get("options", {}) if isinstance(data.get("options", {}), dict) else {}
         telemetry = config.get("telemetry", []) if isinstance(config, dict) else []
@@ -257,9 +299,26 @@ class HIDiagnosticsSensor(SensorEntity):
             entity_map,
             data,
         )
+        compact_summary = _compact_diagnostics_summary(summary)
+        previous_attributes = getattr(self, "_attr_extra_state_attributes", None) or {}
+        previous_score = previous_attributes.get("diagnostics_summary", {}).get("stability_score", {})
+        compact_score = compact_summary.get("stability_score", {})
+        previous_movement = previous_score.get("movement", {})
+        current_movement = compact_score.get("movement", {})
+        if (
+            isinstance(previous_movement, dict) and isinstance(current_movement, dict)
+            and previous_movement.get("direction") == current_movement.get("direction") == "steady"
+            and previous_movement.get("current_display_score") == current_movement.get("current_display_score")
+            and previous_movement.get("end_position_degrees") == current_movement.get("end_position_degrees")
+            and previous_movement.get("color_token") == current_movement.get("color_token")
+        ):
+            # Keep the recorded steady comparison stable; the live attribute retains
+            # each fresh publication and its precise observation timestamps.
+            compact_score["movement"] = dict(previous_movement)
         self._attr_extra_state_attributes = {
             "Stability Score": _readable_stability_score(summary.get("stability_score")),
-            "diagnostics_summary": _sanitize_json(_compact_diagnostics_summary(summary)),
+            "stability_score": _sanitize_json(summary.get("stability_score", {})),
+            "diagnostics_summary": _sanitize_json(compact_summary),
             "config": _sanitize_json(_compact_ui_config(config, options)),
             "slope_map": _sanitize_json(data.get("slope_map") or {}),
             "cards": list(cards.keys()),

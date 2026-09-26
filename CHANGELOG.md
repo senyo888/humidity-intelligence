@@ -6,7 +6,35 @@ All notable changes to Humidity Intelligence will be documented in this file.
 
 This project follows a practical changelog format for Home Assistant and HACS users. Add new entries under a fresh `Unreleased` section before publishing a future release.
 
-## Unreleased — v2.1.0-beta.9
+## Unreleased — v2.1.0-beta.10
+
+Unpublished candidate extending beta.9. Published Stable remains v2.0.12;
+no tag, GitHub Release or HACS publication is claimed.
+
+- Refines LED feedback: unchanged scores retain position with neutral LEDs, movement
+  completes within 300 ms, details explain each change, and further score
+  changes at the arc limit receive one brief pulse (respecting reduced motion).
+
+- Uses configured individual AQ conditions per level for Stability, with configured
+  IAQ fallback only where no individual conditions are enabled. Missing individual
+  readings remain incomplete; engine triggers and CO protections are unchanged.
+- Replaces routine AQ headline ceilings with one additional adjustment of up to
+  twelve points. Six hours of observed-clear evidence reduces it to zero; missing
+  or interrupted evidence pauses recovery, and a new crossing resets it.
+- Publishes the score and LED movement together. Small increases use soft green,
+  stronger increases bright green; declines use orange/red. Blue remains baseline
+  collection. One-to-four-point changes are gentle; five or more are strong,
+  independently of retained arc position.
+- Adds a backend-valued calculation breakdown, plain-language trend and coverage,
+  selected AQ scope, recovery status and a graph of actual ten-minute score samples.
+- Uses formula 4 with additive schema-3 Diagnostics fields and advances both V2
+  layout revisions to 5. Existing entity IDs, service schemas and control remain.
+- Requires a fresh baseline; older combined AQ samples cannot be reinterpreted.
+  Restart/reload resets scoring, AQ recovery and graph history. Installation and
+  saved-card replacement require separate activation; rollback restores the prior
+  package and corresponding cards. See the [Stability contract](docs/stability-score-accepted-baseline.md).
+
+## v2.1.0-beta.9 — Earlier unpublished candidate
 
 Unpublished candidate extending beta.8. Published Stable remains v2.0.12;
 no tag, GitHub Release, HACS publication or deployment is claimed here.

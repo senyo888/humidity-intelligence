@@ -108,7 +108,7 @@ def test_full_environmental_formula_includes_air_quality_at_fifteen_percent():
 
     result = mod.evaluate_stability_window(samples)
 
-    assert result["formula_version"] == 3
+    assert result["formula_version"] == 4
     assert result["score_basis"] == "full_environmental"
     assert result["subscores"]["air_quality_clearance_score"] == 0.5
     assert result["score"]["raw_score"] == 79.5
@@ -214,7 +214,7 @@ def test_aq_coverage_below_seventy_percent_uses_fallback():
     assert result["score"]["display_score"] == 91
 
 
-def test_current_and_recent_aq_caps_cannot_be_averaged_away():
+def test_current_and_recent_routine_aq_use_bounded_adjustment_without_hard_caps():
     mod = _load_stability_module()
     samples = [_sample(mod, idx) for idx in range(432)]
     samples[-2] = _sample(
@@ -228,12 +228,12 @@ def test_current_and_recent_aq_caps_cannot_be_averaged_away():
     current = mod.evaluate_stability_window(samples, current_air_quality_bad=True)
     recent = mod.evaluate_stability_window(samples, current_air_quality_bad=False)
 
-    assert current["score"]["display_score"] == 54
-    assert current["score"]["display_classification"] == "Poor"
-    assert current["caps"]["headline_cap_reason"] == "current_air_quality_bad"
-    assert recent["score"]["display_score"] == 69
-    assert recent["score"]["display_classification"] == "Unstable"
-    assert recent["caps"]["headline_cap_reason"] == "recent_air_quality_bad_12h"
+    assert current["score"]["display_score"] == 85
+    assert current["aq_adjustment"]["points"] == 12
+    assert current["caps"]["headline_cap_reason"] is None
+    assert recent["score"]["display_score"] == 85
+    assert recent["aq_adjustment"]["points"] == 12
+    assert recent["caps"]["headline_cap_reason"] is None
 
 
 def test_recent_aq_cap_expires_against_current_evaluation_bucket():
@@ -266,7 +266,7 @@ def test_current_co_emergency_is_strongest_zero_cap():
         current_co_emergency=True,
     )
 
-    assert result["score"]["window_score"] > 90
+    assert result["score"]["window_score"] > 80
     assert result["score"]["display_score"] == 0
     assert result["score"]["display_classification"] == "Poor"
     assert result["caps"]["headline_cap_reason"] == "current_co_emergency"
@@ -296,8 +296,9 @@ def test_live_aq_truth_outranks_partial_evidence_even_below_score_cap():
 
     assert result["score"]["window_score"] < 54
     assert result["caps"]["score_cap_applied"] is False
-    assert result["caps"]["headline_cap_reason"] == "current_air_quality_bad"
-    assert "configured AQ threshold is currently crossed" in result["message"]
+    assert result["caps"]["headline_cap_reason"] is None
+    assert result["aq_adjustment"]["points"] == 12
+    assert "selected air-quality threshold is currently crossed" in result["message"]
     assert result["presentation"]["compact_text"] == "POOR"
     assert result["presentation"]["tone"] == "poor"
     assert result["presentation"]["evidence_status"] == "partial"
@@ -534,7 +535,7 @@ def test_current_danger_caps_score_and_classification_to_poor():
     assert result["score"]["display_classification"] == "Poor"
     assert result["caps"]["headline_cap_reason"] == "current_mould_danger"
     assert result["presentation"]["cap_applied"] is True
-    assert "Underlying 72-hour score" in result["message"]
+    assert "Calculated score" in result["message"]
 
 
 def test_mould_risk_duration_24h_caps_good_independently():
@@ -1261,15 +1262,15 @@ def test_movement_color_intensity_uses_signed_score_rate_boundary():
         assert result["rate_points_per_10_minutes"] == delta
         assert result["delta_points"] == delta
         assert result["active_led_steps"] == ceil(abs(delta) * 3.6)
-        assert "displayed score change, including cap changes" in result["detail_text"]
-        assert "not a physical environmental rate or health assessment" in result["detail_text"]
+        assert "since the previous update" in result["detail_text"]
+        assert result["basis"] == "published_display_score"
 
 
-def test_movement_color_normalizes_actual_elapsed_time_across_missed_bucket():
+def test_movement_color_uses_delta_while_rate_remains_observational():
     mod = _load_stability_module()
     for delta, token, rate in (
-        (5, "rise_gentle", 2.5),
-        (-5, "fall_gentle", -2.5),
+        (5, "rise_strong", 2.5),
+        (-5, "fall_strong", -2.5),
         (10, "rise_strong", 5.0),
         (-10, "fall_strong", -5.0),
     ):
@@ -1284,7 +1285,7 @@ def test_movement_color_normalizes_actual_elapsed_time_across_missed_bucket():
         assert result["active_led_steps"] == ceil(abs(delta) * 3.6)
 
 
-def test_movement_unknown_interval_keeps_direction_and_sweep_but_neutral_color():
+def test_movement_unknown_interval_keeps_delta_color_without_inventing_rate():
     mod = _load_stability_module()
     valid = "2026-09-10T10:00:00+00:00"
     for previous, current in (
@@ -1299,12 +1300,12 @@ def test_movement_unknown_interval_keeps_direction_and_sweep_but_neutral_color()
             previous_bucket_start_utc=previous,
             current_bucket_start_utc=current,
         )
-        assert result["color_token"] == "neutral"
-        assert result["intensity"] == "neutral"
+        assert result["color_token"] == "rise_strong"
+        assert result["intensity"] == "strong"
         assert result["rate_points_per_10_minutes"] is None
         assert result["direction"] == "higher"
         assert result["active_led_steps"] == 36
-        assert "rate is unknown" in result["detail_text"]
+        assert "increased by 10 points" in result["detail_text"]
 
 
 def test_movement_baseline_steady_and_unavailable_have_neutral_color_without_arc():
@@ -1321,18 +1322,18 @@ def test_movement_baseline_steady_and_unavailable_have_neutral_color_without_arc
         assert result["active_led_steps"] == 0
 
 
-def test_persistent_arc_retracts_crosses_origin_and_holds_color_when_steady():
+def test_persistent_arc_retracts_crosses_origin_and_neutralizes_when_steady():
     mod = _load_stability_module()
     score, position, token = 80, 0, "neutral"
     origin = datetime(2026, 9, 10, tzinfo=timezone.utc)
     for index, (delta, endpoint, expected_token, side) in enumerate((
         (-10, -36, "fall_strong", "left"),
-        (0, -36, "fall_strong", "left"),
+        (0, -36, "neutral", "left"),
         (-5, -54, "fall_strong", "left"),
         (5, -36, "rise_strong", "left"),
         (15, 18, "rise_strong", "right"),
         (-1, 14, "fall_gentle", "right"),
-        (0, 14, "fall_gentle", "right"),
+        (0, 14, "neutral", "right"),
     )):
         result = mod._directional_movement(
             score, score + delta,
@@ -1346,7 +1347,7 @@ def test_persistent_arc_retracts_crosses_origin_and_holds_color_when_steady():
         assert result["active_led_steps"] == abs(endpoint)
         assert result["arc_side"] == side
         assert result["color_token"] == expected_token
-        assert result["intensity"] == expected_token.rsplit("_", 1)[1]
+        assert result["intensity"] == expected_token.rsplit("_", 1)[-1]
         assert result["direction"] == ("higher" if delta > 0 else "lower" if delta < 0 else "steady")
         score, position, token = score + delta, endpoint, expected_token
 
@@ -1379,11 +1380,11 @@ def test_recorder_passes_persistent_endpoint_color_and_resets_after_capture_fail
     mod = _load_stability_module()
     runtime = {}
     current = {"score": {"score_status": "available", "display_score": 80}}
-    mod.stability_diagnostics_payload = lambda *_a, **_k: current
+    mod._calculate_stability_payload = lambda *_a, **_k: {"score": dict(current["score"])}
     origin = datetime(2026, 9, 10, tzinfo=timezone.utc)
     for index, (score, endpoint, token) in enumerate((
         (80, 0, "neutral"), (70, -36, "fall_strong"),
-        (70, -36, "fall_strong"), (75, -18, "rise_strong"),
+        (70, -36, "neutral"), (75, -18, "rise_strong"),
     )):
         current["score"]["display_score"] = score
         movement = mod.record_stability_score_movement(
@@ -1416,8 +1417,8 @@ def test_arc_continues_past_half_circle_and_returns_to_top_at_full_circle():
     assert full["end_position_degrees"] == -360
     assert full["active_led_steps"] == 360
     assert full["saturated"] is True
-    assert "full circle back to the top" in full["detail_text"]
-    assert "not elapsed time" in full["detail_text"]
+    assert "decreased by 50 points" in full["detail_text"]
+    assert full["basis"] == "published_display_score"
     reversed_arc = mod._directional_movement(
         0, 10, previous_position_degrees=full["end_position_degrees"],
     )

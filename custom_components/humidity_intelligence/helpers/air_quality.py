@@ -87,6 +87,8 @@ def format_aq_trigger_detail(evaluation: dict[str, Any]) -> Optional[str]:
 def capture_configured_aq_evidence(
     hass: Any,
     config: dict[str, Any],
+    *,
+    stability_selection: bool = False,
 ) -> dict[str, Any]:
     """Capture bounded unit-validated AQ evidence for Stability truth."""
     telemetry_by_level_type: dict[tuple[str, str], list[str]] = {}
@@ -119,6 +121,9 @@ def capture_configured_aq_evidence(
     invalid_threshold_count = 0
     bad_trigger_codes: list[str] = []
     level_clearances: list[float] = []
+    selection_levels: list[dict[str, Any]] = []
+    co_warning_active = False
+    co_evidence_complete = True
     aq_config = config.get("aq")
     aq_config = aq_config if isinstance(aq_config, dict) else {}
     for raw_level in sorted(aq_config, key=str):
@@ -165,10 +170,32 @@ def capture_configured_aq_evidence(
             )
             return evidence_by_type[sensor_type]
 
-        evaluations = evaluate_configured_aq_triggers(
-            level_config,
-            _value_for_type,
-        )
+        selected_config = level_config
+        selected_triggers = []
+        if stability_selection:
+            configured = list(dict.fromkeys(str(item) for item in level_config.get("triggers", []) or []))
+            raw = [item for item in configured if item in {"pm25_high", "voc_bad", "co2_high"}]
+            selected_triggers = raw or (["iaq_bad"] if "iaq_bad" in configured else [])
+            selected_config = {**level_config, "triggers": selected_triggers}
+            # CO evidence remains independent of the routine AQ score selection.
+            before_co = (expected_source_count, available_source_count, unit_invalid_source_count)
+            if "co_warning" in configured:
+                co = evaluate_configured_aq_triggers({**level_config, "triggers": ["co_warning"]}, _value_for_type)[0]
+                co_warning_active = co_warning_active or co["crossed"] is True
+                co_evidence_complete = co_evidence_complete and co["status"] == "available" and expected_source_count > before_co[0] and available_source_count - before_co[1] == expected_source_count - before_co[0]
+            expected_source_count, available_source_count, unit_invalid_source_count = before_co
+        before_sources = (expected_source_count, available_source_count)
+        evaluations = evaluate_configured_aq_triggers(selected_config, _value_for_type)
+        if stability_selection:
+            expected = expected_source_count - before_sources[0]
+            available = available_source_count - before_sources[1]
+            selection_levels.append({
+                "level": level,
+                "basis": "raw" if raw else "iaq_fallback" if selected_triggers else "unconfigured",
+                "selected_triggers": selected_triggers,
+                "excluded_iaq": bool(raw and "iaq_bad" in configured),
+                "complete": bool(evaluations) and all(item["status"] == "available" for item in evaluations) and expected > 0 and available == expected,
+            })
         configured_trigger_count += len(evaluations)
         level_values: list[float] = []
         for evaluation in evaluations:
@@ -189,7 +216,7 @@ def capture_configured_aq_evidence(
         if level_values:
             level_clearances.append(sum(level_values) / len(level_values))
 
-    return {
+    result = {
         "clearance": sum(level_clearances) / len(level_clearances)
         if level_clearances
         else None,
@@ -203,6 +230,14 @@ def capture_configured_aq_evidence(
         "invalid_threshold_count": invalid_threshold_count,
         "bad_trigger_codes": bad_trigger_codes[:10],
     }
+    if stability_selection:
+        result.update({
+            "selection": {"policy": "raw_first_per_level_v1", "levels": selection_levels},
+            "complete": configured_trigger_count > 0 and all(item["complete"] for item in selection_levels if item["selected_triggers"]),
+            "co_warning_active": co_warning_active,
+            "co_evidence_complete": co_evidence_complete,
+        })
+    return result
 
 
 def aq_unit_supported(sensor_type: str, unit: Any) -> bool:

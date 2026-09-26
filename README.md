@@ -57,9 +57,9 @@ It gives you:
 - native Home Assistant diagnostics for support and triage
 - services for dashboard export, self-check, diagnostics, pause/resume, and release validation
 
-Current development manifest version: **v2.1.0-beta.9**, an unpublished candidate.
-It repairs V2 touch interactions while retaining reusable custom monitoring meanings,
-UI revision evidence, output observation, histories and observational Stability.
+Current development manifest version: **v2.1.0-beta.10**, an unpublished candidate.
+It refines observational Stability scoring and LED feedback while retaining V2 touch
+interactions, reusable monitoring meanings, output observation and histories.
 The current published Stable is **v2.0.12**, released on 9 September 2026 and available
 through HACS. See [Release Notes](#release-notes) for beta scope and upgrade steps.
 
@@ -454,9 +454,9 @@ must be reviewable from tracked repository files.
 
 ## Current Release Highlights
 
-- unpublished candidate `2.1.0-beta.9` repairs V2 touch activation while retaining
-  existing control actions and reusable monitoring meanings; see the
-  [interaction contract and touch checks](docs/ui-interactions.md)
+- unpublished candidate `2.1.0-beta.10` refines Stability scoring, AQ recovery and
+  responsive LED feedback; existing control actions and touch interactions remain
+  unchanged; see the [Stability contract](docs/stability-score-accepted-baseline.md)
 - published Stable `2.0.12` improves Manual handover, Home Assistant-local time gates,
   lifecycle-safe timers and Home Assistant 2026.9 setup assistance
 - preceding Stable `2.0.11` restores the centred passive Stability preview; those
@@ -982,12 +982,12 @@ Notes:
   workflows. Dashboard creation and editing remain in Home Assistant's dashboard UI.
   System and Manual buttons keep the
   v2.0.7 helper-toggle behavior.
-- **v2.1.0-beta.9 candidate:** the accepted badge shows backend-owned
-  score, evidence and Recent trend details. It remains observational. See the
-  [accepted contract](docs/stability-score-accepted-baseline.md) for thresholds,
-  incomplete AQ, restart history reset, client support and card refresh, and the
-  [testing guide](docs/stability-testing.md). This does not change published release
-  availability or historical preview behaviour.
+- **Beta.10 Stability refinement:** the observational badge pairs each score
+  change with its LEDs, explains AQ selection and recovery, and shows sampled score
+  history. The [contract](docs/stability-score-accepted-baseline.md) covers the
+  additional twelve-point adjustment, missing-data pauses and fresh baseline;
+  the [testing guide](docs/stability-testing.md) separates offline evidence from live
+  activation. Published release availability is unchanged.
 - Every `pause_control` / `resume_control` call requires an admin user context.
   Supplying `entry_id` scopes the action to that config entry; it does not bypass the
   authorization check. Background automations/scripts whose action context has no
@@ -1233,22 +1233,20 @@ CO emergency pressure. Details are in
 
 ## Release Notes
 
-### v2.1.0-beta.9 (Unpublished candidate)
+### v2.1.0-beta.10 (Unpublished candidate)
 
-- repairs touch activation in V2 mobile/tablet HI-owned native buttons while
-  preserving existing System/Manual actions and native Home Assistant controls
-- restores revision verification after reconnect using fresh available Diagnostics
-  evidence, including button-card's persistent state wrapper
-- retains details/history navigation, manual dismissal and the two-minute inactivity
-  contract; [interaction inventory and touch evidence](docs/ui-interactions.md)
-- advances both V2 layouts to UI revision 4, generator contract 1; install the complete
-  package, restart, then export and replace saved mobile/tablet Manual-card YAML
-- retains beta.8 reusable monitoring meanings and guidance, backend control, entity
-  primary states and Stability scoring; restart resets in-memory Stability history
-- no configuration migration is required; rollback restores the preceding complete
-  package and matching card YAML
-- [Complete beta.9 changes](CHANGELOG.md#unreleased--v210-beta9). Published Stable
-  remains v2.0.12; source preparation does not establish live deployment or publication
+- refines Stability with individual-first AQ evidence and an additional adjustment
+  of up to 12 points, recovering over six observed-clear hours; missing data pauses recovery
+- publishes score and LED movement together, with green rises, orange/red falls,
+  neutral steady states and transitions within 300 ms
+- adds a readable calculation, recovery explanation and score-history graph
+- advances both V2 layouts to revision 5, retaining generator contract 1; install
+  the complete package, restart, export and replace saved mobile/tablet cards
+- requires a fresh Stability baseline; restart resets scoring and in-memory history
+- preserves touch interactions, deterministic control and existing entity/service
+  contracts; rollback restores the prior complete package and matching card YAML
+- [Complete beta.10 changes](CHANGELOG.md#unreleased--v210-beta10). Published Stable
+  remains v2.0.12; this candidate is not a tagged or HACS-published release
 
 ### v2.0.12 (Current Published Stable)
 
@@ -1308,6 +1306,25 @@ displaced older summaries into this container as new releases are added. CHANGEL
 remains the complete detailed history. -->
 <details>
 <summary>Previous Releases</summary>
+
+### v2.1.0-beta.9 (Earlier unpublished candidate)
+
+- repairs touch activation in V2 mobile/tablet HI-owned native buttons while
+  preserving existing System/Manual actions and native Home Assistant controls
+- restores revision verification after reconnect using fresh available Diagnostics
+  evidence, including button-card's persistent state wrapper
+- retains details/history navigation, manual dismissal and the two-minute inactivity
+  contract; [interaction inventory and touch evidence](docs/ui-interactions.md)
+- advances both V2 layouts to UI revision 4, generator contract 1; install the complete
+  package, restart, then export and replace saved mobile/tablet Manual-card YAML
+- retains beta.8 reusable monitoring meanings and guidance, backend control, entity
+  primary states and Stability scoring; restart resets in-memory Stability history
+- no configuration migration is required; rollback restores the preceding complete
+  package and matching card YAML
+- [Complete beta.9 changes](CHANGELOG.md#v210-beta9--earlier-unpublished-candidate). Published Stable
+  remains v2.0.12; source preparation does not establish live deployment or publication
+
+
 
 ### v2.1.0-beta.8 (Earlier unpublished candidate)
 

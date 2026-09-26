@@ -45,7 +45,7 @@ STAGES = [
     ('Deterioration', 72, 'Humidity rises gradually beyond target; drift and room spread increase.'),
     ('Sustained Risk', 144, 'Mould Risk persists for a full 24 hours.'),
     ('Current Danger', 12, 'Mould Danger caps the current headline at 54 / Poor.'),
-    ('AQ crossing', 12, 'A configured AQ threshold crossing applies its real backend cap.'),
+    ('AQ crossing', 12, 'A selected individual AQ threshold crossing applies the bounded additional adjustment.'),
     ('CO emergency', 6, 'The synthetic CO emergency latch forces the strongest headline cap.'),
     ('Recovery', 510, '85 hours of healthy observations allow historic caps and window evidence to expire.'),
     ('Partial AQ evidence', 432, 'AQ observations unavailable; missing evidence is never called bad air.'),
@@ -100,6 +100,13 @@ def build_replay(mod):
                     ('worst_condensation_risk', 'OK'), ('worst_mould_risk', mould)]],
                 stability_current_air_quality={'configured_trigger_count': 1,
                     'evaluated_trigger_count': 0 if aq_missing else 1, 'crossed_trigger_count': int(aq_bad)})
+            runtime['stability_selected_aq'] = {
+                'configured_trigger_count': 1, 'evaluated_trigger_count': 0 if aq_missing else 1,
+                'bad_trigger_count': int(aq_bad), 'complete': not aq_missing,
+                'co_warning_active': False, 'co_evidence_complete': True,
+                'selection': {'policy': 'raw_first_per_level_v1', 'levels': [
+                    {'level': 'Level 1', 'basis': 'raw', 'selected_triggers': ['co2_high'],
+                     'excluded_iaq': True, 'complete': not aq_missing}]}}
             if not gap:
                 mod.record_stability_score_movement(runtime, observed_at=now)
             payload = mod.stability_diagnostics_payload(runtime, observed_at=now)
@@ -144,7 +151,17 @@ def render(output, root=ROOT):
         'card_sha256': source_hash, 'simulated': True}
     template = (root / 'tools/stability-scenario/index.html').read_text()
     serialized = json.dumps(data, separators=(',', ':'), allow_nan=False).replace('<', '\\u003c')
-    html = template.replace('/* BADGE_CSS */', css).replace('/* BADGE_JS */', javascript).replace('/* REPLAY_DATA */', serialized)
+    card_source = (runtime / 'ui/cards/v2_mobile.yaml').read_text()
+    card_start = card_source.index('          entity: sensor.hi_diagnostics\n')
+    tap_start = card_source.index('          tap_action:\n', card_start)
+    action_start = card_source.index('[[[', tap_start) + 3
+    action_end = card_source.index(']]]', action_start)
+    action = textwrap.dedent(card_source[action_start:action_end]).strip()
+    label_start = card_source.index('          label: |', card_start)
+    label_begin = card_source.index('[[[', label_start) + 3
+    label_end = card_source.index(']]]', label_begin)
+    label = textwrap.dedent(card_source[label_begin:label_end]).strip()
+    html = template.replace('/* BADGE_LABEL_JS */', label).replace('/* BADGE_CSS */', css).replace('/* BADGE_JS */', javascript).replace('/* BADGE_ACTION_JS */', action).replace('/* REPLAY_DATA */', serialized)
     output = Path(output)
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(html)

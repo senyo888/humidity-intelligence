@@ -8,7 +8,7 @@ from types import SimpleNamespace
 import pytest
 
 from test_runtime_card_sanity import (
-    ENTRY_ID, PKG, _DumpCardsConfig, _FakeAuth, _FakeHass,
+    ENTRY_ID, PKG, _DumpCardsConfig, _FakeAuth, _FakeHass, _FakeState,
     _FlashServiceRegistry, _load_sensor_platform_module,
 )
 from test_stability_score import _sample
@@ -28,8 +28,12 @@ def test_real_builder_reaches_live_diagnostics_and_dump(sample_count, export_rep
             return now if tz else now.replace(tzinfo=None)
 
     monkeypatch.setattr(stability, "datetime", FixedDatetime)
-    entry = SimpleNamespace(entry_id=ENTRY_ID, data={"target_profile": "winter"}, options={})
-    hass = _FakeHass(entry, {})
+    monkeypatch.setattr(sensor_module, "_utc_now", lambda: now)
+    entry = SimpleNamespace(entry_id=ENTRY_ID, data={"target_profile": "winter",
+        "telemetry": [{"entity_id": "sensor.example_co2", "sensor_type": "co2", "level": "level1"}],
+        "aq": {"level1": {"enabled": True, "triggers": ["co2_high"], "thresholds": {"co2_high": 1200}}},
+    }, options={})
+    hass = _FakeHass(entry, {"sensor.example_co2": _FakeState(800, {"unit_of_measurement": "ppm"})})
     hass.config = _DumpCardsConfig(str(tmp_path))
     hass.services = _FlashServiceRegistry(hass.states)
     hass.auth = _FakeAuth({"admin": SimpleNamespace(is_admin=True)})
@@ -67,7 +71,13 @@ def test_real_builder_reaches_live_diagnostics_and_dump(sample_count, export_rep
 
     sensor = sensor_module.HIDiagnosticsSensor(hass, ENTRY_ID)
     sensor.update()
-    live = sensor._attr_extra_state_attributes["diagnostics_summary"]["stability_score"]
+    live = sensor._attr_extra_state_attributes["stability_score"]
+    legacy = sensor._attr_extra_state_attributes["diagnostics_summary"]["stability_score"]
+    assert "stability_score" in sensor._unrecorded_attributes
+    assert "diagnostics_summary" not in sensor._unrecorded_attributes
+    assert "score_history" in live
+    assert not {"score_history", "published_at", "explanation", "aq_selection", "aq_adjustment"}.intersection(legacy)
+    assert legacy["score"] == live["score"]
     assert live["schema"] == 3
     assert live["window"]["valid_samples"] == sample_count
     assert live["window"]["expected_samples"] == 432

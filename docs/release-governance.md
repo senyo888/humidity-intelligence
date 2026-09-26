@@ -5,7 +5,8 @@ testing and validation branches.
 
 ## Canonical Version Model
 
-- `2.1.0-beta.9`: current unpublished candidate repairing native HI button touch routing inside button-card; both V2 layouts advance to revision 4. See [interaction contract and validation limits](ui-interactions.md).
+- `2.1.0-beta.10`: current unpublished candidate refining observational Stability and AQ recovery; both V2 layouts advance to revision 5 with generator contract 1. Formula 4 requires a fresh baseline. Install the complete package, restart, export and replace both saved cards; rollback restores package and cards separately. See [Stability contract](stability-score-accepted-baseline.md).
+- `2.1.0-beta.9`: earlier unpublished candidate repairing native HI button touch routing inside button-card; both V2 layouts advance to revision 4. See [interaction contract and validation limits](ui-interactions.md).
 - `2.1.0-beta.8`: earlier unpublished candidate with reusable entry-local monitoring meanings and optional plain-text guidance alongside the existing classification advice. Source rules and control ownership remain unchanged; see [lifecycle and rollback](custom-monitoring-meanings.md).
 - `2.1.0-beta.7`: earlier unpublished candidate with restrained V2 styling, a truthful UI revision indicator, preserved native/adaptive Outputs and two-minute inactivity dismissal for custom HI details (manual closing retained; see [scope and exceptions](ui-inactivity.md)).
 - `2.1.0-beta.6`: earlier unpublished candidate with clearer Outputs/settings wording and bounded cancel-return correction.

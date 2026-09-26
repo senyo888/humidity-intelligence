@@ -1,7 +1,8 @@
 # Accepted Stability Score baseline
 
 Status: accepted functional and presentation contract; integrated in the unpublished
-`2.1.0-beta.3` candidate, following its introduction in beta.1.
+current unpublished candidate, following its introduction in beta.1.
+The local refinement uses formula 4 with additive schema-3 diagnostics.
 This records the accepted behaviour for the current implementation work. It does not
 claim publication, HACS availability, deployment, or a newly approved release version.
 Historical release notes retain their original scope.
@@ -48,7 +49,7 @@ cannot populate an empty bucket or replace a complete sample; the last complete
 scheduled observation is the bucket representative. Exceptions must not stop future
 scheduling. Bounded sampling diagnostics report status, latest bucket and missed count.
 
-History and movement are in memory only. Restart or entry reload resets both; 303 new
+History and movement are in memory only. Restart or entry reload resets both, including AQ recovery and score history; 303 new
 valid samples are required. There is no Recorder recovery, durable ring persistence,
 synthetic seeding or interpolation. With uninterrupted capture, eligibility takes
 50h20m after the first sample, up to about 50h30m after setup. Preserve this limitation
@@ -77,6 +78,21 @@ independent evidence. Full-envelope recovery uses the source's combined humidity
 condensation/mould, available drift and AQ conditions; preserve its exact missing
 component treatment and timestamp behaviour through fixtures.
 
+AQ scoring selects configured conditions separately for each enabled level. If any
+CO2, PM2.5 or VOC conditions are enabled, use those individual measurements and
+exclude the composite IAQ condition from scoring. Use configured IAQ only when no
+individual condition is configured. Invalid mappings, thresholds, units or unavailable
+individual readings remain incomplete evidence; they never activate IAQ fallback.
+Coverage denominators count selected conditions only. Details identify the selected
+basis and excluded IAQ without publishing private source identifiers.
+
+This selection applies consistently to AQ clearance, combined recovery and the
+short-term AQ adjustment. Existing per-type sensor averages and equal level weighting
+remain. One individual measurement does not imply comprehensive pollutant coverage.
+CO warnings and CO emergency protections remain independent. Engine AQ trigger
+selection and ventilation decisions are unchanged: an IAQ-driven control action can
+coexist with individual-measurement Stability scoring.
+
 AQ is based on configured conditions, not merely visible sensor chips. IAQ crosses
 at or below threshold; PM2.5/VOC/CO2/CO at or above. Accepted units: IAQ unitless/index,
 PM2.5 micrograms/m3 (supported normalized spellings), VOC ppb, CO2/CO ppm. Unsupported
@@ -97,17 +113,43 @@ coverage: no score. With adequate overall coverage:
   subtract 3 points and apply incomplete-AQ cap.
 - Eligible partial AQ: include AQ component and subtract
   `min(3, round((1 - AQ coverage) * 10, 2))`.
-- Clamp penalized result to 0–100 and retain a two-decimal `window_score`.
-  Headline uses Python integer rounding, then the strictest applicable cap.
+- Round the weighted component total and short-term AQ adjustment to two decimal
+  places before subtracting evidence deductions and the adjustment. Clamp to 0–100
+  and retain a two-decimal `window_score`.
+  Headline uses Python integer rounding, then the strictest remaining protective cap.
 
 | Condition | Maximum headline |
 | --- | --- |
 | Current backend CO emergency | 0 / Poor |
-| Current condensation/mould Danger or configured AQ crossing | 54 / Poor |
+| Current condensation/mould Danger or CO warning | 54 / Poor |
 | Recorded CO emergency in prior 12 hours | 54 / Poor |
-| Recorded condensation/mould Danger or AQ crossing in prior 12 hours | 69 / Unstable |
+| Recorded condensation/mould Danger or CO warning in prior 12 hours | 69 / Unstable |
 | Incomplete current AQ evidence, or unavailable historical AQ component | 91 / Good |
-| Condensation Risk, mould Risk or AQ crossing in >=10% of fixed 144 expected buckets over 24h (at least 15 buckets) | 91 / Good |
+| Condensation Risk, mould Risk or CO warning in >=10% of fixed 144 expected buckets over 24h (at least 15 buckets) | 91 / Good |
+
+Routine non-CO AQ crossings no longer impose the 54/69/91 ceilings. Instead, a
+crossing applies one **additional** 12-point adjustment. It decreases linearly with
+six hours of observed-clear selected AQ evidence:
+
+`AQ adjustment = 12 × (1 − credited_clear_seconds / 21600)`
+
+Clamp credited time to 0–21600 seconds. A new crossing resets the adjustment to 12;
+repeated crossings never stack. Missing or invalid selected AQ pauses recovery.
+The first clear observation establishes a baseline; only consecutive complete clear
+observations at most 660 seconds apart earn time. Unsupported observation gaps earn
+no credit; returning data cannot certify a preceding unknown interval. A missed
+scheduled history point remains a graph gap, while intervening valid live observations
+can still support the score and clear-time accounting.
+Show remaining observed-clear time and an explicit paused status in details. This
+is not six elapsed wall-clock hours when observations are missing.
+
+The twelve points limit the additional adjustment, not all AQ influence. The
+15-point historical AQ component and AQ's contribution to the 10-point combined
+recovery component remain separately visible. Formula-3 aggregates cannot be
+reinterpreted as raw-first evidence. A fresh formula-4 baseline is required. Changes
+to AQ configuration or AQ telemetry mappings conservatively reset the scoring,
+recovery and history state, including changes to excluded IAQ settings. This prevents
+incompatible evidence from mixing; normal options reload also resets the baseline.
 
 Classification: 92–100 Excellent, 70–91 Good, 55–69 Unstable, 0–54 Poor.
 Retain raw score, uncapped window score, penalties, all cap reasons and highest-priority
@@ -117,7 +159,7 @@ command. Certified alarms retain their authority.
 
 ## Presentation and interaction contract
 
-Backend schema 3/formula 3 owns availability, displayed integer/classification,
+Backend schema 3/formula 4 owns availability, displayed integer/classification,
 labels, explanatory text, cap and evidence states, movement endpoints and colour token.
 Frontend only renders presentation and visual geometry; it does not recalculate or
 repair backend truth. Escape every dynamic text surface.
@@ -186,23 +228,50 @@ the popup's exact backend count is authoritative, not visual counting. Explain t
 restart/reload alongside baseline samples. Available-score movement remains unchanged
 and does not show this separate failure track.
 
-Once a score is available, LED movement retains signed integer endpoints within [-360,+360]. Each scheduled
+Once a score is available, LED movement retains signed integer endpoints within [-360,+360]. Each published
 valid score comparison adds signed `ceil(abs(delta) * 3.6)` degrees, higher clockwise,
 lower counter-clockwise. Saturate each step; at full circle hold until reversal.
 Reversal retracts from retained endpoint, potentially crossing the origin. Steady
-holds endpoint and colour; no per-cycle restart. Arc position is accumulated displayed
+holds its endpoint with neutral LEDs; details explain “Holding steady”. Transitions finish
+within 300 ms; colour changes immediately. A nonzero change at saturation triggers
+one brief pulse per publication, suppressed for reduced motion. The card retains its concise name and condition label; movement descriptions
+remain in the details panel. Arc position is accumulated displayed
 score movement, including cap changes, **not elapsed time**.
 
-Independent colour: gentle rise blue `#38bdf8`, strong rise green `#4ade80`, gentle
-fall orange `#fb923c`, strong fall red `#ef4444`. Strong means absolute rate >=5 score
-points per ten minutes, normalized by actual positive comparison interval. Invalid
-timing is neutral. The first scored movement baseline and unavailable states are
-unlit; collection progress is the separate presentation described above. Scheduled unavailable truth resets
-the chain; a later valid score establishes a new baseline. Read-time unavailable hides
-the arc without mutating stored scheduled history. Late skipped callbacks add no move.
+Independent colour: gentle rise soft green `#86bfa0`, strong rise bright green `#4ade80`, gentle
+fall orange `#fb923c`, strong fall red `#ef4444`. Strong means a change of at least
+five displayed points per update; one to four points is gentle. This replaces the
+old time-normalized rate rule. Position and colour are independent: a left-hand arc
+can immediately turn soft/bright green on improvement, and a right-hand arc orange/red on
+decline. Colour updates even at geometric saturation.
 
-Only changed marks fade sequentially (138ms fade, 18ms stagger); retained marks remain.
-Half-circle settles in about 1.2s, full circle about 2.4s; at most 120 marks per winding.
+The backend publishes score, comparison, movement and observation time atomically,
+including score changes between ten-minute samples. Repeated reads are pure and
+cannot advance movement. Unchanged publications retain position; unavailable evidence
+breaks the comparison chain and a later valid score establishes a fresh baseline.
+
+Details lead with backend arithmetic: maximum minus component shortfalls, evidence
+adjustments and recent AQ adjustment equals calculated score, with an explicit zero
+floor when deductions exceed the maximum. Any remaining ceiling
+is a separate final step. Effective weights and missing-AQ renormalization must
+reconcile, including the component-table rounding residual; the frontend never
+calculates a competing score. Recent trend states the
+change and local time, with colour mechanics secondary. Coverage means usable
+observations, not healthy time. Technical UTC storage does not dictate display time.
+
+The Score history entry opens a graph of actual published ten-minute samples, at
+most 432 slots across 72 hours, with unavailable periods left as gaps. It does not
+reconstruct old scores, interpolate missing evidence or claim every intra-slot
+change was recorded. History is in memory and resets on restart/reload; there is
+no new numeric entity, Recorder backfill or optional chart-card requirement.
+The full live Stability payload uses a dedicated unrecorded Diagnostics attribute;
+the existing compact summary retains its prior fields without duplicating graph
+history into Recorder on each update. Updated cards prefer the dedicated attribute
+and retain legacy payload fallback.
+
+Only changed marks fade sequentially; retained marks remain. Each fade lasts 138 ms,
+with a proportional stagger bounded at 162 ms, so movement finishes within 300 ms.
+Each winding contains at most 120 marks.
 Crossing origin can render both windings temporarily. Invalid endpoints fail closed.
 
 Tap/click/keyboard activation of the whole badge opens a native modal dialog through
