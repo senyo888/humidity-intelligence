@@ -5,7 +5,8 @@ testing and validation branches.
 
 ## Canonical Version Model
 
-- `2.1.0-beta.10`: current unpublished candidate refining observational Stability and AQ recovery; both V2 layouts advance to revision 5 with generator contract 1. Formula 4 requires a fresh baseline. Install the complete package, restart, export and replace both saved cards; rollback restores package and cards separately. See [Stability contract](stability-score-accepted-baseline.md).
+- `2.1.0-beta.11`: current unpublished candidate polishing score details/history and hold-to-toggle presentation. Both V2 layouts advance from revision 5 to 6; metadata schema/generator 1 and formula 4 remain. Install the complete package, restart, export and replace both saved cards; rollback restores package and cards separately. See [Stability contract](stability-score-accepted-baseline.md).
+- `2.1.0-beta.10`: earlier unpublished candidate introducing formula 4, individual-first AQ evidence, observed-clear recovery and synchronized score/LED feedback. Earlier formulas require a fresh baseline.
 - `2.1.0-beta.9`: earlier unpublished candidate repairing native HI button touch routing inside button-card; both V2 layouts advance to revision 4. See [interaction contract and validation limits](ui-interactions.md).
 - `2.1.0-beta.8`: earlier unpublished candidate with reusable entry-local monitoring meanings and optional plain-text guidance alongside the existing classification advice. Source rules and control ownership remain unchanged; see [lifecycle and rollback](custom-monitoring-meanings.md).
 - `2.1.0-beta.7`: earlier unpublished candidate with restrained V2 styling, a truthful UI revision indicator, preserved native/adaptive Outputs and two-minute inactivity dismissal for custom HI details (manual closing retained; see [scope and exceptions](ui-inactivity.md)).
@@ -32,7 +33,7 @@ must remain aligned with the
 published GitHub Release/tag.
 
 Published Stable is [v2.0.12](https://github.com/senyo888/humidity-intelligence/releases/tag/v2.0.12),
-released on 2026-09-09. The current `2.1.0-beta.9` candidate is unpublished.
+released on 2026-09-09. The current `2.1.0-beta.11` candidate is unpublished.
 The earlier `2.1.0-beta.1` source was committed and pushed through `144570b` on
 `senyo888-patch-1`; beta.2 began at `76285b0`, and beta.3 collects the subsequent UI work through `4f86e66`. There is no v2.1 tag,
 GitHub Release or HACS offering.
@@ -371,6 +372,22 @@ and post-release observation as separate evidence states.
   approval gates are complete for the exact final head.
 
 ## Rendered UI revision check for every version update
+
+The final-beta presentation refinement is **UI revision advanced** against beta.10
+source `4f7d245fe1cb4a88129aaa4c395c41e58ba55e2a`: Mobile and Tablet move from 5 to 6,
+with compatible earlier revisions 1–5 listed as superseded. Metadata schema and
+generator contract remain 1; entry association, mapping, stamping and Diagnostics
+advertisement semantics are unchanged. Stability formula 4 and backend scoring
+bytes are unchanged. Holding Stability now persists a presentation-only boolean in
+native Home Assistant user data, scoped to user and opaque entry. Disabled remains
+visible; normal tap, Enter and short-Space details, collection and control continue. No extra
+visible control or score-history persistence is introduced. The existing badge is
+focusable; holding Space invokes the same hold preference action. Record persistence/isolation and
+failure-feedback checks separately from installed-client evidence.
+The candidate manifest advances from beta.10 to beta.11. A patch-branch commit
+or push is source publication, not a release tag, GitHub Release or HACS update. Loading the changed Python revision
+metadata needs a complete-package update and restart; saved cards separately need
+regeneration and full replacement. Those activation steps require authorization.
 
 The V2 LED is a canonical integration contract, maintained with every candidate
 and release. Record one explicit outcome: **UI unchanged and compatible**, or

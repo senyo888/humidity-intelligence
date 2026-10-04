@@ -10,12 +10,16 @@ Open pull requests against `develop`. The `main` branch is reserved for stable r
 
 Before opening a PR:
 
-- Install or update the integration in a Home Assistant test instance.
-- Restart Home Assistant and confirm the integration loads cleanly.
-- Check Home Assistant logs for new warnings or errors.
+- Run the automated checks relevant to your change and record their results.
+- For installation or runtime changes, validate loading and logs in an authorized
+  Home Assistant test instance when available. Record live checks as not run when
+  no suitable instance is available; documentation-only changes do not need a restart.
 - Run `scripts/security/scan_secrets.sh` before pushing if Gitleaks is installed locally. The default mode scans tracked files and avoids ignored local credential files.
 - Validate the config flow when setup behavior changes.
-- Run `humidity_intelligence.refresh_ui` when dashboard output or generated UI changes.
+- Validate generated cards when dashboard output changes. In an authorized test
+  instance, run `humidity_intelligence.refresh_ui`, export the cards, replace the
+  saved Manual-card YAML, and check the refreshed layout. Record any live checks
+  you could not run.
 - Update documentation when behavior, setup steps, services, or UI examples change.
 
 ## HACS custom integration context

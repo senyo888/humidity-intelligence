@@ -1,9 +1,9 @@
 # V2 touch and keyboard interactions
 
-The unpublished beta.9 candidate repairs native-button activation inside the
-canonical mobile and tablet cards. Its V2 layouts use UI revision 4 with generator
-contract 1. Backend control, classification and beta.8 custom monitoring meanings
-retain their existing contracts.
+The unpublished v2.1.0-beta.11 candidate retains the beta.9 native-button activation
+repair inside the canonical mobile and tablet cards. Current source polish uses
+V2 UI revision 6 with generator contract 1. Backend control, classification and
+custom monitoring meanings retain their existing contracts.
 
 ## Interaction ownership
 
@@ -13,7 +13,7 @@ retain their existing contracts.
 | 7 Day Drift | Open HI details | Hold opens native more-info |
 | Current Air Control | Open explanation and recorded history | Hold opens native more-info; chips and reason remain scrollable |
 | Ready, Zone 1, Zone 2, AQ | Open explanatory details and history | These displays do not select a control lane |
-| Stability | Open snapshot details | Hold opens Diagnostics |
+| Stability | Open snapshot details, including while Disabled | Hold the badge or hold Space while focused to toggle its saved display preference |
 | UI revision footer | Open rendered-revision details | Enter and Space activate its native button |
 | System and Manual | Toggle once when the input state is valid | Hold opens more-info; unknown/unavailable input cannot toggle |
 | Native Outputs header | Toggle the shared expansion helper once | Its native entity rows keep Home Assistant control behavior |
@@ -28,6 +28,26 @@ dialog lifecycle and restores focus on dismissal where its opener still exists.
 The interaction repair is scoped to HI-owned native buttons. Existing button-card
 service actions retain their owner; touch handling must not synthesize a second
 System/Manual toggle, operate an output, or turn a scroll into a tap.
+
+## Stability display preference
+
+Hold the existing Stability badge to switch its presentation off or on. Disabled
+keeps the badge visible, with **Disabled** text, a static violet/indigo aurora and
+segmented LEDs. Tap, click, Enter and a short Space press open details and history.
+Holding Space on the focused existing badge performs the same hold action.
+No additional switch, button, checkbox or icon is introduced. Backend collection,
+score calculation, history and control continue unchanged.
+
+Home Assistant's authenticated frontend user-data API stores a boolean for the
+signed-in user and an opaque HI entry identity. The preference survives refresh
+and is shared across that user's Mobile, Tablet and browser sessions for the same
+entry. Other accounts and HI entries are unaffected; it is not a config option or
+control entity. There is no localStorage fallback.
+
+Read/save problems appear in the existing status label: **Display preference
+unavailable** or **Save unconfirmed**. They do not establish a saved preference or
+healthy environmental evidence. Clients without native dialog support retain the
+Diagnostics more-info fallback for tap.
 
 ## Mobile and tablet touch matrix
 
@@ -44,7 +64,8 @@ a coarse pointer and the real supported card dependencies.
 | Vertical scroll, horizontal chip drag and cancelled touch | Required | Required | Scrolling remains usable; no unintended activation |
 | Close, backdrop, reopen and history navigation | Required | Required | Immediate dismissal; fresh dialog and correct navigation |
 | Missing entities and unverified revision evidence | Required | Required | Safe labels; no unavailable control toggle |
-| Reconnect, navigation, removed and duplicate cards | Required | Required | Listeners and timers clean up; instances remain independent |
+| Reconnect, navigation, removed and duplicate cards | Required | Required | Listeners and timers clean up; dialogs stay independent and Stability preferences keep their user/entry scope |
+| Stability hold, refresh and account/entry isolation | Required | Required | One preference write; Disabled remains visible, tap works, same-user cards agree, other users/entries are unaffected, failures stay explicit |
 | Adaptive details with custom names and guidance | Required | Required | Literal readable text and working source/control handoffs |
 | Inactivity and parent/child interaction | Required | Required | Existing timer policy, no stale callback closing a later dialog |
 
@@ -59,7 +80,8 @@ boundaries; a fixture result is not physical-device proof.
 See the [browser regression harness](../tests%202/browser_touch/README.md) for
 reproducible commands, dependency verification and fixture limitations.
 
-The reported failure was reproduced with actual button-card **7.0.1** and generated
+During the beta.9 touch repair, the reported failure was reproduced with actual
+button-card **7.0.1** and generated
 card configuration in **Chrome 154**, using Pixel 7 mobile touch emulation
 (`hasTouch` enabled and coarse pointer). A touch tap opened zero revision dialogs;
 a mouse click opened one. This identifies a real browser/host interaction discrepancy,
@@ -88,8 +110,8 @@ keeps its shared backend timer measured from opening, and Home Assistant owns it
 native dialogs. Existing source-change dismissal remains in effect where supported.
 
 Renderer changes require synchronized mobile/tablet and gallery embeds, generated
-YAML validation and UI revision checks. UI revision 4 supersedes the compatible
-previous renderer revisions; package version alone does not update a pasted card.
+YAML validation and UI revision checks. The current V2 target is UI revision 6;
+package version alone does not update a pasted card.
 Install the complete candidate package, restart Home Assistant, then export and
 replace the full saved mobile and tablet Manual-card YAML. Refresh clients as
 needed to load the updated optional adaptive resource and rendered configuration.

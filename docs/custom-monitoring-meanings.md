@@ -1,6 +1,6 @@
 # Reusable monitoring meanings
 
-This feature belongs to the unpublished v2.1.0-beta.8 candidate. It extends optional
+This feature is included in the unpublished v2.1.0-beta.11 candidate. It extends optional
 output monitoring; published Stable remains v2.0.12.
 
 A custom meaning gives a monitoring condition a reusable name, an existing HI
@@ -40,7 +40,8 @@ source's validated rule determines active, clear or unknown evidence.
 
 ## Manage saved meanings
 
-Use **Reusable monitoring meanings** in Output monitoring to manage the library.
+Use **Manage reusable meanings** in Output monitoring to open the **Reusable
+monitoring meanings** library.
 
 - **Rename or edit guidance:** affected rules use the revised name or guidance when
   saved. Source identities and detection rules remain unchanged.
@@ -94,7 +95,7 @@ export and saved-YAML replacement.
 
 ## Activation and rollback
 
-Installing the complete beta.8 Python package requires a Home Assistant restart.
+Installing the complete candidate Python package requires a Home Assistant restart.
 Saving options subsequently uses the existing entry reload; it does not restart
 Home Assistant. Restart or reload resets the existing in-memory runtime history,
 including Stability collection. Existing configurations require no manual migration.

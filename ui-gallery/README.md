@@ -13,10 +13,9 @@ Requested, On, Idle, Isolated, Retrying, Stopping, Unknown, Degraded, and Fault
 remain separate presentation states. `On` is concise card wording for backend
 `output_on`, and the examples do not infer physical moisture production from a
 generic output `on` state. The canonical YAML uses the same plain-language backend
-reason authority across AQ and Zone examples. The V2 previews were captured from an
-exact live `2.0.10-beta.7` installation after restart, fresh export, complete
-Manual-card YAML replacement, and cache refresh. They are package-and-card UI
-evidence, not soak, Stable, release, or HACS-publication evidence.
+reason authority across AQ and Zone examples. See the
+[UI guide](../custom_components/humidity_intelligence/ui/README.md) for current card
+behavior, compatibility and refresh instructions.
 
 The browseable UI Gallery lives in the GitHub Wiki:
 
@@ -34,9 +33,10 @@ This repository directory remains the canonical source for gallery YAML, preview
 - Source template: `custom_components/humidity_intelligence/ui/cards/v2_mobile.yaml`
 - Required custom cards: `card-mod`, `button-card`, `mod-card`, `apexcharts-card`
 
-[![Default V2 Mobile AQ preview](default-v2-mobile-aq/preview.png)](default-v2-mobile-aq/preview.png)
+[![Air-quality response](../assets/ui/v2.1/air-quality-response.png)](../assets/ui/v2.1/air-quality-response.png)
 
-- [View preview](default-v2-mobile-aq/preview.png)
+- [View air-quality response](../assets/ui/v2.1/air-quality-response.png)
+- [Historical Mobile layout preview](default-v2-mobile-aq/preview.png)
 - [Card YAML](default-v2-mobile-aq/card.yaml)
 - [Example notes](default-v2-mobile-aq/README.md)
 
@@ -48,15 +48,13 @@ This repository directory remains the canonical source for gallery YAML, preview
 - Source template: `custom_components/humidity_intelligence/ui/cards/v2_tablet.yaml`
 - Required custom cards: `card-mod`, `button-card`, `mod-card`, `apexcharts-card`
 
-[![Default V2 Tablet Zone 1 Cooking preview](default-v2-tablet-zone-1-cooking/preview.png)](default-v2-tablet-zone-1-cooking/preview.png)
-
-- [View preview](default-v2-tablet-zone-1-cooking/preview.png)
+- [Historical Tablet layout preview](default-v2-tablet-zone-1-cooking/preview.png)
 - [Card YAML](default-v2-tablet-zone-1-cooking/card.yaml)
 - [Example notes](default-v2-tablet-zone-1-cooking/README.md)
 
 ### Default V1 Mobile (Deprecated)
 
-- Status: deprecated in v2.0.9; retained through the v2.0.9 line
+- Status: deprecated for new dashboards; still exportable in the v2.1 candidate
 - Replacement: Default V2 Mobile AQ /
   `custom_components/humidity_intelligence/ui/cards/v2_mobile.yaml`
 - Style: legacy-compatible mobile layout with comfort band and humidity constellation
@@ -71,9 +69,9 @@ This repository directory remains the canonical source for gallery YAML, preview
 - [Card YAML](default-v1-mobile/card.yaml)
 - [Example notes](default-v1-mobile/README.md)
 
-The V1 example remains available for existing users during v2.0.9, including the
+The V1 example remains available for existing users in this candidate, including the
 dynamic-text HTML-escaping fix. Do not use it for new dashboard installations.
-Removal is deferred to a separately approved v2.1 migration proposal.
+Removal requires a separately approved migration.
 
 ## Submitting Gallery Examples
 

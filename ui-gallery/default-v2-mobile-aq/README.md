@@ -6,23 +6,20 @@
 - Source template: `custom_components/humidity_intelligence/ui/cards/v2_mobile.yaml`
 - Required custom cards: `card-mod`, `button-card`, `mod-card`, `apexcharts-card`
 
-[![Default V2 Mobile AQ preview](preview.png)](preview.png)
+[![Air-quality response](../../assets/ui/v2.1/air-quality-response.png)](../../assets/ui/v2.1/air-quality-response.png)
 
 ## Notes
 
-This example shows the default V2 mobile layout while the air-quality lane is active.
-It demonstrates the compact badge row, Current Air Control panel, lane chips, and the
-backend-owned plain-language reason headline and ordered explanation used by the generated
-V2 mobile card.
+The V2 Mobile example follows the backend reason, Stability and history contracts.
+Ventilation and humidifier chips share one horizontally scrollable Current Air
+Control row. See the [UI guide](../../custom_components/humidity_intelligence/ui/README.md)
+for compatibility and refresh instructions.
 
-The YAML keeps ventilation and humidifier chips in one horizontally scrollable
-Current Air Control row. The preview is a live `2.0.10-beta.7` capture taken after
-restart, fresh export, complete Manual-card YAML replacement, and cache refresh. It
-is package-and-card UI evidence, not soak or release-approval evidence.
-
-The YAML is copied from the canonical generated card template and should be treated as an example artifact. In a real installation, prefer the card YAML exported by `humidity_intelligence.dump_cards` so placeholders match your generated entities.
+In your installation, use `humidity_intelligence.dump_cards` to generate cards with
+your entity mappings. The gallery YAML provides the reusable layout.
 
 ## Files
 
-- [Preview](preview.png)
+- [Air-quality response](../../assets/ui/v2.1/air-quality-response.png)
+- [Historical layout preview](preview.png)
 - [Card YAML](card.yaml)

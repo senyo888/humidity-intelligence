@@ -3,6 +3,7 @@
 import argparse
 import asyncio
 import importlib.util
+import hashlib
 import json
 from pathlib import Path
 import sys
@@ -38,8 +39,20 @@ def main():
         layouts[name] = yaml.safe_load(cards[name])
         adaptive, _ = wiring.wire_card(cards[name], 'sensor.fixture_output_status')
         layouts[name + '_adaptive'] = yaml.safe_load(adaptive)
+    scenario_spec = importlib.util.spec_from_file_location('fixture_stability_replay', ROOT / 'scripts/stability_scenario.py')
+    scenario = importlib.util.module_from_spec(scenario_spec)
+    scenario_spec.loader.exec_module(scenario)
+    backend, _ = scenario.load_backend()
+    replay = scenario.build_replay(backend)
+    stability_cases = {name: replay['frames'][index]['payload'] for name, index in
+                       [('collecting', 12), ('available', 431), ('updated', 432),
+                        ('partial', 1188), ('unavailable', 1620)]}
     result = {'layouts': layouts, 'mapping': mapping,
-              'metadata': hass.data[register.DOMAIN][ENTRY_ID]['ui_revision']}
+              'metadata': hass.data[register.DOMAIN][ENTRY_ID]['ui_revision'],
+              'stability_cases': stability_cases, 'stability_provenance': {
+                  'simulated': True,
+                  'backend_sha256': hashlib.sha256((ROOT / 'custom_components/humidity_intelligence/helpers/stability.py').read_bytes()).hexdigest(),
+                  'formula_version': replay['frames'][-1]['payload']['formula_version']}}
     args.output.mkdir(parents=True, exist_ok=True)
     (args.output / 'config.json').write_text(json.dumps(result))
     print(f'Exported {len(layouts)} complete layouts to {args.output}')

@@ -1,6 +1,8 @@
 """End-to-end synthetic replay exercises actual backend and shipped badge extraction."""
 import importlib.util
+import json
 from pathlib import Path
+import subprocess
 
 ROOT = Path(__file__).resolve().parents[2]
 spec = importlib.util.spec_from_file_location('hi_scenario', ROOT / 'scripts/stability_scenario.py')
@@ -41,3 +43,29 @@ def test_full_scenario_uses_real_backend_transitions():
     assert 'stability.movement' in js
     assert 'width: 82px' in css
     assert len(digest) == 64
+    # Exercise the shipped UI against every actual backend explanation, including
+    # decimal operands, missing evidence, caps and zero. Never recalculate scores.
+    payloads = [{key: frame['payload'].get(key) for key in
+                 ('availability', 'score', 'explanation', 'presentation')}
+                for frame in replay['frames']]
+    check = r'''
+const fs = require('node:fs');
+const assert = require('node:assert/strict');
+const {renderer, payloads} = JSON.parse(fs.readFileSync(0, 'utf8'));
+const render = new Function('entity', renderer);
+let scored = 0;
+for (const payload of payloads) {
+  const html = render({attributes:{stability_score:payload}});
+  if (payload.availability === 'available') {
+    scored++;
+    assert.match(html, /Total deductions<\/th>/, JSON.stringify(payload.explanation));
+    assert.ok(html.includes('Displayed score</span><strong>' + payload.score.display_score));
+  } else {
+    assert.doesNotMatch(html, /Total deductions<\/th>/);
+  }
+}
+assert.ok(scored > 1000);
+'''
+    subprocess.run(['node', '-e', check], input=json.dumps(
+        {'renderer': js, 'payloads': payloads}, allow_nan=False), text=True,
+        check=True, capture_output=True)

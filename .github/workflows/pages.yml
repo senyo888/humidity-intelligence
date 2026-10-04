@@ -11,7 +11,7 @@ on:
       - "assets/release_banner/v2.0.11_release.png"
       - "assets/release_banner/v2.0.12_release.png"
       - "assets/site/github-pages-hero.png"
-      - "assets/ui/v2.0.10-beta.7/**"
+      - "assets/ui/v2.1/**"
       - "scripts/build_hi_inspector.py"
       - ".github/workflows/pages.yml"
   workflow_dispatch:
@@ -41,7 +41,7 @@ jobs:
         run: |
           set -euo pipefail
           rm -rf _site
-          mkdir -p _site/assets/release_banner _site/assets/site _site/assets/ui/v2.0.10-beta.7
+          mkdir -p _site/assets/release_banner _site/assets/site _site/assets/ui/v2.1
           cp site/index.html site/styles.css site/robots.txt site/sitemap.xml _site/
           python3 scripts/build_hi_inspector.py _site/inspector
           cp assets/logo.png _site/assets/logo.png
@@ -50,10 +50,13 @@ jobs:
           cp assets/release_banner/v2.0.11_release.png _site/assets/release_banner/v2.0.11_release.png
           cp assets/release_banner/v2.0.12_release.png _site/assets/release_banner/v2.0.12_release.png
           cp assets/site/github-pages-hero.png _site/assets/site/github-pages-hero.png
-          cp assets/ui/v2.0.10-beta.7/mobile-aq-humidifier-retrying.png _site/assets/ui/v2.0.10-beta.7/mobile-aq-humidifier-retrying.png
-          cp assets/ui/v2.0.10-beta.7/tablet-zone1-cooking-output-on.jpg _site/assets/ui/v2.0.10-beta.7/tablet-zone1-cooking-output-on.jpg
-          cp assets/ui/v2.0.10-beta.7/comparison-alert-reason-before-after.png _site/assets/ui/v2.0.10-beta.7/comparison-alert-reason-before-after.png
-          cp assets/ui/v2.0.10-beta.7/comparison-reason-field-before-after.png _site/assets/ui/v2.0.10-beta.7/comparison-reason-field-before-after.png
+          cp assets/ui/v2.1/air-quality-response.png _site/assets/ui/v2.1/air-quality-response.png
+          cp assets/ui/v2.1/baseline-collection.png _site/assets/ui/v2.1/baseline-collection.png
+          cp assets/ui/v2.1/humidification-active.png _site/assets/ui/v2.1/humidification-active.png
+          cp assets/ui/v2.1/humidity-alert-zone-2.png _site/assets/ui/v2.1/humidity-alert-zone-2.png
+          cp assets/ui/v2.1/normal-monitoring.png _site/assets/ui/v2.1/normal-monitoring.png
+          cp assets/ui/v2.1/output-monitoring-summary.png _site/assets/ui/v2.1/output-monitoring-summary.png
+          cp assets/ui/v2.1/time-gate-active.png _site/assets/ui/v2.1/time-gate-active.png
           find _site -type f | sort
 
       - name: Upload Pages artifact

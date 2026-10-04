@@ -27,6 +27,7 @@ SHARED_FILES = (
     "custom_components/humidity_intelligence/adaptive_output/cards.py",
     "custom_components/humidity_intelligence/adaptive_output/hi-adaptive-output-card.js",
     "custom_components/humidity_intelligence/ui/badge_history.js",
+    "custom_components/humidity_intelligence/ui/stability_presentation.js",
 )
 CONSTANTS = ("UI_REVISION_SCHEMA", "UI_GENERATOR_CONTRACT", "UI_LAYOUT_REVISIONS", "UI_LAYOUT_SUPERSEDES")
 

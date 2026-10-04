@@ -66,9 +66,32 @@ reload and never advances baseline progress or changes scoring or control.
 Whole-badge tap/keyboard opens detached native dialog details as an explicitly labelled
 snapshot, outside the button-card gesture handlers. Close, Escape and backdrop dismiss;
 focus restores, and navigation or owner removal cleans up the single active dialog.
-Clients without native dialog support fall back to Diagnostics more-info; hold opens
-Diagnostics. Partial and reduced-motion treatments remain explicit. Optional frontend
-resources cannot block runtime operation. See [validation and client limitations](docs/stability-testing.md).
+The existing badge is keyboard-focusable: Enter and a short Space press retain
+normal tap behavior; pressing and holding Space performs the same hold action.
+Clients without native dialog support fall back to Diagnostics more-info. Partial
+and reduced-motion treatments remain explicit. Optional frontend resources cannot
+block runtime operation. See [validation and client limitations](docs/stability-testing.md).
+
+Hold changes only the badge presentation. Disabled retains the same footprint,
+**Disabled** text, a static violet/indigo aurora and segmented LEDs; holding again
+restores the normal display. Tap details and history remain available in either
+state. No switch, button, checkbox or icon is added. Collection, scoring, history,
+control decisions and output ownership continue unchanged.
+
+Home Assistant's authenticated frontend user-data API persists one boolean for the
+signed-in user and opaque HI entry. It applies across that user's Mobile, Tablet
+and browser sessions, survives refresh and does not affect other accounts or entries.
+Read/save failures appear in the existing status label; they cannot establish a
+saved choice or environmental health. There is no localStorage fallback, config
+option or control entity. This preference does not persist score history.
+
+Score details retain the backend headline and individual deductions. Presentation
+may total the backend's rounded deduction terms, but calculated, rounded and capped
+results remain backend-owned and separately explained. Invalid breakdown data never
+overrides a valid headline. The history expander summarizes only retained samples,
+preserves null/omitted gaps and distinguishes the current update from scheduled
+points. A partial displayed interval is neither complete 72-hour coverage nor a
+claim about environmental health.
 
 ## Deterministic Lane Order
 

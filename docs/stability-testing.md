@@ -1,6 +1,6 @@
 # Stability Score testing
 
-Status: local formula-4 refinement in the current unreleased candidate. This guide describes
+Status: formula 4 with UI revision 6 in the current unreleased 2.1.0-beta.11 candidate. This guide describes
 validation of [the canonical contract](stability-score-accepted-baseline.md); it is
 not a release, deployment or live-observation claim.
 
@@ -10,9 +10,12 @@ Run from the repository root in the project test environment. Native Home Assist
 options/config-flow suites require a supported Home Assistant installation and must
 run separately from the stub-based suites below:
 
+See [native configuration-flow testing](config-flow-testing.md) for Save/Cancel,
+disk persistence, fixture cleanup and the separate interpreter-shutdown limitation.
+
 ```sh
 python3 -m pytest "tests 2"/test_stability_*.py tools/stability-scenario/test_scenario.py
-node --test "tests 2/test_stability_badge_renderer.mjs" "tests 2/test_stability_badge_interaction.mjs"
+node --test "tests 2/test_stability_badge_renderer.mjs" "tests 2/test_stability_badge_interaction.mjs" "tests 2/test_stability_presentation.mjs"
 python3 scripts/stability_scenario.py --output /tmp/hi-stability-scenario.html
 ```
 
@@ -20,7 +23,10 @@ Open the generated HTML in a browser. It uses real scoring/movement code and the
 shipped renderer with synthetic inputs only. It has no Home Assistant connection,
 cannot seed live history and cannot operate outputs. Check all 12 stages, play/pause,
 speeds, scrubbing, stage jumps and all four LED-colour moments. The full replay covers
-2490 synthetic buckets; this is never 72 hours of observed live runtime.
+2490 synthetic buckets; this is never 72 hours of observed live runtime. The replay
+regression also sends every backend snapshot through the shipped renderer: available
+scores must retain a valid headline and reconciled deductions, while unavailable
+scores must not acquire a calculation.
 
 | Area | Required regression evidence |
 | --- | --- |
@@ -34,8 +40,10 @@ speeds, scrubbing, stage jumps and all four LED-colour moments. The full replay 
 | Movement | Atomic headline/delta/colour publication within a sampling bucket; signed ±360 endpoints; left-side rise/right-side decline; 1–4 versus 5+ point intensity; saturation; unchanged reads; unavailable/reset; ordered timestamps |
 | Rendering | Four identical Mobile/Tablet/gallery renderers; 82px footprint; classification halo; independent soft-green/bright-green/orange/red LEDs; blue baseline collection; 6s Partial pulse and reduced motion |
 | Collection rendering | One blue tick per valid sample at 0, 1, 4, 151, 302 and 303; centred slots and hidden origin after first tick; strict integer count/target bounds and matching rounded backend ratio; no early full circle; separate red fixed-slot history; malformed history fails closed |
-| Interaction | Whole-badge tap/click/keyboard; detached snapshot dialog; sticky Close/Escape/backdrop; focus restoration; deduplication; refresh, navigation and owner-removal cleanup; unsupported-modal Diagnostics fallback; hold opens Diagnostics |
-| Score history | Actual ten-minute scores, 432-slot bound, gaps, no read-driven growth/backfill, restart reset, local-time labels and accessible graph; full Stability attribute excluded from Recorder, no history duplication in the legacy summary |
+| Interaction | Whole-badge tap/click/keyboard; detached snapshot dialog; sticky Close/Escape/backdrop; focus restoration; deduplication; refresh, navigation and owner-removal cleanup; unsupported-modal Diagnostics fallback; existing badge is focusable; Enter/short Space retain normal tap, held Space uses the hold action |
+| Presentation preference | Hold-only toggle, visible Disabled aurora/LEDs, retained tap details/history, native authenticated HA user-data boolean, refresh/cross-session persistence, user/opaque-entry isolation, explicit read/save failure feedback, no extra control or localStorage fallback, no backend/control effects |
+| Score explanation | Backend headline and qualifier; reconciled rows and total; one bottom calculation; 64.91 calculated / 65 displayed / 91 ceiling; ties-to-even rounding, exact zero and deductions above 100; missing, contradictory or malformed arithmetic remains unavailable |
+| Score history | Actual ten-minute scores, 432-slot bound, fixed 0–100 scale, disconnected gaps, single point, empty/null-only/malformed history, interval-specific counts, no read-driven growth/backfill, restart reset and expiry, separate latest update; full Stability attribute excluded from Recorder, no history duplication in the legacy summary |
 | Control/privacy | No Stability output writes, lane/gate changes or humidifier authority; canonical Manual/CO regressions; sanitized support exports |
 
 Classifications are Excellent 92–100, Good 70–91, Unstable 55–69 and Poor 0–54.
@@ -58,6 +66,27 @@ builder. Package tests build immutable Git source, so pre-commit tests against a
 HEAD do not validate newly added files. Validate a complete isolated candidate snapshot
 and repeat the package checks against the final commit before push.
 
+## Current browser evidence
+
+The 2026-10-04 final browser run recorded **72 passed, 2 not-run and zero failures**
+across Mobile and Tablet, using Chrome **154.0.8037.58**, WebKit **26.5**, Playwright
+**1.62.1** and button-card **7.0.1**. Chrome exercised touch hold and Space hold;
+WebKit exercised Space hold, refresh persistence, unavailable data and tap details.
+The remaining interaction cases retain their existing coverage. The two not-run
+results are WebKit arbitrary touch sequences unsupported by this runner, not passes.
+
+Two responsive-review groups produced 60 fixture captures at 320, 390, 430, 820 and
+1024 pixels, including the visible Disabled badge and expanded history. The corrected
+HA-card substitute uses the shadow-host block layout; native-dialog fixture styles
+do not override production HI dialog sizing. Both layouts retained the 82px badge,
+44px Close target and overflow-free history at these widths.
+
+User data and telemetry remain synthetic. These results do not validate installed
+Home Assistant persistence or physical devices, and emulated WebKit is not physical
+iOS Safari. See the [browser harness](../tests%202/browser_touch/README.md) for commands
+and limitations; the final source-bound report owns aggregate package and release
+validation.
+
 ## Authorized installation and client checks
 
 Deployment, restart and dashboard replacement require their own authorization.
@@ -75,7 +104,14 @@ restart. Regenerate via `refresh_ui` and `dump_cards`/`view_cards`,
 replace complete pasted cards, then refresh the frontend/cache. No configuration,
 stored-data or entity migration is required. Restart or entry reload resets history:
 303 new valid observations are needed, about 50h20m after the first sample without gaps.
-There is no durable persistence, Recorder recovery or startup backfill.
+Score history has no durable persistence, Recorder recovery or startup backfill.
+The saved badge display preference is separate from that history.
+
+For UI revision 6, review the headline, deduction table and existing history expander
+at narrow phone, wider phone and tablet widths. Check that labels remain readable,
+content does not overflow, and Close remains reachable when the history is expanded.
+Keep offline fixture screenshots labelled as synthetic; supplied state captures that
+predate this change are not evidence of the revised explanation or history.
 
 Validate saved generated Mobile/Tablet YAML and actual target clients. Check compact
 layout and escaping, Partial/condition distinctions, independent movement colour,
@@ -87,6 +123,15 @@ an ordinary Diagnostics refresh: the labelled snapshot and Close control must re
 usable, and reopening must show current evidence. Verify native Diagnostics more-info
 fallback when `showModal` is absent. Native Activity is not a replacement telemetry panel.
 
+Hold the existing Stability badge in both directions. Disabled must retain its
+footprint, static aurora/LEDs and tap details; backend unavailability must not erase
+that preference. Confirm persistence after refresh, user/entry isolation and explicit
+read/save failures. Drag cancellation must not toggle it. Use the existing focused
+badge for keyboard testing: Enter and short Space retain normal tap, while held
+Space performs the same hold action. Cancellation, focus loss and key repeat must
+not create extra toggles. No extra visible control or scoring/history reset is part
+of the preference.
+
 A browser screenshot alone proves neither dynamic movement nor mobile touch handling.
 Standalone renderer/DOM tests do not reproduce every Home Assistant gesture path.
 Phone/tablet opening and dismissal remain unverified until exercised on those actual
@@ -97,7 +142,7 @@ insufficient historical coverage and unavailable current evidence. Retain exact
 observation times and gaps; do not infer missing checkpoints or transfer evidence from
 another package. Lab evidence remains optional advisory context, never a release gate.
 
-The recorded candidate checks establish collection UI at zero samples and an empty,
+Earlier recorded candidate checks established collection UI at zero samples and an empty,
 available failure history. They do not establish a completed 303-sample baseline,
 sustained soak, injected live failure or observed live red mark. Dense failure-history
 rendering has structural regression coverage but remains visually unverified; the

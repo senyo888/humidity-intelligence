@@ -1,7 +1,12 @@
 window.customCards=[];window.litHtmlVersions=[];
-customElements.define('ha-card',class extends HTMLElement{});
+// Match HA's shadow-host layout contract; document CSS cannot cross a card's
+// shadow root. An inline substitute lets fixed baseline rows expand the mobile
+// layout viewport and invalidates trusted touch coordinates at narrow widths.
+customElements.define('ha-card',class extends HTMLElement{
+ constructor(){super();this.attachShadow({mode:'open'}).innerHTML='<style>:host{display:block;box-sizing:border-box;position:relative}</style><slot></slot>';}
+});
 customElements.define('ha-icon',class extends HTMLElement{set icon(v){this.setAttribute('icon',v);this.textContent='◇';}});
-let hass,freshSequence=0;const all=[];const events={services:[],history:[],moreInfo:[],touch:[],actions:[],errors:[]};
+let hass,freshSequence=0;const all=[];const events={services:[],history:[],preferences:[],moreInfo:[],touch:[],actions:[],errors:[]};
 window.addEventListener('error',e=>events.errors.push(e.message));
 window.addEventListener('unhandledrejection',e=>events.errors.push(String(e.reason)));
 for(const type of ['touchstart','touchend','touchcancel','click'])window.addEventListener(type,e=>events.touch.push({type,trusted:e.isTrusted,touches:e.touches?.length||0}),true);
@@ -43,6 +48,23 @@ window.addEventListener('hass-action',event=>{
 window.loadCardHelpers=async()=>({createCardElement:create});
 await import('/button-card.js');await import('/adaptive.js');
 const input=await (await fetch('/config.json')).json();const connection=new EventTarget();connection.connected=true;
+// Loopback-only fixture server stands in for HA's authenticated persistent store.
+// Production cards still call the real frontend user-data message contracts.
+const preferenceSubscribers=new Set();let preferenceFailure='';
+async function preferenceRequest(request){
+ events.preferences.push(request);
+ if(preferenceFailure==='read'&&request.type!=='frontend/set_user_data')throw Error('Synthetic preference read failure');
+ if(preferenceFailure==='write'&&request.type==='frontend/set_user_data')throw Error('Synthetic preference save failure');
+ const response=await fetch('/fixture-preference',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(request)});
+ if(!response.ok)throw Error('Fixture preference request failed');const result=await response.json();
+ if(request.type==='frontend/set_user_data')for(const sub of preferenceSubscribers)if(sub.key===request.key)sub.callback({value:request.value});
+ return result;
+}
+connection.subscribeMessage=async(callback,request)=>{
+ if(request.type!=='frontend/subscribe_user_data')throw Error('Unexpected fixture subscription');
+ const result=await preferenceRequest(request);const sub={key:request.key,callback};preferenceSubscribers.add(sub);callback(result);
+ return ()=>preferenceSubscribers.delete(sub);
+};
 const states={};for(const id of Object.values(input.mapping)){if(id)states[id]={entity_id:id,state:id.startsWith('sensor.')?'46':'off',attributes:{friendly_name:'Example reading'},last_changed:new Date().toISOString(),last_updated:new Date(Date.now()+(++freshSequence)).toISOString()};}
 function seed(key,state,attributes={}){const id=input.mapping[key]||key;states[id]={entity_id:id,state,attributes:{friendly_name:'Example '+key.split('.')[1],...attributes},last_changed:new Date().toISOString(),last_updated:new Date(Date.now()+(++freshSequence)).toISOString()};}
 for(const key of ['input_boolean.air_control_enabled'])seed(key,'on');
@@ -53,13 +75,17 @@ seed('sensor.house_humidity_drift_7d','0.4',{available_samples:432,required_samp
 const diag=input.mapping['sensor.hi_diagnostics'];seed('sensor.hi_diagnostics','ok',{ui_revision:input.metadata,diagnostics_summary:{stability_score:{availability:'collecting',window:{valid_samples:12},message:'Synthetic baseline collection'}}});
 const payload={schema_version:2,synthetic:false,summary:'Synthetic monitoring only',attention_label:'Attention required',counts:{configured:1,affected:1},coverage:{label:'Monitoring 1/1 mapped',detail:'Synthetic fixture'},chips:[{kind:'fleet',label:'1/1 on',icon:'devices'}],attention:[{label:'Example output',title:'Filter condition',action:'Follow the device instructions. Your guidance: Inspect the intake.',evidence:'Synthetic diagnostic active',source:'binary_sensor.fixture_source',tone:'warning'}],records:[{entity_id:'fan.fixture_output',label:'Example output',roles:['ventilation_zone_1'],operation:{label:'On'},context:'Synthetic observed state',device_icon:'fan'}],discovery:{summary:'Sources',detail:'Synthetic source details',sources:[{source:'binary_sensor.fixture_source',label:'Example diagnostic',title:'Filter notice',tone:'warning',state:'on',association_label:'Configured meaning',reason:'Confirmed custom meaning',scope_label:'Example output',associations:[{label:'Example output',title:'Filter notice',scope_label:'Example output',meaning_label:'Custom meaning: Intake check · Classification: Filter replacement',rule_summary:'Binary state interpretation',rule_lines:['Attention when: on','Clear when: off'],reason:'Configured guidance: Inspect the intake.'}]}],gaps:[],notices:[]},compact:{schema_version:1,title:'1 condition · 1 output affected',tone:'warning',condition_count:1,affected_output_count:1,shown_condition_count:1,remaining_condition_count:0,remainder_label:'',monitoring_lines:['1/1 output mapped'],context_lines:[]}};
 states['sensor.fixture_output_status']={entity_id:'sensor.fixture_output_status',state:'ready',attributes:{payload}};
-hass={connection,connected:true,states,config:{unit_system:{temperature:'°C'}},themes:{darkMode:true,themes:{}},locale:{language:'en',number_format:'language'},language:'en',localize:key=>key,user:{name:'Synthetic fixture'},formatEntityState:e=>e.state,formatEntityAttributeValue:()=>'',
+hass={connection,connected:true,states,config:{unit_system:{temperature:'°C'}},themes:{darkMode:true,themes:{}},locale:{language:'en',number_format:'language'},language:'en',localize:key=>key,user:{id:'synthetic-fixture-user',name:'Synthetic fixture'},formatEntityState:e=>e.state,formatEntityAttributeValue:()=>'',
  callService:async(domain,service,data)=>{events.services.push({domain,service,data});if(service==='toggle'&&hass.states[data.entity_id]){const id=data.entity_id;hass={...hass,states:{...hass.states,[id]:{...hass.states[id],state:hass.states[id].state==='on'?'off':'on'}}};publish();}},
- callWS:async request=>{events.history.push(request);if(request.type!=='history/history_during_period')throw Error('Unexpected fixture WS request');return Object.fromEntries(request.entity_ids.map(id=>[id,[{entity_id:id,state:states[id]?.state||'unknown',attributes:{},last_changed:new Date(Date.now()-3600000).toISOString(),last_updated:new Date(Date.now()-3600000).toISOString()}]]));}};
+ callWS:async request=>{if(['frontend/get_user_data','frontend/set_user_data'].includes(request.type))return preferenceRequest(request);events.history.push(request);if(request.type!=='history/history_during_period')throw Error('Unexpected fixture WS request');return Object.fromEntries(request.entity_ids.map(id=>[id,[{entity_id:id,state:states[id]?.state||'unknown',attributes:{},last_changed:new Date(Date.now()-3600000).toISOString(),last_updated:new Date(Date.now()-3600000).toISOString()}]]));}};
 function publish(fresh=true){if(fresh)hass={...hass,connected:connection.connected,states:{...hass.states,[diag]:{...structuredClone(hass.states[diag]),last_updated:new Date(Date.now()+(++freshSequence)).toISOString()}}};for(const el of all)el.hass=hass;}
 window.addEventListener('hass-more-info',event=>{events.moreInfo.push(event.detail);const d=document.createElement('dialog');d.dataset.nativeStub='true';d.innerHTML='<p>Native HA more-info stub</p><button>Close</button>';d.querySelector('button').onclick=()=>{d.close();d.remove();};document.body.append(d);d.showModal();});
 const layout=new URLSearchParams(location.search).get('layout')||'v2_mobile';document.querySelector('#fixture').append(create(input.layouts[layout]));publish();
 window.fixture={events,layout,publish,all,mapping:input.mapping,
+ preferenceFailure(kind){preferenceFailure=kind;},
+ scoreCase(name){this.score(structuredClone(input.stability_cases[name]));},
+ preferenceSubscribers:()=>preferenceSubscribers.size,
+ score(value){const old=hass.states[diag];hass={...hass,states:{...hass.states,[diag]:{...old,attributes:{...old.attributes,stability_score:value}}}};publish();},
  setState(key,state){const id=input.mapping[key]||key;hass={...hass,states:{...hass.states,[id]:{...hass.states[id],state}}};publish();},
  disconnect(){connection.connected=false;connection.dispatchEvent(new Event('disconnected'));publish(false);},
  ready(){connection.connected=true;connection.dispatchEvent(new Event('ready'));publish(false);},

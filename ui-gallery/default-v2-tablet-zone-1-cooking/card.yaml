@@ -4300,6 +4300,9 @@ card:
               - "-webkit-backdrop-filter": blur(12px)
         - type: custom:button-card
           entity: sensor.hi_diagnostics
+          variables:
+            hi_stability_stamp: |
+              [[[ try { return JSON.parse('__HI_UI_REVISION_STAMP__'); } catch (_) { return null; } ]]]
           name: |
             [[[
               const hasDedicated = Object.prototype.hasOwnProperty.call(entity?.attributes || {}, 'stability_score');
@@ -4336,16 +4339,254 @@ card:
               const invalidScore = malformedDedicated || (rawValue != null && !validScore)
                 || (availability === 'available' && !validScore)
                 || (rawValue != null && availability !== '' && availability !== 'available');
-              if (invalidScore) return 'Unavailable';
+              const wrap = text => `<span class="hi-stability-backend-label">${text}</span><span class="hi-stability-display-label"></span>`;
+              if (invalidScore) return wrap('Unavailable');
               const text = String(stability.presentation?.compact_text || 'Unavailable');
               const escaped = text.replaceAll('&', '&amp;').replaceAll('<', '&lt;')
                 .replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#039;');
               const partial = stability.presentation?.tone === 'incomplete';
-              return partial ? `<span class="hi-stability-partial-label">${escaped}</span>` : escaped;
+              return wrap(partial ? `<span class="hi-stability-partial-label">${escaped}</span>` : escaped);
             ]]]
           custom_fields:
             gauge: |
               [[[
+                // HI-STABILITY-PRESENTATION:START
+                /* Persistent badge presentation only. No scoring, history or control writes.
+                 * Uses HA's authenticated frontend user-data API, scoped to an opaque entry.
+                 * Paint owned DOM: button-card does not rerender for a bare requestUpdate().
+                 */
+                const hiStabilityPresentation = (() => {
+                  const REGISTRY = Symbol.for('humidity_intelligence.stability_presentation.registry.v1');
+                  const OWNER = Symbol.for('humidity_intelligence.stability_presentation.owner.v1');
+                  const validEntry = value => typeof value === 'string' && /^[a-f0-9]{64}$/.test(value);
+                  const validValue = value => value === null || typeof value === 'boolean';
+                  const attr = (node, key, value) => {
+                    if (node.getAttribute(key) !== value) node.setAttribute(key, value);
+                  };
+                  function bind(owner, hass, stamp, metadata) {
+                    // Pure/offline renderer calls have no preference transport or DOM custody.
+                    if (!owner?.isConnected || !owner.shadowRoot || !hass) return null;
+                    const connection = hass.connection;
+                    const user = hass.user?.id;
+                    const stamped = stamp?.schema === 1 && stamp.generator === 1
+                      && ['v2_mobile', 'v2_tablet'].includes(stamp.layout) && validEntry(stamp.entry);
+                    const advertised = metadata?.schema === 1 && validEntry(metadata.entry);
+                    const entry = stamped ? (!metadata?.entry || (advertised && metadata.entry === stamp.entry) ? stamp.entry : null)
+                      : advertised ? metadata.entry : null;
+                    let binding = owner[OWNER];
+                    if (binding && (binding.connection !== connection || binding.entry !== entry || binding.user !== user)) {
+                      binding.dispose(); binding = null;
+                    }
+                    if (binding) { binding.record.hass = hass; binding.paint(); return binding; }
+                    const supported = entry && typeof user === 'string' && user
+                      && typeof connection?.subscribeMessage === 'function' && typeof hass.callWS === 'function';
+                    const registry = window[REGISTRY] ||= new WeakMap();
+                    let entries = supported ? registry.get(connection) : null;
+                    if (supported && !entries) { entries = new Map(); registry.set(connection, entries); }
+                    const identity = `${user}:${entry}`;
+                    let record = entries?.get(identity);
+                    if (!record) {
+                      record = {hass, connection, entry, user, owners:new Set(), known:false,
+                        disabled:false, pending:false, error:'', status:supported ? 'loading' : 'unavailable',
+                        disposed:false, sequence:0, unsubscribe:null};
+                      record.key = `humidity_intelligence.stability_badge.disabled.v1.${entry}`;
+                      record.paint = () => { for (const item of record.owners) item.paint(); };
+                      record.receive = data => {
+                        if (record.disposed) return;
+                        clearTimeout(record.readTimer);
+                        record.sequence++;
+                        if (!data || !Object.hasOwn(data, 'value') || !validValue(data.value)) {
+                          record.known = false; record.status = 'unavailable';
+                          record.error = 'Display preference unavailable';
+                        } else {
+                          record.known = true; record.disabled = data.value === true;
+                          record.status = 'ready'; record.error = '';
+                        }
+                        record.paint();
+                      };
+                      record.toggle = async initiator => {
+                        const active = () => !record.disposed && !initiator.disposed && initiator.owner.isConnected;
+                        if (!active() || record.pending) return;
+                        if (!supported || connection.connected !== true) {
+                          record.error = 'Display preference unavailable'; record.paint(); return;
+                        }
+                        record.pending = true; record.error = ''; record.paint();
+                        try {
+                          await record.subscribe?.();
+                          if (!active()) return;
+                          if (!record.known || record.status !== 'ready') {
+                            const sequence = record.sequence;
+                            const result = await record.hass.callWS({type:'frontend/get_user_data', key:record.key});
+                            if (!active()) return;
+                            if (record.sequence === sequence) record.receive(result);
+                            if (!record.known) throw new Error('Unsupported preference value');
+                            await record.subscribe?.();
+                          }
+                          if (!active()) return;
+                          if (connection.connected !== true) throw new Error('Disconnected');
+                          const next = !record.disabled, sequence = record.sequence;
+                          await record.hass.callWS({type:'frontend/set_user_data', key:record.key, value:next});
+                          if (record.disposed) return;
+                          // A subscription update may already include a newer other-client write.
+                          if (record.sequence === sequence) record.receive({value:next});
+                        } catch (_) {
+                          if (!record.disposed) {
+                            // HA mutates its in-memory dictionary before disk persistence. Failure
+                            // cannot establish that the previous value remains durably stored.
+                            record.error = 'Save unconfirmed';
+                          }
+                        } finally {
+                          record.pending = false;
+                          if (!record.disposed) record.paint();
+                        }
+                      };
+                      record.disconnected = () => { record.status = 'unavailable'; record.paint(); };
+                      record.ready = () => {
+                        record.status = 'loading'; record.error = ''; record.armRead?.();
+                        record.subscribe?.(); record.paint();
+                      };
+                      record.dispose = () => {
+                        if (record.disposed) return;
+                        record.disposed = true; clearTimeout(record.readTimer);
+                        record.unsubscribe?.();
+                        connection?.removeEventListener?.('disconnected', record.disconnected);
+                        connection?.removeEventListener?.('ready', record.ready);
+                        entries?.delete(identity);
+                      };
+                      if (supported) {
+                        entries.set(identity, record);
+                        connection.addEventListener?.('disconnected', record.disconnected);
+                        connection.addEventListener?.('ready', record.ready);
+                        record.armRead = () => {
+                          clearTimeout(record.readTimer);
+                          record.readTimer = setTimeout(() => {
+                            if (!record.disposed && record.status !== 'ready') {
+                              record.status = 'unavailable'; record.error = 'Display preference unavailable'; record.paint();
+                            }
+                          }, 12000);
+                        };
+                        record.armRead();
+                        // One subscription per mounted account/entry, including both layouts.
+                        // The websocket client owns reconnect/resubscription; ready never doubles it.
+                        record.subscribe = () => {
+                          if (record.disposed || record.unsubscribe) return;
+                          if (record.subscribing) return record.subscriptionPromise;
+                          record.subscribing = true;
+                          record.subscriptionPromise = Promise.resolve().then(() => connection.subscribeMessage(record.receive,
+                            {type:'frontend/subscribe_user_data', key:record.key})).then(unsubscribe => {
+                            record.subscribing = false;
+                            if (record.disposed) unsubscribe(); else record.unsubscribe = unsubscribe;
+                          }).catch(() => {
+                            record.subscribing = false;
+                            if (record.disposed) return;
+                            clearTimeout(record.readTimer); record.status = 'unavailable';
+                            record.error = 'Display preference unavailable'; record.paint();
+                          });
+                          return record.subscriptionPromise;
+                        };
+                        record.subscribe();
+                      }
+                    }
+                    binding = {owner, connection, entry, user, record, disposed:false};
+                    binding.cancelKey = () => {
+                      clearTimeout(binding.keyTimer); binding.keyTimer = null;
+                      binding.spaceDown = false; binding.spaceHeld = false;
+                    };
+                    binding.tap = () => binding.card.dispatchEvent(new CustomEvent('action', {
+                      detail:{action:'tap'}, bubbles:true, composed:true,
+                    }));
+                    binding.keydown = event => {
+                      if (!['Enter', ' '].includes(event.key)) return;
+                      event.preventDefault(); event.stopImmediatePropagation();
+                      if (event.repeat) return;
+                      // Keep keys independent of the dependency's retained touch-hold state.
+                      if (event.key === 'Enter') { binding.cancelKey(); binding.tap(); return; }
+                      if (binding.spaceDown) return;
+                      binding.spaceDown = true;
+                      binding.keyTimer = setTimeout(() => {
+                        binding.keyTimer = null;
+                        if (binding.disposed || !binding.spaceDown || !owner.isConnected) return;
+                        binding.spaceHeld = true; binding.toggle();
+                      }, 650);
+                    };
+                    binding.keyup = event => {
+                      if (event.key !== ' ') return;
+                      event.preventDefault(); event.stopImmediatePropagation();
+                      const tapped = binding.spaceDown && !binding.spaceHeld;
+                      binding.cancelKey(); if (tapped) binding.tap();
+                    };
+                    binding.releaseCard = () => {
+                      binding.cancelKey();
+                      binding.card?.removeEventListener('keydown', binding.keydown, true);
+                      binding.card?.removeEventListener('keyup', binding.keyup, true);
+                      binding.card?.removeEventListener('blur', binding.cancelKey);
+                    };
+                    binding.paint = () => {
+                      if (binding.disposed) return;
+                      if (!owner.isConnected) { binding.dispose(); return; }
+                      const mode = record.known ? (record.disabled ? 'disabled' : 'enabled')
+                        : record.status === 'loading' ? 'loading' : 'unavailable';
+                      const feedback = record.error || (record.pending ? 'Saving display…'
+                        : !record.known ? (mode === 'loading' ? 'Loading display preference' : 'Display preference unavailable')
+                        : record.disabled ? 'Display off' : '');
+                      attr(owner, 'data-hi-stability-presentation', mode);
+                      attr(owner, 'data-hi-stability-feedback', feedback ? 'yes' : 'no');
+                      const label = owner.shadowRoot.querySelector('.hi-stability-display-label');
+                      if (label && label.textContent !== feedback) label.textContent = feedback;
+                      const center = owner.shadowRoot.querySelector('.hi-stability-presentation-center');
+                      const text = mode === 'disabled' ? 'Disabled' : mode === 'loading' ? '…' : '—';
+                      if (center && center.textContent !== text) center.textContent = text;
+                      const overlay = owner.shadowRoot.querySelector('.hi-stability-presentation-overlay');
+                      if (overlay) attr(overlay, 'aria-label', mode === 'disabled'
+                        ? 'Stability badge display disabled. Hold this badge to restore it. Calculation and history continue; tap for details.'
+                        : 'Stability display preference unavailable. Calculation and history continue; tap for details.');
+                      const card = owner.shadowRoot.querySelector('#card');
+                      if (card !== binding.card) {
+                        binding.releaseCard();
+                        binding.card = card;
+                        card?.addEventListener('keydown', binding.keydown, true);
+                        card?.addEventListener('keyup', binding.keyup, true);
+                        card?.addEventListener('blur', binding.cancelKey);
+                      }
+                      if (card) { attr(card, 'tabindex', '0'); attr(card, 'role', 'button'); }
+                      if (card) attr(card, 'title', record.error === 'Save unconfirmed'
+                        ? 'Could not confirm the display preference was saved. Hold again to retry. Calculation and history continue.'
+                        : mode === 'disabled' ? 'Hold this badge or Space to restore the score display. Tap or press Enter for details.'
+                        : 'Tap or press Enter for Stability details. Hold this badge or Space to disable only the badge display.');
+                    };
+                    binding.toggle = () => record.toggle(binding);
+                    binding.dispose = () => {
+                      if (binding.disposed) return;
+                      binding.disposed = true; binding.observer.disconnect(); record.owners.delete(binding);
+                      binding.releaseCard();
+                      for (const name of ['location-changed', 'popstate']) window.removeEventListener(name, binding.navigation);
+                      window.removeEventListener('pagehide', binding.pagehide);
+                      window.removeEventListener('blur', binding.cancelKey);
+                      binding.document?.removeEventListener('visibilitychange', binding.visibility);
+                      if (owner[OWNER] === binding) delete owner[OWNER];
+                      if (!record.owners.size) record.dispose();
+                    };
+                    binding.observer = new MutationObserver(() => binding.paint());
+                    let root = owner.shadowRoot;
+                    while (root) { binding.observer.observe(root, {childList:true, subtree:true}); root = root.host ? root.host.getRootNode() : null; }
+                    owner[OWNER] = binding; record.owners.add(binding);
+                    binding.navigation = () => { binding.cancelKey(); if (owner.isConnected) binding.paint(); else binding.dispose(); };
+                    binding.pagehide = event => { binding.cancelKey(); if (!event.persisted) binding.dispose(); };
+                    for (const name of ['location-changed', 'popstate']) window.addEventListener(name, binding.navigation);
+                    window.addEventListener('pagehide', binding.pagehide);
+                    window.addEventListener('blur', binding.cancelKey);
+                    binding.document = owner.ownerDocument;
+                    binding.visibility = () => { if (binding.document?.visibilityState === 'hidden') binding.cancelKey(); };
+                    binding.document?.addEventListener('visibilitychange', binding.visibility);
+                    binding.paint();
+                    queueMicrotask(() => binding.paint());
+                    return binding;
+                  }
+                  return {bind};
+                })();
+                // HI-STABILITY-PRESENTATION:END
+                hiStabilityPresentation.bind(this, typeof hass === 'undefined' ? null : hass,
+                  typeof variables === 'undefined' ? null : variables.hi_stability_stamp, entity?.attributes?.ui_revision);
                 const hasDedicated = Object.prototype.hasOwnProperty.call(entity?.attributes || {}, 'stability_score');
               const source = hasDedicated ? entity.attributes.stability_score : entity?.attributes?.diagnostics_summary?.stability_score;
               const stability = source && typeof source === 'object' && !Array.isArray(source) ? source : {};
@@ -4518,11 +4759,23 @@ card:
                 const numericPoints = (value) => typeof value === 'number' && Number.isFinite(value) && value >= 0 && value <= 100;
                 const pointsText = (value) => Number.isInteger(value) ? String(value) : value.toFixed(2);
                 const explanation = !invalidScore && hasValue ? stability.explanation : null;
+                const deductionItemsValid = items => Array.isArray(items) && items.length <= 16
+                  && items.every(item => item && typeof item.label === 'string' && numericPoints(item.points));
+                const totalDeductions = explanation ? Math.round((explanation.component_shortfall_points
+                  + explanation.evidence_deduction_points + explanation.aq_adjustment_points) * 100) / 100 : NaN;
                 const equationValid = explanation && explanation.final_score === value
                   && [explanation.maximum_points, explanation.component_shortfall_points, explanation.evidence_deduction_points, explanation.aq_adjustment_points, explanation.pre_cap_score].every(numericPoints)
-                  && explanation.maximum_points === 100;
-                const contributionRows = (items) => Array.isArray(items) ? items.filter(item => item && typeof item.label === 'string' && numericPoints(item.points)).map(item => `<tr><th scope="row">${escapeHtml(item.label)}</th><td>${item.points === 0 ? '0' : `−${pointsText(item.points)}`}</td></tr>`).join('') : '';
-                const equationHtml = equationValid ? `<section class="hi-stability-calculation"><h3>Your score</h3><p class="hi-stability-equation">${explanation.clamped_at_zero === true ? 'max(0, ' : ''}${pointsText(explanation.maximum_points)} − ${pointsText(explanation.component_shortfall_points)} − ${pointsText(explanation.evidence_deduction_points)} − ${pointsText(explanation.aq_adjustment_points)}${explanation.clamped_at_zero === true ? ')' : ''} = <strong>${pointsText(explanation.pre_cap_score)}</strong></p><p class="hi-stability-muted">Maximum − component shortfalls − evidence adjustments − recent AQ adjustment = calculated score.${explanation.clamped_at_zero === true ? ' The score stops at zero.' : ''}</p><table class="hi-stability-table"><caption>What contributes to the calculation</caption><tbody>${contributionRows(explanation.component_shortfalls)}${contributionRows(explanation.evidence_deductions)}<tr><th scope="row">Recent AQ adjustment</th><td>${explanation.aq_adjustment_points === 0 ? '0' : `−${pointsText(explanation.aq_adjustment_points)}`}</td></tr></tbody></table><p>${numericPoints(explanation.safety_ceiling) ? `The current ceiling is ${pointsText(explanation.safety_ceiling)}. The lower of the calculated score and this ceiling is shown, rounded to a whole point: <strong>${escapeHtml(explanation.final_score)}</strong>.` : `Rounded to a whole point: <strong>${escapeHtml(explanation.final_score)}</strong>.`}</p></section>` : '';
+                  && explanation.maximum_points === 100
+                  && deductionItemsValid(explanation.component_shortfalls) && explanation.component_shortfalls.length > 0
+                  && deductionItemsValid(explanation.evidence_deductions)
+                  && Math.abs(explanation.component_shortfalls.reduce((sum, item) => sum + item.points, 0) - explanation.component_shortfall_points) < 0.005
+                  && Math.abs(explanation.evidence_deductions.reduce((sum, item) => sum + item.points, 0) - explanation.evidence_deduction_points) < 0.005
+                  && Math.abs(Math.max(0, 100 - totalDeductions) - explanation.pre_cap_score) < 0.005
+                  && (totalDeductions <= 100 || explanation.clamped_at_zero === true)
+                  && (explanation.safety_ceiling === null || (Number.isInteger(explanation.safety_ceiling) && numericPoints(explanation.safety_ceiling)));
+                const contributionRows = items => items.map(item => `<tr><th scope="row">${escapeHtml(item.label)}</th><td>${item.points === 0 ? '0' : `−${pointsText(item.points)}`}</td></tr>`).join('');
+                const headlineHtml = `<div class="hi-stability-headline"><span>Displayed score</span><strong>${hasValue ? value : '—'}<span class="hi-stability-scale"> / 100</span></strong><span>${escapeHtml(hasValue ? (presentation.compact_text || score.display_classification || 'Available') : (presentation.compact_text || 'Unavailable'))}</span></div>`;
+                const equationHtml = equationValid ? `<section class="hi-stability-calculation"><table class="hi-stability-table"><caption>What contributes to the calculation</caption><tbody>${contributionRows(explanation.component_shortfalls)}${contributionRows(explanation.evidence_deductions)}<tr><th scope="row">Recent AQ adjustment</th><td>${explanation.aq_adjustment_points === 0 ? '0' : `−${pointsText(explanation.aq_adjustment_points)}`}</td></tr><tr class="hi-stability-total"><th scope="row">Total deductions</th><td>${pointsText(totalDeductions)}</td></tr></tbody></table><p class="hi-stability-equation"><span>Calculated score</span>${totalDeductions > 100 ? 'max(0, ' : ''}100 − ${pointsText(totalDeductions)}${totalDeductions > 100 ? ')' : ''} = <strong>${pointsText(explanation.pre_cap_score)}</strong></p>${totalDeductions > 100 ? '<p class="hi-stability-muted">Deductions exceed 100 points. The score stops at zero.</p>' : ''}<p class="hi-stability-final">Displayed score: <strong>${explanation.final_score}</strong>. The backend rounds the calculated score to a whole point${explanation.safety_ceiling === null ? '.' : `, then applies a safety ceiling of ${pointsText(explanation.safety_ceiling)}. The ceiling is an upper limit, not another deduction.`}</p></section>` : '<p class="hi-stability-muted">Calculation breakdown unavailable in this snapshot.</p>';
                 const selection = stability.aq_selection;
                 const triggerLabels = {co2_high:'CO₂',pm25_high:'PM2.5',voc_bad:'VOC',iaq_bad:'IAQ'};
                 const selectionRows = selection?.policy === 'raw_first_per_level_v1' && Array.isArray(selection.levels) ? selection.levels.filter(item => item && ['raw','iaq_fallback','unconfigured'].includes(item.basis) && Array.isArray(item.selected_triggers)).map(item => {
@@ -4544,40 +4797,48 @@ card:
                 }[adjustment.status] || '' : '';
                 const aqHtml = selectionRows || adjustmentCopy ? `<h3>Air quality in this score</h3>${selectionRows ? `<ul class="hi-stability-scope">${selectionRows}</ul><p>Individual measurements are used where configured. The IAQ index is the fallback only where no individual measurement is configured; it does not replace a missing reading.</p>` : ''}${adjustmentCopy ? `<p>${escapeHtml(adjustmentCopy)}</p><p class="hi-stability-muted">This additional adjustment is at most 12 points. It eases over six hours of observed clear readings; missing readings pause recovery and a new crossing restarts it. AQ also contributes to the underlying components.</p>` : ''}` : '';
                 const history = stability.score_history;
-                const historyValid = history?.status === 'available' && history.reset_on_restart === true && history.capacity === 432 && history.sample_minutes === 10 && history.window_hours === 72
+                const historyValid = !malformedDedicated && history?.status === 'available' && history.reset_on_restart === true && history.capacity === 432 && history.sample_minutes === 10 && history.window_hours === 72
                   && Array.isArray(history.points) && history.points.length <= 432
                   && history.points.every((point, index, items) => point && typeof point.at === 'string' && /(?:Z|[+-]\d{2}:\d{2})$/.test(point.at)
                     && Number.isFinite(Date.parse(point.at)) && Date.parse(point.at) % 600000 === 0
                     && (point.score === null || (Number.isInteger(point.score) && point.score >= 0 && point.score <= 100))
                     && (!index || Date.parse(point.at) > Date.parse(items[index - 1].at)))
                   && (!history.points.length || Date.parse(history.points[history.points.length - 1].at) - Date.parse(history.points[0].at) <= 431 * 600000);
-                let historyHtml = '<p>Score history is not available in this snapshot.</p>';
+                let historyState = 'Unavailable';
+                let historyHtml = '<div class="hi-stability-history-empty"><strong>History unavailable</strong><p>Score history is not available in this snapshot. Open the details again after the next update.</p></div>';
                 if (historyValid) {
                   const samples = history.points;
                   const recorded = samples.filter(point => point.score !== null);
-                  if (!recorded.length) historyHtml = '<p>No scored observations yet. The graph starts when a score is available.</p>';
+                  if (!recorded.length) {
+                    historyState = 'No recorded scores';
+                    historyHtml = `<div class="hi-stability-history-empty"><strong>No recorded scores in retained history</strong><p>A graph appears after a scored ten-minute sample is retained. Earlier scores may have expired or been cleared.</p><p class="hi-stability-muted">${samples.length ? `${samples.length} recorded ${samples.length === 1 ? 'sample has' : 'samples have'} no score. Missing scores are not zero.` : 'No ten-minute samples are retained in this snapshot.'}</p></div>`;
+                  }
                   else {
                     const firstAt = Date.parse(samples[0].at), lastAt = Date.parse(samples[samples.length - 1].at);
+                    const intervalSlots = (lastAt - firstAt) / 600000 + 1;
+                    const gaps = intervalSlots - recorded.length;
+                    const low = Math.min(...recorded.map(point => point.score)), high = Math.max(...recorded.map(point => point.score));
+                    historyState = gaps ? 'Gaps in history' : recorded.length === 1 ? 'One observation' : 'Recorded history';
                     const x = at => lastAt === firstAt ? 220 : 36 + (Date.parse(at) - firstAt) / (lastAt - firstAt) * 376;
-                    const y = score => 154 - score / 100 * 136;
+                    const y = score => 174 - score / 100 * 152;
                     let previous = null;
                     const lines = [], dots = [];
                     for (const point of samples) {
                       if (point.score === null) { previous = null; continue; }
                       if (previous && Date.parse(point.at) - Date.parse(previous.at) === 600000) lines.push(`<path d="M${x(previous.at).toFixed(2)} ${y(previous.score).toFixed(2)} L${x(point.at).toFixed(2)} ${y(point.score).toFixed(2)}"/>`);
-                      dots.push(`<circle cx="${x(point.at).toFixed(2)}" cy="${y(point.score).toFixed(2)}" r="2"><title>${escapeHtml(localTime(point.at))}: ${point.score}</title></circle>`);
+                      dots.push(`<circle cx="${x(point.at).toFixed(2)}" cy="${y(point.score).toFixed(2)}" r="${point === recorded[recorded.length - 1] ? '3.5' : '2'}"><title>${escapeHtml(localTime(point.at))}: ${point.score}</title></circle>`);
                       previous = point;
                     }
                     const latest = recorded[recorded.length - 1];
-                    const summary = `${recorded.length} scored observations. Latest recorded score: ${latest.score} at ${localTime(latest.at)}. Gaps are left empty.`;
-                    historyHtml = `<p>${escapeHtml(summary)}</p><svg class="hi-stability-history-graph" viewBox="0 0 440 182" role="img" aria-label="${escapeHtml(summary)}"><title>Recorded Stability Score</title><g class="hi-stability-history-grid">${[0,50,100].map(level => `<path d="M36 ${y(level)}H412"/><text x="28" y="${y(level)+4}" text-anchor="end">${level}</text>`).join('')}</g><g class="hi-stability-history-line">${lines.join('')}</g><g class="hi-stability-history-points">${dots.join('')}</g></svg><div class="hi-stability-history-times"><span>${escapeHtml(localTime(samples[0].at))}</span><span>${escapeHtml(localTime(samples[samples.length - 1].at))}</span></div>`;
+                    const summary = `${recorded.length} scored observations. Latest recorded score: ${latest.score} at ${localTime(latest.at)}. Recorded range: ${low} to ${high}. ${gaps ? `${gaps} ten-minute slots in this interval have no score. Gaps are left empty.` : 'Every ten-minute slot in the shown interval has a score.'}`;
+                    historyHtml = `<div class="hi-stability-history-metrics"><div><span>Latest recorded</span><strong>${latest.score}<span class="hi-stability-scale"> / 100</span></strong></div><div><span>Recorded range</span><strong>${low === high ? low : `${low}–${high}`}</strong></div><div><span>Scored samples</span><strong>${recorded.length}<span class="hi-stability-scale"> / ${intervalSlots}</span></strong></div></div><p class="hi-stability-history-caption">Last recorded ${escapeHtml(localTime(latest.at))}</p><div class="hi-stability-history-plot"><svg class="hi-stability-history-graph" viewBox="0 0 440 196" role="img" aria-label="${escapeHtml(summary)}"><title>Recorded Stability Score</title><g class="hi-stability-history-grid">${[0,25,50,75,100].map(level => `<path d="M36 ${y(level)}H412"/><text x="28" y="${y(level)+4}" text-anchor="end">${level}</text>`).join('')}</g><g class="hi-stability-history-line">${lines.join('')}</g><g class="hi-stability-history-points">${dots.join('')}</g></svg><div class="hi-stability-history-times"><span>${escapeHtml(localTime(samples[0].at))}</span><span>${samples.length > 1 ? escapeHtml(localTime(samples[samples.length - 1].at)) : 'Single recorded sample'}</span></div></div><p class="hi-stability-history-coverage">${gaps ? `${gaps} of ${intervalSlots} ten-minute slots in the shown interval have no score. The line stops at each gap.` : recorded.length === 1 ? 'One observation is shown as a point. A trend needs more recorded scores.' : 'Every ten-minute slot in the shown interval has a score.'} Counts cover only the shown interval, not the full 72-hour capacity.</p>`;
                   }
                 }
                 const latestLive = historyValid ? history.current : null;
                 const latestLiveTime = localTime(latestLive?.at);
                 const latestLiveValid = latestLiveTime && latestLive && (latestLive.score === null || (Number.isInteger(latestLive.score) && latestLive.score >= 0 && latestLive.score <= 100));
-                const latestLiveHtml = latestLiveValid ? `<p class="hi-stability-live-score">Latest update: ${latestLive.score === null ? 'score unavailable' : latestLive.score} at ${escapeHtml(latestLiveTime)}. This is separate from the ten-minute samples.</p>` : '';
-                const historySection = `<details class="hi-stability-history"><summary>Score history <span aria-hidden="true">↗</span></summary>${historyHtml}${latestLiveHtml}<p class="hi-stability-muted">Score sampled every 10 minutes, for up to 72 hours. Changes between samples are not shown. Gaps mean no recorded score. History resets when HI restarts or reloads.</p></details>`;
+                const latestLiveHtml = latestLiveValid ? `<div class="hi-stability-live-score"><strong>Latest update: ${latestLive.score === null ? 'score unavailable' : latestLive.score}</strong><span>${escapeHtml(latestLiveTime)}</span><p>This is separate from the ten-minute samples.</p></div>` : '<p class="hi-stability-muted">Latest update unavailable in this snapshot.</p>';
+                const historySection = `<details class="hi-stability-history"><summary>Score history <span class="hi-stability-history-status">${historyState}</span></summary><div class="hi-stability-history-content">${historyHtml}${latestLiveHtml}<p class="hi-stability-muted">Score sampled every 10 minutes, for up to 72 hours. Changes between samples are not shown. Gaps mean no recorded score. History resets when HI restarts or reloads.</p></div></details>`;
                 const gaugeClass = [
                   'hi-stability-gauge',
                   tone === 'excellent' ? 'hi-stability-gauge-white' : '',
@@ -4590,7 +4851,7 @@ card:
                   <div class="${evidenceClass}"></div>
                   ${failureArc}
                   ${collecting && collectionMarks > 0 ? '' : '<div class="hi-stability-origin"></div>'}
-                </div><template class="hi-stability-details-template">
+                </div><div class="hi-stability-presentation-overlay" role="img" aria-label="Stability display preference loading"><span class="hi-stability-presentation-center">…</span><div class="hi-stability-disabled-leds" aria-hidden="true"></div></div><template class="hi-stability-details-template">
                   <style>dialog.hi-stability-details { box-sizing:border-box; width:min(520px,calc(100vw - 32px)); max-height:calc(100vh - 32px); max-height:calc(100dvh - 32px - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px)); top:env(safe-area-inset-top,0px); bottom:env(safe-area-inset-bottom,0px); overflow:auto; padding:20px; border:1px solid #354762; border-radius:20px; background:#0d1522; color:#e2e8f0; text-align:left; white-space:normal; font:14px/1.6 system-ui,sans-serif; }
                   dialog.hi-stability-details::backdrop { background:rgba(0,0,0,.65); }
                   dialog.hi-stability-details h2 { margin:0 0 16px; font-size:22px; }
@@ -4599,25 +4860,51 @@ card:
                   dialog.hi-stability-details .hi-stability-close { display:grid; place-items:center; position:sticky; top:0; margin:0 0 12px auto; z-index:1; box-sizing:border-box; width:44px; height:44px; min-width:44px; min-height:44px; padding:0; border:0; border-radius:50%; background:transparent; color:#e2e8f0; cursor:pointer; } dialog.hi-stability-details .hi-stability-close::before { content:""; position:absolute; inset:6px; border:1px solid #64748b; border-radius:50%; background:#18253a; } dialog.hi-stability-details .hi-stability-close svg { position:relative; pointer-events:none; }
                   dialog.hi-stability-details .hi-stability-close:focus-visible, dialog.hi-stability-details summary:focus-visible { outline:2px solid #38bdf8; outline-offset:4px; }
                   dialog.hi-stability-details .hi-stability-muted, dialog.hi-stability-details .hi-stability-snapshot { color:#a8b6ca; font-size:12px; }
+                  dialog.hi-stability-details .hi-stability-headline { display:grid; gap:2px; padding:16px 18px; margin:0 0 18px; border:1px solid #354762; border-radius:14px; background:#101e30; }
+                  dialog.hi-stability-details .hi-stability-headline > span { font-size:12px; color:#b8c7dc; }
+                  dialog.hi-stability-details .hi-stability-headline > strong { font-size:38px; line-height:1.25; font-variant-numeric:tabular-nums; }
+                  dialog.hi-stability-details .hi-stability-scale { font-size:12px; font-weight:400; color:#a8b6ca; }
                   dialog.hi-stability-details .hi-stability-equation { padding:14px; border:1px solid #354762; border-radius:12px; font-size:18px; line-height:1.7; font-variant-numeric:tabular-nums; background:#101e30; }
+                  dialog.hi-stability-details .hi-stability-equation > span { display:block; margin-bottom:4px; font-size:12px; color:#b8c7dc; }
+                  dialog.hi-stability-details .hi-stability-final { font-size:13px; color:#b8c7dc; }
                   dialog.hi-stability-details .hi-stability-table { width:100%; border-collapse:collapse; font-size:13px; }
                   dialog.hi-stability-details caption { text-align:left; color:#a8b6ca; padding:6px 0; }
                   dialog.hi-stability-details th { text-align:left; font-weight:500; }
                   dialog.hi-stability-details td { text-align:right; font-variant-numeric:tabular-nums; white-space:nowrap; }
                   dialog.hi-stability-details th, dialog.hi-stability-details td { padding:5px 0; border-bottom:1px solid #253247; }
+                  dialog.hi-stability-details th { padding-right:12px; overflow-wrap:anywhere; }
+                  dialog.hi-stability-details .hi-stability-total th, dialog.hi-stability-details .hi-stability-total td { padding-top:12px; padding-bottom:10px; font-weight:700; border-top:1px solid #64748b; border-bottom:0; }
                   dialog.hi-stability-details summary { min-height:44px; box-sizing:border-box; padding:10px 2px; cursor:pointer; font-weight:600; }
-                  dialog.hi-stability-details .hi-stability-history { border-top:1px solid #354762; margin-top:18px; padding-top:4px; }
-                  dialog.hi-stability-details .hi-stability-history summary span { float:right; color:#7dd3fc; }
+                  dialog.hi-stability-details .hi-stability-history { border:1px solid #354762; border-radius:14px; margin-top:24px; background:#101b2b; }
+                  dialog.hi-stability-details .hi-stability-history > summary { padding:14px; font-size:14px; }
+                  dialog.hi-stability-details .hi-stability-history-status { float:right; margin:2px 0 0 8px; color:#b8c7dc; font-size:11px; font-weight:400; }
+                  dialog.hi-stability-details .hi-stability-history-content { padding:0 14px 8px; border-top:1px solid #253247; }
+                  dialog.hi-stability-details .hi-stability-history-metrics { display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px; padding:16px 0 6px; }
+                  dialog.hi-stability-details .hi-stability-history-metrics > div { min-width:0; }
+                  dialog.hi-stability-details .hi-stability-history-metrics > div > span { display:block; font-size:11px; line-height:1.4; color:#b8c7dc; margin-bottom:6px; }
+                  dialog.hi-stability-details .hi-stability-history-metrics strong { display:block; font-size:22px; line-height:1.3; font-variant-numeric:tabular-nums; }
+                  dialog.hi-stability-details .hi-stability-history-caption { margin:6px 0 14px; font-size:11px; color:#b8c7dc; }
+                  dialog.hi-stability-details .hi-stability-history-plot { padding:4px 0 10px; border:1px solid #253247; border-radius:10px; background:#0d1522; }
                   dialog.hi-stability-details .hi-stability-history-graph { display:block; width:100%; height:auto; overflow:visible; }
-                  dialog.hi-stability-details .hi-stability-history-grid path { stroke:#354762; stroke-width:1; }
-                  dialog.hi-stability-details .hi-stability-history-grid text { fill:#a8b6ca; font-size:11px; }
-                  dialog.hi-stability-details .hi-stability-history-line { fill:none; stroke:#7dd3fc; stroke-width:2; }
+                  dialog.hi-stability-details .hi-stability-history-grid path { stroke:#253247; stroke-width:1; stroke-dasharray:3 5; }
+                  dialog.hi-stability-details .hi-stability-history-grid text { fill:#a8b6ca; font-size:18px; }
+                  dialog.hi-stability-details .hi-stability-history-line { fill:none; stroke:#7dd3fc; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
                   dialog.hi-stability-details .hi-stability-history-points { fill:#7dd3fc; }
-                  dialog.hi-stability-details .hi-stability-history-times { display:flex; justify-content:space-between; gap:20px; color:#a8b6ca; font-size:11px; }
+                  dialog.hi-stability-details .hi-stability-history-times { display:flex; justify-content:space-between; gap:20px; padding:0 12px; color:#a8b6ca; font-size:11px; }
+                  dialog.hi-stability-details .hi-stability-history-times span { min-width:0; flex:1; overflow-wrap:anywhere; }
                   dialog.hi-stability-details .hi-stability-history-times span:last-child { text-align:right; }
-                  @media (max-width:400px) { dialog.hi-stability-details .hi-stability-history-grid text { font-size:18px; } }</style>
+                  dialog.hi-stability-details .hi-stability-history-coverage { font-size:12px; color:#b8c7dc; }
+                  dialog.hi-stability-details .hi-stability-history-empty { padding:18px 0 6px; }
+                  dialog.hi-stability-details .hi-stability-history-empty > strong { display:block; font-size:14px; }
+                  dialog.hi-stability-details .hi-stability-history-empty p { margin:8px 0; font-size:13px; color:#b8c7dc; }
+                  dialog.hi-stability-details .hi-stability-live-score { display:grid; gap:2px; padding:12px; margin:16px 0; border-left:2px solid #64748b; background:#142136; border-radius:0 8px 8px 0; font-size:12px; }
+                  dialog.hi-stability-details .hi-stability-live-score span, dialog.hi-stability-details .hi-stability-live-score p { color:#b8c7dc; }
+                  dialog.hi-stability-details .hi-stability-live-score p { margin:4px 0 0; }
+                  @media (min-width:600px) { dialog.hi-stability-details .hi-stability-history-grid text { font-size:14px; } }
+                  @media (max-width:400px) { dialog.hi-stability-details { padding:14px; } dialog.hi-stability-details .hi-stability-history-grid text { font-size:18px; } dialog.hi-stability-details .hi-stability-history-metrics { gap:8px; } dialog.hi-stability-details .hi-stability-history-metrics strong { font-size:20px; } dialog.hi-stability-details .hi-stability-history-status { float:none; display:block; margin:2px 0 0 16px; } }</style>
                   <button type="button" class="hi-stability-close" aria-label="Close" title="Close" autofocus><svg aria-hidden="true" viewBox="0 0 24 24" width="18" height="18"><path d="m6 6 12 12M18 6 6 18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
                   <h2>Stability Score</h2>
+                  ${headlineHtml}
                   <p>Your score brings together the last three days of observations. Follow how it changes, and see what contributed to the latest result.</p>
                   ${equationHtml}
                   <p>${escapeHtml(detailText)}</p>
@@ -4748,7 +5035,11 @@ card:
                 catch (_) { cleanup(); fallback(); }
               ]]]
           hold_action:
-            action: more-info
+            action: javascript
+            javascript: |
+              [[[
+                this[Symbol.for('humidity_intelligence.stability_presentation.owner.v1')]?.toggle();
+              ]]]
           styles:
             card:
               - border-radius: 20px
@@ -4785,6 +5076,25 @@ card:
                 - align-self: center
                 - justify-self: center
           extra_styles: |
+            #card:focus-visible { outline:2px solid #a78bfa; outline-offset:-3px; }
+            .hi-stability-interactive { position:relative; width:82px; height:82px; }
+            .hi-stability-display-label, .hi-stability-presentation-overlay { display:none; }
+            :host([data-hi-stability-feedback="yes"]) .hi-stability-backend-label { display:none; }
+            :host([data-hi-stability-feedback="yes"]) .hi-stability-display-label { display:inline; }
+            :host([data-hi-stability-presentation="disabled"]) .hi-stability-interactive > .hi-stability-gauge,
+            :host([data-hi-stability-presentation="loading"]) .hi-stability-interactive > .hi-stability-gauge,
+            :host([data-hi-stability-presentation="unavailable"]) .hi-stability-interactive > .hi-stability-gauge { visibility:hidden; }
+            :host([data-hi-stability-presentation="disabled"]) .hi-stability-presentation-overlay,
+            :host([data-hi-stability-presentation="loading"]) .hi-stability-presentation-overlay,
+            :host([data-hi-stability-presentation="unavailable"]) .hi-stability-presentation-overlay { display:grid; }
+            .hi-stability-presentation-overlay { position:absolute; inset:0; place-items:center; border-radius:50%; background:#08080d; color:#e2e8f0; }
+            .hi-stability-presentation-overlay::before { content:""; position:absolute; inset:14px; border-radius:50%; box-shadow:0 0 9px 3px #64748b; opacity:.4; }
+            .hi-stability-presentation-center { position:relative; z-index:1; font-size:23px; font-weight:650; letter-spacing:-.02em; }
+            :host([data-hi-stability-presentation="disabled"]) .hi-stability-presentation-overlay { color:#e5dbff; background:radial-gradient(ellipse at 30% 70%,#392064 0%,#171027 48%,#08080d 72%); }
+            :host([data-hi-stability-presentation="disabled"]) .hi-stability-presentation-overlay::before { inset:12px; box-shadow:-5px 1px 11px 3px #a78bfa,5px -2px 10px 2px #6366f1; opacity:.55; }
+            :host([data-hi-stability-presentation="disabled"]) .hi-stability-presentation-center { font-size:12px; letter-spacing:0; }
+            .hi-stability-disabled-leds { display:none; position:absolute; inset:0; border-radius:50%; background:repeating-conic-gradient(from 20deg,#c4b5fd 0deg 5deg,transparent 5deg 45deg); -webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 3px),#000 calc(100% - 2.5px),#000 calc(100% - 1px),transparent 100%); mask:radial-gradient(farthest-side,transparent calc(100% - 3px),#000 calc(100% - 2.5px),#000 calc(100% - 1px),transparent 100%); }
+            :host([data-hi-stability-presentation="disabled"]) .hi-stability-disabled-leds { display:block; }
             .hi-stability-gauge {
               width: 82px;
               height: 82px;

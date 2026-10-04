@@ -60,9 +60,11 @@ representative at an online or offline event.
 
 ## Enforcement
 
-Instances of abusive, harassing, or otherwise unacceptable behavior may be
-reported to the community leaders responsible for enforcement at
-Email.
+Please report abusive, harassing, or otherwise unacceptable behavior privately
+to the maintainer. Check [Senyo's GitHub profile](https://github.com/senyo888)
+for a private contact route. If none is listed, [open a contact request](https://github.com/senyo888/humidity-intelligence/issues/new)
+without names or incident details. Share the report only once a private channel
+has been arranged.
 All complaints will be reviewed and investigated promptly and fairly.
 
 All community leaders are obligated to respect the privacy and security of the

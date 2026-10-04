@@ -45,8 +45,13 @@ function labelBody(relativePath) {
 const LABEL_BODIES = SURFACES.map(labelBody);
 const LABEL_RENDERERS = LABEL_BODIES.map((body) => new Function('entity', body));
 
+function backendLabel(html) {
+  const match = html.match(/^<span class="hi-stability-backend-label">(.*)<\/span><span class="hi-stability-display-label"><\/span>$/s);
+  assert.ok(match, 'backend status and display preference have separate text surfaces');
+  return match[1];
+}
 function renderLabel(contract) {
-  return assertIdentical(LABEL_RENDERERS.map((render) => render({ attributes: { diagnostics_summary: { stability_score: contract } } })));
+  return backendLabel(assertIdentical(LABEL_RENDERERS.map((render) => render({ attributes: { diagnostics_summary: { stability_score: contract } } }))));
 }
 
 const BODIES = SURFACES.map(gaugeBody);
@@ -92,7 +97,8 @@ test('backend collecting presentation reports real sample progress', () => {
   const output = renderContract(contract);
   assert.match(output, /<span>288<\/span><\/div>/);
   assert.equal(renderLabel(contract), 'OF 303');
-  assert.doesNotMatch(output, /OF 303/);
+  assert.doesNotMatch(output.split('<template')[0], /OF 303/);
+  assert.match(output, /Displayed score<\/span><strong>—/);
   assert.match(output, /--hi-stability-color:#38bdf8/);
   assert.match(output, /aria-label="Collecting valid samples\."/);
   assert.doesNotMatch(output, /gauge-white/);
@@ -105,7 +111,7 @@ test('numeric score never overrides the backend classification or class cap', ()
     assert.ok(output.includes(`--hi-stability-color:${color}`));
     assert.ok(output.includes('<span>99</span></div>'));
     assert.equal(renderLabel(contract), classification.toUpperCase());
-    assert.ok(!output.includes(classification.toUpperCase()));
+    assert.ok(!output.split('<template')[0].includes(classification.toUpperCase()));
     assert.equal(output.includes('hi-stability-gauge-white'), classification === 'excellent');
   }
 });
@@ -344,7 +350,7 @@ test('legacy score locations use the same strict numeric validation', () => {
       assert.match(output, /<span>—<\/span><\/div>/);
       assert.match(output, /--hi-stability-color:#94a3b8;/);
       assert.doesNotMatch(output, /gauge-white/);
-      assert.equal(assertIdentical(LABEL_RENDERERS.map(render => render({attributes}))), 'Unavailable');
+      assert.equal(backendLabel(assertIdentical(LABEL_RENDERERS.map(render => render({attributes})))), 'Unavailable');
     }
   }
 });
@@ -603,15 +609,20 @@ function refinedContract(extra = {}) {
 
 test('equation renders backend-owned terms and ceiling without calculating a new score', () => {
   const output = renderContract(refinedContract());
-  assert.match(output, /100 − 8 − 2 − 6 = <strong>84<\/strong>/);
+  assert.match(output, /100 − 16 = <strong>84<\/strong>/);
+  assert.match(output, /Total deductions<\/th><td>16<\/td>/);
+  assert.ok(output.indexOf('Total deductions') < output.indexOf('100 − 16'));
+  assert.ok(output.indexOf('Displayed score</span>') < output.indexOf('What contributes'));
+  assert.doesNotMatch(output, /100 − 8 − 2 − 6/);
   assert.match(output, /Balance across rooms<\/th><td>−8<\/td>/);
-  assert.match(output, /Rounded to a whole point: <strong>84<\/strong>/);
+  assert.match(output, /Displayed score: <strong>84<\/strong>/);
+  assert.match(output, /backend rounds the calculated score to a whole point/);
   const capped = refinedContract();
   capped.score.display_score = 54;
   capped.explanation.final_score = 54;
   capped.explanation.safety_ceiling = 54;
-  assert.match(renderContract(capped), /current ceiling is 54/);
-  assert.match(renderContract(capped), /whole point: <strong>54<\/strong>/);
+  assert.match(renderContract(capped), /safety ceiling of 54/);
+  assert.match(renderContract(capped), /Displayed score: <strong>54<\/strong>/);
   for (const bad of ['84', NaN, Infinity, -1, 101]) {
     const stale = refinedContract(); stale.explanation.pre_cap_score = bad;
     assert.doesNotMatch(renderContract(stale), /<p class="hi-stability-equation">/);
@@ -638,6 +649,74 @@ test('selected AQ scope and paused recovery preserve backend evidence truth', ()
   assert.match(output, /AQ also contributes to the underlying components/);
 });
 
+test('decimal calculated score, backend rounding and nonbinding ceiling remain distinct', () => {
+  const contract = refinedContract();
+  contract.score.display_score = 65; contract.presentation.primary_text = '65';
+  Object.assign(contract.explanation, {component_shortfall_points:27.09,pre_cap_score:64.91,final_score:65,safety_ceiling:91});
+  contract.explanation.component_shortfalls[0].points = 27.09;
+  const output = renderContract(contract);
+  assert.match(output, /Total deductions<\/th><td>35.09<\/td>/);
+  assert.match(output, /100 − 35.09 = <strong>64.91<\/strong>/);
+  assert.match(output, /Displayed score<\/span><strong>65/);
+  assert.match(output, /Displayed score: <strong>65<\/strong>/);
+  assert.match(output, /safety ceiling of 91/);
+  assert.match(output, /upper limit, not another deduction/);
+  // Python ties-to-even is authoritative. JS Math.round(64.5) would be wrong.
+  Object.assign(contract.explanation, {component_shortfall_points:27.5,pre_cap_score:64.5,final_score:64});
+  contract.explanation.component_shortfalls[0].points = 27.5;
+  contract.score.display_score = 64; contract.presentation.primary_text = '64';
+  assert.match(renderContract(contract), /100 − 35.50 = <strong>64.50<\/strong>/);
+  assert.match(renderContract(contract), /Displayed score: <strong>64<\/strong>/);
+});
+
+test('incomplete, inconsistent or invalid explanation cannot imply a reconciled calculation', () => {
+  for (const mutate of [
+    c => { delete c.explanation; },
+    c => { delete c.explanation.component_shortfalls; },
+    c => { c.explanation.component_shortfalls = []; },
+    c => { c.explanation.component_shortfalls[0].points = '8'; },
+    c => { c.explanation.component_shortfalls.push({label:'Missing'}); },
+    c => { c.explanation.evidence_deductions = []; },
+    c => { c.explanation.pre_cap_score = 83; },
+    c => { c.explanation.safety_ceiling = NaN; },
+    c => { c.explanation.safety_ceiling = '91'; },
+  ]) {
+    const contract = refinedContract(); mutate(contract);
+    const output = renderContract(contract);
+    assert.match(output, /Displayed score<\/span><strong>84/);
+    assert.match(output, /Calculation breakdown unavailable/);
+    assert.doesNotMatch(output, /Total deductions<\/th>|100 −/);
+  }
+  for (const state of ['unknown','unavailable','insufficient_coverage']) {
+    const output = renderContract(refinedContract({availability:state}));
+    assert.match(output, /Displayed score<\/span><strong>—/);
+    assert.doesNotMatch(output, /Total deductions<\/th>|100 −/);
+  }
+});
+
+test('prominent headline preserves backend partial qualifier and condition precedence', () => {
+  const partial = refinedContract({score:{display_score:94,display_classification:'Excellent'},presentation:{primary_text:'94',compact_text:'PARTIAL',state_code:'available_partial_evidence',tone:'incomplete'}});
+  const output = renderContract(partial);
+  assert.match(output, /Displayed score<\/span><strong>94[\s\S]*?<\/strong><span>PARTIAL<\/span>/);
+  const condition = refinedContract({score:{display_score:54,display_classification:'Poor'},presentation:{primary_text:'54',compact_text:'POOR',state_code:'available',evidence_status:'partial',tone:'poor'}});
+  assert.match(renderContract(condition), /Displayed score<\/span><strong>54[\s\S]*?<\/strong><span>POOR<\/span>/);
+});
+
+test('zero, exact zero and fractional totals do not invent deductions or a clamp', () => {
+  const contract = refinedContract();
+  Object.assign(contract.explanation, {component_shortfall_points:0,evidence_deduction_points:0,aq_adjustment_points:0,pre_cap_score:100,final_score:100,clamped_at_zero:false});
+  contract.explanation.component_shortfalls[0].points = 0;
+  contract.explanation.evidence_deductions[0].points = 0;
+  contract.score.display_score = 100; contract.presentation.primary_text = '100';
+  assert.match(renderContract(contract), /100 − 0 = <strong>100<\/strong>/);
+  contract.explanation.component_shortfalls[0].points = 100;
+  Object.assign(contract.explanation, {component_shortfall_points:100,pre_cap_score:0,final_score:0,clamped_at_zero:true});
+  contract.score.display_score = 0; contract.presentation.primary_text = '0';
+  const output = renderContract(contract);
+  assert.match(output, /100 − 100 = <strong>0<\/strong>/);
+  assert.doesNotMatch(output, /max\(0|Deductions exceed/);
+});
+
 const historyPoint = (index, score) => ({at: new Date(Date.UTC(2026,0,1,0,index*10)).toISOString(), score});
 const scoreHistory = (points) => ({status:'available',capacity:432,sample_minutes:10,window_hours:72,reset_on_restart:true,points});
 function historyOutput(points) {return renderContract(refinedContract({score_history:scoreHistory(points)}));}
@@ -657,8 +736,8 @@ test('history uses genuine samples and does not join unavailable or missing buck
 
 test('history bounds data, admits zero, and rejects malformed or unsorted series', () => {
   assert.match(historyOutput([historyPoint(0,0)]), /Latest recorded score: 0/);
-  assert.match(historyOutput([]), /No scored observations yet/);
-  assert.match(historyOutput([historyPoint(0,null)]), /No scored observations yet/);
+  assert.match(historyOutput([]), /No recorded scores in retained history/);
+  assert.match(historyOutput([historyPoint(0,null)]), /No recorded scores in retained history/);
   assert.match(historyOutput(Array.from({length:432},(_,i)=>historyPoint(i,i%101))), /432 scored observations/);
   for (const points of [
     Array.from({length:433},(_,i)=>historyPoint(i,60)),
@@ -674,6 +753,48 @@ test('history bounds data, admits zero, and rejects malformed or unsorted series
     assert.match(output, /Score history is not available/);
     assert.doesNotMatch(output, /<svg class="hi-stability-history-graph"/);
   }
+});
+
+test('history hierarchy distinguishes gaps, empty, unavailable, and a single zero', () => {
+  const partial = historyOutput([historyPoint(0,54),historyPoint(1,null),historyPoint(3,61)]);
+  assert.match(partial, /Gaps in history/);
+  assert.match(partial, /Recorded range<\/span><strong>54–61/);
+  assert.match(partial, /Scored samples<\/span><strong>2<span class="hi-stability-scale"> \/ 4/);
+  assert.match(partial, /2 of 4 ten-minute slots in the shown interval have no score/);
+  assert.match(partial, /not the full 72-hour capacity/);
+  assert.match(historyOutput([]), /No ten-minute samples are retained/);
+  assert.match(historyOutput([historyPoint(0,null)]), /1 recorded sample has no score/);
+  assert.match(historyOutput([historyPoint(0,null),historyPoint(1,null)]), /Missing scores are not zero/);
+  const single = historyOutput([historyPoint(0,0)]);
+  assert.match(single, /One observation/);
+  assert.match(single, /Latest recorded<\/span><strong>0/);
+  assert.match(single, /A trend needs more recorded scores/);
+  assert.doesNotMatch(single, /<g class="hi-stability-history-line"><path/);
+  assert.match(renderContract(refinedContract()), /History unavailable/);
+});
+
+test('current unavailable score does not erase recorded history or become a graph point', () => {
+  const history = scoreHistory([historyPoint(0,60),historyPoint(1,62)]);
+  history.current = {at:'2026-01-01T00:11:24Z',score:null};
+  const output = renderContract({availability:'unavailable',score:{display_score:null},score_history:history});
+  assert.match(output, /Displayed score<\/span><strong>—/);
+  assert.match(output, /Latest update: score unavailable/);
+  assert.equal((output.match(/<circle /g)||[]).length,2);
+  assert.match(output, /Latest recorded score: 62/);
+  for (const current of [{at:'bad',score:65},{at:'2026-01-01T00:11:24Z',score:'65'},{at:'2026-01-01T00:11:24Z',score:NaN}]) {
+    history.current=current;
+    assert.match(renderContract(refinedContract({score_history:history})), /Latest update unavailable in this snapshot/);
+  }
+});
+
+test('unscored retained history does not imply that a current score has never existed', () => {
+  const history = scoreHistory([historyPoint(0,null)]);
+  history.current = {at:'2026-01-01T00:01:24Z',score:84};
+  const output = renderContract(refinedContract({score_history:history}));
+  assert.match(output, /No recorded scores in retained history/);
+  assert.match(output, /Earlier scores may have expired or been cleared/);
+  assert.match(output, /Latest update: 84/);
+  assert.doesNotMatch(output, /No scores yet|No scored observations yet|<circle /);
 });
 
 test('all added dynamic equation and selection labels are escaped', () => {
@@ -709,7 +830,8 @@ test('floored equation explains zero without pretending a negative subtraction e
   const contract=refinedContract();
   contract.score.display_score=0;contract.presentation.primary_text='0';
   Object.assign(contract.explanation,{component_shortfall_points:96,evidence_deduction_points:2,aq_adjustment_points:6,pre_cap_score:0,final_score:0,clamped_at_zero:true});
-  assert.match(renderContract(contract), /max\(0, 100 − 96 − 2 − 6\) = <strong>0<\/strong>/);
+  contract.explanation.component_shortfalls[0].points=96;
+  assert.match(renderContract(contract), /max\(0, 100 − 104\) = <strong>0<\/strong>/);
   assert.match(renderContract(contract), /The score stops at zero/);
 });
 
@@ -717,7 +839,7 @@ test('latest live score is separate text and cannot invent a graph sample', () =
   const history=scoreHistory([historyPoint(0,60),historyPoint(1,62)]);
   history.current={at:'2026-01-01T00:11:24Z',score:65};
   const output=renderContract(refinedContract({score_history:history}));
-  assert.match(output, /Latest update: 65 at/);
+  assert.match(output, /Latest update: 65<\/strong><span>/);
   assert.match(output, /separate from the ten-minute samples/);
   assert.equal((output.match(/<circle /g)||[]).length,2);
   assert.match(output,/Latest recorded score: 62/);

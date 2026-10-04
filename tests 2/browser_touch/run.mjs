@@ -10,7 +10,20 @@ if(!card)throw Error('Set BUTTON_CARD_PATH to the unmodified button-card7.0.1 Ja
 const expected='5d6e9c6afca01e8014653fa56bb5d6aa9248d832c34fb944a7f2c36329bc22d1';
 assert.equal(crypto.createHash('sha256').update(fs.readFileSync(card)).digest('hex'),expected,'button-card dependency hash');
 const files={'/':path.join(here,'index.html'),'/fixture.mjs':path.join(here,'fixture.mjs'),'/config.json':path.join(output,'config.json'),'/button-card.js':card,'/adaptive.js':path.join(root,'custom_components/humidity_intelligence/adaptive_output/hi-adaptive-output-card.js')};
-const server=http.createServer((req,res)=>{const name=new URL(req.url,'http://localhost').pathname;const file=files[name];if(!file){res.writeHead(404);res.end();return;}res.setHeader('Content-Type',name==='/'?'text/html':name.endsWith('.json')?'application/json':'text/javascript');res.end(fs.readFileSync(file));});
+const preferenceStore=new Map();
+const server=http.createServer(async(req,res)=>{const name=new URL(req.url,'http://localhost').pathname;
+ if(name==='/fixture-preference'&&req.method==='POST'){
+  try{let body='';for await(const chunk of req)body+=chunk;const data=JSON.parse(body);
+   if(data.reset===true)preferenceStore.clear();
+   else{
+    assert.match(data.key,/^humidity_intelligence\.stability_badge\.disabled\.v1\.[a-f0-9]{64}$/);
+    assert.ok(['frontend/get_user_data','frontend/subscribe_user_data','frontend/set_user_data'].includes(data.type));
+    if(data.type==='frontend/set_user_data'){assert.equal(typeof data.value,'boolean');preferenceStore.set(data.key,data.value);}
+   }
+   res.setHeader('Content-Type','application/json');res.end(JSON.stringify({value:preferenceStore.get(data.key)??null}));
+  }catch(error){res.writeHead(400);res.end(JSON.stringify({error:String(error)}));}return;
+ }
+ const file=files[name];if(!file){res.writeHead(404);res.end();return;}res.setHeader('Content-Type',name==='/'?'text/html':name.endsWith('.json')?'application/json':'text/javascript');res.end(fs.readFileSync(file));});
 await new Promise(r=>server.listen(0,'127.0.0.1',r));const origin=`http://127.0.0.1:${server.address().port}`;
 const results=[],environments=[];let browser;
 const only=process.env.TOUCH_CASE;
@@ -43,13 +56,116 @@ for(const engine of (process.env.BROWSERS||'chromium,webkit').split(',')){
   await check(prefix+'/adaptive-backdrop-Escape-evidence-source',async()=>{await open(page,layout+'_adaptive');const a=page.locator('hi-adaptive-output-card');await a.locator('.header').tap();await a.locator('.reason').tap();await opened(page);assert.match(await a.locator('dialog').textContent(),/Inspect the intake/);const box=await a.locator('dialog').boundingBox();await page.touchscreen.tap(Math.max(1,box.x-5),box.y+box.height/2);assert.equal(await a.locator('dialog[open]').count(),0);await a.locator('.footer').tap();await opened(page);await page.keyboard.press('Escape');assert.equal(await a.locator('dialog[open]').count(),0);await a.locator('.reason').tap();await opened(page);await a.getByRole('button',{name:/Why Example output is shown/}).first().tap();await page.locator('dialog[data-native-stub=true]').waitFor();await close(page);await a.locator('.footer').tap();await opened(page);await a.getByRole('button',{name:'Open Example diagnostic details',exact:true}).tap();await page.locator('dialog[data-native-stub=true]').waitFor();assert.equal(await page.evaluate(()=>fixture.events.moreInfo.at(-1).entityId),'binary_sensor.fixture_source');await close(page);assert.equal(await page.evaluate(()=>fixture.events.services.length),0);},page);
   await check(prefix+'/adaptive-child-idle-reset-reopen-stale',async()=>{await open(page,layout+'_adaptive');const a=page.locator('hi-adaptive-output-card');await a.locator('.header').tap();await a.locator('.footer').tap();await opened(page);await page.clock.fastForward(110000);await a.locator('dialog h3').first().tap();await page.clock.fastForward(110000);assert.equal(await a.locator('dialog[open]').count(),1);assert.equal(await a.locator('.header').getAttribute('aria-expanded'),'true');await page.evaluate(()=>fixture.publish());await page.clock.fastForward(10001);assert.equal(await a.locator('dialog[open]').count(),0);assert.equal(await a.locator('.header').getAttribute('aria-expanded'),'false');await a.locator('.header').tap();await a.locator('.footer').tap();await opened(page);await page.clock.fastForward(60000);await close(page);await a.locator('.footer').tap();await opened(page);await page.clock.fastForward(60001);assert.equal(await a.locator('dialog[open]').count(),1);await close(page);},page);
   if(engine==='chromium'){
-   await check(prefix+'/holds-native-actions-without-release-toggle',async()=>{await open(page,layout);for(const name of ['System','Manual','7 Day Drift','Stability Score']){await touchGesture(page,page.locator(`button-card[data-hi-name="${name}"] #card`),'hold');await page.locator('dialog[data-native-stub=true]').waitFor();await close(page);}assert.equal(await page.evaluate(()=>fixture.events.services.length),0);assert.equal(await page.evaluate(()=>fixture.events.moreInfo.length),4);},page);
+   await check(prefix+'/Stability-preference-hold-refresh-unavailable',async()=>{
+    await page.request.post(origin+'/fixture-preference',{data:{reset:true}});await open(page,layout);
+    await page.evaluate(()=>fixture.scoreCase('available'));
+    const badge=page.locator('button-card[data-hi-name="Stability Score"]');
+    await page.waitForFunction(()=>fixture.all.find(e=>e.dataset.hiName==='Stability Score')?.getAttribute('data-hi-stability-presentation')==='enabled');
+    await badge.locator('#card').tap();await opened(page);await close(page);
+    await page.evaluate(()=>fixture.reset());
+    await touchGesture(page,badge.locator('#card'),'hold');
+    await badge.locator('.hi-stability-presentation-center').filter({hasText:'Disabled'}).waitFor();
+    assert.equal(await page.locator('dialog[open]').count(),0,'hold release must not open details');
+    assert.equal(await page.evaluate(()=>fixture.events.preferences.filter(x=>x.type==='frontend/set_user_data').length),1);
+    assert.equal(await page.evaluate(()=>fixture.events.services.length),0);
+    const before=await page.evaluate(()=>JSON.stringify(fixture.hass.states[fixture.mapping['sensor.hi_diagnostics']].attributes.stability_score));
+    await badge.locator('#card').tap();await opened(page);assert.match(await page.locator('dialog').textContent(),/Displayed score/);await close(page);
+    assert.equal(await page.evaluate(()=>JSON.stringify(fixture.hass.states[fixture.mapping['sensor.hi_diagnostics']].attributes.stability_score)),before);
+    await page.evaluate(()=>fixture.scoreCase('updated'));assert.equal(await badge.getAttribute('data-hi-stability-presentation'),'disabled');
+    await page.reload();await page.waitForSelector('html[data-ready=true]');
+    await badge.locator('.hi-stability-presentation-center').filter({hasText:'Disabled'}).waitFor();
+    await page.evaluate(()=>fixture.scoreCase('unavailable'));
+    assert.equal(await badge.getAttribute('data-hi-stability-presentation'),'disabled');
+    await badge.screenshot({path:path.join(output,engine+'-'+layout+'-disabled-offline-fixture.png')});
+    await touchGesture(page,badge.locator('#card'),'hold');
+    await page.waitForFunction(()=>fixture.all.find(e=>e.dataset.hiName==='Stability Score')?.getAttribute('data-hi-stability-presentation')==='enabled');
+    assert.equal(await badge.locator('.hi-stability-gauge .hi-stability-center').textContent(),'—');
+    assert.equal(await page.evaluate(()=>fixture.events.services.length),0);
+    await page.evaluate(()=>fixture.scoreCase('available'));
+    await badge.screenshot({path:path.join(output,engine+'-'+layout+'-enabled-offline-fixture.png')});
+   },page);
+   await check(prefix+'/Stability-preference-failure-scroll-reduced-motion',async()=>{
+    await page.request.post(origin+'/fixture-preference',{data:{reset:true}});await open(page,layout);
+    const badge=page.locator('button-card[data-hi-name="Stability Score"]');
+    await page.waitForFunction(()=>fixture.all.find(e=>e.dataset.hiName==='Stability Score')?.getAttribute('data-hi-stability-presentation')==='enabled');
+    await page.evaluate(()=>{fixture.scoreCase('available');fixture.preferenceFailure('write');fixture.reset();});
+    await touchGesture(page,badge.locator('#card'),'hold');await badge.locator('.hi-stability-display-label').filter({hasText:'Save unconfirmed'}).waitFor();
+    assert.equal(await badge.getAttribute('data-hi-stability-presentation'),'enabled');
+    await page.evaluate(()=>{fixture.preferenceFailure('');fixture.reset();});
+    await touchGesture(page,badge.locator('#card'),'drag');assert.equal(await page.locator('dialog[open]').count(),0);
+    assert.equal(await page.evaluate(()=>fixture.events.preferences.filter(x=>x.type==='frontend/set_user_data').length),0);
+    await page.emulateMedia({reducedMotion:'reduce'});await touchGesture(page,badge.locator('#card'),'hold');
+    await badge.locator('.hi-stability-presentation-center').filter({hasText:'Disabled'}).waitFor();
+    for(const selector of ['.hi-stability-presentation-overlay','.hi-stability-disabled-leds'])assert.equal(await badge.locator(selector).evaluate(el=>getComputedStyle(el).animationName),'none');
+    await badge.locator('#card').focus();await page.keyboard.press('Enter');await opened(page);await close(page);
+    await badge.locator('#card').focus();await page.keyboard.press('Space');await opened(page);await close(page);
+    for(const mode of ['enabled','disabled']){
+     await badge.locator('#card').focus();await page.keyboard.down('Space');await page.waitForTimeout(800);await page.keyboard.up('Space');
+     await page.waitForFunction(expected=>fixture.all.find(e=>e.dataset.hiName==='Stability Score')?.getAttribute('data-hi-stability-presentation')===expected,mode);
+     assert.equal(await page.locator('dialog[open]').count(),0,'held Space release must not open details');
+    }
+    assert.equal(await page.evaluate(()=>fixture.events.services.length),0);
+    await page.emulateMedia({reducedMotion:'no-preference'});
+    await page.request.post(origin+'/fixture-preference',{data:{reset:true}});
+   },page);
+  }
+  if(engine==='webkit')await check(prefix+'/Stability-preference-keyboard-refresh-unavailable',async()=>{
+   await page.request.post(origin+'/fixture-preference',{data:{reset:true}});await open(page,layout);
+   const badge=page.locator('button-card[data-hi-name="Stability Score"]');
+   await page.evaluate(()=>fixture.scoreCase('available'));
+   await page.waitForFunction(()=>fixture.all.find(e=>e.dataset.hiName==='Stability Score')?.getAttribute('data-hi-stability-presentation')==='enabled');
+   await badge.locator('#card').focus();await page.keyboard.down('Space');await page.waitForTimeout(800);await page.keyboard.up('Space');
+   await badge.locator('.hi-stability-presentation-center').filter({hasText:'Disabled'}).waitFor();
+   assert.equal(await page.locator('dialog[open]').count(),0);
+   await page.reload();await page.waitForSelector('html[data-ready=true]');
+   await badge.locator('.hi-stability-presentation-center').filter({hasText:'Disabled'}).waitFor();
+   await page.evaluate(()=>fixture.scoreCase('unavailable'));
+   await badge.locator('#card').tap();await opened(page);await close(page);
+   await badge.locator('#card').focus();await page.keyboard.down('Space');await page.waitForTimeout(800);await page.keyboard.up('Space');
+   await page.waitForFunction(()=>fixture.all.find(e=>e.dataset.hiName==='Stability Score')?.getAttribute('data-hi-stability-presentation')==='enabled');
+   assert.equal(await badge.locator('.hi-stability-gauge .hi-stability-center').textContent(),'—');
+   assert.equal(await page.evaluate(()=>fixture.events.services.length),0);
+   await page.request.post(origin+'/fixture-preference',{data:{reset:true}});
+  },page);
+  if(engine==='chromium'){
+   await check(prefix+'/holds-native-actions-without-release-toggle',async()=>{await open(page,layout);for(const name of ['System','Manual','7 Day Drift']){await touchGesture(page,page.locator(`button-card[data-hi-name="${name}"] #card`),'hold');await page.locator('dialog[data-native-stub=true]').waitFor();await close(page);}assert.equal(await page.evaluate(()=>fixture.events.services.length),0);assert.equal(await page.evaluate(()=>fixture.events.moreInfo.length),3);},page);
    await check(prefix+'/badge-and-chip-scroll-cancels-tap',async()=>{await open(page,layout);for(const name of ['Humidity','Current Air Control','Ready','AQ']){await touchGesture(page,page.locator(`button-card[data-hi-name="${name}"] #card`),'drag');assert.equal(await page.locator('dialog[open]').count(),0,name);}assert.equal(await page.evaluate(()=>fixture.events.services.length),0);},page);
   }
   if(engine==='chromium')for(const gesture of ['hold','drag','cancel','multi'])await check(prefix+'/native-touch-'+gesture,async()=>{await open(page,layout);await touchGesture(page,page.locator('.hi-ui-revision'),gesture);if(gesture==='hold')assert.ok(await page.locator('dialog[open]').count()<=1);else assert.equal(await page.locator('dialog[open]').count(),0);assert.equal(await page.evaluate(()=>fixture.events.actions.length),0);assert.equal(await page.evaluate(()=>fixture.events.services.length),0);await close(page);},page);
   else results.push({label:prefix+'/hold-drag-multitouch',status:'not-run',reason:'Playwright WebKit exposes trusted tap but no public arbitrary-touch-sequence API; no synthetic dispatch substituted.'});
   await check(prefix+'/duplicate-card-independent-touch-owners',async()=>{await open(page,layout);await page.evaluate(()=>fixture.duplicate());const buttons=page.locator('.hi-ui-revision');assert.equal(await buttons.count(),2);await buttons.nth(0).tap();await opened(page);await close(page);await buttons.nth(1).tap();await opened(page);assert.equal(await page.locator('dialog[open]').count(),1);await page.evaluate(()=>fixture.remove());await page.locator('dialog[open]').waitFor({state:'hidden'});assert.equal(await page.evaluate(()=>fixture.events.services.length),0);},page);
   await check(prefix+'/idle-touch-reset-passive-no-reset',async()=>{await open(page,layout);await page.locator('.hi-ui-revision').tap();await page.clock.fastForward(110000);await page.locator('dialog[open] h2').tap();await page.clock.fastForward(110000);assert.equal(await page.locator('dialog[open]').count(),1);await page.evaluate(()=>fixture.publish());await page.clock.fastForward(10001);assert.equal(await page.locator('dialog[open]').count(),0);},page);
+  if(engine==='chromium'&&process.env.VISUAL_REVIEW==='1')await check(prefix+'/Stability-responsive-visual-review',async()=>{
+   const measurements=[];
+   for(const viewportWidth of [320,390,430,820,1024]){
+    await page.setViewportSize({width:viewportWidth,height:1024});
+    await page.request.post(origin+'/fixture-preference',{data:{reset:true}});await open(page,layout);
+    const badge=page.locator('button-card[data-hi-name="Stability Score"]');
+    await page.waitForFunction(()=>fixture.all.find(e=>e.dataset.hiName==='Stability Score')?.getAttribute('data-hi-stability-presentation')==='enabled');
+    const controls=await badge.locator('button,input,select,ha-icon').count();
+    for(const state of ['collecting','available','partial','unavailable']){
+     await page.evaluate(name=>fixture.scoreCase(name),state);await badge.scrollIntoViewIfNeeded();
+     await badge.screenshot({path:path.join(output,`${layout}-${state}-${viewportWidth}-offline-fixture.png`)});
+    }
+    await page.evaluate(()=>fixture.scoreCase('available'));await touchGesture(page,badge.locator('#card'),'hold');
+    await badge.locator('.hi-stability-presentation-center').filter({hasText:'Disabled'}).waitFor();
+    assert.equal(await badge.locator('button,input,select,ha-icon').count(),controls,'no extra control or icon');
+    await badge.screenshot({path:path.join(output,`${layout}-disabled-${viewportWidth}-offline-fixture.png`)});
+    const gauge=await badge.locator('.hi-stability-presentation-overlay').evaluate(el=>({width:el.getBoundingClientRect().width,height:el.getBoundingClientRect().height,overflow:el.scrollWidth>el.clientWidth,background:getComputedStyle(el).backgroundImage,animation:getComputedStyle(el).animationName}));
+    assert.equal(gauge.width,82);assert.equal(gauge.height,82);assert.equal(gauge.overflow,false);
+    await badge.locator('#card').tap();await opened(page);
+    const history=page.locator('dialog[open] .hi-stability-history');await history.locator('summary').tap();
+    await history.scrollIntoViewIfNeeded();
+    const dialog=page.locator('dialog[open]');
+    const detail=await dialog.evaluate(el=>({width:el.getBoundingClientRect().width,overflow:el.scrollWidth>el.clientWidth,historyOpen:el.querySelector('.hi-stability-history').open,closeWidth:el.querySelector('.hi-stability-close').getBoundingClientRect().width}));
+    assert.equal(detail.overflow,false);assert.equal(detail.historyOpen,true);assert.equal(detail.closeWidth,44);
+    await dialog.screenshot({path:path.join(output,`${layout}-history-while-disabled-${viewportWidth}-offline-fixture.png`)});
+    await page.keyboard.press('Escape');assert.equal(await page.locator('dialog[open]').count(),0);
+    assert.equal(await page.evaluate(()=>fixture.events.services.length),0);
+    measurements.push({layout,viewportWidth,gauge,detail});
+   }
+   fs.writeFileSync(path.join(output,`${layout}-visual-measurements.json`),JSON.stringify({provenance:'Synthetic backend replay in production-generated layout; no live Home Assistant',measurements},null,2));
+  },page);
   await context.close();
  }
  await browser.close();browser=null;

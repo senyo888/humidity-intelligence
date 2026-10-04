@@ -172,18 +172,19 @@
           <p class="section-kicker">What it helps with</p>
           <h2 id="features-title">Practical guidance for fresh air, comfort, and damp-risk awareness.</h2>
           <p>
-            Unpublished candidate v2.1.0-beta.9 repairs touch routing for HI-owned native buttons
-            inside button-card. Mobile and tablet layouts use revision 4, retaining reusable
-            monitoring meanings, optional guidance and existing control ownership.
-            It preserves optional output observation alongside
-            recorded histories, compact navigation and distinct source-room colours.
-            It builds on beta.2’s seven-day drift baseline progress and explanatory details.
-            Its observational Stability badge shows sample-by-sample baseline collection,
-            separate failed-sample history, score movement and Recent trend details in
-            a native dialog with Diagnostics fallback;
-            missing evidence stays visible and restart resets its history.
-            This beta is unpublished and unavailable through HACS. Installation will
-            require restart and new pasted-card exports; no configuration migration is needed.
+            Unpublished candidate v2.1.0-beta.11 includes an observational Stability
+            score, recorded histories, optional output monitoring and reusable
+            monitoring meanings. Current source polish keeps the headline score,
+            groups individual deductions above one total and calculation, and makes
+            recorded score history easier to read. Rounding, safety ceilings and
+            missing evidence remain explicit; all scoring belongs to the backend.
+            Hold Stability to show Disabled, and hold again to restore its display.
+            Your choice follows your signed-in account for that HI entry across
+            sessions. Tap details, score collection and control remain available.
+            Restart or integration reload resets Stability history. After an
+            authorized package update, restart, export fresh cards, replace pasted
+            YAML and refresh the frontend. Published Stable remains v2.0.12;
+            this candidate remains unpublished and is not a HACS release.
             <a href="https://github.com/senyo888/humidity-intelligence/blob/senyo888-patch-1/docs/stability-score-accepted-baseline.md">Read the accepted contract and update requirements</a>.
           </p>
           <div class="feature-grid">
@@ -221,30 +222,29 @@
         <div class="section-inner">
           <div class="gallery-heading">
             <div>
-              <p class="section-kicker">Live 2.0.10-beta.7 dashboard</p>
+              <p class="section-kicker">The dashboard</p>
               <h2 id="gallery-title">Current Air Control, in view.</h2>
             </div>
             <a class="text-link" href="https://github.com/senyo888/Humidity-Intelligence/wiki/UI-Gallery">Browse the UI Gallery</a>
           </div>
           <p class="gallery-note">
-            Captured after Home Assistant restart, fresh beta.7 card export, complete
-            Manual-card YAML replacement, and dashboard/browser cache refresh. These
-            show package-and-card UI truth, not soak or release approval.
+            See the selected response alongside the readings and reason behind it,
+            from everyday monitoring to an active air-quality response.
           </p>
           <div class="screenshot-grid dashboard-grid">
             <figure>
               <img
-                src="assets/ui/v2.0.10-beta.7/mobile-aq-humidifier-retrying.png"
-                alt="Live Humidity Intelligence 2.0.10-beta.7 mobile dashboard with the air-quality lane selected and a humidifier retry state."
+                src="assets/ui/v2.1/normal-monitoring.png"
+                alt="Normal monitoring with environmental readings and Stability score."
               >
-              <figcaption>Air-quality response with retry truth kept visible</figcaption>
+              <figcaption>Normal monitoring</figcaption>
             </figure>
             <figure>
               <img
-                src="assets/ui/v2.0.10-beta.7/tablet-zone1-cooking-output-on.jpg"
-                alt="Live Humidity Intelligence 2.0.10-beta.7 tablet dashboard with the Zone 1 cooking lane selected and observed outputs on."
+                src="assets/ui/v2.1/air-quality-response.png"
+                alt="Air-quality response with the selected lane and reason."
               >
-              <figcaption>Cooking response with the selected lane and outputs together</figcaption>
+              <figcaption>Air-quality response</figcaption>
             </figure>
           </div>
         </div>
@@ -255,28 +255,28 @@
           <div class="gallery-heading">
             <div>
               <p class="section-kicker">Explainability</p>
-              <h2 id="reason-title">The simple reason.</h2>
+              <h2 id="reason-title">Humidification and monitoring.</h2>
             </div>
           </div>
           <p class="gallery-note">
-            These before-and-after graphics are editorial comparisons built from the
-            refreshed beta.7 UI evidence. They explain the presentation change; they
-            are not continuous playback records.
+            Follow humidifier demand and check how configured outputs are responding.
+            An On state reports what Home Assistant can observe; it does not measure
+            physical moisture production.
           </p>
-          <div class="screenshot-grid comparison-grid">
+          <div class="screenshot-grid dashboard-grid">
             <figure>
               <img
-                src="assets/ui/v2.0.10-beta.7/comparison-alert-reason-before-after.png"
-                alt="Editorial comparison showing a technical alert reason before v2.0.10 and the clearer natural-language alert reason presentation."
+                src="assets/ui/v2.1/humidification-active.png"
+                alt="Humidification active while ventilation remains in Normal."
               >
-              <figcaption>The same alert decision, explained in natural language</figcaption>
+              <figcaption>Humidification</figcaption>
             </figure>
             <figure>
               <img
-                src="assets/ui/v2.0.10-beta.7/comparison-reason-field-before-after.png"
-                alt="Editorial comparison of technical and plain-language reason fields for cooking and air-quality response examples."
+                src="assets/ui/v2.1/output-monitoring-summary.png"
+                alt="Output monitoring summary showing active outputs and reported conditions."
               >
-              <figcaption>What happened, why it happened, and what HI is doing</figcaption>
+              <figcaption>Output monitoring</figcaption>
             </figure>
           </div>
         </div>

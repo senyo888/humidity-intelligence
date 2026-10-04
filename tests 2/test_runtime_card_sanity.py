@@ -3563,7 +3563,9 @@ def test_default_public_card_surfaces_use_passive_stability_badge_instead_of_pau
         assert "document.body.appendChild(dialog)" in block
         assert "dialog.showModal()" in block
         assert "browser_mod" not in block
-        assert "hold_action:\n            action: more-info" in block
+        assert "hold_action:\n            action: javascript" in block
+        assert "humidity_intelligence.stability_presentation.owner.v1" in block
+        assert "frontend/set_user_data" in block
         assert "call-service" not in block
         assert "perform-action" not in block
         assert "type: custom:custom-gauge-card" not in block
@@ -3906,7 +3908,8 @@ def test_readme_keeps_three_current_release_summaries_before_previous_releases()
     release_notes = readme_source.split("## Release Notes", 1)[1]
     visible_notes, previous_releases = release_notes.split("<details>", 1)
 
-    assert "### v2.1.0-beta.10" in visible_notes
+    assert "### v2.1.0-beta.11" in visible_notes
+    assert "### v2.1.0-beta.10" in previous_releases
     assert "### v2.1.0-beta.8" in previous_releases
     assert "### v2.1.0-beta.7" in previous_releases
     assert "### v2.1.0-beta.6" in previous_releases
@@ -3952,13 +3955,14 @@ def test_v21_candidate_surfaces_preserve_published_stable_and_history():
     notes = readme.split("## Release Notes", 1)[1].split("<details>", 1)[0]
     changelog = (ROOT / "CHANGELOG.md").read_text()
     governance = (ROOT / "docs/release-governance.md").read_text()
-    assert "Current development manifest version: **v2.1.0-beta.10**" in readme
+    assert "Current development manifest version: **v2.1.0-beta.11**" in readme
     assert "unpublished candidate" in readme
     assert "current published Stable is **v2.0.12**" in readme
-    assert "v2.1.0-beta.10" in notes and "v2.1.0-beta.10" in changelog
+    assert "v2.1.0-beta.11" in notes and "v2.1.0-beta.11" in changelog
     assert "v2.1.0-beta.1" in changelog
     previous = readme.split("<summary>Previous Releases</summary>", 1)[1]
-    beta1 = previous.split("### v2.1.0-beta.1", 1)[1].split("### ", 1)[0]
+    assert "### v2.1.0-beta.10 (" in previous
+    beta1 = previous.split("### v2.1.0-beta.1 (", 1)[1].split("### ", 1)[0]
     assert "303" in beta1 and "432" in beta1
     assert "drift" in previous.lower() and "Baseline" in previous
     assert "two-minute inactivity" in previous.lower()
@@ -3967,7 +3971,7 @@ def test_v21_candidate_surfaces_preserve_published_stable_and_history():
     assert "## 2.0.11 - 2026-08-11" in changelog
     for historical in ("2.0.12-beta.2", "2.0.12-beta.3", "2.0.12-beta.4", "2.0.12-rc.1"):
         assert historical in changelog
-    assert "2.1.0-beta.10" in governance and "2.0.12" in governance
+    assert "2.1.0-beta.11" in governance and "2.0.12" in governance
     assert "No configuration/entity migration" in governance
     assert "## v2.0.12 Release Checklist" in governance
     assert "export" in notes.lower()
@@ -5782,7 +5786,7 @@ def test_v205_release_check_service_is_documented_and_registered():
     assert "write_test_exports" in services_yaml
     assert "humidity_intelligence.v205_release_check" in readme_source
     assert "humidity_intelligence_v205_release_check.json" in readme_source
-    assert manifest["version"] == "2.1.0-beta.10"
+    assert manifest["version"] == "2.1.0-beta.11"
 
 
 def test_owned_ui_path_discovery_and_legacy_cleanup_guidance_is_explicit():

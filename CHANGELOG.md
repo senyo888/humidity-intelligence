@@ -6,7 +6,38 @@ All notable changes to Humidity Intelligence will be documented in this file.
 
 This project follows a practical changelog format for Home Assistant and HACS users. Add new entries under a fresh `Unreleased` section before publishing a future release.
 
-## Unreleased — v2.1.0-beta.10
+## Unreleased — v2.1.0-beta.11
+
+Unpublished candidate extending beta.10. Published Stable remains v2.0.12;
+no tag, GitHub Release or HACS publication is claimed.
+
+- Polishes Stability details with the displayed score first, every individual
+  deduction retained, a total and one calculation below the breakdown. Rounding,
+  the zero floor and safety ceilings remain separate from the calculated score;
+  incomplete explanations are explicitly unavailable.
+- Refreshes the existing Score history expander with latest recorded score, range,
+  sample coverage and a readable 0–100 chart. Only retained observations are drawn;
+  missing scores, absent history and updates between samples remain distinct.
+- Adds hold-to-toggle Stability presentation on the existing badge. Disabled keeps
+  the badge visible with distinct static aurora/LEDs; hold restores the display.
+  Tap, Enter and a short Space press open details/history; holding Space on the
+  focused badge performs the same hold action. Scoring, collection and control
+  continue. Home Assistant saves the preference for the signed-in user and HI entry
+  across sessions; failures remain explicit. No extra control is added.
+- Advances both V2 layout revisions from 5 to 6 for this presentation refinement,
+  preserving schema/generator 1 and formula 4. The package advances to beta.11.
+  Fresh exports and full saved-card replacement are required to display it.
+- Aligns configuration, monitoring, score and upgrade guidance with the current
+  v2.1 implementation. Replaces current state examples with privacy-sanitized
+  captures with neutral example labels; old score explanation images remain private,
+  and retained configuration images carry an earlier-layout note. Website and Wiki source
+  preparation remain separate from publication.
+- Repairs native configuration-flow test cleanup and verifies Save changes through
+  shutdown and a fresh Home Assistant instance. Setup/options behavior is unchanged;
+  [native test guidance](docs/config-flow-testing.md) records the separate dependency
+  shutdown issue and requires a clean process exit as well as passing assertions.
+
+## v2.1.0-beta.10 — Earlier unpublished candidate
 
 Unpublished candidate extending beta.9. Published Stable remains v2.0.12;
 no tag, GitHub Release or HACS publication is claimed.

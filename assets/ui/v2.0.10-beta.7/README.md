@@ -14,9 +14,14 @@ The two before/after images are editorial comparison graphics assembled to expla
 the presentation change. Their refreshed panels use beta.7 UI evidence, but the
 compositions are not continuous playback records.
 
-## Asset index
+These assets are retained as historical evidence. Current state-example references
+use the separately prepared v2.1 captures; those also predate the final v2.1 score
+polish. The intended uses below describe the original publication placements and do
+not identify current-interface evidence.
 
-| File | Label | Intended use |
+## Historical asset index
+
+| File | Label | Historical intended use |
 | --- | --- | --- |
 | `mobile-manual-override-active.jpg` | Manual override — HI steps back and says so | Supporting state example |
 | `mobile-automatic-control-disabled.jpg` | Disabled — automatic control is intentionally off | Supporting state example |

@@ -1,0 +1,76 @@
+{
+  "provenance": "Selected documentation snapshots exported from Photos. Private room and device labels are replaced with neutral example names. Captured readings, states, controls and layout are retained; identifying metadata is removed. These captures predate the revised score explanation and history view.",
+  "editing": "Built-in imagegen label edits, confined to configured-label regions; source pixels outside those regions preserved exactly. Visual source comparison verified readings and states within edited regions. Output summary required metadata removal only.",
+  "assets": [
+    {
+      "file": "normal-monitoring.png",
+      "sha256": "4f330ef2acf980b6c25a91eeeb2aaa623df627272fa8e00196d1148418268ec7",
+      "dimensions": [
+        1206,
+        2166
+      ],
+      "metadata": "PNG image chunks only",
+      "neutral_labels": true
+    },
+    {
+      "file": "air-quality-response.png",
+      "sha256": "c83258ad1277fcc37187b3ddb215c6ecdf1f345fa780b426961cd4e982a2dbe7",
+      "dimensions": [
+        1194,
+        2256
+      ],
+      "metadata": "PNG image chunks only",
+      "neutral_labels": true
+    },
+    {
+      "file": "humidity-alert-zone-2.png",
+      "sha256": "66390dd411c21acc8bf22fdc02f5b19c466cab60ba2ee0afd8172b233a0a2a00",
+      "dimensions": [
+        1206,
+        2255
+      ],
+      "metadata": "PNG image chunks only",
+      "neutral_labels": true
+    },
+    {
+      "file": "humidification-active.png",
+      "sha256": "f9a7f6150bb8535272d3e6a4d04f776400344b65d5582417fb9e9501b049ab67",
+      "dimensions": [
+        1206,
+        2243
+      ],
+      "metadata": "PNG image chunks only",
+      "neutral_labels": true
+    },
+    {
+      "file": "baseline-collection.png",
+      "sha256": "1f394ef36a1d239beef41f2279b74e61ab84b756b31f5e4b4e909e4225904cd2",
+      "dimensions": [
+        1206,
+        2155
+      ],
+      "metadata": "PNG image chunks only",
+      "neutral_labels": true
+    },
+    {
+      "file": "time-gate-active.png",
+      "sha256": "c0153e5bd5d17fd42b0db41d5f7e6b9ec8c6d67a3c0e9b2dfbaa00510dbd848a",
+      "dimensions": [
+        1206,
+        2243
+      ],
+      "metadata": "PNG image chunks only",
+      "neutral_labels": true
+    },
+    {
+      "file": "output-monitoring-summary.png",
+      "sha256": "d5e48a0ea987674dfae39a14c459a60b2c858d8d4f6a8cc3031af4ba5d09ed7b",
+      "dimensions": [
+        1206,
+        1043
+      ],
+      "metadata": "PNG image chunks only",
+      "neutral_labels": false
+    }
+  ]
+}

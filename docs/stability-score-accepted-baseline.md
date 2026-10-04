@@ -250,10 +250,20 @@ including score changes between ten-minute samples. Repeated reads are pure and
 cannot advance movement. Unchanged publications retain position; unavailable evidence
 breaks the comparison chain and a later valid score establishes a fresh baseline.
 
-Details lead with backend arithmetic: maximum minus component shortfalls, evidence
-adjustments and recent AQ adjustment equals calculated score, with an explicit zero
-floor when deductions exceed the maximum. Any remaining ceiling
-is a separate final step. Effective weights and missing-AQ renormalization must
+Details lead with the backend's displayed score. The contribution table retains
+individual component shortfalls, evidence deductions and the recent AQ adjustment,
+then shows **Total deductions** and one **100 − total deductions = calculated score**
+equation. The calculated result comes from backend `pre_cap_score`; the frontend
+only adds the already-rounded deduction terms for presentation. For totals over
+100, the equation explicitly includes the zero floor: `max(0, 100 − total) = 0`.
+Exact zero does not imply that a floor reduced the result. Missing or inconsistent
+breakdown data is labelled unavailable while a valid displayed score remains visible.
+
+Rounding and any safety ceiling are explained separately: the backend rounds the
+calculated score to a whole point, then applies the ceiling. For example, calculated
+64.91 can display as 65 with a ceiling of 91; that ceiling is an upper limit, not an
+additional deduction. The renderer never substitutes JavaScript rounding for the
+backend's Python ties-to-even result. Effective weights and missing-AQ renormalization must
 reconcile, including the component-table rounding residual; the frontend never
 calculates a competing score. Recent trend states the
 change and local time, with colour mechanics secondary. Coverage means usable
@@ -264,6 +274,14 @@ most 432 slots across 72 hours, with unavailable periods left as gaps. It does n
 reconstruct old scores, interpolate missing evidence or claim every intra-slot
 change was recorded. History is in memory and resets on restart/reload; there is
 no new numeric entity, Recorder backfill or optional chart-card requirement.
+The existing expander groups the latest recorded score, recorded range and scored
+sample count above a fixed 0–100 chart. Counts describe only the shown interval;
+they do not imply complete 72-hour coverage or healthy air. Null and omitted slots
+break the line. A single score is a point, including a score of zero. Empty history,
+retained samples without scores, malformed/unavailable history and history with gaps
+have distinct messages. The latest current update stays separate from scheduled
+samples and never adds a graph point. Both layouts and gallery mirrors share this
+presentation, including narrow-screen wrapping and accessible graph descriptions.
 The full live Stability payload uses a dedicated unrecorded Diagnostics attribute;
 the existing compact summary retains its prior fields without duplicating graph
 history into Recorder on each update. Updated cards prefer the dedicated attribute
@@ -289,10 +307,26 @@ A visible sticky Close control, native Escape and backdrop activation dismiss th
 dialog and restore focus. Only one Stability dialog is open at a time. Navigation
 or removal of the owning card cleans it up. Telemetry refresh must not replace an
 open snapshot or detach its Close control; reopen to see updated evidence.
-Hold opens HI Diagnostics more-info. If native `showModal` is unavailable, tap also
-falls back to Home Assistant's Diagnostics more-info. The readable Diagnostics
+The existing badge remains keyboard-focusable. Enter and a short Space press perform
+the normal tap; pressing and holding Space performs the same hold action. If native `showModal` is unavailable, tap falls
+back to Home Assistant's Diagnostics more-info. The readable Diagnostics
 attribute exposes score, baseline progress, failure history and movement; native
 Activity is not a substitute telemetry panel.
+
+Hold toggles only the badge presentation. Disabled keeps the existing footprint,
+**Disabled** text, a static violet/indigo aurora and segmented LEDs; another hold
+restores the normal display. Tap details/history remain available even when Disabled
+or backend score data is unavailable. There is no added switch, button, checkbox or
+icon. Backend collection, calculation, history and runtime control continue unchanged.
+
+The preference is a boolean in Home Assistant's authenticated frontend user data,
+scoped to the signed-in user and opaque HI entry identity. It survives refresh and
+applies to that user's Mobile, Tablet and browser sessions for the same entry.
+Other users and entries are unaffected. The existing status label reports loading,
+saving, **Display preference unavailable** and **Save unconfirmed** states; failed
+reads or writes never establish success or healthy environmental evidence. There is
+no localStorage fallback or frontend score calculation. This preference is separate
+from the in-memory score/history lifecycle and adds no config option or control entity.
 
 `count/303` is progress toward the minimum sample requirement; it does not guarantee
 score eligibility on its own. The 432 buckets remain the 72-hour rolling-window

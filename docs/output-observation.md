@@ -1,6 +1,6 @@
 # Optional output monitoring
 
-This guide describes the unpublished beta.8 candidate. Output monitoring, introduced
+This guide describes the unpublished v2.1.0-beta.11 candidate. Output monitoring, introduced
 in beta.4, is opt-in and is not part of published Stable v2.0.12. Existing installations
 default to monitoring disabled and native Outputs presentation. Installing the complete
 candidate package requires a Home Assistant restart to load its Python modules.

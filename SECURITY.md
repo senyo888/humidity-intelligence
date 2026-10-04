@@ -6,7 +6,7 @@
 
 Please do not open a public GitHub issue for security vulnerabilities or exposed secrets.
 
-If you believe you have found a security issue, contact the maintainer privately first. If no dedicated security email is published for this repository yet, use the maintainer's GitHub profile to request a private disclosure channel.
+If you believe you have found a security issue, check [Senyo's GitHub profile](https://github.com/senyo888) for a private contact route. If none is listed, [open a contact request](https://github.com/senyo888/humidity-intelligence/issues/new) without vulnerability details, affected identities or secrets. Share the report only once a private disclosure channel has been arranged.
 
 ## Sensitive information
 
