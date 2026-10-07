@@ -1,9 +1,10 @@
 # V2 touch and keyboard interactions
 
-The unpublished v2.1.0-beta.11 candidate retains the beta.9 native-button activation
-repair inside the canonical mobile and tablet cards. Current source polish uses
-V2 UI revision 6 with generator contract 1. Backend control, classification and
-custom monitoring meanings retain their existing contracts.
+The unpublished v2.1.0-beta.12 candidate retains the beta.9 native-button activation
+repair and beta.11 hold-to-toggle behavior. Both canonical layouts use V2 UI revision
+7 with generator contract 1. Interaction ownership and custom monitoring meanings
+are unchanged; [beta.12 changes](../CHANGELOG.md#unreleased--v210-beta12) separately
+cover autumn targets and recent score movement.
 
 ## Interaction ownership
 
@@ -110,7 +111,7 @@ keeps its shared backend timer measured from opening, and Home Assistant owns it
 native dialogs. Existing source-change dismissal remains in effect where supported.
 
 Renderer changes require synchronized mobile/tablet and gallery embeds, generated
-YAML validation and UI revision checks. The current V2 target is UI revision 6;
+YAML validation and UI revision checks. The current V2 target is UI revision 7;
 package version alone does not update a pasted card.
 Install the complete candidate package, restart Home Assistant, then export and
 replace the full saved mobile and tablet Manual-card YAML. Refresh clients as

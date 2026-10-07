@@ -256,7 +256,7 @@ def _refresh_stability_aq(hass, runtime_data: dict) -> None:
     if previous is not None and previous != fingerprint:
         runtime_data["stability_snapshot_ring"] = StabilitySnapshotRing()
         runtime_data["stability_failed_buckets"] = set()
-        for key in ("stability_published", "stability_aq_adjustment", "stability_score_movement", "stability_score_history"):
+        for key in ("stability_published", "stability_aq_adjustment", "stability_score_movement", "stability_score_history", "stability_movement_observations"):
             runtime_data.pop(key, None)
     runtime_data["stability_source_fingerprint"] = fingerprint
     runtime_data["stability_selected_aq"] = capture_configured_aq_evidence(hass, config, stability_selection=True)
@@ -311,6 +311,10 @@ class HIDiagnosticsSensor(SensorEntity):
             and previous_movement.get("current_display_score") == current_movement.get("current_display_score")
             and previous_movement.get("end_position_degrees") == current_movement.get("end_position_degrees")
             and previous_movement.get("color_token") == current_movement.get("color_token")
+            and all(previous_movement.get(key) == current_movement.get(key) for key in (
+                "comparison_basis", "reference_at", "reference_display_score",
+                "recent_delta_points", "reference_advanced",
+            ))
         ):
             # Keep the recorded steady comparison stable; the live attribute retains
             # each fresh publication and its precise observation timestamps.

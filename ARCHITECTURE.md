@@ -41,12 +41,19 @@ Required live evidence suppresses stale scores when unavailable. Configured miss
 is incomplete evidence, never clean air. Excellent/Good/Unstable/Poor boundaries are
 92/70/55/0; caps and explanatory text belong to the backend.
 
-The four generated/gallery renderers preserve the accepted 82px badge, independent
-LED palette and retained signed ±360 movement. Movement and score are published
-atomically, including between samples. LED intensity reflects point change per update,
-independently of retained arc side. Bounded ten-minute score history preserves gaps
-and resets on restart. Movement reflects score changes, not
-elapsed time. While collecting, the blue LEDs instead fill clockwise from backend
+The four generated/gallery renderers preserve the accepted 82px badge and independent
+LED palette. Signed ±360 endpoints show net displayed-score change against the oldest
+actual reference within 60 minutes. The backend retains the first publication per
+ten-minute slot, at most seven references, with exact timestamps and actual coverage.
+It converts net points to an angle once; LED colour/intensity still describes the
+latest update, independently of arc side. Score, reference and movement publish
+atomically, including between samples. Unavailable scores or publication gaps over
+eleven minutes reset the movement baseline. Old references expire on the next owned
+update; expiry alone is neutral and never a new measured rise or fall. Pure reads
+cannot advance movement. Bounded ten-minute graph history remains separate, preserves
+gaps and resets on restart. The halo classifies the 72-hour composite score; current
+humidity retains its own backend-derived display. Improvement is not proof of healthy
+current conditions. While collecting, the blue LEDs instead fill clockwise from backend
 valid-sample progress toward 303; collection details use the same minimum target.
 Each valid sample illuminates one centred collection slot; the fixed origin hides
 after the first tick. Counts and target are bounded to 432, with a positive target,
@@ -153,7 +160,14 @@ of physical moisture production.
 
 Humidity danger and comfort interpretation are profile-relative. Runtime thresholds
 must be derived from the active seasonal or custom target profile, not from stale static
-alert values.
+alert values. The built-in autumn band is inclusive 50–60%; readings above 60% are
+above target, and 64% or higher meets its humidity-danger threshold. Beta.12 adds no
+danger-threshold override. Custom profiles keep their existing derivation: a 50–60%
+custom band produces high risk at 67.5%. These are control-profile boundaries, not
+universal safe cutoffs. Target bounds also affect humidifier start/recovery and
+target-relative mould interpretation; other seasons retain their own bounds. Generated humidity
+context requires an authoritative high-risk bound and degrades neutrally when it is
+missing or invalid.
 
 Temperature comfort display follows the same principle: UI colors and chips should use
 backend comfort truth instead of card-only assumptions.

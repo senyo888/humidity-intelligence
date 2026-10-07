@@ -143,9 +143,24 @@ for(const engine of (process.env.BROWSERS||'chromium,webkit').split(',')){
     const badge=page.locator('button-card[data-hi-name="Stability Score"]');
     await page.waitForFunction(()=>fixture.all.find(e=>e.dataset.hiName==='Stability Score')?.getAttribute('data-hi-stability-presentation')==='enabled');
     const controls=await badge.locator('button,input,select,ha-icon').count();
-    for(const state of ['collecting','available','partial','unavailable']){
+    for(const state of ['collecting','available','partial','unavailable','recent_poor','recent_expired']){
      await page.evaluate(name=>fixture.scoreCase(name),state);await badge.scrollIntoViewIfNeeded();
      await badge.screenshot({path:path.join(output,`${layout}-${state}-${viewportWidth}-offline-fixture.png`)});
+     if(state.startsWith('recent_')){
+      const gauge=badge.locator('.hi-stability-gauge');
+      assert.equal(await gauge.evaluate(el=>getComputedStyle(el).getPropertyValue('--hi-stability-color').trim()),'#ef4444');
+      assert.equal(await gauge.evaluate(el=>getComputedStyle(el).getPropertyValue('--hi-stability-led-sweep').trim()),state==='recent_poor'?'11deg':'0deg');
+      await badge.locator('#card').tap();await opened(page);
+      const detail=page.locator('dialog[open]');
+      assert.match(await detail.textContent(),/Recent score movement/);
+      assert.match(await detail.textContent(),state==='recent_poor'?/Recent score change: \+3 points/:/Recent score change: 0 points/);
+      assert.equal(await detail.evaluate(el=>el.scrollWidth>el.clientWidth),false);
+      await detail.screenshot({path:path.join(output,`${layout}-${state}-details-${viewportWidth}-offline-fixture.png`)});
+      await detail.locator('.hi-stability-help summary').click();
+      await detail.getByRole('heading',{name:'Recent score movement',exact:true}).scrollIntoViewIfNeeded();
+      await detail.screenshot({path:path.join(output,`${layout}-${state}-movement-${viewportWidth}-offline-fixture.png`)});
+      await close(page);
+     }
     }
     await page.evaluate(()=>fixture.scoreCase('available'));await touchGesture(page,badge.locator('#card'),'hold');
     await badge.locator('.hi-stability-presentation-center').filter({hasText:'Disabled'}).waitFor();

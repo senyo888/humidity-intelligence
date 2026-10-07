@@ -7,6 +7,8 @@ import hashlib
 import json
 from pathlib import Path
 import sys
+from copy import deepcopy
+from datetime import datetime, timedelta
 from types import SimpleNamespace
 from unittest.mock import patch
 import yaml
@@ -47,10 +49,29 @@ def main():
     stability_cases = {name: replay['frames'][index]['payload'] for name, index in
                        [('collecting', 12), ('available', 431), ('updated', 432),
                         ('partial', 1188), ('unavailable', 1620)]}
+    # A separate movement-vector fixture: each headline/explanation is an actual
+    # backend replay result, but 49 -> 54 -> 52 is a controlled score sequence,
+    # not a claim about an observed household or a physically timed RH trajectory.
+    poor = {score: next(deepcopy(frame['payload']) for frame in replay['frames']
+        if frame['payload']['score']['display_score'] == score) for score in (49, 54, 52)}
+    at = datetime.fromisoformat(poor[52]['published_at'])
+    movement_runtime, previous = {}, {}
+    for index, score in enumerate((49, 54, 52)):
+        when = at - timedelta(minutes=2 - index)
+        movement = backend._recent_score_movement(movement_runtime, previous, score, when)
+        previous = {**poor[score], 'published_at': when.isoformat(), 'movement': movement}
+    stability_cases['recent_poor'] = previous
+    for minutes in range(10, 71, 10):
+        when = at + timedelta(minutes=minutes)
+        movement = backend._recent_score_movement(movement_runtime, previous, 52, when)
+        previous = {**previous, 'published_at': when.isoformat(), 'movement': movement,
+            'score_history': {**previous['score_history'], 'current': {'at': when.isoformat(), 'score': 52}}}
+    stability_cases['recent_expired'] = previous
     result = {'layouts': layouts, 'mapping': mapping,
               'metadata': hass.data[register.DOMAIN][ENTRY_ID]['ui_revision'],
               'stability_cases': stability_cases, 'stability_provenance': {
                   'simulated': True,
+                  'recent_movement_cases': 'Controlled published-score vectors through actual movement backend; headlines/explanations from actual synthetic replay, not live or physical trajectories.',
                   'backend_sha256': hashlib.sha256((ROOT / 'custom_components/humidity_intelligence/helpers/stability.py').read_bytes()).hexdigest(),
                   'formula_version': replay['frames'][-1]['payload']['formula_version']}}
     args.output.mkdir(parents=True, exist_ok=True)

@@ -262,14 +262,27 @@ Temperature chips:
 - show room slope chips only for configured temperature slope sources or provided slope sensors
 - resolve calculated slope chips through diagnostics/backend slope mapping so Home Assistant registry-assigned entity IDs stay truthful
 
+Current humidity context uses backend target and high-risk bounds. The beta.12 autumn
+default is inclusive 50–60%: above 60% is above target, and 64% or higher is high risk.
+Custom profiles retain their existing derivation; a custom 50–60% band gives 67.5%
+high risk. These profile boundaries are not universal safe cutoffs.
+Missing or invalid high-risk bounds leave the affected humidity context neutral.
+
 Control row:
 
 - preserve the v2.0.7 tap-to-toggle behavior for the System and Manual helper buttons
 - keep Stability observational: its display preference must not pause/resume, select lanes, or create output writes
-- for the integrated, unpublished `2.1.0-beta.11` Stability candidate, render backend schema 3/formula 4
+- for the integrated, unpublished `2.1.0-beta.12` Stability candidate, render backend schema 3/formula 4
   score, classifications and evidence states; missing/malformed payloads show no score
-- preserve the accepted 82px footprint, independent LED colours, retained signed
-  full-circle movement, six-second Partial pulse and reduced-motion alternatives
+- preserve the accepted 82px footprint, independent latest-update LED colours,
+  signed recent-net movement within 60 minutes, six-second Partial pulse and
+  reduced-motion alternatives. Render the backend reference time and actual span;
+  expiry alone stays neutral, and a fresh baseline is not a zero-change comparison
+- keep score/classification distinct from current humidity. Formula 4, caps and
+  72-hour history remain; a recent gain does not establish healthy current air
+- both V2 layouts use revision 7, superseding 1–6, with stamp schema/generator 1.
+  Install the complete package and restart before exporting/replacing saved cards;
+  restart clears in-memory Stability history and no configuration migration is needed
 - whole-badge tap/click/keyboard activation opens a native modal dialog through the
   button-card action. Details are a labelled snapshot copied from the owning card's
   inert template, mounted outside its gesture handlers; there is no nested opener

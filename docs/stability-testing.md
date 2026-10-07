@@ -1,6 +1,6 @@
 # Stability Score testing
 
-Status: formula 4 with UI revision 6 in the current unreleased 2.1.0-beta.11 candidate. This guide describes
+Status: formula 4 with UI revision 7 in the current unreleased 2.1.0-beta.12 candidate. This guide describes
 validation of [the canonical contract](stability-score-accepted-baseline.md); it is
 not a release, deployment or live-observation claim.
 
@@ -37,14 +37,22 @@ scores must not acquire a calculation.
 | Availability | Collecting, evidence gaps, balance evidence, live required data absent, malformed/missing payload, boolean/array/string/non-finite/out-of-range scores and contradictory availability; never invented health |
 | Scheduler | UTC boundaries, first strictly future sample, 60-second grace, no backfill, invalid/duplicate buckets, exceptions, unload and reload |
 | Failure history | Unique observed failures only; late-range bounds; no future or pre-setup inference; valid-bucket reconciliation; expiry and reset; missing history unavailable |
-| Movement | Atomic headline/delta/colour publication within a sampling bucket; signed ±360 endpoints; left-side rise/right-side decline; 1–4 versus 5+ point intensity; saturation; unchanged reads; unavailable/reset; ordered timestamps |
+| Movement | Atomic headline/reference/net/latest-delta publication; first actual observation per ten-minute slot, at most seven within 60 minutes; actual span and shorter warm-up; one net angle conversion and round trips; latest-update colour on either arc side; expiry-only neutral/no pulse; exact eleven-minute continuity boundary; unavailable/source-reset/restart; duplicate/out-of-order timestamps; pure reads and unchanged graph history |
 | Rendering | Four identical Mobile/Tablet/gallery renderers; 82px footprint; classification halo; independent soft-green/bright-green/orange/red LEDs; blue baseline collection; 6s Partial pulse and reduced motion |
 | Collection rendering | One blue tick per valid sample at 0, 1, 4, 151, 302 and 303; centred slots and hidden origin after first tick; strict integer count/target bounds and matching rounded backend ratio; no early full circle; separate red fixed-slot history; malformed history fails closed |
 | Interaction | Whole-badge tap/click/keyboard; detached snapshot dialog; sticky Close/Escape/backdrop; focus restoration; deduplication; refresh, navigation and owner-removal cleanup; unsupported-modal Diagnostics fallback; existing badge is focusable; Enter/short Space retain normal tap, held Space uses the hold action |
 | Presentation preference | Hold-only toggle, visible Disabled aurora/LEDs, retained tap details/history, native authenticated HA user-data boolean, refresh/cross-session persistence, user/opaque-entry isolation, explicit read/save failure feedback, no extra control or localStorage fallback, no backend/control effects |
 | Score explanation | Backend headline and qualifier; reconciled rows and total; one bottom calculation; 64.91 calculated / 65 displayed / 91 ceiling; ties-to-even rounding, exact zero and deductions above 100; missing, contradictory or malformed arithmetic remains unavailable |
 | Score history | Actual ten-minute scores, 432-slot bound, fixed 0–100 scale, disconnected gaps, single point, empty/null-only/malformed history, interval-specific counts, no read-driven growth/backfill, restart reset and expiry, separate latest update; full Stability attribute excluded from Recorder, no history duplication in the legacy summary |
+| Autumn | Inclusive 50–60 band and unchanged 64 high-risk boundary; auto September–November and explicit autumn; other seasons, custom/legacy overrides and temperature unchanged; target-relative mould and humidifier recovery; missing high-risk UI evidence neutral |
 | Control/privacy | No Stability output writes, lane/gate changes or humidifier authority; canonical Manual/CO regressions; sanitized support exports |
+
+Render a synthetic Poor-score example with +5 then −2 against the same reference:
+net +3 remains on the positive arc, the latest −2 is orange, and the Poor halo stays
+red. Separately show above-target humidity with an improving score, cap plateaus,
+reference expiry without a score change, short coverage, a fresh baseline after a
+long publication gap and unavailable/Partial states. Use actual backend outputs;
+these fixtures do not establish live environmental or physical-client behavior.
 
 Classifications are Excellent 92–100, Good 70–91, Unstable 55–69 and Poor 0–54.
 An eligible historical AQ component below 100% can produce Excellent Partial when
@@ -66,9 +74,9 @@ builder. Package tests build immutable Git source, so pre-commit tests against a
 HEAD do not validate newly added files. Validate a complete isolated candidate snapshot
 and repeat the package checks against the final commit before push.
 
-## Current browser evidence
+## Historical beta.11 browser evidence
 
-The 2026-10-04 final browser run recorded **72 passed, 2 not-run and zero failures**
+The beta.11 run on 2026-10-04 recorded **72 passed, 2 not-run and zero failures**
 across Mobile and Tablet, using Chrome **154.0.8037.58**, WebKit **26.5**, Playwright
 **1.62.1** and button-card **7.0.1**. Chrome exercised touch hold and Space hold;
 WebKit exercised Space hold, refresh persistence, unavailable data and tap details.
@@ -86,6 +94,21 @@ Home Assistant persistence or physical devices, and emulated WebKit is not physi
 iOS Safari. See the [browser harness](../tests%202/browser_touch/README.md) for commands
 and limitations; the final source-bound report owns aggregate package and release
 validation.
+
+## Beta.12 candidate checks
+
+The offline run on 2026-10-07 also recorded **72 passed, 2 not-run and zero failures**
+across the generated Mobile/Tablet layouts. The changed movement cases exercise a
+Poor score with a net gain and latest fall, followed by a neutral expired reference.
+These are controlled published-score vectors through the actual movement helper;
+their headline/explanation fixtures come from the synthetic backend replay. They
+are not live observations or a physical humidity trajectory. Populated history,
+gaps, unavailable/Partial states, both preference directions and refresh persistence
+remain fixture evidence. The WebKit and physical-device limitations above still apply.
+
+An uncommitted candidate is identified by its source-file inventory and package-file
+hashes. Commit-bound packaging and any later installed evidence must be verified
+against the final committed candidate; an earlier beta's soak cannot supply that proof.
 
 ## Authorized installation and client checks
 
@@ -107,8 +130,8 @@ stored-data or entity migration is required. Restart or entry reload resets hist
 Score history has no durable persistence, Recorder recovery or startup backfill.
 The saved badge display preference is separate from that history.
 
-For UI revision 6, review the headline, deduction table and existing history expander
-at narrow phone, wider phone and tablet widths. Check that labels remain readable,
+For UI revision 7, review the recent reference, actual comparison interval, headline,
+deduction table and existing history expander at narrow phone, wider phone and tablet widths. Check that labels remain readable,
 content does not overflow, and Close remains reachable when the history is expanded.
 Keep offline fixture screenshots labelled as synthetic; supplied state captures that
 predate this change are not evidence of the revised explanation or history.

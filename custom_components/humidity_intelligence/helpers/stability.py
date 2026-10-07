@@ -26,6 +26,7 @@ DIRECTIONAL_LED_STEPS_TOTAL = 360
 DIRECTIONAL_LED_STEPS_PER_SIDE = 360
 DIRECTIONAL_STRONG_RATE_POINTS_PER_10_MINUTES = 5.0
 DIRECTIONAL_LED_STEPS_PER_POINT = 3.6
+MOVEMENT_WINDOW_MINUTES = 60
 AQ_COMPONENT_MINIMUM_COVERAGE_RATIO = 0.70
 AQ_EVIDENCE_PENALTY_MAX_POINTS = 3.0
 FORMULA_VERSION = 4
@@ -46,6 +47,7 @@ SNAPSHOT_SOURCE = "hi_owned_fixed_bucket"
 SNAPSHOT_SCHEDULE = "utc_ten_minute"
 SNAPSHOT_REPRESENTATIVE = "last_complete_scheduled_observation"
 SNAPSHOT_LATE_GRACE_SECONDS = 60
+MOVEMENT_MAX_PUBLICATION_GAP_SECONDS = BUCKET_MINUTES * 60 + SNAPSHOT_LATE_GRACE_SECONDS
 SNAPSHOT_INVALID_REASONS = {
     "required_telemetry_unavailable",
     "house_humidity_missing",
@@ -489,12 +491,7 @@ def publish_stability_score(runtime_data: dict[str, Any], *, observed_at: dateti
             complete=bool(selected.get("complete")) and capture_available)
     payload = _calculate_stability_payload(runtime_data, observed_at=now)
     current_score = _available_display_score(payload) if capture_available else None
-    previous_score = _available_display_score(previous)
-    old_movement = previous.get("movement", {})
-    movement = _directional_movement(previous_score, current_score,
-        previous_bucket_start_utc=previous.get("published_at"), current_bucket_start_utc=now.isoformat(),
-        previous_position_degrees=old_movement.get("end_position_degrees", 0),
-        previous_color_token=old_movement.get("color_token", "neutral"))
+    movement = _recent_score_movement(runtime_data, previous, current_score, now)
     if not capture_available:
         payload = _unavailable(payload, "suppressed", "current_telemetry_unavailable")
     payload["movement"] = movement
@@ -1466,6 +1463,76 @@ def _movement_from_runtime(
     return _directional_movement(None, current_score)
 
 
+def _recent_score_movement(
+    runtime_data: dict[str, Any],
+    previous: dict[str, Any],
+    current_score: Optional[int],
+    now: datetime,
+) -> dict[str, Any]:
+    """Compare actual publications within a bounded window, never on a reader.
+
+    The first observed score in each ten-minute slot is retained at its actual
+    timestamp. At most seven representatives fit in the inclusive 60-minute
+    window. These are movement references, not graph samples or interpolated
+    scores. The live endpoint responds to every owned publication.
+    """
+    previous_at = _parse_timestamp(previous.get("published_at"))
+    previous_score = _available_display_score(previous)
+    old_movement = previous.get("movement", {})
+    cutoff = now - timedelta(minutes=MOVEMENT_WINDOW_MINUTES)
+    continuous = (
+        previous_score is not None and previous_at is not None
+        and 0 < (now - previous_at).total_seconds() <= MOVEMENT_MAX_PUBLICATION_GAP_SECONDS
+    )
+    observations = runtime_data.get("stability_movement_observations", {}) if continuous else {}
+    observations = {at: score for at, score in observations.items() if cutoff <= at <= now}
+    if current_score is None:
+        observations = {}
+    elif not any(bucket_start_for(at) == bucket_start_for(now) for at in observations):
+        observations[now] = current_score
+    runtime_data["stability_movement_observations"] = observations
+    reference_at = min(observations) if observations else None
+    reference_score = observations.get(reference_at)
+    comparison = reference_at is not None and reference_at < now and continuous
+    movement = _directional_movement(
+        previous_score if comparison or current_score is None else None,
+        current_score,
+        previous_bucket_start_utc=previous.get("published_at"),
+        current_bucket_start_utc=now.isoformat(),
+        previous_position_degrees=old_movement.get("end_position_degrees", 0),
+        reference_score=reference_score,
+    )
+    reference_stamp = reference_at.isoformat() if reference_at is not None else None
+    advanced = bool(comparison and old_movement.get("reference_at")
+        and old_movement["reference_at"] != reference_stamp)
+    net = current_score - reference_score if comparison else None
+    span = (now - reference_at).total_seconds() if reference_at is not None else None
+    movement.update({
+        "comparison_basis": "recent_recorded_display_score_v1",
+        "reference_window_minutes": MOVEMENT_WINDOW_MINUTES,
+        "reference_at": reference_stamp,
+        "reference_display_score": reference_score,
+        "observed_span_seconds": span,
+        "reference_advanced": advanced,
+        "recent_delta_points": net,
+    })
+    if comparison:
+        sign = "+" if net > 0 else ""
+        movement["detail_text"] = (
+            f"Recent score change: {sign}{net} point{'s' if abs(net) != 1 else ''} "
+            f"from {reference_score} to {current_score}. Comparing {span / 60:.1f} minutes of recorded scores "
+            f"within a {MOVEMENT_WINDOW_MINUTES}-minute limit. "
+            + ("The recorded reference advanced as older evidence left the window. " if advanced else "")
+            + movement["detail_text"]
+        )
+    elif current_score is not None:
+        movement["detail_text"] = (
+            "A new recent-score baseline is ready. A later observed score is needed "
+            "for comparison; no change is inferred across unavailable data or a long update gap."
+        )
+    return movement
+
+
 def _directional_movement(
     previous_score: Optional[int],
     current_score: Optional[int],
@@ -1474,6 +1541,7 @@ def _directional_movement(
     current_bucket_start_utc: Optional[str] = None,
     previous_position_degrees: int = 0,
     previous_color_token: str = "neutral",
+    reference_score: Optional[int] = None,
 ) -> dict[str, Any]:
     base = {
         "basis": "published_display_score",
@@ -1532,9 +1600,10 @@ def _directional_movement(
         base["intensity"] = intensity
         base["color_token"] = f"{'rise' if delta > 0 else 'fall'}_{intensity}"
     direction = "higher" if delta > 0 else "lower" if delta < 0 else "steady"
-    raw_led_steps = ceil(abs(delta) * DIRECTIONAL_LED_STEPS_PER_POINT)
-    signed_steps = raw_led_steps if delta > 0 else -raw_led_steps if delta < 0 else 0
-    raw_endpoint = start_position + signed_steps
+    # Convert net points once: summing rounded steps leaves path-dependent residue.
+    net_delta = int(current_score) - int(previous_score if reference_score is None else reference_score)
+    raw_led_steps = ceil(abs(net_delta) * DIRECTIONAL_LED_STEPS_PER_POINT)
+    raw_endpoint = raw_led_steps if net_delta > 0 else -raw_led_steps if net_delta < 0 else 0
     end_position = int(_clamp(raw_endpoint, -360, 360))
     active_led_steps = abs(end_position)
     side = "right" if end_position > 0 else "left" if end_position < 0 else "none"

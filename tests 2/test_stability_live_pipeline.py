@@ -99,6 +99,21 @@ def test_real_builder_reaches_live_diagnostics_and_dump(sample_count, export_rep
         assert "Baseline progress: 1 of 303 valid samples." in readable
 
     if not export_report:
+        if sample_count == 432:
+            # Real publisher/shared builder: a steady score must not freeze the
+            # recorded compact reference when the recent window advances.
+            for _ in range(6):
+                now += timedelta(minutes=10)
+                sensor.update()
+            before_reference = sensor._attr_extra_state_attributes["diagnostics_summary"]["stability_score"]["movement"]["reference_at"]
+            now += timedelta(seconds=1)
+            sensor.update()
+            live_movement = sensor._attr_extra_state_attributes["stability_score"]["movement"]
+            compact_movement = sensor._attr_extra_state_attributes["diagnostics_summary"]["stability_score"]["movement"]
+            assert live_movement["reference_advanced"] is True
+            assert compact_movement["reference_at"] == live_movement["reference_at"]
+            assert compact_movement["reference_at"] != before_reference
+            assert compact_movement["recent_delta_points"] == live_movement["recent_delta_points"]
         return
 
     # Keep actual registration, authorization, shared builder, support sanitization,

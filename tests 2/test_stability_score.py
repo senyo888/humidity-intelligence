@@ -1322,7 +1322,7 @@ def test_movement_baseline_steady_and_unavailable_have_neutral_color_without_arc
         assert result["active_led_steps"] == 0
 
 
-def test_persistent_arc_retracts_crosses_origin_and_neutralizes_when_steady():
+def test_net_arc_retracts_crosses_reference_and_neutralizes_when_steady():
     mod = _load_stability_module()
     score, position, token = 80, 0, "neutral"
     origin = datetime(2026, 9, 10, tzinfo=timezone.utc)
@@ -1332,11 +1332,11 @@ def test_persistent_arc_retracts_crosses_origin_and_neutralizes_when_steady():
         (-5, -54, "fall_strong", "left"),
         (5, -36, "rise_strong", "left"),
         (15, 18, "rise_strong", "right"),
-        (-1, 14, "fall_gentle", "right"),
-        (0, 14, "neutral", "right"),
+        (-1, 15, "fall_gentle", "right"),
+        (0, 15, "neutral", "right"),
     )):
         result = mod._directional_movement(
-            score, score + delta,
+            score, score + delta, reference_score=80,
             previous_position_degrees=position,
             previous_color_token=token,
             previous_bucket_start_utc=(origin + timedelta(minutes=index * 10)).isoformat(),
@@ -1352,27 +1352,25 @@ def test_persistent_arc_retracts_crosses_origin_and_neutralizes_when_steady():
         score, position, token = score + delta, endpoint, expected_token
 
 
-def test_persistent_arc_saturates_each_step_and_retracts_from_edge():
+def test_net_arc_uses_reference_not_accumulated_or_saturated_geometry():
     mod = _load_stability_module()
-    for previous, current, start, endpoint in (
-        (80, 90, 350, 360), (90, 89, 360, 356),
-        (80, 70, -350, -360), (70, 71, -360, -356),
+    for previous, current, reference, start, endpoint in (
+        (90, 100, 0, 350, 360), (100, 99, 0, 360, 357),
+        (10, 0, 100, -350, -360), (0, 1, 100, -360, -357),
+        (45, 43, 40, 18, 11), (55, 50, 50, 18, 0),
     ):
         result = mod._directional_movement(
-            previous, current, previous_position_degrees=start,
+            previous, current, reference_score=reference, previous_position_degrees=start,
         )
+        assert result["start_position_degrees"] == start
         assert result["end_position_degrees"] == endpoint
-        assert result["active_led_steps"] == abs(endpoint)
         assert result["saturated"] is (abs(endpoint) == 360)
     for previous, current in ((None, 80), (80, None)):
         reset = mod._directional_movement(
             previous, current, previous_position_degrees=-176,
-            previous_color_token="rise_strong",
         )
-        assert reset["start_position_degrees"] == 0
-        assert reset["end_position_degrees"] == 0
+        assert reset["start_position_degrees"] == reset["end_position_degrees"] == 0
         assert reset["arc_side"] == "none"
-        assert reset["active_led_steps"] == 0
         assert reset["color_token"] == "neutral"
 
 
@@ -1411,7 +1409,7 @@ def test_arc_continues_past_half_circle_and_returns_to_top_at_full_circle():
     assert half["end_position_degrees"] == -180
     assert half["saturated"] is False
     full = mod._directional_movement(
-        50, 0, previous_position_degrees=half["end_position_degrees"],
+        50, 0, reference_score=100, previous_position_degrees=half["end_position_degrees"],
     )
     assert full["start_position_degrees"] == -180
     assert full["end_position_degrees"] == -360
@@ -1420,7 +1418,7 @@ def test_arc_continues_past_half_circle_and_returns_to_top_at_full_circle():
     assert "decreased by 50 points" in full["detail_text"]
     assert full["basis"] == "published_display_score"
     reversed_arc = mod._directional_movement(
-        0, 10, previous_position_degrees=full["end_position_degrees"],
+        0, 10, reference_score=100, previous_position_degrees=full["end_position_degrees"],
     )
     assert reversed_arc["end_position_degrees"] == -324
     assert reversed_arc["active_led_steps"] == 324

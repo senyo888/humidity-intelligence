@@ -2186,14 +2186,16 @@ card:
 
             const low = num('sensor.house_humidity_target_low');
             const high = num('sensor.house_humidity_target_high');
-            const highRiskFromState = parseFloat(states['sensor.house_humidity_state']?.attributes?.high_risk);
-            const highRiskFromSeason = parseFloat(states['sensor.house_humidity_target_season']?.attributes?.high_risk);
-            const highRisk = !isNaN(highRiskFromState)
-              ? highRiskFromState
-              : (!isNaN(highRiskFromSeason) ? highRiskFromSeason : (high === null ? null : high + 8));
+            const riskBound = (value) => {
+              if ((typeof value !== 'number' && typeof value !== 'string') || String(value).trim() === '') return null;
+              const bound = Number(value);
+              return Number.isFinite(bound) && high !== null && bound > high && bound <= 100 ? bound : null;
+            };
+            const highRisk = riskBound(states['sensor.house_humidity_state']?.attributes?.high_risk)
+              ?? riskBound(states['sensor.house_humidity_target_season']?.attributes?.high_risk);
 
             const cH = (h) => {
-              if (h === null) return '#94a3b8';
+              if (h === null || low === null || high === null || low >= high || highRisk === null) return '#94a3b8';
               if (highRisk !== null && h >= highRisk) return '#ef4444';
               if (low !== null && h < low) return '#38bdf8';
               if (high !== null && h <= high) return '#4ade80';
@@ -4696,8 +4698,10 @@ card:
                 const movementColor = Object.prototype.hasOwnProperty.call(movementColors, movement.color_token)
                   ? movementColors[movement.color_token] : '#94a3b8';
                 const movementStatus = String(movement.status || 'unavailable');
+                const recentMovement = movement.comparison_basis === 'recent_recorded_display_score_v1';
+                const knownMovement = movement.comparison_basis == null || recentMovement;
                 const validPosition = (value) => Number.isInteger(value) && Math.abs(value) <= 360;
-                const positionsAvailable = movementStatus === 'available'
+                const positionsAvailable = knownMovement && movementStatus === 'available'
                   && validPosition(movement.start_position_degrees)
                   && validPosition(movement.end_position_degrees);
                 const startPosition = positionsAvailable ? movement.start_position_degrees : 0;
@@ -4726,7 +4730,7 @@ card:
                   }).join('');
                   return `<div class="hi-stability-direction${pulse ? ' hi-stability-change-pulse' : ''} hi-stability-direction-${side === 1 ? 'higher' : 'lower'}" aria-hidden="true">${marks}</div>`;
                 }).join('');
-                const movementDetail = String(movement.detail_text || '');
+                const movementDetail = knownMovement ? String(movement.detail_text || '') : 'Recent score comparison unavailable.';
                 const fullDetailText = movementDetail ? `${detailText} ${movementDetail}` : detailText;
                 const evidenceClass = indicatorMode === 'incomplete'
                   ? 'hi-stability-evidence active' : 'hi-stability-evidence';
@@ -4751,10 +4755,11 @@ card:
                   try { return new Intl.DateTimeFormat(undefined, {month:'short',day:'numeric',hour:'2-digit',minute:'2-digit',timeZoneName:'short',...(zone ? {timeZone:zone} : {})}).format(date); }
                   catch (_) { return date.toLocaleString(); }
                 };
-                const updateTime = localTime(movement.current_bucket_start_utc);
+                const updateTime = knownMovement ? localTime(movement.current_bucket_start_utc) : '';
+                const referenceTime = recentMovement ? localTime(movement.reference_at) : '';
                 const arcDetails = collecting
                   ? '<h3>Building your baseline</h3><p>Each illuminated mark represents a valid reading. Your score appears once there are enough readings for the required parts of the calculation.</p>'
-                  : `<h3>Recent trend</h3><p>${escapeHtml(movementDetail || 'Movement unavailable.')}</p>${updateTime ? `<p class="hi-stability-muted">Latest update: ${escapeHtml(updateTime)}</p>` : ''}<details class="hi-stability-help"><summary>How the LEDs work</summary><p>Arc position represents accumulated score movement. A rise moves clockwise and a fall moves counterclockwise. Soft green shows a small rise and brighter green a stronger rise; orange or red shows the latest fall, whichever side the arc is on. A change of five or more points uses the stronger colour. An unchanged score holds its position with neutral LEDs. At the arc limit, a brief pulse acknowledges a further change.</p></details>`;
+                  : `<h3>${recentMovement ? 'Recent score movement' : 'Score movement'}</h3><p>${escapeHtml(movementDetail || 'Movement unavailable.')}</p>${referenceTime ? `<p class="hi-stability-muted">Recorded reference: ${escapeHtml(referenceTime)}</p>` : ''}${updateTime ? `<p class="hi-stability-muted">Latest update: ${escapeHtml(updateTime)}</p>` : ''}<details class="hi-stability-help"><summary>How the LEDs work</summary><p>${!knownMovement ? 'Movement details are unavailable for this unsupported comparison format. The headline remains the backend Stability Score.' : recentMovement ? 'The arc compares your score with a recorded reference from the last 60 minutes. Its actual comparison time is shown above; a full hour is not assumed. Clockwise means a higher score than that reference and counterclockwise a lower score. LED colour shows the latest update: soft or bright green for a rise, orange or red for a fall, and neutral for unchanged. Five or more points uses the stronger colour. Old movement ages out on the next backend update, without implying a new score change. The headline and halo describe the 72-hour Stability Score. An improvement can coexist with poor current humidity; check the humidity and reason panels for current conditions.' : 'Arc position represents accumulated score movement. A rise moves clockwise and a fall moves counterclockwise. Soft green shows a small rise and brighter green a stronger rise; orange or red shows the latest fall, whichever side the arc is on. A change of five or more points uses the stronger colour. An unchanged score holds its position with neutral LEDs. At the arc limit, a brief pulse acknowledges a further change.'}</p></details>`;
                 const numericPoints = (value) => typeof value === 'number' && Number.isFinite(value) && value >= 0 && value <= 100;
                 const pointsText = (value) => Number.isInteger(value) ? String(value) : value.toFixed(2);
                 const explanation = !invalidScore && hasValue ? stability.explanation : null;

@@ -5,7 +5,8 @@ testing and validation branches.
 
 ## Canonical Version Model
 
-- `2.1.0-beta.11`: current unpublished candidate polishing score details/history and hold-to-toggle presentation. Both V2 layouts advance from revision 5 to 6; metadata schema/generator 1 and formula 4 remain. Install the complete package, restart, export and replace both saved cards; rollback restores package and cards separately. See [Stability contract](stability-score-accepted-baseline.md).
+- `2.1.0-beta.12`: current unpublished source candidate with autumn targets of 50–60% (high risk 64%) and bounded recent score movement. Both V2 layouts advance from revision 6 to 7; stamp schema/generator 1 and Stability schema 3/formula 4 remain. No configuration migration; an authorized update requires the complete package, restart and replacement card exports. See [Stability contract](stability-score-accepted-baseline.md).
+- `2.1.0-beta.11`: earlier unpublished candidate polishing score details/history and hold-to-toggle presentation. Both V2 layouts advance from revision 5 to 6; metadata schema/generator 1 and formula 4 remain. Install the complete package, restart, export and replace both saved cards; rollback restores package and cards separately. See [Stability contract](stability-score-accepted-baseline.md).
 - `2.1.0-beta.10`: earlier unpublished candidate introducing formula 4, individual-first AQ evidence, observed-clear recovery and synchronized score/LED feedback. Earlier formulas require a fresh baseline.
 - `2.1.0-beta.9`: earlier unpublished candidate repairing native HI button touch routing inside button-card; both V2 layouts advance to revision 4. See [interaction contract and validation limits](ui-interactions.md).
 - `2.1.0-beta.8`: earlier unpublished candidate with reusable entry-local monitoring meanings and optional plain-text guidance alongside the existing classification advice. Source rules and control ownership remain unchanged; see [lifecycle and rollback](custom-monitoring-meanings.md).
@@ -33,7 +34,7 @@ must remain aligned with the
 published GitHub Release/tag.
 
 Published Stable is [v2.0.12](https://github.com/senyo888/humidity-intelligence/releases/tag/v2.0.12),
-released on 2026-09-09. The current `2.1.0-beta.11` candidate is unpublished.
+released on 2026-09-09. The current `2.1.0-beta.12` candidate is unpublished.
 The earlier `2.1.0-beta.1` source was committed and pushed through `144570b` on
 `senyo888-patch-1`; beta.2 began at `76285b0`, and beta.3 collects the subsequent UI work through `4f86e66`. There is no v2.1 tag,
 GitHub Release or HACS offering.
@@ -373,21 +374,35 @@ and post-release observation as separate evidence states.
 
 ## Rendered UI revision check for every version update
 
-The final-beta presentation refinement is **UI revision advanced** against beta.10
-source `4f7d245fe1cb4a88129aaa4c395c41e58ba55e2a`: Mobile and Tablet move from 5 to 6,
-with compatible earlier revisions 1–5 listed as superseded. Metadata schema and
-generator contract remain 1; entry association, mapping, stamping and Diagnostics
-advertisement semantics are unchanged. Stability formula 4 and backend scoring
-bytes are unchanged. Holding Stability now persists a presentation-only boolean in
-native Home Assistant user data, scoped to user and opaque entry. Disabled remains
-visible; normal tap, Enter and short-Space details, collection and control continue. No extra
-visible control or score-history persistence is introduced. The existing badge is
-focusable; holding Space invokes the same hold preference action. Record persistence/isolation and
-failure-feedback checks separately from installed-client evidence.
-The candidate manifest advances from beta.10 to beta.11. A patch-branch commit
-or push is source publication, not a release tag, GitHub Release or HACS update. Loading the changed Python revision
-metadata needs a complete-package update and restart; saved cards separately need
-regeneration and full replacement. Those activation steps require authorization.
+The beta.12 refinement is **UI revision advanced** against beta.11 source
+`49856cbbd160c29efda90f8bfeb98514cd3d9be2`: Mobile and Tablet move from 6 to 7,
+with earlier revisions 1–6 listed as superseded. Stamp schema and generator contract
+remain 1; entry association, mapping, stamping and Diagnostics advertisement
+semantics are unchanged. Stability schema 3/formula 4, score weights, rounding,
+caps and eligibility remain. The additive movement comparison identifies its basis
+as `recent_recorded_display_score_v1`; updated cards retain explicit legacy handling
+and show unavailable movement for an unknown comparison basis.
+
+The backend arc now compares actual displayed scores over at most 60 minutes,
+retaining exact reference timestamps separately from sampled graph history. Latest
+change colour remains independent. Missing scores and publication gaps over eleven
+minutes start a fresh movement baseline; expiry happens on an owned update and is
+neutral when the latest score is unchanged. Hold-to-disable, keyboard/touch details,
+history and collection behavior remain. The autumn default change affects target-
+relative mould and humidifier behavior; readings above 60% are above target and
+humidity danger stays at 64%. No separate danger override is added. Other seasons
+and custom derivation stay unchanged (custom 50–60% gives 67.5% high risk).
+Lane ordering and entity IDs/native state contracts
+remain intact; readings and responses may change under the revised autumn band.
+
+The candidate manifest advances from beta.11 to beta.12. Validation must cover the
+exact changed source, generated stamps and Diagnostics targets; earlier candidate
+checks or soak observations do not establish beta.12 behavior. A patch-branch commit
+or push is source publication, not a release tag, GitHub Release or HACS update.
+Loading changed Python requires a complete-package update and restart; saved cards
+separately need regeneration and full replacement. No configuration migration is
+required. Restart clears in-memory Stability history. Activation and rollback remain
+separate authorized actions; this candidate record claims neither was performed.
 
 The V2 LED is a canonical integration contract, maintained with every candidate
 and release. Record one explicit outcome: **UI unchanged and compatible**, or

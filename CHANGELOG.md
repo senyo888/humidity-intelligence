@@ -6,7 +6,39 @@ All notable changes to Humidity Intelligence will be documented in this file.
 
 This project follows a practical changelog format for Home Assistant and HACS users. Add new entries under a fresh `Unreleased` section before publishing a future release.
 
-## Unreleased — v2.1.0-beta.11
+## Unreleased — v2.1.0-beta.12
+
+Unpublished source candidate extending beta.11. Published Stable remains v2.0.12;
+installation, restart, tag, GitHub Release and HACS publication are separate actions.
+
+- Changes built-in autumn humidity targets from 47–58% to 50–60%, retaining the 64%
+  high-risk threshold: above 60% is above target; 64% or higher meets humidity danger.
+  No separate danger override is added. Existing custom derivation stays unchanged
+  (50–60% custom gives 67.5% high risk). Target-relative mould interpretation and humidifier start/
+  recovery follow the new band. Other seasons, custom overrides, temperature bands,
+  lane order and CO precedence remain unchanged.
+- Bounds the Stability LED arc to net displayed-score change against an actual
+  recorded reference from the last 60 minutes. The backend retains at most seven
+  first-publication references, one per ten-minute slot, with exact observation
+  times. One angle conversion avoids accumulated rounding drift. This changes
+  movement presentation, not score weights, rounding, caps or evidence rules.
+- Keeps LED colour tied to the latest update and exposes both net change and the
+  actual comparison interval. Unchanged scores use neutral LEDs; old references
+  expire on the next owned update without implying a new measured change. Missing
+  scores or publication gaps over eleven minutes establish a fresh movement baseline.
+- Preserves the 72-hour score/classification halo, sampled history, collection,
+  Partial/unavailable states and saved hold-to-disable preference. Recent improvement
+  can coexist with poor current humidity; the humidity and reason panels retain
+  current-condition truth.
+- Uses authoritative humidity high-risk bounds in generated cards. Missing or invalid
+  bounds now show neutral context instead of an invented target-high-plus-eight limit.
+- Advances both V2 layouts from revision 6 to 7, superseding revisions 1–6. Stamp
+  schema/generator 1 and Stability schema 3/formula 4 remain. No config-entry or entity
+  migration is required. An authorized installation needs the complete package and
+  restart, then fresh exports and complete saved-card replacement. Restart clears
+  in-memory Stability history; rollback restores package and cards separately.
+
+## v2.1.0-beta.11 — Earlier unpublished candidate
 
 Unpublished candidate extending beta.10. Published Stable remains v2.0.12;
 no tag, GitHub Release or HACS publication is claimed.

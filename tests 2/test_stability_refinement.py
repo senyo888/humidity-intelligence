@@ -170,10 +170,9 @@ def test_movement_color_follows_delta_on_both_sides_and_at_saturation(position, 
     assert movement["direction"] == ("higher" if delta > 0 else "lower")
     assert movement["current_display_score"] == 70 + delta
     assert -360 <= movement["end_position_degrees"] <= 360
-    if delta > 0:
-        assert movement["end_position_degrees"] >= position
-    else:
-        assert movement["end_position_degrees"] <= position
+    # Prior geometry only controls the transition start; net score controls its end.
+    assert movement["start_position_degrees"] == position
+    assert movement["end_position_degrees"] == (4 if delta == 1 else 18 if delta == 5 else -4 if delta == -1 else -18)
 
 
 def _controlled_score_payload(score):
@@ -421,7 +420,7 @@ def test_source_policy_change_resets_baseline_history_and_movement():
     ring = sensor.StabilitySnapshotRing()
     runtime["stability_snapshot_ring"] = ring
     runtime["stability_failed_buckets"] = {"old"}
-    for key in ["stability_published", "stability_aq_adjustment", "stability_score_movement", "stability_score_history"]:
+    for key in ["stability_published", "stability_aq_adjustment", "stability_score_movement", "stability_score_history", "stability_movement_observations"]:
         runtime[key] = {"old": True}
     sensor._refresh_stability_aq(hass, runtime)
     assert runtime["stability_snapshot_ring"] is ring
@@ -431,7 +430,7 @@ def test_source_policy_change_resets_baseline_history_and_movement():
     assert runtime["stability_snapshot_ring"] is not ring
     assert runtime["stability_snapshot_ring"].samples() == []
     assert runtime["stability_failed_buckets"] == set()
-    for key in ["stability_published", "stability_aq_adjustment", "stability_score_movement", "stability_score_history"]:
+    for key in ["stability_published", "stability_aq_adjustment", "stability_score_movement", "stability_score_history", "stability_movement_observations"]:
         assert key not in runtime
 
 

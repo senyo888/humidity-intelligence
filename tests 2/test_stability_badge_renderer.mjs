@@ -57,6 +57,47 @@ function renderLabel(contract) {
 const BODIES = SURFACES.map(gaugeBody);
 const RENDERERS = BODIES.map((body) => new Function('entity', body));
 
+test('recent net gain and latest fall preserve the Poor headline and explain both', () => {
+  const output = renderContract({availability:'available',
+    score:{display_score:43,display_classification:'Poor'},
+    presentation:{primary_text:'43',compact_text:'POOR',tone:'poor'},
+    movement:{comparison_basis:'recent_recorded_display_score_v1',status:'available',
+      start_position_degrees:18,end_position_degrees:11,delta_points:-2,recent_delta_points:3,
+      color_token:'fall_gentle',reference_at:'2026-10-07T12:00:00Z',
+      current_bucket_start_utc:'2026-10-07T12:02:00Z',
+      detail_text:'Recent score change: +3 points from 40 to 43. The score decreased by 2 points since the previous update.'}});
+  assert.match(output, /--hi-stability-color:#ef4444;/);
+  assert.match(output, /--hi-stability-led-color:#fb923c;/);
+  assert.match(output, /--hi-stability-led-sweep:11deg;/);
+  assert.match(output, /<h3>Recent score movement<\/h3>/);
+  assert.match(output, /Recent score change: \+3 points/);
+  assert.match(output, /decreased by 2 points/);
+  assert.match(output, /Recorded reference:/);
+  assert.match(output, /last 60 minutes/);
+  assert.match(output, /An improvement can coexist with poor current humidity/);
+  assert.doesNotMatch(output, /accumulated score movement/);
+});
+
+test('reference expiry with unchanged score retracts neutrally without a change pulse', () => {
+  const output = renderContract({availability:'available',score:{display_score:45,display_classification:'Poor'},
+    movement:{comparison_basis:'recent_recorded_display_score_v1',status:'available',
+      start_position_degrees:18,end_position_degrees:0,delta_points:0,recent_delta_points:0,
+      reference_advanced:true,color_token:'neutral',saturated:false,
+      detail_text:'The recorded reference advanced. The score is unchanged since the previous update.'}});
+  assert.match(output, /--hi-stability-led-color:#94a3b8;/);
+  assert.match(output, /--hi-stability-led-sweep:0deg;/);
+  assert.doesNotMatch(output.split('<template')[0], /hi-stability-change-pulse/);
+});
+
+test('unsupported recent comparison never draws an optimistic arc or its detail', () => {
+  const output = renderContract({availability:'available',score:{display_score:43,display_classification:'Poor'},
+    movement:{comparison_basis:'unknown_future',status:'available',start_position_degrees:0,
+      end_position_degrees:360,detail_text:'Unsupported optimistic movement'}});
+  assert.equal(renderedMarks(output).length, 0);
+  assert.match(output, /Recent score comparison unavailable/);
+  assert.doesNotMatch(output, /Unsupported optimistic movement|accumulated score movement/);
+});
+
 function renderAll(attributes = {}) {
   return RENDERERS.map((render) => render({ state: 'ok', attributes }));
 }
@@ -301,7 +342,7 @@ test('badge provides an inert dialog snapshot with backend explanation evidence 
   assert.match(output, /These details capture the moment you opened this panel/);
   assert.match(output, /<p>Backend partial evidence explanation\.<\/p>/);
   assert.match(output, /<p>Rolling-window coverage: 303 of 432 valid samples\.<\/p>/);
-  assert.match(output, /<h3>Recent trend<\/h3>/);
+  assert.match(output, /<h3>Score movement<\/h3>/);
   assert.match(output, /Arc position represents accumulated score movement\./);
   assert.match(output, /<p>Backend movement explanation\.<\/p>/);
   assert.match(output, /<button type="button" class="hi-stability-close" aria-label="Close" title="Close" autofocus><svg aria-hidden="true"/);
@@ -409,7 +450,7 @@ test('collection fills clockwise by actual minimum-sample progress without compl
     assert.match(output, /--hi-stability-led-color:#38bdf8;/);
     assert.ok(output.includes(`Baseline progress: ${samples} of 303 valid samples.`));
     assert.match(output, /Building your baseline/);
-    assert.doesNotMatch(output, /Recent trend|arc retains accumulated score movement|of 432 valid samples/);
+    assert.doesNotMatch(output, /Score movement|arc retains accumulated score movement|of 432 valid samples/);
   }
 });
 
@@ -445,7 +486,7 @@ test('available score keeps movement LEDs and reports rolling-window coverage se
   assert.equal(renderedMarks(output).length, 6);
   assert.match(output, /--hi-stability-led-color:#fb923c;/);
   assert.match(output, /Rolling-window coverage: 303 of 432 valid samples\./);
-  assert.match(output, /Recent trend/);
+  assert.match(output, /Score movement/);
   assert.doesNotMatch(output, /Baseline collection/);
 });
 
@@ -808,7 +849,7 @@ test('all added dynamic equation and selection labels are escaped', () => {
 
 test('recent trend leads with backend change wording and keeps LED help separate', () => {
   const output = renderContract(refinedContract({movement:{detail_text:'Up 3 points since the previous update, from 81 to 84.',current_bucket_start_utc:'2026-01-01T00:10:00+00:00'}}));
-  const trend = output.slice(output.indexOf('<h3>Recent trend</h3>'),output.indexOf('<details class="hi-stability-help">'));
+  const trend = output.slice(output.indexOf('<h3>Score movement</h3>'),output.indexOf('<details class="hi-stability-help">'));
   assert.match(trend, /Up 3 points/);
   assert.doesNotMatch(trend, /blue|green|orange|red|fixed-UTC/i);
   assert.match(trend, /Latest update:/);

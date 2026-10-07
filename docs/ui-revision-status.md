@@ -84,7 +84,10 @@ unknown input, humidity uses finite numeric evidence, comfort describes position
 relative to the seasonal band, and Outputs names come from the mapped entities.
 The seasonal description never prescribes an action in competition with the backend
 reason. Outputs expansion remains shared per entry and retains its existing timer.
-Stability presentation, collection, scoring and lane selection are unchanged.
+The revision indicator itself leaves Stability and lane selection unchanged. In the
+beta.12 candidate, both layouts use revision 7 for the separate recent-movement and
+humidity-bound presentation changes; revisions 1–6 are superseded. Stamp schema and
+generator contract remain 1. See [the candidate compatibility record](release-governance.md#rendered-ui-revision-check-for-every-version-update).
 
 Installing the Python metadata changes requires the normal complete-package update
 and Home Assistant restart. A restart resets in-memory Stability collection; it is

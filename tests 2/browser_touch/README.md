@@ -95,7 +95,7 @@ modal is covered by separate component unit tests, not fabricated browser input.
 A complete result must contain both engines and layouts. Investigative narrowed
 runs and explicitly unsupported sequences must be reported separately from passes.
 
-## Current browser check
+## Historical beta.11 browser check
 
 The 2026-10-04 final run recorded **72 passed, 2 not-run and zero failures**, with
 Chrome **154.0.8037.58**, WebKit **26.5**, Playwright **1.62.1** and verified button-card
@@ -108,3 +108,18 @@ explained above. They are not silently counted as passes. The visual groups prod
 layout with the corrected shadow-host substitute. Physical devices and installed
 Home Assistant persistence remain unvalidated; the source-bound report owns package,
 review and release conclusions.
+
+## Beta.12 browser check
+
+The 2026-10-07 candidate run recorded **72 passed, 2 not-run and zero failures**.
+Both generated layouts include the bounded recent-score renderer. The two unsupported
+WebKit touch sequences remain not-run. Recent movement uses a controlled 49→54→52
+published-score vector: the current Poor score stays 52, recent change is +3, and
+latest change is −2. Its expiry case retains 52 with neutral LEDs and no old arc.
+These cases use the actual movement helper with synthetic calculated headline and
+explanation fixtures; they do not model an observed household or physical RH history.
+
+The responsive group captures these cases and their scrolled details at five widths,
+alongside collection, Partial, unavailable, Disabled and populated history. Fixture
+preferences, browser emulation and rendering do not establish installed persistence
+or physical-device behavior. Keep the exact source inventory with each run's receipts.

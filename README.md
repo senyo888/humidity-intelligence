@@ -57,11 +57,11 @@ It gives you:
 - native Home Assistant diagnostics for support and triage
 - services for dashboard export, self-check, diagnostics, pause/resume, and release validation
 
-Current development manifest version: **v2.1.0-beta.11**, an unpublished candidate.
+Current development manifest version: **v2.1.0-beta.12**, an unpublished candidate.
 It includes observational Stability scoring, recorded history, V2 touch interactions,
-reusable monitoring meanings and optional output observation. The current source
-polish simplifies score deductions and improves history readability without changing
-backend scoring or control.
+reusable monitoring meanings and optional output observation. This candidate adjusts
+the autumn target band and bounds recent score movement; scoring rules and control
+ownership remain unchanged.
 The current published Stable is **v2.0.12**, released on 9 September 2026 and available
 through HACS. See [Release Notes](#release-notes) for beta scope and upgrade steps.
 
@@ -264,7 +264,7 @@ The same humidity reading can mean different things in January and July. A home 
 Humidity Intelligence evaluates humidity **relative to the active target profile**:
 
 - Winter defaults to a lower comfort band than summer
-- Spring and autumn use intermediate bands
+- Spring uses 47–58%; autumn uses 50–60% with a 64% high-risk threshold
 - Custom target profiles are supported when configured
 
 Interpretation now follows target-relative states:
@@ -272,9 +272,12 @@ Interpretation now follows target-relative states:
 - `below_target` -> dry for the active profile
 - `in_target` -> stable band for the active profile
 - `above_target` -> elevated for the active profile
-- `high_risk` -> materially above the active profile's safe limit
+- `high_risk` -> at or above the active profile's danger threshold
 
-This keeps stability as the primary goal while making evaluation season-correct and explainable.
+For Autumn, 50–60% is in target; above 60% is above target, and 64% or higher
+meets the humidity-danger threshold. These are HI profile boundaries, not universal
+safe cutoffs. Custom 50–60% derives a different danger threshold of 67.5%; see
+[profile settings](https://github.com/senyo888/humidity-intelligence/wiki/Configuration-Walkthrough#operating-schedule--limits).
 
 Temperature comfort uses the same source-of-truth approach for display, so dashboard colours and chips follow backend comfort sensors rather than card-only assumptions:
 
@@ -466,9 +469,9 @@ must be reviewable from tracked repository files.
 
 ## Current Release Highlights
 
-- unpublished candidate `2.1.0-beta.11` refines Stability scoring, AQ recovery and
-  responsive LED feedback; control actions remain unchanged. Hold the badge to
-  change its display preference; see the [Stability contract](docs/stability-score-accepted-baseline.md)
+- unpublished candidate `2.1.0-beta.12` sets autumn targets to 50–60% and bounds
+  recent score movement to 60 minutes. Hold still changes only the display;
+  see the [Stability contract](docs/stability-score-accepted-baseline.md)
 - published Stable `2.0.12` improves Manual handover, Home Assistant-local time gates,
   lifecycle-safe timers and Home Assistant 2026.9 setup assistance
 - preceding Stable `2.0.11` restores the centred passive Stability preview; those
@@ -1238,22 +1241,21 @@ CO emergency pressure. Details are in
 
 ## Release Notes
 
-### v2.1.0-beta.11 (Unpublished candidate)
+### v2.1.0-beta.12 (Unpublished candidate)
 
-- polishes Stability details: headline first, individual deductions, a total and one
-  calculation; backend rounding, clamping and ceilings stay separate
-- makes the existing score-history expander clearer, with recorded samples and
-  honest gaps, partial coverage and unavailable states
-- hold the badge to save a display-only preference for your account and HI entry;
-  **Disabled** keeps a distinct aurora/LED appearance. Hold again restores it;
-  touch/tap details, collection, scoring and control continue
-- advances both V2 layouts to revision 6; schema/generator 1 and formula 4 remain.
-  Install the complete package, restart, then export and replace saved cards;
-  restart resets the in-memory baseline and history
-- retains existing configuration, entities and services; rollback restores the prior
-  complete package and matching card YAML
-- [Complete beta.11 changes](CHANGELOG.md#unreleased--v210-beta11). Published Stable
-  remains v2.0.12; this candidate has no release tag or HACS publication
+- sets the built-in autumn humidity band to **50–60%**, retaining the **64%**
+  danger threshold. Target-relative mould and humidifier behavior follow the new
+  band; other seasons and custom targets remain unchanged
+- shows recent score movement against an actual recorded reference within 60
+  minutes. LED colour still shows the latest change; the halo describes the
+  72-hour score. Improving scores can coexist with poor current humidity
+- preserves scoring, evidence, history, touch/keyboard details and hold-to-disable behavior. Both V2 layouts
+  advance to revision 7; stamp schema/generator 1 and Stability schema 3/formula 4 remain
+- requires no configuration migration. For an authorized update, install the complete
+  package, restart, then export and replace saved cards. Restart resets in-memory
+  Stability history; rollback restores the package and saved cards separately
+- [Complete beta.12 changes](CHANGELOG.md#unreleased--v210-beta12). Published Stable
+  remains v2.0.12; this source candidate does not claim deployment or publication
 
 ### v2.0.12 (Current Published Stable)
 
@@ -1313,6 +1315,23 @@ displaced older summaries into this container as new releases are added. CHANGEL
 remains the complete detailed history. -->
 <details>
 <summary>Previous Releases</summary>
+
+### v2.1.0-beta.11 (Earlier unpublished candidate)
+
+- polishes Stability details: headline first, individual deductions, a total and one
+  calculation; backend rounding, clamping and ceilings stay separate
+- makes the existing score-history expander clearer, with recorded samples and
+  honest gaps, partial coverage and unavailable states
+- hold the badge to save a display-only preference for your account and HI entry;
+  **Disabled** keeps a distinct aurora/LED appearance. Hold again restores it;
+  touch/tap details, collection, scoring and control continue
+- advances both V2 layouts to revision 6; schema/generator 1 and formula 4 remain.
+  Install the complete package, restart, then export and replace saved cards;
+  restart resets the in-memory baseline and history
+- retains existing configuration, entities and services; rollback restores the prior
+  complete package and matching card YAML
+- [Complete beta.11 changes](CHANGELOG.md#v210-beta11--earlier-unpublished-candidate). Published Stable
+  remains v2.0.12; this candidate has no release tag or HACS publication
 
 ### v2.1.0-beta.10 (Earlier unpublished candidate)
 

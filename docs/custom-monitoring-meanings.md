@@ -1,6 +1,6 @@
 # Reusable monitoring meanings
 
-This feature is included in the unpublished v2.1.0-beta.11 candidate. It extends optional
+This feature is included in the unpublished v2.1.0-beta.12 candidate. It extends optional
 output monitoring; published Stable remains v2.0.12.
 
 A custom meaning gives a monitoring condition a reusable name, an existing HI

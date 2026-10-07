@@ -1,7 +1,7 @@
 # Accepted Stability Score baseline
 
 Status: accepted functional and presentation contract; integrated in the unpublished
-current unpublished candidate, following its introduction in beta.1.
+beta.12 candidate, following its introduction in beta.1.
 The local refinement uses formula 4 with additive schema-3 diagnostics.
 This records the accepted behaviour for the current implementation work. It does not
 claim publication, HACS availability, deployment, or a newly approved release version.
@@ -225,30 +225,47 @@ bucket removes its failure. Record only actual incomplete captures and known mis
 scheduled buckets, never inferred offline or pre-setup gaps. Dense marks may overlap:
 the popup's exact backend count is authoritative, not visual counting. Explain the
 72-hour window in details. This history is retained only in memory and resets on
-restart/reload alongside baseline samples. Available-score movement remains unchanged
-and does not show this separate failure track.
+restart/reload alongside baseline samples. Available-score movement remains separate
+from this failure track.
 
-Once a score is available, LED movement retains signed integer endpoints within [-360,+360]. Each published
-valid score comparison adds signed `ceil(abs(delta) * 3.6)` degrees, higher clockwise,
-lower counter-clockwise. Saturate each step; at full circle hold until reversal.
-Reversal retracts from retained endpoint, potentially crossing the origin. Steady
-holds its endpoint with neutral LEDs; details explain “Holding steady”. Transitions finish
-within 300 ms; colour changes immediately. A nonzero change at saturation triggers
-one brief pulse per publication, suppressed for reduced motion. The card retains its concise name and condition label; movement descriptions
-remain in the details panel. Arc position is accumulated displayed
-score movement, including cap changes, **not elapsed time**.
+Once a score is available, the LED arc shows **recent net score change** against the
+oldest actual reference within the last 60 minutes. The backend keeps the first valid
+publication in each ten-minute UTC slot at its exact observation time: at most seven
+references, separate from sampled graph history. The latest published score is the
+endpoint. Details show the reference time, reference score and actual comparison
+span; a shorter interval never claims a full hour. There is no interpolation,
+backfill or additional sampler.
 
-Independent colour: gentle rise soft green `#86bfa0`, strong rise bright green `#4ade80`, gentle
-fall orange `#fb923c`, strong fall red `#ef4444`. Strong means a change of at least
-five displayed points per update; one to four points is gentle. This replaces the
-old time-normalized rate rule. Position and colour are independent: a left-hand arc
-can immediately turn soft/bright green on improvement, and a right-hand arc orange/red on
-decline. Colour updates even at geometric saturation.
+The backend converts net displayed points once to signed
+`ceil(abs(net_delta) * 3.6)` degrees within [-360,+360]. A higher score is clockwise,
+a lower score counter-clockwise. Previous geometry supplies only the animation's
+start; it does not accumulate rounding or clipping history. A +5 then −2 score
+sequence remains +3 relative to the same reference. This example concerns score
+points, not a promised response to a particular humidity change.
 
-The backend publishes score, comparison, movement and observation time atomically,
-including score changes between ten-minute samples. Repeated reads are pure and
-cannot advance movement. Unchanged publications retain position; unavailable evidence
-breaks the comparison chain and a later valid score establishes a fresh baseline.
+LED colour remains independent: gentle rise soft green `#86bfa0`, strong rise bright
+green `#4ade80`, gentle fall orange `#fb923c`, strong fall red `#ef4444`. Strong means
+at least five displayed points **since the previous update**; one to four is gentle.
+Thus a positive recent arc can show orange for the latest decline. Unchanged scores
+use neutral LEDs. The halo and headline retain the 72-hour composite classification,
+including caps and Partial evidence. A rising score can coexist with poor current
+humidity; the humidity and reason panels carry current-condition truth.
+
+References expire on the next owned backend publication. When expiry changes the
+arc but the latest score is unchanged, the LEDs stay neutral, with explicit
+reference-advanced wording and no score-change pulse. Time passing or a repeated read
+cannot manufacture a fresh observation. Transitions finish within 300 ms; colour
+changes immediately. A nonzero latest change at saturation triggers one brief pulse
+per publication, suppressed for reduced motion.
+
+The backend publishes score, reference, net comparison, latest-update comparison,
+movement and observation time atomically, including between ten-minute samples.
+Unavailable scores clear movement references. A publication gap longer than eleven
+minutes (the ten-minute cadence plus existing 60-second grace) establishes a fresh
+movement baseline; it does not change score eligibility. A missed graph sample alone
+does not break genuine intervening live publications. A first or fresh baseline has
+no delta, rather than a zero-change comparison. Restart/reload and AQ source-policy
+resets clear references alongside existing in-memory history.
 
 Details lead with the backend's displayed score. The contribution table retains
 individual component shortfalls, evidence deductions and the recent AQ adjustment,
@@ -300,8 +317,9 @@ explanation and, while collecting, **Baseline progress: N of 303 valid samples**
 `window.valid_samples` and `window.minimum_valid_samples`, never a hardcoded
 denominator. During collection, details explain the clockwise sample-progress ring
 and that score eligibility still depends on backend evidence requirements. Once
-scored, **Recent trend** explains retained arc versus current colour plus exact
-backend movement detail. Outside collection, the tally is explicitly labelled
+scored, **Recent score movement** explains the bounded comparison, recorded reference
+and latest-update colour using backend detail. Outside collection, the tally is
+explicitly labelled
 **Rolling-window coverage: N of 432 valid samples**, using backend expected samples.
 A visible sticky Close control, native Escape and backdrop activation dismiss the
 dialog and restore focus. Only one Stability dialog is open at a time. Navigation
@@ -348,6 +366,8 @@ animation or compatibility on an untested client.
 
 ## Installation, compatibility and rollback
 
+The beta.12 package uses V2 UI revision 7 for both layouts, superseding revisions
+1–6, with stamp schema/generator 1 and Stability schema 3/formula 4 retained.
 No configuration, entity-registry or stored-data migration is required. The Diagnostics
 readable attribute is additive; existing entity IDs and native states are unchanged.
 After installing changed Python, perform a full Home Assistant restart. Restart and

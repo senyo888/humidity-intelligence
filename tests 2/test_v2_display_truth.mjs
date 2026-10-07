@@ -21,6 +21,29 @@ function expression(source, entity, key) {
 }
 for (const file of files) {
   const source = fs.readFileSync(path.join(root, file), 'utf8');
+  test(`${file}: humidity chips use the real high-risk boundary and fail neutral without it`, () => {
+    const field = source.indexOf('        humidity: |');
+    const start = source.indexOf('[[[', field) + 3;
+    const end = source.indexOf(']]]', start);
+    assert.ok(field >= 0 && end > start);
+    const render = new Function('states', source.slice(start, end));
+    const states = {
+      'sensor.house_average_humidity': {state:'65'},
+      'sensor.house_humidity_target_low': {state:'50'},
+      'sensor.house_humidity_target_high': {state:'60'},
+      'sensor.hi_diagnostics': {attributes:{config:{slope:{show_humidity_chips:true}}}},
+      'sensor.house_humidity_state': {attributes:{high_risk:64}},
+    };
+    assert.match(render(states), /--cv:#ef4444/);
+    for (const value of [undefined, null, '', '64bad', Infinity, 'NaN', 59, 101]) {
+      states['sensor.house_humidity_state'].attributes.high_risk = value;
+      const html = render(states);
+      assert.doesNotMatch(html, /--cv:#ef4444|--cv:#facc15|--cv:#4ade80/);
+      assert.match(html, /65%/);
+    }
+    states['sensor.house_humidity_target_season'] = {attributes:{high_risk:'64'}};
+    assert.match(render(states), /--cv:#ef4444/);
+  });
   test(`${file}: humidity rejects absent, malformed and nonfinite evidence`, () => {
     const render = expression(source, 'sensor.house_average_humidity', 'state_display');
     assert.equal(render(undefined), '—%');
