@@ -6,6 +6,7 @@ controls are retained; identifying metadata is removed.
 
 | Asset | Example |
 | --- | --- |
+| [stability-score-92.png](stability-score-92.png) | Stability 92 / Excellent with output monitoring explicitly incomplete. |
 | [normal-monitoring.png](normal-monitoring.png) | Monitoring with no ventilation response selected. |
 | [air-quality-response.png](air-quality-response.png) | An air-quality response with incomplete output monitoring. |
 | [humidity-alert-zone-2.png](humidity-alert-zone-2.png) | A humidity alert resolved to Zone 2. |
@@ -14,8 +15,11 @@ controls are retained; identifying metadata is removed.
 | [baseline-collection.png](baseline-collection.png) | Stability collecting its initial baseline. |
 | [output-monitoring-summary.png](output-monitoring-summary.png) | Output state and monitoring summary. |
 
-These captures illustrate operating states. They predate the revised score details
-and history view; the [score contract](../../../docs/stability-score-accepted-baseline.md)
+The score-92 desktop capture retains its full status and Outputs context with
+metadata removal only. It does not certify the installed package or prove complete
+output monitoring. The other captures illustrate earlier candidate operating states,
+including the previous Autumn 47–58% band and earlier badge layouts. They predate
+the revised score details and history view; the [score contract](../../../docs/stability-score-accepted-baseline.md)
 and [testing guide](../../../docs/stability-testing.md) describe that presentation.
 The three old explanation views and other alternate captures remain private.
 Configuration screenshots retain their earlier-layout caveat beside current guidance.

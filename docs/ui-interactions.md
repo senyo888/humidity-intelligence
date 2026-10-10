@@ -1,6 +1,6 @@
 # V2 touch and keyboard interactions
 
-The unpublished v2.1.0-beta.12 candidate retains the beta.9 native-button activation
+The unpublished v2.1.0-rc.1 candidate retains the beta.9 native-button activation
 repair and beta.11 hold-to-toggle behavior. Both canonical layouts use V2 UI revision
 7 with generator contract 1. Interaction ownership and custom monitoring meanings
 are unchanged; [beta.12 changes](../CHANGELOG.md#unreleased--v210-beta12) separately

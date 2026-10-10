@@ -1,6 +1,6 @@
 # Stability Score testing
 
-Status: formula 4 with UI revision 7 in the current unreleased 2.1.0-beta.12 candidate. This guide describes
+Status: formula 4 with UI revision 7 in the current unreleased 2.1.0-rc.1 candidate. This guide describes
 validation of [the canonical contract](stability-score-accepted-baseline.md); it is
 not a release, deployment or live-observation claim.
 

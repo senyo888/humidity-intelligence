@@ -6,7 +6,29 @@ All notable changes to Humidity Intelligence will be documented in this file.
 
 This project follows a practical changelog format for Home Assistant and HACS users. Add new entries under a fresh `Unreleased` section before publishing a future release.
 
-## Unreleased — v2.1.0-beta.12
+## Unreleased — v2.1.0-rc.1
+
+Unpublished release candidate prepared from beta.12. Published Stable remains
+v2.0.12. HA Stable acceptance and final release validation are pending; the RC
+label does not claim deployment, promotion, a release tag or HACS availability.
+
+- Prepares the approved README and website content, Home Assistant introduction,
+  selected V2.1 release artwork and decorative clockwise header LEDs. Website and
+  Wiki publication remain separate from source preparation.
+- Moves detailed setup, service and support guidance into the prepared Wiki
+  material and keeps the README focused on the integration and current release.
+- Corrects the stale scenario test expectation without changing runtime behavior;
+  aligns documentation and metadata checks with the candidate identity.
+- **UI unchanged and compatible** with beta.12 source `c69d7d2`: both V2 layouts
+  remain revision 7, with stamp schema/generator 1 and Stability schema 3/formula 4.
+  Runtime logic and generated-card bytes are unchanged. Existing compatible beta.12
+  cards need no replacement solely for the RC version change; older cards still
+  require regeneration and replacement.
+- Requires no configuration migration. An authorized package update requires a full
+  restart and resets in-memory Stability history. Installation and final release
+  validation remain separate from this source-only RC preparation.
+
+## v2.1.0-beta.12 — Earlier unpublished candidate
 
 Unpublished source candidate extending beta.11. Published Stable remains v2.0.12;
 installation, restart, tag, GitHub Release and HACS publication are separate actions.

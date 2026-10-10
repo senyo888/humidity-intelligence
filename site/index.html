@@ -6,7 +6,7 @@
     <title>Humidity Intelligence - Home Assistant Environmental Stabilisation Engine</title>
     <meta
       name="description"
-      content="Humidity Intelligence helps Home Assistant use smart sensor data to guide air purifiers, extractors, humidifiers, and dehumidifiers for fresher air, humidity balance, and a clearer home routine."
+      content="Humidity Intelligence uses smart sensor data to coordinate humidity and air-quality control in Home Assistant, with clear explanations of each response."
     >
     <meta name="robots" content="index,follow">
     <link rel="canonical" href="https://senyo888.github.io/humidity-intelligence/">
@@ -15,7 +15,7 @@
     <meta property="og:title" content="Humidity Intelligence - Home Assistant Environmental Stabilisation Engine">
     <meta
       property="og:description"
-      content="A Home Assistant integration that uses smart sensor data to support fresher air, humidity balance, and clearer decisions at home."
+      content="Environmental control for Home Assistant, with seasonal humidity targets and clear explanations of each response."
     >
     <meta property="og:url" content="https://senyo888.github.io/humidity-intelligence/">
     <meta property="og:image" content="https://senyo888.github.io/humidity-intelligence/assets/header.png">
@@ -23,7 +23,7 @@
     <meta name="twitter:title" content="Humidity Intelligence">
     <meta
       name="twitter:description"
-      content="Use Home Assistant smart sensor data to support fresher air, humidity balance, and a clearer home routine."
+      content="Coordinate humidity and air-quality control in Home Assistant, with clear explanations of each response."
     >
     <meta name="twitter:image" content="https://senyo888.github.io/humidity-intelligence/assets/header.png">
     <link rel="icon" href="assets/logo.png" type="image/png">
@@ -62,306 +62,167 @@
   </head>
   <body>
     <a class="skip-link" href="#main">Skip to content</a>
-
     <header class="site-header">
-      <nav class="site-nav" aria-label="Primary navigation">
-        <a class="brand" href="https://senyo888.github.io/humidity-intelligence/" aria-label="Humidity Intelligence home">
-          <img class="brand-logo" src="assets/logo.png" alt="" width="40" height="40" aria-hidden="true">
-          <span>Humidity Intelligence</span>
+      <nav class="site-nav wrap" aria-label="Primary navigation">
+        <a class="brand" href="#main" aria-label="Humidity Intelligence home">
+          <img src="assets/logo.png" width="40" height="40" alt=""><span>Humidity<br>Intelligence</span>
         </a>
         <div class="nav-links">
-          <a href="https://github.com/senyo888/Humidity-Intelligence#installation">Install</a>
-          <a href="https://github.com/senyo888/Humidity-Intelligence/wiki">Wiki</a>
-          <a href="https://github.com/senyo888/Humidity-Intelligence">GitHub</a>
+          <a href="#stability">Stability Score</a><a href="#inside">In your home</a><a href="#start">Get started</a>
+          <a class="nav-guide" href="https://github.com/senyo888/Humidity-Intelligence/wiki">The manual <span aria-hidden="true">↗</span></a>
         </div>
       </nav>
     </header>
-
     <main id="main">
       <section class="hero" aria-labelledby="hero-title">
-        <div class="hero-copy">
-          <img class="hero-logo" src="assets/logo.png" alt="Humidity Intelligence logo" width="104" height="104">
-          <p class="eyebrow">Home Assistant custom integration</p>
-          <h1 id="hero-title">Humidity Intelligence</h1>
-          <p class="lede">
-            Humidity Intelligence acts as a stabiliser for your home environment.
-            It uses data from Home Assistant smart sensors to help guide air
-            purifiers, extractors, humidifiers, and dehumidifiers, so your home can
-            stay fresher, calmer, and more comfortable day to day.
-          </p>
-          <div class="hero-actions" aria-label="Primary links">
-            <a class="button primary" href="https://my.home-assistant.io/redirect/hacs_repository/?owner=senyo888&amp;repository=humidity-intelligence&amp;category=integration">Open in HACS</a>
-            <a class="button secondary" href="https://github.com/senyo888/Humidity-Intelligence/wiki">Read the support manual</a>
+        <div class="wrap">
+          <div class="hero-intro">
+            <div><p class="eyebrow"><span class="status-dot" aria-hidden="true"></span> Humidity Intelligence · V2.1 preview</p>
+              <h1 id="hero-title">A clearer picture.<br><em>A steadier home.</em></h1></div>
+            <div class="hero-lede">
+              <p>Humidity Intelligence coordinates environmental control in Home Assistant and explains each response. The V2.1 preview adds Stability Score to show how conditions develop over time.</p>
+              <a class="button primary" href="#stability">Explore Stability Score <span aria-hidden="true">↓</span></a>
+              <a class="hero-install" href="#start">Install the current Stable release <span aria-hidden="true">↗</span></a>
+            </div>
           </div>
-          <p class="authority-note">
-            This page gives you a quick feel for how Humidity Intelligence can
-            support a clearer routine at home. For setup, upgrades, release notes,
-            the user manual, the UI Gallery, and the full installation guide, head
-            to the GitHub repository and Wiki.
-          </p>
+          <figure class="release-art">
+            <div class="art-stage"><a href="assets/release_banner/v2.1_release.png" aria-label="View the full V2.1 Stability Score release artwork">
+              <img src="assets/release_banner/v2.1_release.png" width="1672" height="941" fetchpriority="high" alt="Humidity Intelligence V2.1 Stability Score release artwork: a dimensional black-glass dial marked V 2.1, cyan light and a gold accent.">
+            </a>
+              <svg class="led-layer" viewBox="0 0 1672 941" aria-hidden="true" focusable="false">
+                <defs><radialGradient id="led-socket"><stop offset="0" stop-color="#07111b"/><stop offset=".6" stop-color="#101c29"/><stop offset="1" stop-color="#183445" stop-opacity="0"/></radialGradient></defs>
+                <circle class="led-cover" cx="1135" cy="202" r="18"/><circle class="led-cover" cx="1265" cy="550" r="21"/><circle class="led-cover" cx="920" cy="550" r="21"/>
+                <circle class="led led-top" cx="1135" cy="202" r="8"/>
+                <circle class="led led-right" cx="1265" cy="550" r="8"/>
+                <circle class="led led-left" cx="920" cy="550" r="8"/>
+              </svg>
+            </div>
+            <figcaption><span>V2.1 · Stability Score</span><span>Release artwork · illustration with a clockwise light sequence.</span></figcaption>
+            <label class="motion-control"><input type="checkbox" class="pause-motion"> Pause header animation</label>
+          </figure>
+          <div class="release-status">
+            <p><strong>Unpublished candidate v2.1.0-rc.1</strong><br>This page previews V2.1. The current published Stable release is v2.0.12.</p>
+            <a href="https://github.com/senyo888/Humidity-Intelligence/releases">View published releases <span aria-hidden="true">↗</span></a>
+          </div>
         </div>
       </section>
 
-      <section class="release-spotlight" aria-labelledby="release-title">
-        <div class="section-inner">
-          <img
-            class="release-banner"
-            src="assets/release_banner/v2.0.12_release.png"
-            alt="Humidity Intelligence v2.0.12 release header celebrating repository-level HACS inclusion"
-          >
-          <div class="release-copy">
-            <p class="section-kicker">v2.0.12 published Stable</p>
-            <h2 id="release-title">A focused maintenance release.</h2>
-            <p>
-              Humidity Intelligence is included in the HACS default integration
-              repository, giving you one direct path to the published Stable package.
-              Published Stable v2.0.12 improves Manual handover, Home Assistant-local
-              time gates and lifecycle-safe timer countdowns while preserving lane
-              order and generated cards. Restart after updating; this Stable release
-              needs no configuration migration or Manual-card re-export.
-            </p>
-            <div class="release-badges" aria-label="Project and release links">
+      <section class="about-section section" id="about" aria-labelledby="about-title">
+        <div class="wrap about-grid">
+          <div><p class="eyebrow">01 / The integration</p><h2 id="about-title">About Humidity Intelligence</h2></div>
+          <div class="about-copy">
+            <p>Humidity Intelligence is a Home Assistant integration for managing humidity and air quality. It uses your configured room sensors to assess conditions, including condensation and mould risk, and coordinate ventilation, air purifiers, humidifiers and dehumidifiers.</p>
+            <p>Its control decisions follow defined priorities and the active humidity profile. The dashboard brings readings, device status and the reason for each response together, making the system straightforward to understand and troubleshoot.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="stability-section section" id="stability" aria-labelledby="stability-title">
+        <div class="wrap">
+          <div class="section-heading"><p class="eyebrow">02 / The bigger picture</p><h2 id="stability-title">One reading is a moment.<br>Stability tells you more.</h2>
+            <p class="section-lede">A comfortable reading can hide recurring humidity imbalance, moisture risk or slow recovery. Stability Score puts that reading in context by showing how conditions have varied over time.</p></div>
+          <div class="stability-grid">
+            <figure class="product-capture">
+              <a href="assets/ui/v2.1/stability-score-92.png" aria-label="Open the genuine Stability Score dashboard capture"><img src="assets/ui/v2.1/stability-score-92.png" width="1020" height="696" loading="lazy" alt="Actual dashboard: Stability Score 92 Excellent, System Armed, Manual Auto, and Outputs 1/4 on with Monitoring incomplete."></a>
+              <figcaption><strong>From the HI dashboard:</strong> a Stability Score of 92, classified Excellent. The separate Outputs warning shows that monitoring is incomplete.</figcaption>
+            </figure>
+            <div class="benefit-list">
+              <article><span class="benefit-number">72<span>h</span></span><div><h3>Patterns over 72 hours</h3><p>The score combines humidity, steadiness, room balance, moisture risk, configured air quality and recovery across a 72-hour window.</p></div></article>
+              <article><span class="benefit-symbol" aria-hidden="true">↗</span><div><h3>An explained score</h3><p>Tap the Stability badge in your HI dashboard to inspect the contributions, deductions and available history behind the score.</p></div></article>
+              <article><span class="benefit-symbol" aria-hidden="true">◎</span><div><h3>Context alongside the score</h3><p>Missing evidence can limit the score or make it unavailable. Alerts, device status and the reason panel remain separate sources of current information.</p></div></article>
+              <a class="text-link" href="https://github.com/senyo888/humidity-intelligence/wiki/Stability-Score">Explore the Stability guide <span aria-hidden="true">↗</span></a>
+            </div>
+          </div>
+          <details class="technical-note"><summary>How the score, history and display work</summary><div class="detail-body">
+            <p>Stability is observational: it does not select control lanes or write outputs. Existing priority rules determine the control response. The score requires sufficient valid history and usable current evidence. Restarting or reloading the integration clears that history and starts collection again.</p>
+            <p>The badge's recent-change arc compares the current score with a reference from within the past 60 minutes. This is separate from the 72-hour score and the history recorded at ten-minute intervals. LED colour reflects the most recent update, which may differ from the overall direction shown by the arc.</p>
+            <p>Press and hold the Stability badge to display Disabled; repeat to restore the normal display. This saved preference affects presentation only: calculation, history and control continue. Each environmental badge uses its own recorded source.</p>
+          </div></details>
+        </div>
+      </section>
+
+      <section class="everyday section" id="inside" aria-labelledby="inside-title">
+        <div class="wrap">
+          <div class="everyday-intro"><div><p class="eyebrow">03 / Everyday control</p><h2 id="inside-title">Control for<br>changing conditions.</h2></div>
+            <p>Cooking, showers and indoor laundry affect rooms differently. HI assesses those changes against your active humidity targets and coordinates the devices you have configured.</p></div>
+          <div class="feature-grid">
+            <article><span class="feature-index">01</span><h3>Defined control priorities</h3><p>A fixed priority order selects one ventilation lane per evaluation cycle. Humidification follows its own demand, while the reason panel explains the selected response.</p></article>
+            <article><span class="feature-index">02</span><h3>Seasonal and custom targets</h3><p>Room conditions are assessed against the active humidity profile. Auto follows the seasons; you can also select a season or set custom targets.</p></article>
+            <article><span class="feature-index">03</span><h3>Visible decisions and device status</h3><p>The dashboard shows the readings and evidence behind each response. Optional output monitoring reports configured device states and identifies gaps in monitoring.</p></article>
+          </div>
+          <p class="context-note">HI relies on the sensors and devices you configure and complements appropriate ventilation, heating and maintenance. A device reported as On in Home Assistant is not proof of physical airflow or moisture production.</p>
+        </div>
+      </section>
+
+      <section class="gallery section" aria-labelledby="gallery-title">
+        <div class="wrap">
+          <div class="gallery-heading"><div><p class="eyebrow">04 / See it in context</p><h2 id="gallery-title">Readings and responses,<br>with the reasoning visible.</h2></div><a class="text-link" href="https://github.com/senyo888/Humidity-Intelligence/wiki/UI-Gallery">Browse the UI Gallery <span aria-hidden="true">↗</span></a></div>
+          <p class="gallery-note">These screenshots show monitoring and air-quality control in an earlier V2.1 candidate. They retain the previous badge layout and autumn target range of 47–58%. The current autumn range is 50–60%, with humidity danger at 64%; these profile boundaries are not universal safety thresholds.</p>
+          <div class="screenshot-grid">
+            <figure><a href="assets/ui/v2.1/normal-monitoring.png"><img src="assets/ui/v2.1/normal-monitoring.png" width="1206" height="2166" loading="lazy" alt="Earlier candidate dashboard showing normal monitoring, environmental readings and Stability Score."></a><figcaption><span>01</span> Everyday monitoring</figcaption></figure>
+            <figure><a href="assets/ui/v2.1/air-quality-response.png"><img src="assets/ui/v2.1/air-quality-response.png" width="1194" height="2256" loading="lazy" alt="Earlier candidate dashboard showing an air-quality response, selected lane and explanation."></a><figcaption><span>02</span> When air quality needs attention</figcaption></figure>
+          </div>
+          <details class="technical-note"><summary>More views: humidification and output monitoring</summary><div class="detail-body screenshot-grid">
+            <figure><a href="assets/ui/v2.1/humidification-active.png"><img src="assets/ui/v2.1/humidification-active.png" width="1206" height="2243" loading="lazy" alt="Earlier candidate capture: humidification active while ventilation remains Normal."></a><figcaption>Humidification follows its own demand.</figcaption></figure>
+            <figure><a href="assets/ui/v2.1/output-monitoring-summary.png"><img class="output-summary" src="assets/ui/v2.1/output-monitoring-summary.png" width="1206" height="1043" loading="lazy" alt="Earlier candidate capture of the configured output-monitoring summary."></a><figcaption>Optional monitoring reports device states from Home Assistant and identifies missing evidence. Physical operation requires separate confirmation. This capture retains earlier readings and layout.</figcaption></figure>
+          </div></details>
+          <a class="text-link gallery-source" href="https://github.com/senyo888/Humidity-Intelligence/tree/main/ui-gallery">Find reviewed YAML and examples in the repository <span aria-hidden="true">↗</span></a>
+        </div>
+      </section>
+
+      <section class="start-section section" id="start" aria-labelledby="start-title">
+        <div class="wrap"><div class="section-heading"><p class="eyebrow">05 / Platform and installation</p><h2 id="start-title">Built for Home Assistant.</h2><p class="section-lede">Install HI through the Home Assistant Community Store (HACS), or explore Home Assistant before setting up a system.</p></div>
+          <div class="start-grid">
+            <article class="start-card newcomer">
+              <a class="ha-brand" href="https://www.home-assistant.io/" aria-label="Discover Home Assistant"><img src="assets/site/home-assistant-logo.svg" width="64" height="64" loading="lazy" alt=""><span>Home Assistant</span><span aria-hidden="true">↗</span></a>
+              <p class="eyebrow">New to Home Assistant?</p><h3>Your home, connected<br>on your terms.</h3>
+              <p>Home Assistant is an open-source platform that runs locally on your own hardware to connect and automate compatible devices. Humidity Intelligence is an independent integration for that platform.</p>
+              <a class="button dark" href="https://www.home-assistant.io/getting-started/">Start with Home Assistant <span aria-hidden="true">↗</span></a>
+              <p class="card-footnote">The official guide covers hardware selection, installation, device connections and automations.</p>
+            </article>
+            <article class="start-card existing">
+              <div class="hi-brand"><img src="assets/logo.png" width="54" height="54" loading="lazy" alt=""><span>Humidity Intelligence<small>Home Assistant integration</small></span></div>
+              <p class="eyebrow">Already using Home Assistant?</p><h3>Install Humidity<br>Intelligence.</h3>
+              <p>HI is included in the HACS default integration repository. Install the published Stable package, then follow the setup guide to map room sensors, configure outputs and add the dashboard.</p>
+              <a class="button primary" href="https://my.home-assistant.io/redirect/hacs_repository/?owner=senyo888&amp;repository=humidity-intelligence&amp;category=integration">Open in HACS <span aria-hidden="true">↗</span></a>
+              <p class="card-footnote">The button opens HI's repository page in HACS, where you can install Stable v2.0.12. V2.1 is an unpublished preview and is not available there.</p>
+              <a class="text-link" href="https://github.com/senyo888/Humidity-Intelligence#installation">Read the complete installation guide <span aria-hidden="true">↗</span></a>
+            </article>
+          </div>
+          <div class="project-badges"><div class="release-badges" aria-label="Project and release links">
               <a class="release-badge badge-release" href="https://github.com/senyo888/Humidity-Intelligence/releases" aria-label="Humidity Intelligence published release v2.0.12"><span class="badge-key">published release</span><span class="badge-value">v2.0.12</span></a>
               <a class="release-badge badge-repo" href="https://github.com/senyo888/Humidity-Intelligence" aria-label="Humidity Intelligence project repository on GitHub"><span class="badge-key">Project Repo</span><span class="badge-value">GitHub</span></a>
               <a class="release-badge badge-license" href="https://github.com/senyo888/Humidity-Intelligence/blob/main/LICENSE" aria-label="Humidity Intelligence MIT license"><span class="badge-key">license</span><span class="badge-value">MIT</span></a>
               <a class="release-badge badge-sponsor" href="https://github.com/sponsors/senyo888" aria-label="Sponsor Humidity Intelligence through GitHub Sponsors"><span class="badge-key">♡ Sponsor</span><span class="badge-value">GitHub Sponsors</span></a>
               <a class="release-badge badge-star" href="https://github.com/senyo888/humidity-intelligence" aria-label="Star or support Humidity Intelligence on GitHub"><span class="badge-key">★ Star / Support</span><span class="badge-value">Humidity Intelligence</span></a>
-            </div>
-            <a class="text-link" href="https://github.com/senyo888/Humidity-Intelligence#release-notes">Read the v2.0.12 release notes</a>
-          </div>
+            </div></div>
         </div>
       </section>
 
-      <section class="intro" aria-labelledby="intro-title">
-        <div class="section-inner two-column">
-          <div>
-            <p class="section-kicker">Why it exists</p>
-            <h2 id="intro-title">Because it matters more than ever.</h2>
-          </div>
-          <div>
-            <p>
-              With global temperatures rising and warmer, more humid weather patterns
-              becoming more common across parts of the Northern Hemisphere, indoor
-              humidity is becoming harder to ignore. In many homes, conditions that
-              once shifted slowly with the seasons can now change in a single day:
-              damp air after showers, cooking, or warm weather, then drier air when
-              heating, cooling, or ventilation takes over.
-            </p>
-            <p>
-              Those swings can affect more than comfort. Humidity that sits too high
-              or too low may contribute to dry skin, irritated eyes, coughing,
-              respiratory sensitivity, stressed houseplants, condensation, mould risk,
-              and, over time, damage to the fabric of a home. Heat and humidity
-              together can also put extra strain on the body, because humid air makes
-              it harder for sweat to evaporate and cool us down.
-            </p>
-            <p>
-              Humidity Intelligence does not replace good ventilation, heating,
-              cooling, or maintenance. It helps make the indoor picture easier to
-              understand by bringing humidity, temperature, dew point, room behaviour,
-              air quality, and device states together inside Home Assistant, then
-              explaining what is changing, why it matters, and what the next sensible
-              action may be to support a more stable indoor environment.
-            </p>
-          </div>
+      <section class="stable-section section" aria-labelledby="release-title"><div class="wrap stable-grid">
+        <img class="release-banner" src="assets/release_banner/v2.0.12_release.png" width="1672" height="941" loading="lazy" alt="Humidity Intelligence v2.0.12 release artwork celebrating repository-level HACS inclusion.">
+        <div><p class="eyebrow">v2.0.12 published Stable</p><h2 id="release-title">A focused maintenance release.</h2>
+          <p>Published Stable v2.0.12 improves Manual-mode handover, scheduled gates using Home Assistant local time, and timer countdowns. Lane priority and generated cards are unchanged.</p>
+          <p class="context-note">Restart Home Assistant after updating. Stable v2.0.12 requires no configuration migration or re-export of Manual cards. A later authorised V2.1 update requires regenerating and replacing saved cards, followed by a frontend refresh. Restarting clears Stability history.</p>
+          <a class="text-link" href="https://github.com/senyo888/Humidity-Intelligence#release-notes">Read the release notes <span aria-hidden="true">↗</span></a>
         </div>
-      </section>
+      </div></section>
 
-      <section class="feature-band" aria-labelledby="features-title">
-        <div class="section-inner">
-          <p class="section-kicker">What it helps with</p>
-          <h2 id="features-title">Practical guidance for fresh air, comfort, and damp-risk awareness.</h2>
-          <p>
-            Unpublished candidate v2.1.0-beta.12 sets autumn humidity targets to
-            50–60%; above 60% is above target, while humidity danger remains at 64%.
-            These profile boundaries are not universal safe cutoffs. Target-relative mould and
-            humidifier behavior follow that band; custom targets stay unchanged.
-            Stability LEDs compare the score with an actual reference within the
-            last 60 minutes, while their colour shows the most recent change. The halo
-            still describes the 72-hour score: improvement can coexist with poor
-            current humidity. Scoring, evidence and recorded history stay intact.
-            Hold Stability to show Disabled; hold again to restore it. The choice
-            follows your account and HI entry; details, collection and control continue.
-            An authorized update needs the complete package and restart, then fresh
-            cards and full saved-YAML replacement. Restart resets Stability history;
-            no configuration migration is needed. Published Stable remains v2.0.12.
-            This candidate remains unpublished and is not a HACS release.
-            <a href="https://github.com/senyo888/humidity-intelligence/blob/senyo888-patch-1/docs/stability-score-accepted-baseline.md">Read the accepted contract and update requirements</a>.
-          </p>
-          <div class="feature-grid">
-            <article class="feature-card">
-              <h3>One clear recommendation</h3>
-              <p>
-                When the home sends mixed signals, HI follows a fixed priority order:
-                CO emergency, humidity danger, mould danger, mould risk,
-                condensation danger, condensation risk, Zone 1, Zone 2, air quality,
-                then normal operation. You get one clear control decision instead
-                of overlapping automation noise.
-              </p>
-            </article>
-            <article class="feature-card">
-              <h3>Season-aware comfort</h3>
-              <p>
-                Winter and summer homes need different humidity targets. HI reads
-                each room against the active profile, so guidance changes with the
-                season instead of relying on one flat number all year.
-              </p>
-            </article>
-            <article class="feature-card">
-              <h3>Cards you can trust</h3>
-              <p>
-                The exported Lovelace Manual-card YAML shows what HI saw, mapped, skipped, and chose.
-                These cards are there to make the routine easier to understand, not to
-                invent their own logic.
-              </p>
-            </article>
-          </div>
+      <section class="resources section" aria-labelledby="resources-title"><div class="wrap">
+        <div class="section-heading"><p class="eyebrow">Keep exploring</p><h2 id="resources-title">Documentation<br>and support.</h2></div>
+        <div class="resource-grid">
+          <a href="https://github.com/senyo888/Humidity-Intelligence/wiki"><span>User manual</span><small>Configuration, services and everyday use.</small><b aria-hidden="true">↗</b></a>
+          <a href="https://github.com/senyo888/Humidity-Intelligence/wiki/Generated-Dashboards"><span>Generated dashboards</span><small>Export, install and customise dashboard cards.</small><b aria-hidden="true">↗</b></a>
+          <a href="https://github.com/senyo888/Humidity-Intelligence/wiki/Diagnostics-and-Support-Bundle"><span>Diagnostics and troubleshooting</span><small>Investigate issues and prepare a support bundle.</small><b aria-hidden="true">↗</b></a>
+          <a href="inspector/"><span>Support Bundle Inspector</span><small>Review a support bundle locally in your browser.</small><b aria-hidden="true">↗</b></a>
         </div>
-      </section>
+      </div></section>
 
-      <section class="gallery" aria-labelledby="gallery-title">
-        <div class="section-inner">
-          <div class="gallery-heading">
-            <div>
-              <p class="section-kicker">The dashboard</p>
-              <h2 id="gallery-title">Current Air Control, in view.</h2>
-            </div>
-            <a class="text-link" href="https://github.com/senyo888/Humidity-Intelligence/wiki/UI-Gallery">Browse the UI Gallery</a>
-          </div>
-          <p class="gallery-note">
-            See the selected response alongside the readings and reason behind it,
-            from everyday monitoring to an active air-quality response.
-          </p>
-          <div class="screenshot-grid dashboard-grid">
-            <figure>
-              <img
-                src="assets/ui/v2.1/normal-monitoring.png"
-                alt="Normal monitoring with environmental readings and Stability score."
-              >
-              <figcaption>Normal monitoring</figcaption>
-            </figure>
-            <figure>
-              <img
-                src="assets/ui/v2.1/air-quality-response.png"
-                alt="Air-quality response with the selected lane and reason."
-              >
-              <figcaption>Air-quality response</figcaption>
-            </figure>
-          </div>
-        </div>
-      </section>
-
-      <section class="reason-gallery" aria-labelledby="reason-title">
-        <div class="section-inner">
-          <div class="gallery-heading">
-            <div>
-              <p class="section-kicker">Explainability</p>
-              <h2 id="reason-title">Humidification and monitoring.</h2>
-            </div>
-          </div>
-          <p class="gallery-note">
-            Follow humidifier demand and check how configured outputs are responding.
-            An On state reports what Home Assistant can observe; it does not measure
-            physical moisture production.
-          </p>
-          <div class="screenshot-grid dashboard-grid">
-            <figure>
-              <img
-                src="assets/ui/v2.1/humidification-active.png"
-                alt="Humidification active while ventilation remains in Normal."
-              >
-              <figcaption>Humidification</figcaption>
-            </figure>
-            <figure>
-              <img
-                src="assets/ui/v2.1/output-monitoring-summary.png"
-                alt="Output monitoring summary showing active outputs and reported conditions."
-              >
-              <figcaption>Output monitoring</figcaption>
-            </figure>
-          </div>
-        </div>
-      </section>
-
-      <section class="links-band" aria-labelledby="links-title">
-        <div class="section-inner">
-          <p class="section-kicker">More detail</p>
-          <h2 id="links-title">When you are ready to install or troubleshoot, go to the source.</h2>
-          <div class="link-list">
-            <a href="https://github.com/senyo888/Humidity-Intelligence#installation">
-              <span>Install from the complete guide</span>
-              <small>Repository README</small>
-            </a>
-            <a href="https://github.com/senyo888/Humidity-Intelligence/releases">
-              <span>Check releases and upgrades</span>
-              <small>GitHub releases</small>
-            </a>
-            <a href="https://github.com/senyo888/Humidity-Intelligence/wiki/Generated-Dashboards">
-              <span>Regenerate your dashboards</span>
-              <small>Support manual</small>
-            </a>
-            <a href="https://github.com/senyo888/Humidity-Intelligence/wiki/Diagnostics-and-Support-Bundle">
-              <span>Prepare diagnostics for support</span>
-              <small>Support manual</small>
-            </a>
-            <a href="inspector/">
-              <span>Review diagnostics locally</span>
-              <small>Browser-local Inspector preflight</small>
-            </a>
-            <a href="https://github.com/senyo888/Humidity-Intelligence/tree/main/ui-gallery">
-              <span>Browse reviewed dashboard examples</span>
-              <small>Versioned repository files</small>
-            </a>
-            <a href="https://github.com/senyo888/Humidity-Intelligence/issues/new/choose">
-              <span>Ask for help or report a bug</span>
-              <small>GitHub issue forms</small>
-            </a>
-          </div>
-        </div>
-      </section>
-
-      <section class="support-band" id="support" aria-labelledby="support-title">
-        <div class="section-inner support-layout">
-          <div class="support-copy">
-            <p class="section-kicker">Support Humidity Intelligence</p>
-            <h2 id="support-title">Could you help more Home Assistant homes stay balanced?</h2>
-            <p>
-              If HI has helped your home, please consider supporting the project in
-              a practical way: star the repo so others can find it, test a release
-              when you can, open clear issues with diagnostics, or suggest
-              improvements to the docs and UI examples when something could be
-              easier. Sponsorship is completely optional, but it directly supports
-              the maintenance time that keeps HI reviewed, usable, and moving
-              forward.
-            </p>
-          </div>
-          <div class="support-actions" aria-label="Ways to support Humidity Intelligence">
-            <a class="support-action" href="https://github.com/senyo888/Humidity-Intelligence/stargazers">
-              <span>⭐ Star the project</span>
-              <small>Helps more Home Assistant users find it.</small>
-            </a>
-            <a class="support-action" href="https://github.com/senyo888/Humidity-Intelligence/releases">
-              <span>Test a release</span>
-              <small>Fresh installs and upgrades reveal real-life edges.</small>
-            </a>
-            <a class="support-action" href="https://github.com/senyo888/Humidity-Intelligence/issues/new/choose">
-              <span>Share clean diagnostics</span>
-              <small>Good reports turn problems into safer fixes.</small>
-            </a>
-            <a class="support-action" href="https://github.com/sponsors/senyo888">
-              <span>Sponsor the work</span>
-              <small>Support the maintenance time behind HI.</small>
-            </a>
-          </div>
-        </div>
-      </section>
+      <section class="support-section section" id="support" aria-labelledby="support-title"><div class="wrap support-grid">
+        <div><p class="eyebrow">Support Humidity Intelligence</p><h2 id="support-title">Help improve<br>Humidity Intelligence.</h2><p>Practical feedback, reproducible issue reports and clear examples help improve HI. You can also star the repository to help others discover it, or sponsor its ongoing maintenance.</p></div>
+        <div class="support-actions"><a href="https://github.com/senyo888/Humidity-Intelligence/stargazers">Star the project <span aria-hidden="true">↗</span></a><a href="https://github.com/senyo888/Humidity-Intelligence/issues/new/choose">Share feedback <span aria-hidden="true">↗</span></a><a href="https://github.com/sponsors/senyo888">Sponsor the work <span aria-hidden="true">↗</span></a></div>
+      </div></section>
     </main>
-
-    <footer class="site-footer">
-      <div class="section-inner footer-inner">
-        <p>Built independently for Home Assistant users who want fresher air, clearer decisions, and explainable environmental control.</p>
-        <a href="https://github.com/senyo888/Humidity-Intelligence">View the repository on GitHub</a>
-      </div>
-    </footer>
+    <footer class="site-footer"><div class="wrap footer-inner"><div><strong>Humidity Intelligence</strong><p>Independent, open-source environmental control for Home Assistant.</p><p class="trademark">Home Assistant and its logo are trademarks of the Open Home Foundation. HI is an independent community integration. <a href="https://github.com/home-assistant/assets/tree/master/logo">Logo source</a> · <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/">CC BY-NC-SA 4.0</a>.</p></div><a href="https://github.com/senyo888/Humidity-Intelligence">View the repository <span aria-hidden="true">↗</span></a></div></footer>
   </body>
 </html>

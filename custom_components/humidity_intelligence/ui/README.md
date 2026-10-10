@@ -272,7 +272,7 @@ Control row:
 
 - preserve the v2.0.7 tap-to-toggle behavior for the System and Manual helper buttons
 - keep Stability observational: its display preference must not pause/resume, select lanes, or create output writes
-- for the integrated, unpublished `2.1.0-beta.12` Stability candidate, render backend schema 3/formula 4
+- for the integrated, unpublished `2.1.0-rc.1` Stability candidate, render backend schema 3/formula 4
   score, classifications and evidence states; missing/malformed payloads show no score
 - preserve the accepted 82px footprint, independent latest-update LED colours,
   signed recent-net movement within 60 minutes, six-second Partial pulse and

@@ -5,7 +5,8 @@ testing and validation branches.
 
 ## Canonical Version Model
 
-- `2.1.0-beta.12`: current unpublished source candidate with autumn targets of 50–60% (high risk 64%) and bounded recent score movement. Both V2 layouts advance from revision 6 to 7; stamp schema/generator 1 and Stability schema 3/formula 4 remain. No configuration migration; an authorized update requires the complete package, restart and replacement card exports. See [Stability contract](stability-score-accepted-baseline.md).
+- `2.1.0-rc.1`: current unpublished release candidate prepared from beta.12, with approved public content and a test-only scenario correction. Runtime logic and generated cards are unchanged; both V2 layouts retain revision 7. HA Stable acceptance and final release validation remain pending. No release tag, GitHub Release, HACS publication or deployment is implied.
+- `2.1.0-beta.12`: earlier unpublished source candidate with autumn targets of 50–60% (high risk 64%) and bounded recent score movement. Both V2 layouts advance from revision 6 to 7; stamp schema/generator 1 and Stability schema 3/formula 4 remain. No configuration migration; an authorized update requires the complete package, restart and replacement card exports. See [Stability contract](stability-score-accepted-baseline.md).
 - `2.1.0-beta.11`: earlier unpublished candidate polishing score details/history and hold-to-toggle presentation. Both V2 layouts advance from revision 5 to 6; metadata schema/generator 1 and formula 4 remain. Install the complete package, restart, export and replace both saved cards; rollback restores package and cards separately. See [Stability contract](stability-score-accepted-baseline.md).
 - `2.1.0-beta.10`: earlier unpublished candidate introducing formula 4, individual-first AQ evidence, observed-clear recovery and synchronized score/LED feedback. Earlier formulas require a fresh baseline.
 - `2.1.0-beta.9`: earlier unpublished candidate repairing native HI button touch routing inside button-card; both V2 layouts advance to revision 4. See [interaction contract and validation limits](ui-interactions.md).
@@ -17,7 +18,6 @@ testing and validation branches.
 - `2.1.0-beta.3`: earlier unpublished candidate with V2 summaries, recorded histories and source-room colours.
 - `2.1.0-beta.2`: earlier unpublished candidate, introduced at `76285b0`, with seven-day drift progress/details.
 - `2.1.0-beta.1`: earlier committed/pushed, unpublished Stability candidate.
-- `2.1.0-rc.N`: future release-candidate identity, only after an authorized transition.
 - `2.1.0`: future stable identity; metadata alone does not publish it.
 - `2.0.12`: current published Stable, released on 2026-09-09.
 - `2.0.11`: immediately preceding published Stable, released on 2026-08-11.
@@ -34,7 +34,7 @@ must remain aligned with the
 published GitHub Release/tag.
 
 Published Stable is [v2.0.12](https://github.com/senyo888/humidity-intelligence/releases/tag/v2.0.12),
-released on 2026-09-09. The current `2.1.0-beta.12` candidate is unpublished.
+released on 2026-09-09. The current `2.1.0-rc.1` release candidate is unpublished.
 The earlier `2.1.0-beta.1` source was committed and pushed through `144570b` on
 `senyo888-patch-1`; beta.2 began at `76285b0`, and beta.3 collects the subsequent UI work through `4f86e66`. There is no v2.1 tag,
 GitHub Release or HACS offering.
@@ -280,11 +280,11 @@ record:
 
 ## README Release-Note Structure
 
-The README keeps the current candidate, current Published Stable, and immediately
-preceding Published Stable summaries expanded. When a newer release displaces one of
-those three positions, move the older summary into the collapsible `Previous Releases`
-container. Retain that container as the canonical older-release structure so
-successive releases follow the same visible chronology.
+The README keeps the current candidate and current Published Stable summaries
+expanded. Preceding Stable releases and earlier candidates belong in the collapsible
+`Previous Releases` container, with their historical publication facts and links
+preserved. Move a displaced current summary into that container when a newer release
+takes its place.
 
 `CHANGELOG.md` owns the complete detailed release and legacy-migration history. The
 README container may keep concise displaced summaries and must retain a direct link to
@@ -373,6 +373,22 @@ and post-release observation as separate evidence states.
   approval gates are complete for the exact final head.
 
 ## Rendered UI revision check for every version update
+
+RC.1 is **UI unchanged and compatible** against beta.12 source
+`c69d7d27408c3f1647dbba9b12809562e812562e`. Both layouts retain revision 7;
+stamp schema/generator 1, superseded revisions 1–6, Diagnostics targets and
+Stability schema 3/formula 4 are unchanged. Runtime logic, card templates and
+renderers are unchanged. A version-only transition must not mark compatible
+beta.12 cards stale; it requires no card replacement solely for the RC label.
+Older cards still need regeneration and replacement. An authorized package update
+requires a restart, which clears in-memory Stability history. HA Stable acceptance,
+the develop PR and final release validation are deferred by the maintainer.
+
+The branch preparation checks compare UI compatibility against that exact beta.12
+source and exercise generated stamps/Diagnostics metadata. They do not constitute
+final release validation or authorize installation, promotion or publication.
+
+### Historical beta.12 UI transition
 
 The beta.12 refinement is **UI revision advanced** against beta.11 source
 `49856cbbd160c29efda90f8bfeb98514cd3d9be2`: Mobile and Tablet move from 6 to 7,

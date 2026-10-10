@@ -10,7 +10,8 @@ on:
       - "assets/release_banner/v2.0.10_release.png"
       - "assets/release_banner/v2.0.11_release.png"
       - "assets/release_banner/v2.0.12_release.png"
-      - "assets/site/github-pages-hero.png"
+      - "assets/release_banner/v2.1_release.png"
+      - "assets/site/**"
       - "assets/ui/v2.1/**"
       - "scripts/build_hi_inspector.py"
       - ".github/workflows/pages.yml"
@@ -50,10 +51,13 @@ jobs:
           cp assets/release_banner/v2.0.11_release.png _site/assets/release_banner/v2.0.11_release.png
           cp assets/release_banner/v2.0.12_release.png _site/assets/release_banner/v2.0.12_release.png
           cp assets/site/github-pages-hero.png _site/assets/site/github-pages-hero.png
+          cp assets/release_banner/v2.1_release.png _site/assets/release_banner/v2.1_release.png
+          cp assets/site/home-assistant-logo.svg _site/assets/site/home-assistant-logo.svg
           cp assets/ui/v2.1/air-quality-response.png _site/assets/ui/v2.1/air-quality-response.png
           cp assets/ui/v2.1/baseline-collection.png _site/assets/ui/v2.1/baseline-collection.png
           cp assets/ui/v2.1/humidification-active.png _site/assets/ui/v2.1/humidification-active.png
           cp assets/ui/v2.1/humidity-alert-zone-2.png _site/assets/ui/v2.1/humidity-alert-zone-2.png
+          cp assets/ui/v2.1/stability-score-92.png _site/assets/ui/v2.1/stability-score-92.png
           cp assets/ui/v2.1/normal-monitoring.png _site/assets/ui/v2.1/normal-monitoring.png
           cp assets/ui/v2.1/output-monitoring-summary.png _site/assets/ui/v2.1/output-monitoring-summary.png
           cp assets/ui/v2.1/time-gate-active.png _site/assets/ui/v2.1/time-gate-active.png

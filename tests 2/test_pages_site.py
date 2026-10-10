@@ -100,10 +100,8 @@ class PagesSiteTests(unittest.TestCase):
         self.assertEqual(parser.canonical, PAGES_URL)
         self.assertEqual(parser.meta.get("robots"), "index,follow")
         self.assertNotIn("noindex", " ".join(parser.meta.values()).lower())
+        self.assertIn("Humidity Intelligence", parser.meta.get("description", ""))
         self.assertIn("Home Assistant", parser.meta.get("description", ""))
-        self.assertIn("smart sensor data", parser.meta.get("description", ""))
-        self.assertIn("humidity balance", parser.meta.get("description", ""))
-        self.assertIn("clearer home routine", parser.meta.get("description", ""))
 
     def test_pages_site_has_search_discovery_structured_data(self) -> None:
         _html, parser = parse_index()

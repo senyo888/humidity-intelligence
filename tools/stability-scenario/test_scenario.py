@@ -1,6 +1,7 @@
 """End-to-end synthetic replay exercises actual backend and shipped badge extraction."""
 import importlib.util
 import json
+from math import ceil
 from pathlib import Path
 import subprocess
 
@@ -33,7 +34,16 @@ def test_full_scenario_uses_real_backend_transitions():
     tokens = {f['payload']['movement']['color_token'] for f in replay['frames']}
     assert {'rise_gentle', 'rise_strong', 'fall_gentle', 'fall_strong'} <= tokens
     movements = [f['payload']['movement'] for f in replay['frames']]
-    assert any(m['direction'] == 'higher' and m['start_position_degrees'] < m['end_position_degrees'] < 0 for m in movements)
+    # Recent-reference expiry changes the replay's path; verify the current net
+    # geometry contract instead of requiring an incidental cumulative-arc vector.
+    for movement in movements:
+        if movement['status'] != 'available':
+            continue
+        net = movement['current_display_score'] - movement['reference_display_score']
+        assert movement['recent_delta_points'] == net
+        degrees = ceil(abs(net) * 3.6)
+        assert movement['end_position_degrees'] == (degrees if net >= 0 else -degrees)
+        assert 0 < movement['observed_span_seconds'] <= 60 * 60
     assert any(m['direction'] == 'steady' and m['end_position_degrees'] != 0 and m['start_position_degrees'] == m['end_position_degrees'] for m in movements)
     assert any(abs(m['end_position_degrees']) > 180 for m in movements)
     for frame in replay['frames']:

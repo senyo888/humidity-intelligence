@@ -1,6 +1,6 @@
 {
-  "provenance": "Selected documentation snapshots exported from Photos. Private room and device labels are replaced with neutral example names. Captured readings, states, controls and layout are retained; identifying metadata is removed. These captures predate the revised score explanation and history view.",
-  "editing": "Built-in imagegen label edits, confined to configured-label regions; source pixels outside those regions preserved exactly. Visual source comparison verified readings and states within edited regions. Output summary required metadata removal only.",
+  "provenance": "Selected documentation snapshots. The score-92 desktop attachment is an unretouched capture with identifying metadata removed. Other snapshots were exported from Photos and predate the current targets, badge layout and revised score explanation/history. Original files are preserved.",
+  "editing": "Score-92: metadata-only PNG derivative, image data unchanged. Older assets: built-in imagegen label edits confined to configured-label regions, with source comparisons; output summary required metadata removal only.",
   "assets": [
     {
       "file": "normal-monitoring.png",
@@ -71,6 +71,19 @@
       ],
       "metadata": "PNG image chunks only",
       "neutral_labels": false
+    },
+    {
+      "file": "stability-score-92.png",
+      "sha256": "6461a53a48af3805b21c5ec602f591ba126f022c800e57e714172f3d1604cc72",
+      "dimensions": [
+        1020,
+        696
+      ],
+      "metadata": "PNG image chunks and standard four-byte cICP colour description only",
+      "neutral_labels": false,
+      "visible_privacy_review": "No identifying room or device names visible. Monitoring incomplete is preserved.",
+      "editing": "Metadata removal only; image data unchanged.",
+      "capture_identity": "Supplied desktop capture; installed package identity not certified by the image."
     }
   ]
 }
