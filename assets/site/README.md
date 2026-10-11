@@ -5,11 +5,13 @@
 [`v2.1_release.png`](../release_banner/v2.1_release.png) is the selected release artwork, created
 with the built-in OpenAI image-generation tool. It develops the project's
 v2.0.12 release-art style and the Stability badge into a dimensional illustration.
-The central **V 2.1** is the product version, not a measured Stability Score.
+The central **92** is an illustrative Stability Score; the separate **V2.1** label
+identifies the release. The artwork does not display a live measurement.
 The three rim LEDs are decorative. Website CSS lights them clockwise every three
 seconds; a pause control and reduced-motion setting show the still image.
 
-The maintainer selected this artwork on 10 October 2026. It is not
+The maintainer selected this artwork on 10 October 2026 and requested the central
+score of **92** on 11 October 2026. It is not
 an installed dashboard capture, runtime evidence, publication claim or replacement
 for the genuine `assets/ui/v2.1/stability-score-92.png` capture. Its embedded
 content-credential metadata is retained; cryptographic validation is not claimed.
