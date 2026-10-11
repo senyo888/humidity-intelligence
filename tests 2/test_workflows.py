@@ -25,6 +25,19 @@ MUTABLE_ACTION_REF_RE = re.compile(
 
 
 class WorkflowConfigurationTests(unittest.TestCase):
+    def test_every_version_update_checks_rendered_ui_contract(self) -> None:
+        workflow = (ROOT / ".github/workflows/version-governance.yml").read_text()
+        for required in (
+            "fetch-depth: 0", "check_ui_revision_governance.py",
+            "sync_ui_revision.py --check", "sync_badge_history.py --check",
+            "test_ui_revision_governance.py", "test_ui_revision_contract.py",
+            "test_adaptive_cards.py", "test_ui_revision_status.mjs",
+        ):
+            self.assertIn(required, workflow)
+        self.assertRegex(workflow, r"(?m)^  push:$")
+        self.assertRegex(workflow, r"(?m)^  pull_request:$")
+
+
     def test_secret_scan_fails_closed_when_tracked_mode_has_no_files(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             workdir = pathlib.Path(tmpdir)
@@ -161,7 +174,18 @@ class WorkflowConfigurationTests(unittest.TestCase):
             ],
             cwd=ROOT,
         ).split(b"\0")
-        self.assertEqual(53, len([path for path in tracked_component_files if path]))
+        # Check the tracked brand layout itself: unrelated module additions must
+        # not invalidate this branding contract, and untracked copies cannot pass.
+        tracked = {path.decode("utf-8") for path in tracked_component_files if path}
+        component_prefix = "custom_components/humidity_intelligence/"
+        expected_brand = {component_prefix + "brand/" + name for name in ("icon.png", "logo.png")}
+        self.assertEqual(
+            expected_brand,
+            {path for path in tracked if path.startswith(component_prefix + "brand/")},
+        )
+        self.assertTrue(
+            tracked.isdisjoint({component_prefix + name for name in ("icon.png", "logo.png")})
+        )
 
         for workflow_name in ("hassfest.yaml", "release.yml", "validate.yml"):
             workflow = (

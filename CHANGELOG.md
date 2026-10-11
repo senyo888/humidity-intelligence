@@ -6,9 +6,312 @@ All notable changes to Humidity Intelligence will be documented in this file.
 
 This project follows a practical changelog format for Home Assistant and HACS users. Add new entries under a fresh `Unreleased` section before publishing a future release.
 
-## 2.0.12
+## Unreleased — v2.1.0-rc.1 source-review foundation
 
-For publication dates and available downloads, see [GitHub Releases](https://github.com/senyo888/Humidity-Intelligence/releases).
+Part 1 of the V2.1 review split. This source snapshot contains the beta.7 foundation
+plus source-history reconciliation, documentation identity and review routing.
+It is not the complete RC.1 candidate on `senyo888-patch-1` and is not intended for
+installation or publication. Final-candidate Stable evidence does not apply to it.
+The manifest uses RC metadata for compatibility with `develop`; exact Git commits
+identify this partial snapshot and the complete candidate separately.
+
+Review corrections keep Drift detail snapshots open during normal telemetry updates,
+contain monitoring-management discovery errors, and avoid repeated validation of an
+unchanged adaptive Outputs feed. Native controls still receive every state update.
+V2 layouts advance to revision 3; generator/schema remain 1. No control behavior or
+configuration/entity migration is introduced. Installing the eventual complete package requires a full restart and
+fresh, fully replaced card exports; restarting resets in-memory Stability history.
+
+## v2.1.0-beta.7 — Earlier unpublished candidate
+
+Unpublished candidate packaging the reviewed UI harmonisation after beta.6. Published
+Stable remains v2.0.12; no tag, GitHub Release or HACS publication is implied.
+
+- Preserves V2 mobile/tablet geometry and actions while adding restrained neutral
+  depth and a small bottom-left rendered-UI-revision indicator. The footer uses
+  a 4px top margin while retaining its 44px hit area and existing bottom inset.
+- Distinguishes matching, explicitly superseded, differing and unverified revisions
+  using additive Diagnostics metadata, independently of integration version.
+  Export/download success and browser refresh are not proof of YAML replacement.
+- Corrects unavailable System/Manual labels, missing or malformed humidity values,
+  frontend comfort action advice, and positional names in native Outputs.
+- Keeps control engine, lane priority, entity primary states, service schemas,
+  shared Outputs expansion and the accepted Stability presentation unchanged.
+- Activation requires the complete package and a restart for Python metadata,
+  then fresh export and full replacement of saved V2 cards. Restart resets
+  in-memory Stability history. No configuration migration or new frontend resource.
+  [Revision contract and rollback](docs/ui-revision-status.md).
+
+- Makes UI compatibility review and revision/stamp validation part of every
+  version update, with a source-change guard and LED contract checks in CI.
+- Preserves the revision footer comments while generating configured native and
+  adaptive Outputs, preventing fallback from dropping the observation summary.
+- Declares the existing optional HTTP frontend dependency for Hassfest and setup
+  ordering when HTTP is configured. HTTP remains optional; runtime control and
+  entity semantics are unchanged.
+
+The package identity advances to `2.1.0-beta.7`; the existing V2 layout revisions
+remain `2` with generator contract `1`, each explicitly superseding revision `1`.
+This package-only version change does not claim installation or publication.
+
+Validation maintenance also replaces stale beta-version and whole-package-count
+assertions with manifest identity and exact tracked branding checks. Real-selector
+tests initialize Home Assistant before its validation-library compatibility layer;
+native tests run separately from lightweight HA scaffolds. These repairs change
+test setup and expectations, with no additional product behavior change.
+
+### Upgrade from beta.6
+
+Install the complete package and restart Home Assistant, then export and replace
+the complete saved V2 Manual-card YAML. Refresh the client if older content remains
+cached. No configuration or entity migration is required. Restart resets in-memory
+Stability history. Rollback restores the prior full package and matching saved cards.
+
+## v2.1.0-beta.6 — Earlier unpublished candidate
+
+Unpublished development candidate based on beta.5 (`f1d6f48`). Published Stable
+remains v2.0.12; no tag or HACS publication is implied.
+
+- Separates neutral configured meanings such as Filter replacement from active
+  Filter replacement suggested alerts. Faults remain explicitly reported.
+- Clarifies monitoring coverage, source readings and detail-window labels while
+  preserving exact rules, counts, severity, unavailable states and isolation truth.
+- Uses task-oriented native configuration labels and explains which changes are
+  staged, retained by Back, discarded locally, or persisted by Save changes.
+- Returns Keep editing to the originating sensor form after the flow's close
+  confirmation, retaining its draft without saving the options transaction.
+- Preserves configuration keys, defaults, strict comparisons, lane ordering, existing
+  entity semantics, native output controls and backend ownership of UI meaning.
+
+- Aligns current README, output-monitoring instructions and website candidate copy
+  with beta.6 labels and the final Save changes boundary. Historical release notes
+  retain their original wording.
+
+### Upgrade from beta.5
+
+Install the complete package and restart Home Assistant, then refresh the frontend
+resource and regenerate saved mobile/tablet cards. Restart resets in-memory
+Stability collection. No entity or configuration migration is required. Rollback
+restores the complete beta.5 package and matching cards/resources.
+
+## v2.1.0-beta.5 — Earlier unpublished candidate
+
+Unpublished development candidate based on beta.4 (`a3f135e`). Published Stable
+remains v2.0.12; no tag or HACS publication is implied.
+
+- Uses `mdi:hvac` for shared Outputs identity while retaining individual device icons.
+- Reduces the Outputs expansion to a compact backend-authored summary, up to two
+  conditions, exact totals, explicit overflow and important monitoring context.
+- Places complete evidence and preserved native controls in one on-demand window.
+  Missing observation keeps controls available and clears stale evidence; older
+  payloads retain the full fallback presentation.
+- Preserves control logic, lane ordering, thresholds, mappings and entity semantics.
+- Validated with focused backend, native HA API, export and frontend DOM tests;
+  actual target UI acceptance is recorded separately.
+
+### Upgrade from beta.4
+
+Install the complete package and restart Home Assistant, then refresh the frontend
+resource and regenerate saved mobile/tablet cards. Restart resets in-memory
+Stability collection. No entity or configuration migration is required. Rollback
+restores the complete beta.4 package and matching cards/resources.
+
+## v2.1.0-beta.4 — Earlier unpublished candidate
+
+Unpublished development candidate based on beta.3 (`345a840`). Published Stable
+remains v2.0.12. No release tag or HACS publication is implied.
+
+- Integrates optional, read-only output observation with structured exact-rule
+  confirmations, identity-bound recovery, per-association context-only retirement,
+  and explicit companion mapping import. It defaults disabled.
+- Adds an optional packaged adaptive Outputs card, backend-authored attention and
+  coverage, and normal mobile/tablet exports with complete native output controls.
+- Preserves beta.3's Stability implementation, drift progress, badge summaries,
+  history panels, room colours, lane decisions and existing entity semantics.
+- Handles initial setup and unchanged HA state reports without false missing-output
+  claims; event timestamps prevent delayed older reports from clearing newer
+  registry quarantine.
+- Uses a neutral devices icon for shared Outputs and domain-specific row icons;
+  fans no longer represent switches, humidifiers or lights. Native V2 and gallery
+  headers follow the same convention. The dark Outputs surface owns readable text
+  colours locally, including native child rows, when HA uses a light theme.
+- Accepts Home Assistant read-only configuration mappings when generating adaptive
+  cards; a targeted regression protects the live options/export boundary.
+- Bounds observations and identity custody, excludes detailed payloads from Recorder,
+  redacts mapping identities in diagnostics, and isolates optional setup failures.
+- Validated locally with pure/regression suites, real HA 2026.5.1/2026.9.3 APIs and
+  synthetic browser cases. Target deployment evidence remains separately recorded.
+
+### Upgrade from beta.3
+
+Install the complete package and restart Home Assistant to load the new Python
+modules. Restart resets in-memory Stability collection; this is a new observation
+period, not continuation of the beta.3 soak. No configuration/entity migration is
+required for existing HI settings. To use the optional UI, enable observation,
+register its module resource, regenerate cards and replace saved Manual-card YAML.
+Existing companion users explicitly import reviewed bindings and remove the old
+competing frontend resource. See [setup and rollback](docs/output-observation.md).
+Rollback restores the complete beta.3 package and prior cards/options/resources.
+
+## v2.1.0-beta.3 — Earlier unpublished candidate
+
+Development candidate, prepared from all changes since the beta.2 version commit
+`76285b0`, through `4f86e66`. Published Stable remains v2.0.12; this beta remains
+an unpublished candidate.
+
+### V2 badge summaries
+
+- Mould and condensation history give source rooms individual colours with matching
+  labelled legends, retained across histories and ranges within the page session.
+- Humidity, Condensation, Mould, Current Air Control, Ready, Zone 1, Zone 2 and AQ
+  open short explanations before history. Summaries
+  identify the actual mapped history source and retain unavailable states.
+- Ready, Zone 1, Zone 2 and AQ use compact text-only badges with their existing
+  active and alert emphasis. Stability details put the snapshot notice below the
+  content and keep Close within a viewport bounded by device safe areas.
+  V2 dialogs use compact circular X controls with accessible Close labels and
+  comfortable touch targets; explanations use positive, direct language.
+  History navigation keeps its background transparent so scrolling content remains
+  visible between Back and Close.
+- Badge explanations and history messages use plain, friendly language. Recorded
+  changes and value selectors have clearer labels, and history availability messages
+  offer useful next steps while retaining source status and safety context.
+- V2 Mobile and V2 Tablet share the changes. V1 is unchanged. Refresh exports and
+  replace pasted Manual cards; this template-only change requires no Python restart
+  or configuration/data migration. Runtime control and entity semantics are unchanged.
+- Condensation and Mould show recorded risk levels and source rooms on separate
+  timelines. Current Air Control shows operating-mode changes and separately
+  timestamped recorded reasons. Each source retains its own timing; operating mode
+  represents controller state.
+- AQ shows separate recorded aggregate charts for available IAQ, PM2.5, VOC and CO
+  sources. Missing units are stated, unavailable values break traces, and recorded
+  unit changes are kept separate. Values follow the recorded backend aggregates.
+- History loads on demand for 24 hours or seven days, with Back, Close and native
+  entity-details access. Missing, failed and bounded partial results are explicit;
+  history availability continues to depend on Home Assistant Recorder and access.
+  Recorder retention, backend control and dashboard refresh behavior are preserved.
+
+### Packaging and validation
+
+- Adds the canonical shared history renderer and deterministic embed-sync tooling
+  for both V2 templates and their gallery mirrors. The complete controller package
+  contract now includes the renderer (56 files).
+- Extends automated validation for summary interactions, recorded history, generated
+  entity mappings, packaging, drift and Stability details. Source-room colours have
+  regression coverage for matching legends and identity across embedded histories.
+
+### Upgrade from beta.2
+
+- Install the complete beta.3 package when applying this candidate, then run
+  `humidity_intelligence.refresh_ui` and export fresh V2 cards with `dump_cards` or
+  `view_cards`. Replace each saved Manual card with its complete fresh export and
+  refresh the dashboard client to load it.
+- The beta.2-to-beta.3 changes are UI assets, packaging checks and documentation;
+  backend Python, entity semantics, lane priority and stored data are preserved.
+  UI activation uses refreshed exports while the existing runtime and Stability
+  collection continue. Home Assistant loads the new manifest identity on its next
+  full restart; restarting resets the in-memory Stability collection. Installing
+  from an earlier Python baseline requires the cumulative package restart.
+- V1 retains its beta.2 behaviour. Dashboard refresh-loading improvements remain
+  deferred. Rollback restores the earlier package and saved dashboard cards together.
+- The implemented UI through `4f86e66` received Lab checks before this version bump;
+  those observations identify the tested UI source. Beta.3 package/loaded-version
+  evidence is recorded separately when installed and activated.
+
+## v2.1.0-beta.2 — Earlier unpublished candidate
+
+Version introduced at `76285b0`; subsequent V2 summary and history work is collected
+under beta.3 above. Published Stable remains v2.0.12.
+
+### Seven-day drift badge
+
+- Shows backend-derived **Baseline · N%** collection progress before usable drift
+  data is available. Missing or invalid coverage remains unknown rather than implying progress.
+- Opens a concise explanation on tap, with **View history** opening native Home
+  Assistant history for the same drift entity and **Close** dismissing details.
+- Preserves drift calculations, Stability scoring, control decisions and entity
+  semantics. Regenerate exports and replace pasted Manual cards to receive the UI;
+  no configuration or stored-data migration is required.
+
+## v2.1.0-beta.1 — Earlier unpublished candidate
+
+Committed and pushed through `144570b` on `senyo888-patch-1`, with earlier
+collection work through `07dc87a`. This candidate remains unpublished: no tag, GitHub Release or HACS
+offering. Published Stable remains v2.0.12.
+
+### Accepted Stability Score integration
+
+- Corrects early baseline progress with one clockwise LED per valid sample. Strict
+  count/ratio checks keep malformed evidence unlit; the origin clears as collection
+  begins. Scored movement and the separate red history track retain their behavior.
+- Uses the whole badge action to open a detached details dialog with a visible Close
+  button, snapshot label, navigation cleanup and native Diagnostics fallback.
+  Readable Diagnostics includes baseline and failure evidence. Refresh exports and
+  replace pasted cards; updated Python requires restart, which clears baseline history.
+  No configuration migration or control-lane changes are required.
+
+- Retains known failed or missed scheduled sample buckets in memory for the rolling
+  72-hour window. A separate thin red track shows that history in non-scored
+  collection/evidence states; details give the exact count when marks overlap.
+  Backend-owned history is bounded to 432 unique UTC slots, expires with the window,
+  and never infers pre-start or offline failures. Successful recovery of a bucket
+  clears its failure mark. Restart/reload clears this history with the baseline.
+  The Python update requires a restart; no configuration or stored-data migration
+  is required. Scoring, score-movement LEDs and control decisions are unchanged.
+- Shows collection progress as a clockwise LED fill from the top, using backend
+  progress toward the minimum valid-sample requirement. Collection details now show baseline
+  progress against that minimum (303), instead of the 432-bucket rolling capacity,
+  and explain collection separately from score movement. Outside collection the
+  tally is explicitly labelled rolling-window coverage. Incomplete progress never
+  fills the whole ring; backend score and evidence transitions remain immediate.
+  This presentation-only change preserves scoring, control and entity semantics.
+  Regenerate exports and replace pasted Manual cards to receive the updated UI;
+  no configuration or stored-data migration is required.
+- Restores the accepted shared Diagnostics builder connection so the live sensor
+  receives collection progress and scores. Regression checks use the real builder.
+- Classifies the isolated scenario tooling for controller packaging and updates
+  package-count checks for the two added helpers. V2.1.0 artifacts use the explicit
+  `hi-package-public-v21-conventional-1` contract; the V2.0 contract stays unchanged.
+  Downstream controller acceptance of the new contract is not yet verified.
+
+- Rejects malformed or out-of-range displayed scores without numeric coercion across
+  all four cards. Invalid payloads show a dash, neutral halo and `NO SCORE`, without
+  stale healthy text or movement. Valid scores, including zero, remain unchanged.
+
+- Integrates the accepted observational Stability backend, ten-minute UTC sampler,
+  bounded diagnostics and readable explanation. Six components use a 72-hour window;
+  eligibility needs 303 of 432 valid buckets plus consecutive/balance evidence.
+  Configured AQ evidence, penalties, caps and unavailable states stay backend-owned.
+- Replaces the historical preview in generated V2 Mobile/Tablet and default gallery
+  cards with the accepted score, retained full-circle movement, independent LED
+  colours, Partial/reduced-motion treatment and Recent trend details; the later
+  correction above uses a detached native dialog with native Diagnostics fallback.
+- Preserves control entity IDs/native states, Manual handover, CO-first ordering and
+  independent humidifier authority. No configuration or stored-data migration is
+  required. Python installation requires a full restart; regenerate exports, replace
+  pasted Manual cards and refresh frontend caches. Restart/reload resets in-memory
+  score history and movement. Package and card rollback are separate operations.
+- Adds the [accepted contract](docs/stability-score-accepted-baseline.md) and
+  [synthetic scenario/validation guide](docs/stability-testing.md). Details use a
+  native dialog with native more-info fallback. This work is unreleased; earlier preview entries
+  below remain historical release truth.
+
+- Extends the existing `v205_release_check` compatibility boundary to v2.1
+  beta/rc/stable while retaining v2.0.5–v2.0.12 support. The service name, schema,
+  admin requirement, report path and runtime/device-read-only purpose are unchanged.
+
+## v2.0.12 — Published Stable (2026-09-09)
+
+Published as a non-prerelease [GitHub Release](https://github.com/senyo888/humidity-intelligence/releases/tag/v2.0.12).
+The exact final package registered after one completed restart in the observed
+beta.4-to-Stable update; historical beta validation's two restarts do not establish
+an installation rule. No configuration/data migration or Manual-card re-export is
+required for v2.0.12; its generated-card bytes are unchanged.
+
+### Historical v2.0.12 candidate preparation
+
+The entries below retain their original candidate scope and evidence limitations;
+references to unpublished candidates are historical, not current publication status.
 
 ![Humidity Intelligence v2.0.12 release header celebrating repository-level HACS inclusion](assets/release_banner/v2.0.12_release.png)
 

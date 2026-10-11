@@ -59,9 +59,9 @@ names, Area names, Label names, entity maps, and state dumps. Selected mapping a
 local-name evidence is generally reduced, but user-configured display and level labels may remain.
 Review the complete file before uploading it to a public issue.
 
-## v2.0.12 Diagnostics And Release Check
+## Diagnostics And Release Check
 
-The v2.0.12 maintenance candidate keeps native diagnostics schema `1`, existing
+The v2.1.0-rc.1 candidate keeps native diagnostics schema `1`, existing
 redaction, aggregate mapped-entity availability, and browser-local Inspector
 compatibility unchanged. After a full restart, confirm loaded identity using Home
 Assistant's native diagnostics fields `custom_components.humidity_intelligence.version`
@@ -72,10 +72,34 @@ and does not independently prove which version is loaded. See
 for the separate package, restart, and registration checks.
 
 The historical `v205_release_check` service name is unchanged. Its accepted manifest
-range and result wording now cover v2.0.5-v2.0.12 beta/rc/stable. The service remains
+range and result wording cover v2.0.5-v2.0.12 plus v2.1.0 beta/rc/stable. The service remains
 admin-only and runtime/device read-only, writes under
 `<config>/humidity_intelligence/exports/`, and cannot prove physical moisture output.
 Treat its entity-bearing report as local/private until reviewed or sanitized.
+
+## Stability Collection And Loaded-Code Checks
+
+While collecting, the Stability badge and popup show valid samples toward the
+backend minimum of 303. After a score becomes available, rolling-window coverage
+uses 432 expected samples over 72 hours. The blue ring shows valid-sample progress;
+separate inner red marks retain observed failed or missed scheduled buckets. Red
+marks do not advance collection or imply a falling score. Missing failure history
+means unavailable, not zero failures. Restart or reload clears all in-memory
+Stability history; there is no offline backfill.
+
+Use the live Diagnostics sensor or native config-entry diagnostics for Stability.
+The existing `dump_diagnostics` support export filters out this telemetry, so its
+absence there does not diagnose an inactive sampler.
+
+When installed files and displayed behavior disagree, compare loaded diagnostics,
+expected runtime fields and freshly generated cards. A matching on-disk manifest
+or package hash alone cannot establish which Python module Home Assistant loaded.
+Keep backup and temporary integration copies outside `custom_components`, including
+copies with renamed folders: their manifests can still identify the same integration
+domain. Preserve rollback copies before correcting duplicate discovery, then verify
+the loaded payload and generated card after the authorized restart. See
+[Stability testing](stability-testing.md#authorized-installation-and-client-checks)
+for validation limits and separate package/dashboard rollback requirements.
 
 ## Humidifier Demand/Output Troubleshooting
 

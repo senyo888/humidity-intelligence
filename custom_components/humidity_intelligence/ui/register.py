@@ -8,6 +8,7 @@ will need to interact with the frontend when the API becomes stable.
 
 from __future__ import annotations
 
+import json
 import logging
 import re
 from typing import Any, Dict, List
@@ -21,6 +22,7 @@ from ..const import (
     DOMAIN,
 )
 from ..helpers.level_labels import resolve_level_labels
+from .revision import revision_metadata, stamp_card
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -347,6 +349,11 @@ async def async_register_cards(hass: HomeAssistant, entry_id: str, mapping: Dict
     :param mapping: Placeholder to actual entity_id mapping for substitution
     :return: A mapping of card names to YAML strings
     """
+    data = hass.data.setdefault(DOMAIN, {}).setdefault(entry_id, {})
+    # Clear old targets before any await. An incomplete rebuild must not retain
+    # an earlier successful advertisement. Publish the completed result below.
+    data["ui_revision"] = revision_metadata(entry_id)
+    ui_revision = revision_metadata(entry_id)
     base_path = Path(__file__).parents[1] / "ui" / "cards"
     card_files = {
         "v2_mobile": base_path / "v2_mobile.yaml",
@@ -385,10 +392,45 @@ async def async_register_cards(hass: HomeAssistant, entry_id: str, mapping: Dict
             pattern = rf"(?<![A-Za-z0-9_]){re.escape(placeholder)}(?![A-Za-z0-9_])"
             content = re.sub(pattern, entity_id, content)
 
+        # A configured output without a current HA state is unavailable, not
+        # absent. Resolve the native header inventory here so the browser never
+        # needs to mistake an unmapped template placeholder for an output.
+        native_outputs = list(dict.fromkeys(
+            entity_id
+            for placeholder in ("fan.kitchen_air", "fan.living_room_air", "fan.upstairs_air")
+            if isinstance(entity_id := mapping.get(placeholder), str) and entity_id
+        ))
+        content = re.sub(
+            r"const outputIds = .*?; // HI native output inventory",
+            lambda _match: "const outputIds = " + json.dumps(native_outputs) + "; // HI native output inventory",
+            content,
+        )
+
         content = _prune_unresolved_entity_items(content, unresolved)
         content = _prune_empty_card_lists(content)
         content = _prune_invalid_conditional_cards(content)
         content = _prune_empty_card_lists(content)
+
+        if name in {"v2_mobile", "v2_tablet"} and show_output_details:
+            observation = _entry_section(entry, "output_observation", {}) if entry else {}
+            alert_only = bool(_entry_section(entry, "alert_only_mode", False)) if entry else False
+            if isinstance(observation, dict) and observation.get("enabled") is True and not alert_only:
+                try:
+                    from ..adaptive_output.cards import render_output_card
+                    from ..adaptive_output.config_adapter import extract_configured
+
+                    inventory = extract_configured(dict(entry.data or {}), dict(entry.options or {}))
+                    feed = None
+                    if observation.get("presentation", "native") == "adaptive":
+                        feed = er.async_get(hass).async_get_entity_id(
+                            "sensor", DOMAIN, f"hi_{entry_id}_output_status"
+                        )
+                    content = await hass.async_add_executor_job(
+                        render_output_card, content, inventory, feed
+                    )
+                except Exception as exc:
+                    # Export remains usable with the canonical native presentation.
+                    _LOGGER.warning("Adaptive output card unavailable; keeping native Outputs: %s", exc)
 
         unresolved_in_card: List[str] = []
         for placeholder in unresolved:
@@ -412,11 +454,15 @@ async def async_register_cards(hass: HomeAssistant, entry_id: str, mapping: Dict
                 + "\n"
             )
             content = warning + content
+        content, revision_target = stamp_card(content, name, ui_revision)
+        if revision_target is not None and not unresolved_in_card:
+            ui_revision["layouts"][name] = revision_target
         cards[name] = content
 
     hass.data.setdefault(DOMAIN, {}).setdefault(entry_id, {})
     hass.data[DOMAIN][entry_id]["level_labels"] = level_labels
     hass.data[DOMAIN][entry_id]["unresolved_placeholders_by_card"] = unresolved_by_card
+    hass.data[DOMAIN][entry_id]["ui_revision"] = ui_revision
     return cards
 
 

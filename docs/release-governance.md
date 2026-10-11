@@ -3,20 +3,37 @@
 Humidity Intelligence uses semantic versioning with explicit prerelease markers for
 testing and validation branches.
 
+## Source-review split boundary
+
+This branch is part 1 of a two-PR source review reconstructed from beta.7. Its
+`2.1.0-rc.1` manifest is a source integration label, not a claim to be the complete
+RC.1 candidate on `senyo888-patch-1`. Exact commit identity distinguishes these
+snapshots. Do not install, publish or transfer final-candidate Stable acceptance to
+this partial foundation. Part 2 restores the complete approved candidate.
+
+The split changes review organization only. Subsequent review corrections to Drift
+snapshots and adaptive Outputs advance this foundation to V2 layout revision 3,
+explicitly superseding revisions 1 and 2. Schema/generator remain 1. These source
+changes require fresh card exports when the eventual complete package is installed. Both PRs need their own source checks and review; neither is authorized
+to merge by preparation. The final PR temporarily targets the foundation branch
+for a bounded review diff, and returns to `develop` after its dependency merges.
+
 ## Canonical Version Model
 
-- `2.0.12-beta.1`: initial testing build.
-- `2.0.12-beta.2`: prior testing build with the Home Assistant 2026.9 child-device
-  Area inheritance alignment.
-- `2.0.12-beta.3`: prior testing build with the Manual override output-handover repair
-  and bounded runtime-control diagnostics.
-- `2.0.12-beta.4`: tested beta build with the same Manual handover behavior and a
-  coherent plain-language reason-field explanation.
-- `2.0.12-rc.1`: prior release-candidate build; metadata/docs/tests promotion of beta.4.
-- `2.0.12`: stable version label. On `senyo888-patch-1`, `develop`, or `main`,
-  stable metadata may be staged or promoted through the governed release path.
-  Published release status comes from release tags, GitHub release publication, and
-  maintainer approval.
+- `2.1.0-rc.1`: current unpublished source-review foundation only; see the boundary above.
+- `2.1.0-beta.7`: earlier unpublished candidate with restrained V2 styling, a truthful UI revision indicator and preserved native/adaptive Outputs.
+- `2.1.0-beta.6`: earlier unpublished candidate with clearer Outputs/settings wording and bounded cancel-return correction.
+- `2.1.0-beta.5`: earlier unpublished candidate with compact Outputs summaries and on-demand controls.
+- `2.1.0-beta.4`: earlier unpublished candidate with optional output observation and adaptive Outputs.
+- `2.1.0-beta.3`: earlier unpublished candidate with V2 summaries, recorded histories and source-room colours.
+- `2.1.0-beta.2`: earlier unpublished candidate, introduced at `76285b0`, with seven-day drift progress/details.
+- `2.1.0-beta.1`: earlier committed/pushed, unpublished Stability candidate.
+- `2.1.0`: future stable identity; metadata alone does not publish it.
+- `2.0.12`: current published Stable, released on 2026-09-09.
+- `2.0.11`: immediately preceding published Stable, released on 2026-08-11.
+
+The historical v2.0.12 beta.1–beta.4 and rc.1 sequence below retains its original
+scope and evidence. It does not describe the current candidate or reopen that release.
 
 The integration version in
 `custom_components/humidity_intelligence/manifest.json` is the source of truth for the
@@ -26,16 +43,35 @@ must remain aligned with the
 `custom_components/humidity_intelligence/manifest.json` version contained in the
 published GitHub Release/tag.
 
-Version `2.0.11` was published on 2026-08-11 from exact commit
-`0dd3e68ab9f35608641dc64efc4b2c4bfacb06ce`. Humidity Intelligence was subsequently
-included in the HACS default integration repository. Version `2.0.12` uses
-Stable metadata on the governed release-preparation lane. A branch or
-merge containing that metadata is not by itself a publication. Public release status
-comes from GitHub Releases and the version offered through HACS, while
-release readiness must be established through public-safe validation summaries,
-GitHub CI, the required review gates, and explicit maintainer approval. Local
-operational evidence does not replace or become part of the tracked public
-correctness contract.
+Published Stable is [v2.0.12](https://github.com/senyo888/humidity-intelligence/releases/tag/v2.0.12),
+released on 2026-09-09. The current `2.1.0-rc.1` review foundation is unpublished and not installable release evidence.
+The earlier `2.1.0-beta.1` source was committed and pushed through `144570b` on
+`senyo888-patch-1`; beta.2 began at `76285b0`, and beta.3 collects the subsequent UI work through `4f86e66`. There is no v2.1 tag,
+GitHub Release or HACS offering.
+Source status does not certify an installation or authorize further runtime mutation.
+Release readiness still requires scope-appropriate validation, reviews and explicit
+maintainer approval. Local operational evidence does not replace tracked correctness.
+
+Beta.3 adds V2 summaries, compact status badges, richer history panels, friendly
+wording, transparent navigation and distinct source-room colours. Its change from
+beta.2 preserves backend Python and entity semantics. Refresh exports and saved
+Manual cards to activate the UI; the next full restart loads the beta.3 manifest
+identity and resets the in-memory Stability collection. Earlier-baseline installs
+retain the cumulative Python restart requirement. Lab UI evidence through `4f86e66`
+precedes the beta.3 version bump and identifies that exact tested source.
+
+The earlier beta.2 candidate adds backend-derived seven-day drift baseline progress and
+explanatory details with native history access, without changing drift calculations
+or entity semantics. It also contains accepted observational Stability, the corrected shared
+Diagnostics connection, fail-closed score rendering, one collection LED per valid
+sample, bounded failed-sample history, and detached native details with Diagnostics
+fallback, plus scenario/controller fixes. Control semantics remain unchanged. The existing
+`v205_release_check` accepts v2.0.5–v2.0.12 plus v2.1.0 beta/rc/stable identities without
+changing its schema, admin gate or runtime/device-read-only purpose. On installation,
+changed Python requires a full restart; restart/reload resets history and needs 303
+new valid observations. Regenerate exports, replace pasted cards and refresh cache.
+No configuration/entity migration is required. Restore package and dashboard separately
+on rollback. See [the Stability contract](stability-score-accepted-baseline.md).
 
 The short-lived deterministic package produced by
 `.github/workflows/controller-package.yml` is a separately bounded external-validation
@@ -45,6 +81,10 @@ See [Deterministic controller package artifact](controller-package-artifact.md) 
 its exact source, retention, content, provenance, and rollback boundaries.
 
 ## Candidate Registration Evidence
+
+Historical v2.0.12 preparation evidence follows. The final published package registered
+after one completed restart in the observed beta.4-to-Stable update. These observations
+do not transfer to the new v2.1 candidate or guarantee every installation path.
 
 Beta.4 validation used two complete Home Assistant restarts, waiting for startup to
 finish and recording loaded identity and entity/service registration after each.
@@ -92,6 +132,9 @@ another restart. Keep recoverable predecessors outside `custom_components`; do n
 infer an extra restart requirement from the on-disk version or restart in a loop.
 
 ## v2.0.11 Publication And v2.0.12 Maintenance Path
+
+Historical record: both versions are now published. The candidate descriptions below
+preserve the scope and prepublication requirements recorded during their preparation.
 
 The v2.0.11 **Poetic Justice** tag and non-prerelease GitHub Release were published on
 2026-08-11 from exact commit `0dd3e68ab9f35608641dc64efc4b2c4bfacb06ce`.
@@ -258,12 +301,11 @@ record:
 
 ## README Release-Note Structure
 
-The README keeps the current candidate, current Published Stable, and immediately
-preceding Published Stable summaries expanded within Release Notes when opened.
-Release Notes itself may be a collapsed disclosure. When a newer release displaces one of
-those three positions, move the older summary into the collapsible `Previous Releases`
-container. Retain that container as the canonical older-release structure so
-successive releases follow the same visible chronology.
+The README keeps the current candidate and current Published Stable summaries
+expanded. Preceding Stable releases and earlier candidates belong in the collapsible
+`Previous Releases` container, with their historical publication facts and links
+preserved. Move a displaced current summary into that container when a newer release
+takes its place.
 
 `CHANGELOG.md` owns the complete detailed release and legacy-migration history. The
 README container may keep concise displaced summaries and must retain a direct link to
@@ -303,7 +345,21 @@ If any gate is missing for the version being prepared, the release state is `not
 even when the manifest version already carries a stable number on `senyo888-patch-1`,
 `develop`, or `main`.
 
+## v2.1 Candidate Validation
+
+For the exact new candidate, record commit/tree/package identity; run the complete
+tracked suite, compile, version governance, deterministic package checks and the
+[Stability acceptance matrix](stability-testing.md). Verify accepted valid-score parity,
+malformed-score rejection, the real shared Diagnostics pipeline, scheduler lifecycle,
+control invariants and all four generated/gallery surfaces. Client checks cover
+Popover interactions and reduced motion. Existing v2.0.12 or sandbox evidence does
+not establish candidate installation or release readiness. Lab evidence stays optional.
+
 ## v2.0.12 Release Checklist
+
+Historical checklist retained for the completed v2.0.12 release; unchecked marks are
+not a claim that this already published release is blocked. Use the current candidate
+validation scope above for new work.
 
 Use this checklist for the exact v2.0.12 candidate. Keep local validation, Home
 Assistant activation, promotion, tag, GitHub Release, HACS availability observation,
@@ -336,6 +392,40 @@ and post-release observation as separate evidence states.
   requirement, rollback package, and observation plan are explicit.
 - [ ] Bella, Aetherwing, AetherCore, release-sanity, and final maintainer README/release
   approval gates are complete for the exact final head.
+
+## Rendered UI revision check for every version update
+
+The V2 LED is a canonical integration contract, maintained with every candidate
+and release. Record one explicit outcome: **UI unchanged and compatible**, or
+**UI revision advanced**. A manifest-only version bump must not mark unchanged
+compatible cards stale.
+
+Before each version update or release:
+
+- Compare the candidate with the preceding candidate/release source. If either
+  rendered layout changes, advance its revision in `ui/revision.py`. Shared
+  renderer or card-generator changes require both layout revisions to advance.
+- Review the schema and generator contract explicitly. Advance the relevant
+  contract when stamp interpretation or compatibility changes; do not bump it
+  merely for a bug fix that preserves that contract.
+- List older revisions in `supersedes` only when compatibility establishes a real
+  update relationship. Preserve a truthful differing/unverified result otherwise.
+- Synchronise canonical templates and gallery mirrors. Validate both native and
+  adaptive Outputs, generated entry-scoped stamps, Diagnostics targets and LED
+  match/update/difference/unverified behaviour.
+- State whether saved cards require full regeneration/replacement and whether
+  backend metadata requires restart. Preserve the separate activation authority.
+
+Run `python scripts/check_ui_revision_governance.py --base <previous-source>`
+against the previous reviewed candidate/release, then the checks in
+[the revision contract](ui-revision-status.md#validation-and-activation). CI runs
+this policy on every push and pull request: push events use the previous head,
+pull requests use the base SHA, and new branches use their merge-base with the
+repository's default branch. Local/manual runs default to `HEAD^`; always supply
+`--base` for the preceding candidate/release comparison. CI also runs renderer
+synchronisation, generated-card contract tests and LED lifecycle tests.
+The source-change guard is deliberately conservative; it cannot infer semantic
+compatibility, so the explicit release review remains required.
 
 ## Enforcement
 

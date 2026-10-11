@@ -20,6 +20,49 @@ schemas, tracked generated-card templates, and release documentation. Ignored lo
 planning notes may inform maintainer review, but they do not override tracked runtime
 truth.
 
+## Observational Stability Score (unreleased)
+
+The [accepted Stability contract](docs/stability-score-accepted-baseline.md) defines
+backend schema 3/formula 3, six weighted components, evidence states, safety caps,
+classification and presentation in this beta.7-based partial V2.1 source-review
+foundation. This snapshot is not an installable candidate; the complete candidate
+remains on `senyo888-patch-1`. Stability cannot select lanes, change gates or
+write outputs. Existing control entities/native states remain unchanged; Diagnostics
+adds structured Stability telemetry and a readable summary.
+
+Sampling uses 432 ten-minute UTC buckets over 72 hours, with 303 valid samples needed
+for eligibility plus consecutive-pair and balance coverage. History and retained
+movement are in memory only: restart/reload resets both, with no startup backfill.
+Required live evidence suppresses stale scores when unavailable. Configured missing AQ
+is incomplete evidence, never clean air. Excellent/Good/Unstable/Poor boundaries are
+92/70/55/0; caps and explanatory text belong to the backend.
+
+The four generated/gallery renderers preserve the accepted 82px badge, independent
+LED palette and retained signed ±360 movement. Movement reflects score changes, not
+elapsed time. While collecting, the blue LEDs instead fill clockwise from backend
+valid-sample progress toward 303; collection details use the same minimum target.
+Each valid sample illuminates one centred collection slot; the fixed origin hides
+after the first tick. Counts and target are bounded to 432, with a positive target,
+and must agree with the backend progress ratio. Invalid evidence remains unlit;
+incomplete collection cannot appear as a full ring.
+Scored details retain rolling-window coverage out of 432. Backend evidence gates
+remain authoritative; reaching the sample target never forces a score.
+
+A separate inner red track displays observed failed or missed scheduled collection
+buckets during collection or unscored incomplete/live-data states. Backend history
+contains unique buckets in the current 72-hour window, bounded to 432; valid stored
+buckets cannot also be failed. No offline, pre-setup or future failures are inferred.
+Positions are fixed UTC sampling slots, not a timeline beginning at the top. Missing
+history is unavailable, not proof of zero failures. The history resets on restart or
+reload and never advances baseline progress or changes scoring or control.
+
+Whole-badge tap/keyboard opens detached native dialog details as an explicitly labelled
+snapshot, outside the button-card gesture handlers. Close, Escape and backdrop dismiss;
+focus restores, and navigation or owner removal cleans up the single active dialog.
+Clients without native dialog support fall back to Diagnostics more-info; hold opens
+Diagnostics. Partial and reduced-motion treatments remain explicit. Optional frontend
+resources cannot block runtime operation. See [validation and client limitations](docs/stability-testing.md).
+
 ## Deterministic Lane Order
 
 Ventilation lane priority is fixed:
@@ -227,8 +270,18 @@ dashboard documents and must not be written to `<config>/dashboards/`; dashboard
 creation, registration, editing, and deletion stay within Home Assistant's UI.
 
 Dynamic state or attribute text rendered through generated-card HTML must be escaped
-at the HTML sink. The V1 Mobile presentation remains available but deprecated through
-v2.0.9; any removal requires a separately approved v2.1 migration contract.
+at the HTML sink. The V1 Mobile presentation remains available but deprecated in this candidate;
+any removal requires a separately approved migration contract.
+
+V2 generated cards carry an entry- and layout-scoped rendered UI revision, separate
+from the integration manifest. Additive Diagnostics metadata advertises compatible
+targets only for successful generation. The small footer compares declared revisions;
+it does not establish installed dashboard bytes, configuration freshness, arbitrary
+customization, cache state or integration-update availability. Missing/unsupported
+or disconnected evidence is unverified; an explicitly superseded revision is an
+update, while a rollback mismatch is a difference. Export success never proves card
+replacement. This observation adds no writer, lane input or frontend runtime
+dependency. See [the rendered UI revision contract](docs/ui-revision-status.md).
 
 ## Home Assistant And HACS Boundaries
 
@@ -276,3 +329,22 @@ as risk context, but none of those states is a promotion or release veto. Promot
 tagging, GitHub Release publication, HACS publication, and Stable approval are decided
 only by the canonical tracked validation, review, version-governance, CI, and explicit
 maintainer gates documented for the release scope.
+
+## Optional output observation
+
+The opt-in `adaptive_output` subsystem observes configured outputs and diagnostic
+sources without feeding the control engine or writing outputs. Its status sensor
+and optional frontend are failure-isolated from core setup. Exact identity-bound
+source rules and backend-authored coverage determine presentation; observed On is
+not command success or physical-device proof. Registry invalidations remain
+quarantined across orderly reload until later relevant state evidence arrives.
+Custody persistence is best effort, not crash durability.
+
+Structured options stage explicit confirmations and per-association context-only
+retirement before the existing options save. Native presentation remains available
+without the custom frontend. Export transforms preserve surrounding card content
+and resolve the registered sensor; dashboards and Lovelace resources remain
+user-managed. Observation does not change lane priority, humidifier independence,
+Manual ownership, entity semantics of existing entities, or Stability calculations.
+See [output observation](docs/output-observation.md) for lifecycle, limits,
+prototype migration, and rollback boundaries.
