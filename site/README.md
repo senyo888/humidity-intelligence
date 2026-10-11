@@ -1,8 +1,8 @@
 # Humidity Intelligence website
 
 The landing page mirrors tracked product and release claims; the repository and
-Wiki own setup, compatibility and operational detail. V2.1 remains a candidate
-preview while the Stable installation path points to v2.0.12.
+Wiki own setup, compatibility and operational detail. V2.1.0 release source is
+prepared for publication; the published Stable installation path still points to v2.0.12.
 
 The page uses static HTML and CSS, system fonts, locally packaged images and
 native disclosures. It requires no JavaScript, third-party widget, analytics or
@@ -24,6 +24,6 @@ Inspector and every referenced asset with `.github/workflows/pages.yml`; check
 390/820/1440px layouts, keyboard disclosures/pause, reduced motion, local links
 and the three animation phases. The maintainer selected the V2.1 artwork on
 10 October 2026. Earlier HI Stable acceptance, including the seven-day drift history
-advisory, belongs to the previously tested package. Code-review corrections require
-fresh installed-candidate validation. The two source-review PRs remain unmerged;
+advisory, belongs to the previously tested package. Installed RC.1 validation remains
+bound to that exact package. Both source-review PRs are merged into `develop`;
 final release checks and website publication remain separate actions.

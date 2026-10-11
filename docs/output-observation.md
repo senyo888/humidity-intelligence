@@ -1,9 +1,10 @@
 # Optional output monitoring
 
-This guide describes the unpublished v2.1.0-rc.1 candidate. Output monitoring, introduced
-in beta.4, is opt-in and is not part of published Stable v2.0.12. Existing installations
-default to monitoring disabled and native Outputs presentation. Installing the complete
-candidate package requires a Home Assistant restart to load its Python modules.
+This guide describes the v2.1.0 release source, prepared for publication. Output
+monitoring, introduced in beta.4, is opt-in and is not part of published Stable
+v2.0.12. Existing installations default to monitoring disabled and native Outputs
+presentation. Installing the complete package requires a Home Assistant restart to
+load its Python modules.
 
 ## What it observes
 

@@ -5,7 +5,8 @@ testing and validation branches.
 
 ## Canonical Version Model
 
-- `2.1.0-rc.1`: current unpublished release candidate prepared from beta.12, with approved public content, a test-only scenario correction and corrected adaptive Outputs recognition in the release checker. Review corrections address recovery without routine AQ, event-loop Diagnostics publication, monitoring discovery and UI handling. Both V2 layouts now use revision 9; control-engine logic and entity IDs remain unchanged. Earlier HA Stable acceptance belongs to the previous exact package; fresh installed-candidate and final release validation remain pending. No release tag, GitHub Release or HACS publication is implied.
+- `2.1.0`: current stable release source, prepared for publication from reviewed RC.1 revision 9. The final version and documentation preserve runtime and generated-card behavior. Both V2 layouts stay revision 9 with schema/generator 1; installed RC.1 cards remain compatible. Publication and final-package registration are separate evidence.
+- `2.1.0-rc.1`: earlier unpublished release candidate, including the approved public content, adaptive Outputs release-check correction and review fixes for AQ recovery, event-loop Diagnostics publication, monitoring discovery and UI handling. Its exact revision-9 package completed Stable and Lab installation validation; advisory observation remains bound to that package.
 - `2.1.0-beta.12`: earlier unpublished source candidate with autumn targets of 50–60% (high risk 64%) and bounded recent score movement. Both V2 layouts advance from revision 6 to 7; stamp schema/generator 1 and Stability schema 3/formula 4 remain. No configuration migration; an authorized update requires the complete package, restart and replacement card exports. See [Stability contract](stability-score-accepted-baseline.md).
 - `2.1.0-beta.11`: earlier unpublished candidate polishing score details/history and hold-to-toggle presentation. Both V2 layouts advance from revision 5 to 6; metadata schema/generator 1 and formula 4 remain. Install the complete package, restart, export and replace both saved cards; rollback restores package and cards separately. See [Stability contract](stability-score-accepted-baseline.md).
 - `2.1.0-beta.10`: earlier unpublished candidate introducing formula 4, individual-first AQ evidence, observed-clear recovery and synchronized score/LED feedback. Earlier formulas require a fresh baseline.
@@ -18,7 +19,6 @@ testing and validation branches.
 - `2.1.0-beta.3`: earlier unpublished candidate with V2 summaries, recorded histories and source-room colours.
 - `2.1.0-beta.2`: earlier unpublished candidate, introduced at `76285b0`, with seven-day drift progress/details.
 - `2.1.0-beta.1`: earlier committed/pushed, unpublished Stability candidate.
-- `2.1.0`: future stable identity; metadata alone does not publish it.
 - `2.0.12`: current published Stable, released on 2026-09-09.
 - `2.0.11`: immediately preceding published Stable, released on 2026-08-11.
 
@@ -34,7 +34,7 @@ must remain aligned with the
 published GitHub Release/tag.
 
 Published Stable is [v2.0.12](https://github.com/senyo888/humidity-intelligence/releases/tag/v2.0.12),
-released on 2026-09-09. The current `2.1.0-rc.1` release candidate is unpublished.
+released on 2026-09-09. The current `2.1.0` release source is prepared for publication.
 The earlier `2.1.0-beta.1` source was committed and pushed through `144570b` on
 `senyo888-patch-1`; beta.2 began at `76285b0`, and beta.3 collects the subsequent UI work through `4f86e66`. There is no v2.1 tag,
 GitHub Release or HACS offering.
@@ -385,7 +385,21 @@ and post-release observation as separate evidence states.
 
 ## Rendered UI revision check for every version update
 
-RC.1 follow-up remediation is **UI revision advanced** against reviewed source
+Final `2.1.0` preparation is **UI unchanged** against the reviewed and installed
+RC.1 revision-9 source `f2282d93b6fd3b61d992d149d0fe56ef62738c57` and its merged
+`develop` tree at `02525c1f143f84736045a11bed66daed5e28c19a`. Runtime Python,
+services, translations, renderer JavaScript, generated cards, gallery YAML and
+`ui/revision.py` remain unchanged. Both V2 layouts retain revision 9, schema 1,
+generator contract 1 and supersedes 1–8. Existing revision-9 saved cards stay current;
+a package version change alone must not request a new export. The manifest and
+packaged UI guidance change, so the final package has a new identity. Record that
+identity separately from RC.1 installation and the continuing advisory Lab campaign.
+A final-package installation requires its own loaded-identity confirmation after a
+full restart; this source preparation does not perform that installation.
+
+### Historical RC.1 revision-9 transition
+
+RC.1 follow-up remediation was **UI revision advanced** against reviewed source
 `083959567d8ace94ba3618ccab715edeacc5dc38`. Both layouts advance from 8 to 9,
 explicitly superseding revisions 1–8. Stamp schema/generator 1 and Stability
 schema 3/formula 4 remain. Only confirmed Disabled now hides the Stability badge;
@@ -396,14 +410,16 @@ Export and replace complete saved cards, then refresh clients as needed.
 
 Control-engine logic and existing entity IDs are unchanged. Recovery scoring and
 Diagnostics publication corrections change component bytes, so prior Stable
-acceptance is historical evidence only for its original package. Fresh installed-
-candidate validation remains pending, coordinated separately with Stable maintenance.
+acceptance is historical evidence only for its original package. The corrected
+revision-9 RC.1 package subsequently completed Stable and Lab installation validation,
+coordinated with Stable maintenance. Final-package registration remains separate.
 An authorized package update requires a full restart, clearing in-memory Stability
 history. Source checks do not authorize installation, merge, tagging or publication.
 
-The two-PR review compares each corrected source with its own previous head and
-base, checks generated stamps/Diagnostics targets, and preserves the complete final
-candidate on `senyo888-patch-1`. The foundation remains a partial review snapshot.
+The two-PR review compared each corrected source with its own previous head and
+base and checked generated stamps/Diagnostics targets. Both implementation PRs are
+merged into `develop`; `senyo888-patch-1` remains the final-source preparation branch.
+The foundation is retained as a partial historical review snapshot.
 
 ### Historical beta.12 UI transition
 

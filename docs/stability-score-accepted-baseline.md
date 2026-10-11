@@ -1,11 +1,10 @@
 # Accepted Stability Score baseline
 
-Status: accepted functional and presentation contract; integrated in the unpublished
-RC.1 candidate, following its introduction in beta.1 and refinement through beta.12.
-The local refinement uses formula 4 with additive schema-3 diagnostics.
-This records the accepted behaviour for the current implementation work. It does not
-claim publication, HACS availability, deployment, or a newly approved release version.
-Historical release notes retain their original scope.
+Status: accepted functional and presentation contract in the v2.1.0 release source,
+prepared for publication after the reviewed RC.1 revision-9 candidate. Formula 4 and
+additive schema-3 diagnostics are retained. Published Stable remains v2.0.12; source
+preparation does not establish final-package installation or HACS availability.
+Historical beta and RC release notes retain their original scope.
 
 Stability is integrated alongside the current control engine. Existing Manual handover,
 CO precedence, independent humidifier authority and reason presentation remain intact.
@@ -376,22 +375,27 @@ Diagnostics polling publishes on Home Assistant’s event loop, sharing ownershi
 scheduled updates. Preference reads that fail show **Display preference unavailable**;
 **Save unconfirmed** is reserved for a write that was attempted.
 
-These corrections change component and UI bytes. Earlier Stable acceptance remains
-bound to its original package; the corrected candidate needs fresh installed validation.
+These RC.1 corrections changed component and UI bytes. The corrected revision-9
+package completed Stable and Lab installation validation; earlier acceptance remains
+bound to each original package. Final v2.1.0 retains those runtime and UI bytes, with
+its own manifest and package identity. RC.1 validation is not final-package registration.
 
 ## Installation, compatibility and rollback
 
-The corrected RC.1 source uses V2 UI revision 9 for both layouts, superseding revisions
-1–8, with stamp schema/generator 1 and Stability schema 3/formula 4 retained.
+The final v2.1.0 source retains RC.1 V2 UI revision 9 for both layouts, superseding
+revisions 1–8, with stamp schema/generator 1 and Stability schema 3/formula 4 retained.
 No configuration, entity-registry or stored-data migration is required. The Diagnostics
 readable attribute is additive; existing entity IDs and native states are unchanged.
 After installing changed Python, perform a full Home Assistant restart. Restart and
 entry reload discard in-memory history and movement and restart baseline collection.
 
-Run `humidity_intelligence.refresh_ui`, then obtain fresh supported `dump_cards` or
-`view_cards` exports. Replace the complete pasted Manual-card YAML and refresh the
-browser/app frontend; clear its cache if it retains an older renderer. Existing pasted
-cards do not update themselves. Validate Mobile, Tablet and the cards actually in use.
+When upgrading older V2 cards, run `humidity_intelligence.refresh_ui`, then obtain
+fresh supported `dump_cards` or `view_cards` exports. Replace the complete pasted
+Manual-card YAML and refresh the browser/app frontend; clear its cache if it retains
+an older renderer. Existing RC.1 revision-9 cards remain compatible with final
+v2.1.0 and need no extra export for the version bump. V1 Mobile also needs replacement
+YAML for the RC.1 Drift correction. Pasted cards do not update themselves; validate
+Mobile, Tablet and the cards actually in use.
 
 Verify dialog open/dismiss/reopen on the actual phone and tablet clients, including
 after telemetry refresh. Clients without native modal support must open Diagnostics

@@ -3908,7 +3908,9 @@ def test_readme_keeps_candidate_and_stable_visible_with_older_releases_collapsed
     release_notes = readme_source.split("## Release Notes", 1)[1]
     visible_notes, previous_releases = release_notes.split("<details>", 1)
 
-    assert "### v2.1.0-rc.1" in visible_notes
+    assert "### v2.1.0 (Stable source — publication pending)" in visible_notes
+    assert "### v2.1.0-rc.1" not in visible_notes
+    assert "### v2.1.0-rc.1 (Earlier unpublished release candidate)" in previous_releases
     assert "### v2.1.0-beta.12" in previous_releases
     assert "### v2.1.0-beta.11" in previous_releases
     assert "### v2.1.0-beta.10" in previous_releases
@@ -3953,15 +3955,17 @@ def test_readme_keeps_candidate_and_stable_visible_with_older_releases_collapsed
     assert "it does not install automatically" in readme_source
 
 
-def test_v21_candidate_surfaces_preserve_published_stable_and_history():
+def test_v21_release_source_preserves_published_stable_and_candidate_history():
     readme = (ROOT / "README.md").read_text()
     notes = readme.split("## Release Notes", 1)[1].split("<details>", 1)[0]
     changelog = (ROOT / "CHANGELOG.md").read_text()
     governance = (ROOT / "docs/release-governance.md").read_text()
-    assert "Current development manifest version: **v2.1.0-rc.1**" in readme
-    assert "unpublished candidate" in readme
+    assert "Current release-source version: **v2.1.0**" in readme
+    assert "prepared for publication" in readme
     assert "current published Stable is **v2.0.12**" in readme
-    assert "v2.1.0-rc.1" in notes and "v2.1.0-rc.1" in changelog
+    assert "### v2.1.0 (Stable source" in notes
+    assert "## Unreleased — v2.1.0" in changelog
+    assert "## v2.1.0-rc.1 — Earlier unpublished release candidate" in changelog
     assert "v2.1.0-beta.1" in changelog
     previous = readme.split("<summary>Previous Releases</summary>", 1)[1]
     assert "### v2.1.0-beta.10 (" in previous
@@ -5790,7 +5794,7 @@ def test_v205_release_check_service_is_documented_and_registered():
     assert "wiki/Services-Reference" in readme_source
     assert "wiki/Release-Validation-for-Users" in readme_source
     assert "humidity_intelligence_v205_release_check.json" in services_yaml
-    assert manifest["version"] == "2.1.0-rc.1"
+    assert manifest["version"] == "2.1.0"
 
 
 def test_owned_ui_path_discovery_and_legacy_cleanup_guidance_is_explicit():

@@ -1,7 +1,7 @@
 # Reusable monitoring meanings
 
-This feature is included in the unpublished v2.1.0-rc.1 candidate. It extends optional
-output monitoring; published Stable remains v2.0.12.
+This feature is included in the v2.1.0 release source, prepared for publication. It
+extends optional output monitoring; published Stable remains v2.0.12.
 
 A custom meaning gives a monitoring condition a reusable name, an existing HI
 classification and optional **What to do** guidance. The library belongs to one HI
@@ -95,7 +95,7 @@ export and saved-YAML replacement.
 
 ## Activation and rollback
 
-Installing the complete candidate Python package requires a Home Assistant restart.
+Installing the complete Python package requires a Home Assistant restart.
 Saving options subsequently uses the existing entry reload; it does not restart
 Home Assistant. Restart or reload resets the existing in-memory runtime history,
 including Stability collection. Existing configurations require no manual migration.
@@ -110,5 +110,5 @@ custom meanings or their monitoring interpretation. Follow the
 [output-monitoring rollback guidance](output-observation.md#rollback-and-validation)
 when disabling observation or removing its optional resource.
 
-Tests and review evidence belong to the candidate being assessed. This guide does
+Tests and review evidence belong to the exact package being assessed. This guide does
 not establish deployment, live device compatibility or physical-device proof.

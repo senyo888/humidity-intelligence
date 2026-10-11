@@ -84,11 +84,12 @@ unknown input, humidity uses finite numeric evidence, comfort describes position
 relative to the seasonal band, and Outputs names come from the mapped entities.
 The seasonal description never prescribes an action in competition with the backend
 reason. Outputs expansion remains shared per entry and retains its existing timer.
-The revision indicator itself leaves Stability and lane selection unchanged. In the
-corrected RC.1 source, both layouts use revision 9, superseding revisions 1–8.
+The revision indicator itself leaves Stability and lane selection unchanged. In V2.1,
+both layouts use revision 9, superseding revisions 1–8. The final version bump
+preserves RC.1 revision-9 cards; no additional card export is required for that bump.
 This includes the earlier movement/humidity presentation and reviewed adaptive Outputs
 and preference handling corrections. Stamp schema and
-generator contract remain 1. See [the candidate compatibility record](release-governance.md#rendered-ui-revision-check-for-every-version-update).
+generator contract remain 1. See [the release compatibility record](release-governance.md#rendered-ui-revision-check-for-every-version-update).
 
 Installing the Python metadata changes requires the normal complete-package update
 and Home Assistant restart. A restart resets in-memory Stability collection; it is

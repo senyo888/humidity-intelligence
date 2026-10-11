@@ -157,8 +157,8 @@ class PagesSiteTests(unittest.TestCase):
                 encoding="utf-8"
             )
         )
-        self.assertIn(f"Unpublished candidate v{manifest['version']}", normalized_html)
-        self.assertIn("unpublished", normalized_html)
+        self.assertIn(f"V{manifest['version']} · prepared for publication", normalized_html)
+        self.assertIn("awaits publication and is not available there", normalized_html)
         self.assertNotIn("Install from GitHub", html)
         self.assertIn("Open in HACS", html)
         self.assertIn("published release</span><span class=\"badge-value\">v2.0.12", html)
