@@ -19,9 +19,13 @@ label does not claim deployment, promotion, a release tag or HACS availability.
   material and keeps the README focused on the integration and current release.
 - Corrects the stale scenario test expectation without changing runtime behavior;
   aligns documentation and metadata checks with the candidate identity.
+- Corrects `v205_release_check` recognition of adaptive Outputs panels on Mobile
+  and Tablet. Native and adaptive panels are both accepted when enabled; missing
+  panels and panels present while disabled still fail. This changes diagnostic
+  validation only, with no control-engine or generated-card changes.
 - **UI unchanged and compatible** with beta.12 source `c69d7d2`: both V2 layouts
   remain revision 7, with stamp schema/generator 1 and Stability schema 3/formula 4.
-  Runtime logic and generated-card bytes are unchanged. Existing compatible beta.12
+  Control-engine logic and generated-card bytes are unchanged. Existing compatible beta.12
   cards need no replacement solely for the RC version change; older cards still
   require regeneration and replacement.
 - Requires no configuration migration. An authorized package update requires a full

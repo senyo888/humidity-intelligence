@@ -61,7 +61,7 @@ It gives you:
 Current development manifest version: **v2.1.0-rc.1**, an unpublished candidate.
 V2.1 is led by **Stability Score**, with clearer badge explanations and history,
 optional output monitoring, reusable monitoring meanings and a simpler status row.
-RC.1 retains beta.12 runtime behavior and prepares the approved public content.
+RC.1 retains beta.12 control behavior and prepares the approved public content.
 HA Stable acceptance and final release validation remain pending.
 The current published Stable is **v2.0.12**, released on 9 September 2026 and available
 through HACS. See [Release Notes](#release-notes) for candidate scope and upgrade steps.
@@ -831,7 +831,7 @@ score history and hold-to-disable presentation. It also adds badge explanations 
 available history, optional output monitoring, reusable monitoring meanings,
 configuration transaction fixes and a compact Current Air Control status row.
 See the [V2.1 overview](#v21--stability-score) and [complete change history](CHANGELOG.md)
-for the cumulative update. RC.1 retains the beta.12 runtime behavior:
+for the cumulative update. RC.1 retains the beta.12 control behavior:
 
 - sets the built-in autumn humidity band to **50–60%**, retaining the **64%**
   danger threshold. Target-relative mould and humidifier behavior follow the new
@@ -845,8 +845,9 @@ for the cumulative update. RC.1 retains the beta.12 runtime behavior:
   restart, which resets in-memory Stability history. Existing beta.12 revision-7 cards
   remain compatible; older cards require regeneration and complete replacement
 - includes the approved README and website refinements, selected V2.1 release artwork
-  and test-only scenario correction. Runtime logic and generated-card bytes are unchanged
-  from beta.12; **UI unchanged and compatible**
+  and test-only scenario correction. The release checker also recognises adaptive
+  Outputs panels without relaxing missing/disabled-panel checks. Control-engine logic
+  and generated-card bytes are unchanged from beta.12; **UI unchanged and compatible**
 - [RC.1 preparation changes](CHANGELOG.md#unreleased--v210-rc1). Published Stable remains
   v2.0.12. HA Stable acceptance and final release validation remain pending; this
   source candidate does not claim deployment, release or website publication
