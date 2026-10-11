@@ -16,7 +16,7 @@ import unittest.mock
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 BUILDER_PATH = ROOT / "scripts" / "build_controller_package.py"
 WORKFLOW_PATH = ROOT / ".github" / "workflows" / "controller-package.yml"
-UPLOAD_ARTIFACT_V7_SHA = "043fb46d1a93c77aae656e7c1c64a875d1fc6a0a"
+UPLOAD_ARTIFACT_V7_SHA = "cf430e030ddbb5b0abf93d22962f4752f3646cd9"
 ATTEST_V4_2_2_SHA = "1e69f48acb82d1966a394da916b4c1698aa569d6"
 
 
