@@ -117,8 +117,9 @@ class DocumentationBannerTests(unittest.TestCase):
             0,
         )
         self.assertIn("## 2.0.9 - 2026-07-28", changelog)
+        self.assertLess(changelog.index("## Unreleased"), changelog.index("## v2.0.12"))
         self.assertLess(
-            changelog.index("## Unreleased"),
+            changelog.index("## v2.0.12"),
             changelog.index("## 2.0.9 - 2026-07-28"),
         )
 

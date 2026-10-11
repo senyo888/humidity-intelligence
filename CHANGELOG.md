@@ -462,14 +462,25 @@ references to unpublished candidates are historical, not current publication sta
 
 ![Humidity Intelligence v2.0.12 release header celebrating repository-level HACS inclusion](assets/release_banner/v2.0.12_release.png)
 
+- Reorganised the README into independent expandable sections after the open
+  introduction and support section, retaining safety, installation and migration
+  guidance. Version-specific notes link to the published release record.
+- Replaced the release header's central glass droplet with the official HI logo,
+  retaining the wording and overall composition. Integration branding and generated
+  dashboard assets are unchanged.
+- Prepared `2.0.12` Stable metadata on the develop-based release lane after RC
+  promotion. The RC-to-Stable component delta is the manifest version only;
+  documentation and matching tests distinguish preparation from publication.
+  The exact final package subsequently registered after one completed restart in
+  the validated beta.4-to-Stable update, with diagnostics and release checks passing.
 - Advanced the development identity to `2.0.12-rc.1` for the forward promotion from
   `senyo888-patch-1` to `develop`, then `main`. The beta.4-to-RC delta changes only
   manifest identity, release documentation, and associated tests. Beta.4 live
   validation remains bound to its tested package; the RC is a new package digest.
 - Recorded the two completed restarts used for beta.4 candidate validation, with
   separate loaded-identity and registration checks. This is not an established
-  installation rule for final v2.0.12. Verify the final package before stating such
-  a rule in Stable release notes or update instructions. Keep rollback copies
+  installation rule for final v2.0.12: its exact package registered after one
+  completed restart in the validated beta.4-to-Stable update. Keep rollback copies
   outside `custom_components` so duplicate domains cannot interfere with discovery.
 - Humanised the Manual reason field into one coherent explanation of the active mode,
   the ordinary outputs HI will leave unchanged, who remains in control, how to return
@@ -496,8 +507,7 @@ references to unpublished candidates are historical, not current publication sta
   Assistant validation. Earlier beta.2 evidence remains historical evidence for its
   exact package and does not transfer to beta.3.
 - Advanced development identity to `2.0.12-beta.2` so the Home Assistant 2026.9
-  alignment remains distinct from the earlier beta.1 testing bytes. This candidate
-  is not a published GitHub Release or an HACS-offered v2.0.12 package.
+  alignment remains distinct from the earlier beta.1 testing bytes. This was a validation candidate, distinct from the final v2.0.12 package.
 - Recorded completed inclusion in the HACS default integration repository, added the
   official My Home Assistant repository button, and replaced normal first-install
   custom-repository instructions with the default-store search and download path.

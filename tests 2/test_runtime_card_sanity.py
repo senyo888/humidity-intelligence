@@ -7069,6 +7069,31 @@ def test_release_check_rejects_unsupported_or_malformed_v21_versions():
         assert status == "fail", version
 
 
+def test_readme_contents_headings_have_unique_github_anchors():
+    """Keep navigation valid across Markdown and disclosure heading layouts."""
+    import re
+
+    source = (ROOT / "README.md").read_text()
+    headings = re.findall(r"^## (.+)$|<summary><h2>(.*?)</h2></summary>", source, re.MULTILINE)
+    slugs = [
+        re.sub(r"[^\w -]", "", (markdown or disclosure).lower()).replace(" ", "-")
+        for markdown, disclosure in headings
+    ]
+    assert len(slugs) == len(set(slugs))
+    explicit = re.findall(r'<a id="([^"]+)"></a>', source)
+    assert len(explicit) == len(set(explicit))
+    assert not set(slugs).intersection(explicit)
+    contents = source.split("## Contents", 1)[1].split("\n---\n", 1)[0]
+    for target in re.findall(r"\]\(#([^)]+)\)", contents):
+        assert (slugs + explicit).count(target) == 1, target
+    for legacy_target in (
+        "v2012-maintenance-candidate-not-published",
+        "v2011--poetic-justice-current-published-stable",
+        "v2010-previous-published-stable",
+    ):
+        assert explicit.count(legacy_target) == 1
+
+
 if __name__ == "__main__":
     tests = [
         (name, value)

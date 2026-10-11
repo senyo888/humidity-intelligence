@@ -854,6 +854,8 @@ for the cumulative update. RC.1 retains the beta.12 control behavior:
   final release validation remains pending. This candidate does not claim release
   or website publication
 
+<a id="v2012-maintenance-candidate-not-published"></a>
+
 ### v2.0.12 (Current Published Stable)
 
 ![Humidity Intelligence v2.0.12 release header celebrating repository-level HACS inclusion](assets/release_banner/v2.0.12_release.png)
@@ -903,6 +905,8 @@ for the cumulative update. The latest beta.12 refinement:
 - [Complete beta.12 changes](CHANGELOG.md#v210-beta12--earlier-unpublished-candidate). Published Stable
   remains v2.0.12; this source candidate does not claim deployment or publication
 
+
+<a id="v2011--poetic-justice-current-published-stable"></a>
 
 ### v2.0.11 — Poetic Justice (Previous Published Stable)
 
@@ -1115,6 +1119,8 @@ history. Both V2 layouts used revision 5. Restart resets its in-memory baseline.
   dialog with Close, snapshot labeling and Diagnostics fallback; see
   [testing and compatibility](docs/stability-testing.md).
   Local validation does not establish deployment, release readiness or HACS availability
+
+<a id="v2010-previous-published-stable"></a>
 
 ### v2.0.10
 

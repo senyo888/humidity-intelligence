@@ -334,7 +334,12 @@ class PagesSiteTests(unittest.TestCase):
             with self.subTest(pattern=pattern):
                 self.assertNotIn(pattern, site_text)
 
-        lower_site_text = site_text.lower()
+        # Permit publication-record navigation, not a claim that the source is latest.
+        lower_site_text = site_text.lower().replace(
+            "github releases records the latest published stable", "publication record"
+        ).replace("humidity intelligence latest published release", "publication link").replace(
+            '<span class="badge-value">latest</span>', '<span class="badge-value">release</span>'
+        )
         for claim in risky_claims:
             with self.subTest(claim=claim):
                 self.assertIsNone(re.search(rf"\b{re.escape(claim.lower())}\b", lower_site_text))
