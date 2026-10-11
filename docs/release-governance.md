@@ -3,16 +3,30 @@
 Humidity Intelligence uses semantic versioning with explicit prerelease markers for
 testing and validation branches.
 
+## Source-review split boundary
+
+This branch is part 1 of a two-PR source review reconstructed from beta.7. Its
+`2.1.0-rc.1` manifest is a source integration label, not a claim to be the complete
+RC.1 candidate on `senyo888-patch-1`. Exact commit identity distinguishes these
+snapshots. Do not install, publish or transfer final-candidate Stable acceptance to
+this partial foundation. Part 2 restores the complete approved candidate.
+
+The split changes review organization only. This foundation retains V2 layout
+revision 2 and schema/generator 1. The version-label change does not make unchanged
+cards stale. Both PRs need their own source checks and review; neither is authorized
+to merge by preparation. The final PR temporarily targets the foundation branch
+for a bounded review diff, and returns to `develop` after its dependency merges.
+
 ## Canonical Version Model
 
-- `2.1.0-beta.7`: current unpublished candidate with restrained V2 styling, a truthful UI revision indicator and preserved native/adaptive Outputs.
+- `2.1.0-rc.1`: current unpublished source-review foundation only; see the boundary above.
+- `2.1.0-beta.7`: earlier unpublished candidate with restrained V2 styling, a truthful UI revision indicator and preserved native/adaptive Outputs.
 - `2.1.0-beta.6`: earlier unpublished candidate with clearer Outputs/settings wording and bounded cancel-return correction.
 - `2.1.0-beta.5`: earlier unpublished candidate with compact Outputs summaries and on-demand controls.
 - `2.1.0-beta.4`: earlier unpublished candidate with optional output observation and adaptive Outputs.
 - `2.1.0-beta.3`: earlier unpublished candidate with V2 summaries, recorded histories and source-room colours.
 - `2.1.0-beta.2`: earlier unpublished candidate, introduced at `76285b0`, with seven-day drift progress/details.
 - `2.1.0-beta.1`: earlier committed/pushed, unpublished Stability candidate.
-- `2.1.0-rc.N`: future release-candidate identity, only after an authorized transition.
 - `2.1.0`: future stable identity; metadata alone does not publish it.
 - `2.0.12`: current published Stable, released on 2026-09-09.
 - `2.0.11`: immediately preceding published Stable, released on 2026-08-11.
@@ -29,7 +43,7 @@ must remain aligned with the
 published GitHub Release/tag.
 
 Published Stable is [v2.0.12](https://github.com/senyo888/humidity-intelligence/releases/tag/v2.0.12),
-released on 2026-09-09. The current `2.1.0-beta.7` candidate is unpublished.
+released on 2026-09-09. The current `2.1.0-rc.1` review foundation is unpublished and not installable release evidence.
 The earlier `2.1.0-beta.1` source was committed and pushed through `144570b` on
 `senyo888-patch-1`; beta.2 began at `76285b0`, and beta.3 collects the subsequent UI work through `4f86e66`. There is no v2.1 tag,
 GitHub Release or HACS offering.
@@ -97,13 +111,24 @@ does not require another Stable deployment for RC source promotion. Final-packag
 registration verification below remains separate. Broader runtime/UI changes require
 fresh scope-appropriate evidence and separate deployment authority.
 
-Before final v2.0.12 release guidance is approved, verify whether the exact final
-package needs two restarts. Record the installed digest, completed startup, loaded
-identity, registrations, and any discovery conflict or intervening package change.
-If two restarts are confirmed necessary, state that prominently in release notes and
-update instructions. Otherwise retain the candidate-validation label. Do not infer
-an extra restart requirement from an on-disk/loaded version mismatch alone or repeat
-restarts without diagnosing setup errors and retaining a recoverable predecessor.
+The RC-to-Stable preparation also changes only manifest identity, documentation,
+and matching tests. Its package digest is distinct; the final-package registration evidence below
+comes from a separate authorised installation, not from the metadata promotion.
+
+The exact final v2.0.12 component package
+`fcfa2c49f3d0e3282771aab575ab60e35aa31717b2565a77e792737ed557c278`
+was installed over verified beta.4 and registered after one completed Home Assistant
+restart. Both loader fields reported 2.0.12; the entry loaded, 95 mapped entities
+were available, 13 services registered, diagnostics reported ok, and all 16 release
+checks passed. The installed 53-file inventory remained exact after startup.
+A second restart was not needed. This establishes the observed beta.4-to-Stable
+update result, not a guarantee for every starting version or installation method.
+
+Keep the two-restart beta procedure labelled as candidate validation. For Stable,
+restart after installation, then verify loaded identity and registration. If setup
+is incomplete, inspect errors and duplicate-domain discovery before deciding on
+another restart. Keep recoverable predecessors outside `custom_components`; do not
+infer an extra restart requirement from the on-disk version or restart in a loop.
 
 ## v2.0.11 Publication And v2.0.12 Maintenance Path
 
@@ -275,11 +300,11 @@ record:
 
 ## README Release-Note Structure
 
-The README keeps the current candidate, current Published Stable, and immediately
-preceding Published Stable summaries expanded. When a newer release displaces one of
-those three positions, move the older summary into the collapsible `Previous Releases`
-container. Retain that container as the canonical older-release structure so
-successive releases follow the same visible chronology.
+The README keeps the current candidate and current Published Stable summaries
+expanded. Preceding Stable releases and earlier candidates belong in the collapsible
+`Previous Releases` container, with their historical publication facts and links
+preserved. Move a displaced current summary into that container when a newer release
+takes its place.
 
 `CHANGELOG.md` owns the complete detailed release and legacy-migration history. The
 README container may keep concise displaced summaries and must retain a direct link to

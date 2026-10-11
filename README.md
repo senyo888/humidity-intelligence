@@ -57,7 +57,14 @@ It gives you:
 - native Home Assistant diagnostics for support and triage
 - services for dashboard export, self-check, diagnostics, pause/resume, and release validation
 
-Current development manifest version: **v2.1.0-beta.7**, an unpublished candidate.
+Current development manifest version: **v2.1.0-rc.1**, an unpublished candidate.
+This branch is the **V2.1 source-review foundation**, reconstructed from beta.7.
+It is part 1 of a two-PR review, not the complete RC.1 package on
+`senyo888-patch-1`. Its RC metadata permits source integration into `develop`;
+exact commit identity distinguishes the two snapshots. Do not install or publish
+this partial snapshot. Final-candidate Stable acceptance does not apply to it.
+Later scoring, interaction and website changes belong to part 2.
+
 It adds optional output observation and adaptive Outputs cards, retaining beta.3’s
 badge summaries, histories, drift progress and observational Stability.
 The current published Stable is **v2.0.12**, released on 9 September 2026 and available
@@ -454,7 +461,7 @@ must be reviewable from tracked repository files.
 
 ## Current Release Highlights
 
-- unpublished candidate `2.1.0-beta.7` adds restrained V2 styling and a truthful UI
+- unpublished candidate `2.1.0-rc.1` adds restrained V2 styling and a truthful UI
   revision indicator, preserving optional output observation, histories, drift and
   Stability details; deterministic control remains authoritative
 - published Stable `2.0.12` improves Manual handover, Home Assistant-local time gates,
@@ -981,7 +988,7 @@ Notes:
   workflows. Dashboard creation and editing remain in Home Assistant's dashboard UI.
   System and Manual buttons keep the
   v2.0.7 helper-toggle behavior.
-- **v2.1.0-beta.7 candidate:** the accepted badge shows backend-owned
+- **v2.1.0-rc.1 candidate:** the accepted badge shows backend-owned
   score, evidence and Recent trend details. It remains observational. See the
   [accepted contract](docs/stability-score-accepted-baseline.md) for thresholds,
   incomplete AQ, restart history reset, client support and card refresh, and the
@@ -1232,20 +1239,19 @@ CO emergency pressure. Details are in
 
 ## Release Notes
 
-### v2.1.0-beta.7 (Unpublished candidate)
+### v2.1.0-rc.1 (Source-review foundation; not the final candidate)
 
-- restrained V2 mobile/tablet depth and a compact bottom-left UI revision indicator;
-  current, update, differing and unverified states reflect the declared UI contract
-- corrects unavailable System/Manual and humidity displays, removes frontend comfort
-  advice, and preserves configured native/adaptive Outputs alongside the UI footer
-- maintains UI revisions independently of package versions, with release checks for
-  revision updates; this package retains layout revision 2 and generator contract 1
-- preserves deterministic control, entity primary states, existing controls and
-  accepted Stability behavior; no configuration or entity migration is required
-- install the complete package and restart, then export and replace the full saved
-  V2 Manual-card YAML; refresh cached clients if needed. Restart resets Stability history
-- [Complete beta.7 changes](CHANGELOG.md#unreleased--v210-beta7). Published Stable
-  remains v2.0.12; package preparation does not establish installation or publication
+- brings together observational Stability Score, Baseline drift progress, badge
+  summaries/history and optional read-only output observation from the beta.7 source
+- retains backend-owned score and evidence semantics, deterministic control and
+  existing output ownership; later formula and interaction refinements are in part 2
+- keeps the V2 revision indicator at layout revision 2, with schema/generator 1
+- preserves configuration/entity compatibility and native diagnostics schema 1
+- this partial source snapshot is for review only: no installation, publication or
+  Stable acceptance is claimed; the complete candidate remains on `senyo888-patch-1`
+- an eventual complete-package upgrade requires a full restart, fresh exports and
+  replacement of saved V2 cards; restart resets in-memory Stability history
+- [Foundation review scope](CHANGELOG.md#unreleased--v210-rc1-source-review-foundation)
 
 ### v2.0.12 (Current Published Stable)
 
@@ -1266,6 +1272,26 @@ CO emergency pressure. Details are in
 - the observed beta.4-to-Stable update registered the exact final package after one
   completed restart. Historical beta validation used two; that is not a permanent
   installation requirement. Keep rollback copies outside `custom_components`
+
+<!-- Canonical release-note structure: keep the current candidate, current Published
+Stable expanded; earlier Stable releases and candidates remain in this container. -->
+<details>
+<summary>Previous Releases</summary>
+
+### v2.1.0-beta.7 (Earlier unpublished candidate)
+
+- restrained V2 mobile/tablet depth and a compact bottom-left UI revision indicator;
+  current, update, differing and unverified states reflect the declared UI contract
+- corrects unavailable System/Manual and humidity displays, removes frontend comfort
+  advice, and preserves configured native/adaptive Outputs alongside the UI footer
+- maintains UI revisions independently of package versions, with release checks for
+  revision updates; this package retains layout revision 2 and generator contract 1
+- preserves deterministic control, entity primary states, existing controls and
+  accepted Stability behavior; no configuration or entity migration is required
+- install the complete package and restart, then export and replace the full saved
+  V2 Manual-card YAML; refresh cached clients if needed. Restart resets Stability history
+- [Complete beta.7 changes](CHANGELOG.md#v210-beta7--earlier-unpublished-candidate). Published Stable
+  remains v2.0.12; package preparation does not establish installation or publication
 
 ### v2.0.11 — Poetic Justice (Previous Published Stable)
 
@@ -1299,12 +1325,7 @@ CO emergency pressure. Details are in
 - requires no config-entry, entity-registry, stored-data, threshold, lane-order,
   service-name, or dashboard-registration migration
 
-<!-- Canonical release-note structure: keep the current candidate, current Published
-Stable, and immediately preceding Published Stable summaries expanded above. Move
-displaced older summaries into this container as new releases are added. CHANGELOG.md
-remains the complete detailed history. -->
-<details>
-<summary>Previous Releases</summary>
+
 
 ### v2.1.0-beta.6 (Earlier unpublished candidate)
 
