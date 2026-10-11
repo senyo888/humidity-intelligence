@@ -234,7 +234,10 @@
     _render(){
       if(!this._config)return;
       const feed=this._hass?.states?.[this._config.entity],p=feed?.attributes?.payload;
-      const valid=this._hass?.connected!==false&&feed&&!['unknown','unavailable'].includes(feed.state)&&validPayload(p);
+      const connected=this._hass?.connected!==false;
+      if(this._signature!==null&&feed===this._lastFeed&&connected===this._lastConnected)return;
+      this._lastFeed=feed;this._lastConnected=connected;
+      const valid=connected&&feed&&!['unknown','unavailable'].includes(feed.state)&&validPayload(p);
       const signature=valid?JSON.stringify(p):'unavailable';if(signature===this._signature)return;this._signature=signature;
       const focusKey=this._body.contains(this.shadowRoot.activeElement)?this.shadowRoot.activeElement?.dataset?.focusKey:null;
       this._chips.replaceChildren();this._body.replaceChildren();this._payload=valid?p:null;

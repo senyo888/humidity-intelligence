@@ -104,6 +104,32 @@ class NativeHomeAssistantTests(unittest.IsolatedAsyncioTestCase):
         finally:
             unsubscribe()
 
+    async def test_diagnostics_poll_publishes_on_native_ha_event_loop(self):
+        import threading
+        from datetime import datetime, timedelta, timezone
+        main_sensor = importlib.import_module(PACKAGE + '.sensor')
+        runtime = self.hass.data[DOMAIN][self.entry.entry_id]
+        runtime.update(config=dict(self.entry.data), options={}, runtime_mode='normal')
+        sensor = main_sensor.HIDiagnosticsSensor(self.hass, self.entry.entry_id)
+        loop, owner_thread = asyncio.get_running_loop(), threading.get_ident()
+        published = []
+        real_publish = main_sensor.publish_stability_score
+        def publish(data, **kwargs):
+            self.assertEqual(threading.get_ident(), owner_thread)
+            self.assertIs(asyncio.get_running_loop(), loop)
+            published.append(kwargs['observed_at'])
+            return real_publish(data, **kwargs)
+        start = datetime(2026, 10, 11, 12, tzinfo=timezone.utc)
+        with patch.object(main_sensor, 'publish_stability_score', side_effect=publish), \
+             patch.object(main_sensor, '_utc_now', side_effect=[start, start + timedelta(seconds=30)]), \
+             patch.object(type(self.hass.services), 'async_call') as service_call:
+            for _ in range(2):
+                # Exercise HA's actual polling dispatcher, which otherwise runs update in its executor.
+                await sensor.async_device_update(warning=False)
+                self.assertEqual(sensor._attr_extra_state_attributes['stability_score'], runtime['stability_published'])
+            service_call.assert_not_called()
+        self.assertEqual(published, [start, start + timedelta(seconds=30)])
+
     async def test_native_lifecycle_and_state_events(self):
         observer = await self.start_observer()
         self.assertIn(self.source.entity_id, observer._watch)

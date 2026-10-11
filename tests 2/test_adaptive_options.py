@@ -329,3 +329,44 @@ def test_import_confirmation_preserves_unrelated_unresolved_binding(modules):
     assert accepted['step_id'] == 'options_output_observation'
     assert f._observation()['confirmations'] == [unresolved, imported]
     assert f._options['output_observation']['confirmations'] == [unresolved]
+
+
+@pytest.mark.parametrize('failure', [ValueError('too_many_candidates'), TypeError('invalid_custody'), KeyError('source')])
+def test_manage_discovery_failure_stays_in_form_without_staging(modules, failure):
+    f = flow(modules)
+    before = copy.deepcopy(f._options)
+    def unavailable():
+        raise failure
+    f._observation_pairs = unavailable
+    result = run(f.async_step_options_output_manage())
+    assert result['type'] == 'form'
+    assert result['step_id'] == 'options_output_observation_error'
+    assert result['errors'] == {'base': 'invalid_observation'}
+    assert result['data_schema']({}) == {}
+    assert f._options == before
+    run(f.async_step_options_output_cancel())
+    assert f._options == before
+
+
+@pytest.mark.parametrize('condition', ['overflow', 'malformed_custody', 'duplicate_custody'])
+def test_manage_real_discovery_errors_allow_return_without_saved_changes(modules, condition):
+    f = flow(modules)
+    if condition == 'overflow':
+        f.registry.extend(dict(entity_id=f'sensor.example_source_{i}', id=f'example_identity_{i}',
+                               device_id='example_device', entity_category='diagnostic') for i in range(256))
+    else:
+        m, _ = modules
+        data, registry, rule = fixtures()
+        saved = m.bind(data, {}, registry, rule)
+        row = {field: saved[field] for field in m.PAIR_FIELDS}
+        known = {'one': row, 'two': dict(row)}
+        if condition == 'malformed_custody':
+            del known['one']['source']
+        f.hass.data = {'humidity_intelligence': {'example_entry': {
+            'output_observer': types.SimpleNamespace(bridge=types.SimpleNamespace(known=known))}}}
+    before = copy.deepcopy(f._options)
+    result = run(f.async_step_options_output_manage())
+    assert result['step_id'] == 'options_output_observation_error'
+    assert result['errors'] == {'base': 'invalid_observation'}
+    assert run(f.async_step_options_output_observation_error({})) == {'type': 'main_menu'}
+    assert f._options == before

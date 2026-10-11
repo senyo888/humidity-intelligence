@@ -343,9 +343,14 @@ class OutputObservationOptionsMixin:
         return await self.async_step_options_output_confirm()
 
     async def async_step_options_output_manage(self, user_input=None):
-        choices = (self._observation_pairs() if user_input is None or not hasattr(self, '_observation_choices') else
-                   [{'value': str(i), 'label': f"{r['output']} ← {r['source']}"} for i, r in enumerate(self._observation_choices)])
         errors = {}
+        try:
+            choices = (self._observation_pairs() if user_input is None or not hasattr(self, '_observation_choices') else
+                       [{'value': str(i), 'label': f"{r['output']} ← {r['source']}"} for i, r in enumerate(self._observation_choices)])
+        except (ValueError, TypeError, KeyError):
+            # Keep discovery/custody failures in the flow without staging a change.
+            return self.async_show_form(step_id='options_output_observation_error',
+                                        errors={'base': 'invalid_observation'}, data_schema=vol.Schema({}))
         if user_input is not None:
             try:
                 index = int(user_input['binding'])

@@ -9,8 +9,9 @@ This project follows a practical changelog format for Home Assistant and HACS us
 ## Unreleased — v2.1.0-rc.1
 
 Unpublished release candidate prepared from beta.12. Published Stable remains
-v2.0.12. HA Stable acceptance is recorded with a seven-day drift history advisory;
-final release validation remains pending. The RC label does not claim promotion,
+v2.0.12. Earlier HA Stable acceptance, including its seven-day drift history advisory,
+is evidence for the previous exact package. Review corrections change component
+bytes; fresh installed-candidate and final release validation remain pending. The RC label does not claim promotion,
 a release tag or HACS availability.
 
 - Prepares the approved README and website content, Home Assistant introduction,
@@ -24,11 +25,20 @@ a release tag or HACS availability.
   and Tablet. Native and adaptive panels are both accepted when enabled; missing
   panels and panels present while disabled still fail. This changes diagnostic
   validation only, with no control-engine or generated-card changes.
-- **UI unchanged and compatible** with beta.12 source `c69d7d2`: both V2 layouts
-  remain revision 7, with stamp schema/generator 1 and Stability schema 3/formula 4.
-  Control-engine logic and generated-card bytes are unchanged. Existing compatible beta.12
-  cards need no replacement solely for the RC version change; older cards still
-  require regeneration and replacement.
+- Corrects recovery scoring for installations with no routine AQ sensors, including
+  CO-only configurations. Missing configured AQ still prevents full recovery;
+  missing-AQ score limits and independent CO protections remain unchanged.
+- Keeps Diagnostics polling publication on Home Assistant’s event loop alongside
+  scheduled updates, avoiding concurrent mutation of Stability history and movement.
+- Preserves open Drift detail snapshots during telemetry updates, contains monitoring
+  discovery errors without replacing saved settings, and skips unchanged adaptive
+  Outputs payload validation while continuing to update native controls.
+- Distinguishes unavailable display-preference reads from unconfirmed writes, and
+  prevents the touch-test checkout from retaining its GitHub token.
+- **UI revision advanced**: both V2 layouts use revision 8, superseding revisions
+  1–7. Stamp schema/generator 1 and Stability schema 3/formula 4 remain. Export and
+  replace saved V2 cards. V1 Mobile also needs replacement YAML for its Drift fix.
+  Control-engine logic and existing entity IDs are unchanged.
 - Requires no configuration migration. An authorized package update requires a full
   restart and resets in-memory Stability history. Installation and final release
   validation remain separate from RC source preparation.

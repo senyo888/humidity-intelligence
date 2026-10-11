@@ -62,7 +62,8 @@ Current development manifest version: **v2.1.0-rc.1**, an unpublished candidate.
 V2.1 is led by **Stability Score**, with clearer badge explanations and history,
 optional output monitoring, reusable monitoring meanings and a simpler status row.
 RC.1 retains beta.12 control behavior and prepares the approved public content.
-HA Stable acceptance is recorded with a seven-day drift history advisory;
+The earlier package passed HA Stable validation with a seven-day drift history
+advisory. Subsequent review corrections require fresh installed-candidate validation;
 final release validation remains pending.
 The current published Stable is **v2.0.12**, released on 9 September 2026 and available
 through HACS. See [Release Notes](#release-notes) for candidate scope and upgrade steps.
@@ -522,9 +523,9 @@ must be reviewable from tracked repository files.
 - **Autumn refinement:** the built-in target band is 50–60%, with humidity danger
   still at 64%. Other seasons and custom profile rules retain their existing behavior.
 
-Both V2 layouts retain UI revision 7. Existing beta.12 revision-7 cards remain
-compatible with RC.1; older saved cards need regeneration, replacement and a frontend
-refresh. An authorized package update requires a full Home Assistant restart.
+Both V2 layouts now use UI revision 8, superseding revisions 1–7. Export and replace
+the complete saved cards, then refresh the frontend. The V1 Mobile Drift correction
+also requires replacement YAML; that layout has no revision indicator. An authorized package update requires a full Home Assistant restart.
 Restart/reload starts Stability history collection again. See
 [HACS and Updates](https://github.com/senyo888/humidity-intelligence/wiki/HACS-and-Updates)
 for package, card and rollback steps. Published Stable remains v2.0.12.
@@ -840,18 +841,25 @@ for the cumulative update. RC.1 retains the beta.12 control behavior:
 - shows recent score movement against an actual recorded reference within 60
   minutes. LED colour still shows the latest change; the halo describes the
   72-hour score. Improving scores can coexist with poor current humidity
-- preserves scoring, evidence, history, touch/keyboard details and hold-to-disable behavior. Both V2 layouts
-  remain at revision 7; stamp schema/generator 1 and Stability schema 3/formula 4 remain
+- corrects recovery scoring when no routine AQ sensors are configured and keeps
+  Diagnostics publication on Home Assistant’s event loop. Missing configured AQ
+  evidence, score ceilings and CO protections remain explicit
+- advances both V2 layouts to revision 8 for review corrections: Drift snapshots
+  remain open during telemetry updates, preference read failures are distinguished
+  from uncertain saves, and unchanged adaptive Outputs data avoids repeated work.
+  Touch/keyboard details and hold-to-disable remain available. Stamp schema/generator
+  1 and Stability schema 3/formula 4 remain
 - requires no configuration migration. An authorized package update requires a full
-  restart, which resets in-memory Stability history. Existing beta.12 revision-7 cards
-  remain compatible; older cards require regeneration and complete replacement
+  restart, which resets in-memory Stability history. Saved cards require regeneration
+  and complete replacement, including V1 Mobile for its Drift snapshot correction
 - includes the approved README and website refinements, selected V2.1 release artwork
   and test-only scenario correction. The release checker also recognises adaptive
-  Outputs panels without relaxing missing/disabled-panel checks. Control-engine logic
-  and generated-card bytes are unchanged from beta.12; **UI unchanged and compatible**
+  Outputs panels without relaxing missing/disabled-panel checks. Monitoring setup
+  errors preserve existing settings. Control-engine logic and entity IDs are unchanged;
+  the compatibility outcome is **UI revision advanced**
 - [RC.1 preparation changes](CHANGELOG.md#unreleased--v210-rc1). Published Stable remains
-  v2.0.12. HA Stable acceptance is recorded with a seven-day drift history advisory;
-  final release validation remains pending. This candidate does not claim release
+  v2.0.12. Earlier HA Stable acceptance belongs to the previous exact package; fresh
+  installed-candidate and final release validation remain pending. This candidate does not claim release
   or website publication
 
 <a id="v2012-maintenance-candidate-not-published"></a>

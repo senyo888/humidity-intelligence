@@ -5,7 +5,7 @@ testing and validation branches.
 
 ## Canonical Version Model
 
-- `2.1.0-rc.1`: current unpublished release candidate prepared from beta.12, with approved public content, a test-only scenario correction and corrected adaptive Outputs recognition in the release checker. Control-engine logic and generated cards are unchanged; both V2 layouts retain revision 7. HA Stable acceptance is recorded with a seven-day drift history advisory; final release validation remains pending. No release tag, GitHub Release or HACS publication is implied.
+- `2.1.0-rc.1`: current unpublished release candidate prepared from beta.12, with approved public content, a test-only scenario correction and corrected adaptive Outputs recognition in the release checker. Review corrections address recovery without routine AQ, event-loop Diagnostics publication, monitoring discovery and UI handling. Both V2 layouts now use revision 8; control-engine logic and entity IDs remain unchanged. Earlier HA Stable acceptance belongs to the previous exact package; fresh installed-candidate and final release validation remain pending. No release tag, GitHub Release or HACS publication is implied.
 - `2.1.0-beta.12`: earlier unpublished source candidate with autumn targets of 50–60% (high risk 64%) and bounded recent score movement. Both V2 layouts advance from revision 6 to 7; stamp schema/generator 1 and Stability schema 3/formula 4 remain. No configuration migration; an authorized update requires the complete package, restart and replacement card exports. See [Stability contract](stability-score-accepted-baseline.md).
 - `2.1.0-beta.11`: earlier unpublished candidate polishing score details/history and hold-to-toggle presentation. Both V2 layouts advance from revision 5 to 6; metadata schema/generator 1 and formula 4 remain. Install the complete package, restart, export and replace both saved cards; rollback restores package and cards separately. See [Stability contract](stability-score-accepted-baseline.md).
 - `2.1.0-beta.10`: earlier unpublished candidate introducing formula 4, individual-first AQ evidence, observed-clear recovery and synchronized score/LED feedback. Earlier formulas require a fresh baseline.
@@ -385,21 +385,23 @@ and post-release observation as separate evidence states.
 
 ## Rendered UI revision check for every version update
 
-RC.1 is **UI unchanged and compatible** against beta.12 source
-`c69d7d27408c3f1647dbba9b12809562e812562e`. Both layouts retain revision 7;
-stamp schema/generator 1, superseded revisions 1–6, Diagnostics targets and
-Stability schema 3/formula 4 are unchanged. Control-engine logic, card templates and
-renderers are unchanged; the diagnostic release checker now recognises adaptive
-Outputs panels. A version-only transition must not mark compatible
-beta.12 cards stale; it requires no card replacement solely for the RC label.
-Older cards still need regeneration and replacement. An authorized package update
-requires a restart, which clears in-memory Stability history. HA Stable acceptance
-is recorded with a seven-day drift history advisory. The develop PR and final
-release validation remain the next release step.
+RC.1 review remediation is **UI revision advanced** against pre-review source
+`b9ecd7a05b78b39cdf477f28ed9d629120a2130e`. Both layouts now use revision 8,
+explicitly superseding revisions 1–7. Stamp schema/generator 1 and Stability
+schema 3/formula 4 remain. Adaptive Outputs and preference handling changed; the
+V1 Mobile Drift snapshot fix also requires replacement YAML without a revision stamp.
+Export and replace complete saved cards, then refresh clients as needed.
 
-The branch preparation checks compare UI compatibility against that exact beta.12
-source and exercise generated stamps/Diagnostics metadata. They do not constitute
-final release validation or authorize installation, promotion or publication.
+Control-engine logic and existing entity IDs are unchanged. Recovery scoring and
+Diagnostics publication corrections change component bytes, so prior Stable
+acceptance is historical evidence only for its original package. Fresh installed-
+candidate validation remains pending, coordinated separately with Stable maintenance.
+An authorized package update requires a full restart, clearing in-memory Stability
+history. Source checks do not authorize installation, merge, tagging or publication.
+
+The two-PR review compares each corrected source with its own previous head and
+base, checks generated stamps/Diagnostics targets, and preserves the complete final
+candidate on `senyo888-patch-1`. The foundation remains a partial review snapshot.
 
 ### Historical beta.12 UI transition
 

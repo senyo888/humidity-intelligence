@@ -1,7 +1,7 @@
 # Accepted Stability Score baseline
 
 Status: accepted functional and presentation contract; integrated in the unpublished
-beta.12 candidate, following its introduction in beta.1.
+RC.1 candidate, following its introduction in beta.1 and refinement through beta.12.
 The local refinement uses formula 4 with additive schema-3 diagnostics.
 This records the accepted behaviour for the current implementation work. It does not
 claim publication, HACS availability, deployment, or a newly approved release version.
@@ -364,10 +364,22 @@ Tablet, and both default gallery cards. Repository `ui-gallery/` remains canonic
 the Wiki is an explanatory index. A passing static or synthetic check does not prove
 animation or compatibility on an untested client.
 
+## Review corrections
+
+Recovery treats incomplete routine AQ as blocking only when routine AQ conditions
+are configured. No-AQ and CO-only installations retain their existing missing-AQ
+limits and independent CO protections without a fictitious continuous excursion.
+Diagnostics polling publishes on Home Assistant’s event loop, sharing ownership with
+scheduled updates. Preference reads that fail show **Display preference unavailable**;
+**Save unconfirmed** is reserved for a write that was attempted.
+
+These corrections change component and UI bytes. Earlier Stable acceptance remains
+bound to its original package; the corrected candidate needs fresh installed validation.
+
 ## Installation, compatibility and rollback
 
-The beta.12 package uses V2 UI revision 7 for both layouts, superseding revisions
-1–6, with stamp schema/generator 1 and Stability schema 3/formula 4 retained.
+The corrected RC.1 source uses V2 UI revision 8 for both layouts, superseding revisions
+1–7, with stamp schema/generator 1 and Stability schema 3/formula 4 retained.
 No configuration, entity-registry or stored-data migration is required. The Diagnostics
 readable attribute is additive; existing entity IDs and native states are unchanged.
 After installing changed Python, perform a full Home Assistant restart. Restart and

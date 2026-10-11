@@ -23,6 +23,7 @@ Before publication, run the Pages, workflow, banner and version checks; build
 Inspector and every referenced asset with `.github/workflows/pages.yml`; check
 390/820/1440px layouts, keyboard disclosures/pause, reduced motion, local links
 and the three animation phases. The maintainer selected the V2.1 artwork on
-10 October 2026. HI Stable acceptance is recorded with a seven-day drift history
-advisory. Final release checks and the develop PR remain the next release step;
-website publication remains a separate action.
+10 October 2026. Earlier HI Stable acceptance, including the seven-day drift history
+advisory, belongs to the previously tested package. Code-review corrections require
+fresh installed-candidate validation. The two source-review PRs remain unmerged;
+final release checks and website publication remain separate actions.

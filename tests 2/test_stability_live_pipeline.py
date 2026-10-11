@@ -132,3 +132,59 @@ def test_real_builder_reaches_live_diagnostics_and_dump(sample_count, export_rep
     # The accepted source exports Stability through native diagnostics and the
     # live sensor; its service support allowlist intentionally stays unchanged.
     assert "stability_score" not in written[ENTRY_ID]["diagnostics_summary"]
+
+
+@pytest.mark.parametrize('aq_mode', ['none', 'co_only', 'configured_missing'])
+def test_real_capture_recovery_distinguishes_absent_from_missing_aq(aq_mode):
+    sensor_module = _load_sensor_platform_module()
+    stability = sys.modules[f'{PKG}.helpers.stability']
+    telemetry = [dict(entity_id=f'sensor.example_humidity_{i}', sensor_type='humidity', room=f'Example {i}') for i in range(2)]
+    data = {'target_profile': 'winter', 'telemetry': telemetry}
+    states = {row['entity_id']: _FakeState(50) for row in telemetry}
+    if aq_mode != 'none':
+        kind = 'co' if aq_mode == 'co_only' else 'co2'
+        telemetry.append(dict(entity_id=f'sensor.example_{kind}', sensor_type=kind, level='level1'))
+        trigger = 'co_warning' if kind == 'co' else 'co2_high'
+        data['aq'] = {'level1': {'enabled': True, 'triggers': [trigger], 'thresholds': {trigger: 10 if kind == 'co' else 1200}}}
+        if kind == 'co':
+            states['sensor.example_co'] = _FakeState(0, {'unit_of_measurement': 'ppm'})
+    entry = SimpleNamespace(entry_id=ENTRY_ID, data=data, options={})
+    hass = _FakeHass(entry, states)
+    runtime = hass.data[sensor_module.DOMAIN][ENTRY_ID]
+    runtime.update(config=data, options={}, runtime_mode='normal', core_sensors=[
+        SimpleNamespace(_attr_unique_id=f'hi_{suffix}', _attr_native_value=value)
+        for suffix, value in [('house_avg_humidity', 50), ('worst_condensation_risk', 'OK'),
+                             ('worst_mould_risk', 'OK'), ('house_drift_7d', 0)]])
+    if aq_mode == 'co_only':
+        evidence = stability.capture_configured_aq_evidence(hass, data, stability_selection=True)
+        assert evidence['co_evidence_complete'] is True
+        assert evidence['co_warning_active'] is False
+        assert evidence['configured_trigger_count'] == 0
+    start = datetime(2026, 9, 19, tzinfo=timezone.utc)
+    samples = [stability.capture_stability_snapshot(hass, entry, runtime, observed_at=start + timedelta(minutes=10*i)) for i in range(432)]
+    assert all(sample.air_quality_evidence_complete is False for sample in samples)
+    expected_count = 1 if aq_mode == 'configured_missing' else 0
+    assert all(sample.air_quality_configured_condition_count == expected_count for sample in samples)
+    result = stability.evaluate_stability_window(samples)
+    if aq_mode == 'configured_missing':
+        assert result['subscores']['recovery_score'] == 0.0
+        assert result['recovery']['open_event_capped'] is True
+    else:
+        assert result['subscores']['recovery_score'] == 1.0
+        assert result['recovery']['open_event_duration_used_hours'] == 0.0
+        assert result['score']['display_classification'] == 'Good'
+        assert result['score']['display_score'] <= 91
+        assert result['presentation']['compact_text'] == 'PARTIAL'
+        assert result['penalties']['air_quality_evidence_penalty_points'] == 3.0
+        warning = stability.evaluate_stability_window(samples, current_co_warning=True)
+        assert warning['score']['display_score'] <= 54
+        emergency = stability.evaluate_stability_window(samples, current_co_emergency=True)
+        assert emergency['score']['display_score'] == 0
+
+        if aq_mode == 'co_only':
+            hass.states.get('sensor.example_co').state = '12'
+            crossed = stability.capture_stability_snapshot(hass, entry, runtime, observed_at=samples[-1].observed_at)
+            assert crossed.co_warning_active is True
+            assert crossed.air_quality_configured_condition_count == 0
+            actual_warning = stability.evaluate_stability_window(samples, current_co_warning=crossed.co_warning_active)
+            assert actual_warning['score']['display_score'] <= 54

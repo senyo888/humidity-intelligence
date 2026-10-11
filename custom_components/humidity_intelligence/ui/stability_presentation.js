@@ -58,6 +58,7 @@ const hiStabilityPresentation = (() => {
           record.error = 'Display preference unavailable'; record.paint(); return;
         }
         record.pending = true; record.error = ''; record.paint();
+        let writing = false;
         try {
           await record.subscribe?.();
           if (!active()) return;
@@ -72,6 +73,7 @@ const hiStabilityPresentation = (() => {
           if (!active()) return;
           if (connection.connected !== true) throw new Error('Disconnected');
           const next = !record.disabled, sequence = record.sequence;
+          writing = true;
           await record.hass.callWS({type:'frontend/set_user_data', key:record.key, value:next});
           if (record.disposed) return;
           // A subscription update may already include a newer other-client write.
@@ -80,7 +82,7 @@ const hiStabilityPresentation = (() => {
           if (!record.disposed) {
             // HA mutates its in-memory dictionary before disk persistence. Failure
             // cannot establish that the previous value remains durably stored.
-            record.error = 'Save unconfirmed';
+            record.error = writing ? 'Save unconfirmed' : 'Display preference unavailable';
           }
         } finally {
           record.pending = false;

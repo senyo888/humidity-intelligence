@@ -183,3 +183,24 @@ test('custom association text and maximum 34 enum-rule lines remain literal and 
  p.discovery.sources[0].associations[0].rule_lines.push('Out of bounds');h.update(p);
  assert.equal(h.card._sources.querySelector('.association'),null);assert.match(h.card._body.textContent,/Monitoring unavailable/);
 });
+
+test('unrelated HA updates skip payload traversal but still reach native controls',async()=>{
+ const h=harness();await tick();let traversals=0;
+ const p=new Proxy(payload(),{ownKeys(target){traversals++;return Reflect.ownKeys(target);}});
+ h.update(p);const c=h.card,feed=c._hass.states[h.config.entity],native=c._nativeCard;
+ const initial=traversals;assert(initial>0);
+ for(let i=0;i<5;i++){
+  const next={connected:true,states:{[h.config.entity]:feed,'sensor.unrelated':{state:String(i)}}};
+  c.hass=next;assert.equal(native.hass,next);
+ }
+ assert.equal(traversals,initial);assert.equal(h.mounts(),1);
+ c.hass={connected:false,states:{[h.config.entity]:feed}};
+ assert.match(c._body.textContent,/Monitoring unavailable/);
+ c.hass={connected:true,states:{[h.config.entity]:feed}};
+ assert(traversals>initial);assert.doesNotMatch(c._body.textContent,/Monitoring unavailable/);
+ const afterReconnect=traversals;h.update(p);assert(traversals>afterReconnect);
+ c.hass={connected:true,states:{[h.config.entity]:{state:'unavailable',attributes:{payload:p}}}};
+ assert.match(c._body.textContent,/Monitoring unavailable/);
+ h.update(p);assert.doesNotMatch(c._body.textContent,/Monitoring unavailable/);
+ const beforeConfig=traversals;c.setConfig({...h.config});assert(traversals>beforeConfig);
+});

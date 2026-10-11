@@ -85,8 +85,9 @@ relative to the seasonal band, and Outputs names come from the mapped entities.
 The seasonal description never prescribes an action in competition with the backend
 reason. Outputs expansion remains shared per entry and retains its existing timer.
 The revision indicator itself leaves Stability and lane selection unchanged. In the
-beta.12 candidate, both layouts use revision 7 for the separate recent-movement and
-humidity-bound presentation changes; revisions 1–6 are superseded. Stamp schema and
+corrected RC.1 source, both layouts use revision 8, superseding revisions 1–7.
+This includes the earlier movement/humidity presentation and reviewed adaptive Outputs
+and preference handling corrections. Stamp schema and
 generator contract remain 1. See [the candidate compatibility record](release-governance.md#rendered-ui-revision-check-for-every-version-update).
 
 Installing the Python metadata changes requires the normal complete-package update

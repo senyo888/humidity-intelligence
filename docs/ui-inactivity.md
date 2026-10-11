@@ -1,6 +1,6 @@
 # UI inactivity and manual dismissal
 
-HI-owned details and adaptive Outputs expansions close after two minutes without
+V2 HI-owned details and adaptive Outputs expansions close after two minutes without
 interaction. Pointer, touch, keyboard and deliberate scrolling inside an open
 surface renew its deadline. Passive telemetry updates do not keep it open.
 
@@ -14,12 +14,15 @@ details without operating an output or changing integration options.
 | Adaptive Outputs chevron | 120 seconds of client-local inactivity; chevron closes immediately |
 | Outputs controls, evidence and monitoring details | 120 seconds of inactivity; interaction also keeps the owning expansion open |
 | Current Air Control explanation and Ready/Zone/AQ chips | 120 seconds of inactivity, plus existing source-change dismissal |
-| Humidity, condensation, mould and drift details, including embedded history | 120 seconds of inactivity, plus existing source-change dismissal |
-| Stability and UI revision snapshot details | 120 seconds of inactivity; manual and lifecycle dismissal remain available |
+| Humidity, condensation and mould details, including embedded history | 120 seconds of inactivity, plus existing source-change dismissal |
+| Drift, Stability and UI revision snapshot details | 120 seconds of inactivity; manual and lifecycle dismissal remain available |
 | Legacy/native Outputs expansion | Existing **120 seconds from opening**, controlled by the shared backend helper; interactions do not extend it |
 | Home Assistant native more-info/history | Home Assistant owns dismissal; HI adds no timer |
 
-Each custom dialog owns its deadline. In adaptive Outputs, child interaction renews
+V1 Mobile Drift also preserves its opening snapshot through telemetry updates. It
+retains explicit and lifecycle dismissal, without the V2 inactivity timer.
+
+Each V2 custom dialog owns its deadline. In adaptive Outputs, child interaction renews
 both the child and its parent expansion; interacting only with the parent does not
 extend an idle child. Parent collapse closes its child. Closing one instance cannot
 leave an old callback that closes a later dialog.

@@ -1223,7 +1223,7 @@ def _classification_rank(classification: str) -> int:
 
 
 def _full_envelope_stable(sample: StabilitySnapshot) -> bool:
-    if not sample.air_quality_evidence_complete:
+    if sample.air_quality_configured_condition_count > 0 and not sample.air_quality_evidence_complete:
         return False
     if sample.house_humidity is None or sample.target_low is None or sample.target_high is None:
         return False

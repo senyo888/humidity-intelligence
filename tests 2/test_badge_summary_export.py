@@ -1,4 +1,4 @@
-"""Verify V2 summary routes survive actual mapping/export and V1 stays unchanged."""
+"""Verify summary exports and preserve V1 outside its reviewed Drift snapshot fix."""
 import asyncio
 import importlib.util
 import pathlib
@@ -131,7 +131,13 @@ class BadgeSummaryExportTests(unittest.TestCase):
                     visual = re.search(r'\.hi-' + kind + r'-close::before \{([^}]+)\}', source).group(1)
                     self.assertIn('inset:6px', visual)  # 44px target, 32px circle.
         for path in (ROOT/'custom_components/humidity_intelligence/ui/cards/v1_mobile.yaml', ROOT/'ui-gallery/default-v1-mobile/card.yaml'):
-            self.assertEqual(hashlib.sha256(path.read_bytes()).hexdigest(), '55da18480f54990fe1c46f6a4875c1978076061afa86417206b91f8d10e61a89')
+            # The reviewed Drift observer fix is the sole V1 change; preserve all
+            # other bytes, including existing controls, routes and layout.
+            normalized = path.read_text().replace(
+                "if (!owner.isConnected || !current) close();",
+                "if (!owner.isConnected || !current || current.innerHTML !== snapshot) close();",
+            )
+            self.assertEqual(hashlib.sha256(normalized.encode()).hexdigest(), '55da18480f54990fe1c46f6a4875c1978076061afa86417206b91f8d10e61a89')
 
     def test_gallery_card_payloads_match_templates(self):
         for layout, folder in (('v2_mobile', 'default-v2-mobile-aq'), ('v2_tablet', 'default-v2-tablet-zone-1-cooking')):

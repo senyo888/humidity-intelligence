@@ -71,8 +71,9 @@ inputs show **Unavailable**, with context in the details.
 Tap or use Enter/Space to open the explanation and **View history**. History opens
 Home Assistant's native more-info surface for the registered drift entity; its
 recorded values depend on Recorder and retention. Hold also opens native more-info.
-The details use a native modal dialog and close on changed badge evidence,
-navigation or card removal. Browsers without native dialog support use more-info
+The details use a native modal dialog and preserve the opening snapshot during
+telemetry updates. Explicit dismissal, navigation, card removal or removal of the
+details template closes it. Browsers without native dialog support use more-info
 as the tap fallback. Button-card 7.0.1 was exercised with synthetic entity data and
 a minimal Home Assistant event router; live Companion/WallPanel validation is
 separate.
@@ -136,8 +137,8 @@ Summaries identify their mapped history sources. Enhanced history is available
 when at least one source is mapped; native history links follow their mapped entity. Dynamic text is escaped. Only one HI details dialog
 is open at a time; Close, Escape, navigation and card removal dispose of it.
 New summaries close when their displayed evidence changes. Stability preserves
-its opening snapshot and now explains that below the main content; drift retains
-its existing evidence-change behavior. Native entity details remain the fallback
+its opening snapshot and now explains that below the main content; Drift also retains
+its opening snapshot while readings change. Native entity details remain the fallback
 when modal dialogs cannot be opened.
 
 Ready, Zone 1, Zone 2 and AQ retain their labels, active tint, borders and alert
@@ -280,7 +281,7 @@ Control row:
   expiry alone stays neutral, and a fresh baseline is not a zero-change comparison
 - keep score/classification distinct from current humidity. Formula 4, caps and
   72-hour history remain; a recent gain does not establish healthy current air
-- both V2 layouts use revision 7, superseding 1–6, with stamp schema/generator 1.
+- both V2 layouts use revision 8, superseding 1–7, with stamp schema/generator 1.
   Install the complete package and restart before exporting/replacing saved cards;
   restart clears in-memory Stability history and no configuration migration is needed
 - whole-badge tap/click/keyboard activation opens a native modal dialog through the

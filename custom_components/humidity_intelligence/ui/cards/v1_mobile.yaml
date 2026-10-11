@@ -555,7 +555,7 @@ cards:
               for (const name of ['location-changed', 'popstate', 'pagehide']) window.addEventListener(name, close);
               observer = new MutationObserver(() => {
                 const current = owner.shadowRoot?.querySelector('template.hi-drift-details-template');
-                if (!owner.isConnected || !current || current.innerHTML !== snapshot) close();
+                if (!owner.isConnected || !current) close();
               });
               let root = owner.shadowRoot;
               while (root) {

@@ -1,8 +1,15 @@
 # Stability Score testing
 
-Status: formula 4 with UI revision 7 in the current unreleased 2.1.0-rc.1 candidate. This guide describes
+Status: formula 4 with UI revision 8 in the current unreleased 2.1.0-rc.1 candidate. This guide describes
 validation of [the canonical contract](stability-score-accepted-baseline.md); it is
 not a release, deployment or live-observation claim.
+
+Review regressions must exercise real snapshot capture with no routine AQ sensors,
+CO-only configurations and configured-but-missing AQ. Only the last case blocks
+recovery for incomplete routine AQ; missing-AQ limits and CO caps still apply.
+Exercise native Home Assistant polling through `Entity.async_device_update` to prove
+Diagnostics publication stays on the event loop. Preference tests distinguish failed
+reads from uncertain writes and prove a failed read never starts a write.
 
 ## Offline validation
 
@@ -130,7 +137,7 @@ stored-data or entity migration is required. Restart or entry reload resets hist
 Score history has no durable persistence, Recorder recovery or startup backfill.
 The saved badge display preference is separate from that history.
 
-For UI revision 7, review the recent reference, actual comparison interval, headline,
+For UI revision 8, review the recent reference, actual comparison interval, headline,
 deduction table and existing history expander at narrow phone, wider phone and tablet widths. Check that labels remain readable,
 content does not overflow, and Close remains reachable when the history is expanded.
 Keep offline fixture screenshots labelled as synthetic; supplied state captures that

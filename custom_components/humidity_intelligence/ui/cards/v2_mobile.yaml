@@ -1658,7 +1658,7 @@ card:
                 for (const name of ['location-changed', 'popstate', 'pagehide']) window.addEventListener(name, close);
                 observer = new MutationObserver(() => {
                   const current = owner.shadowRoot?.querySelector('template.hi-drift-details-template');
-                  if (!owner.isConnected || !current || current.innerHTML !== snapshot) close();
+                  if (!owner.isConnected || !current) close();
                 });
                 let root = owner.shadowRoot;
                 while (root) {
@@ -4589,6 +4589,7 @@ card:
                           record.error = 'Display preference unavailable'; record.paint(); return;
                         }
                         record.pending = true; record.error = ''; record.paint();
+                        let writing = false;
                         try {
                           await record.subscribe?.();
                           if (!active()) return;
@@ -4603,6 +4604,7 @@ card:
                           if (!active()) return;
                           if (connection.connected !== true) throw new Error('Disconnected');
                           const next = !record.disabled, sequence = record.sequence;
+                          writing = true;
                           await record.hass.callWS({type:'frontend/set_user_data', key:record.key, value:next});
                           if (record.disposed) return;
                           // A subscription update may already include a newer other-client write.
@@ -4611,7 +4613,7 @@ card:
                           if (!record.disposed) {
                             // HA mutates its in-memory dictionary before disk persistence. Failure
                             // cannot establish that the previous value remains durably stored.
-                            record.error = 'Save unconfirmed';
+                            record.error = writing ? 'Save unconfirmed' : 'Display preference unavailable';
                           }
                         } finally {
                           record.pending = false;

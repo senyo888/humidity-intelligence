@@ -852,8 +852,8 @@
         "description": "The selected entity is missing, disabled or has no stable registry identity. Return to select its current identity explicitly."
       },
       "options_output_observation_error": {
-        "title": "Saved monitoring settings need review",
-        "description": "Existing monitoring settings cannot be interpreted. They have been preserved. Return to the main settings without replacing them."
+        "title": "Monitoring settings or sources need review",
+        "description": "Observation settings or discovered monitoring sources cannot be interpreted. Existing settings have been preserved. Return to the main settings without replacing them."
       },
       "options_output_meanings": {
         "title": "Reusable monitoring meanings",
@@ -890,7 +890,7 @@
       "room_unknown": "Selected room is not in configured telemetry.",
       "room_missing_humidity": "Selected room has no humidity telemetry for room-scoped humidity danger.",
       "room_missing_temp_humidity": "Selected room needs both humidity and temperature telemetry for this room-scoped trigger.",
-      "invalid_observation": "Saved observation settings are invalid or exceed supported bounds. They have not been replaced.",
+      "invalid_observation": "Observation settings or discovered monitoring sources are invalid or exceed supported bounds. Existing settings have not been replaced.",
       "invalid_binding": "Select a configured output, diagnostic source and supported rule.",
       "invalid_rule": "Use disjoint nonempty active/clear values (at most 32 values, 120 characters each), or a finite numeric threshold.",
       "unavailable_binding": "The selected binding is unavailable or changed. Review the current entities explicitly.",

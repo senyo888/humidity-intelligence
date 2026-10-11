@@ -80,12 +80,13 @@ test('unknown or malformed stored values never claim a saved enabled preference'
  for(const value of ['true',1,{},[]]){
   const h=harness();h.store.set(h.key(ENTRY),value);const b=h.mount();await flush();
   assert.equal(b.owner.attrs['data-hi-stability-presentation'],'unavailable');
-  await b.binding.toggle();assert.equal(h.calls.filter(x=>x.type==='frontend/set_user_data').length,0);h.cleanup();
+  await b.binding.toggle();assert.equal(b.label.textContent,'Display preference unavailable');assert.equal(h.calls.filter(x=>x.type==='frontend/set_user_data').length,0);h.cleanup();
  }
 });
 test('failed reads and writes remain explicit, preserve the confirmed view, and can retry',async()=>{
  const h=harness();h.setFailRead(true);const b=h.mount();await flush();
  assert.equal(b.label.textContent,'Display preference unavailable');await b.binding.toggle();
+ assert.equal(b.label.textContent,'Display preference unavailable');
  assert.equal(h.calls.filter(x=>x.type==='frontend/set_user_data').length,0);
  h.setFailRead(false);await b.binding.toggle();await flush();assert.equal(b.center.textContent,'Disabled');
  assert.equal(h.subscriptions.size,1,'recovered preference keeps subscription updates');

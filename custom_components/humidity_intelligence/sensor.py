@@ -275,6 +275,10 @@ class HIDiagnosticsSensor(SensorEntity):
         self._attr_icon = "mdi:clipboard-text"
         self._attr_native_value = "ok"
 
+    async def async_update(self) -> None:
+        """Keep polling publication on the loop with scheduled Stability updates."""
+        self.update()
+
     def update(self, *, publish: bool = True) -> None:
         data = self.hass.data.get(DOMAIN, {}).get(self.entry_id, {})
         if publish:
