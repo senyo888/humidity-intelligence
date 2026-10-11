@@ -23,10 +23,14 @@ truth.
 ## Observational Stability Score (unreleased)
 
 The [accepted Stability contract](docs/stability-score-accepted-baseline.md) defines
-backend schema 3/formula 3, six weighted components, evidence states, safety caps,
-classification and presentation in this beta.7-based partial V2.1 source-review
-foundation. This snapshot is not an installable candidate; the complete candidate
-remains on `senyo888-patch-1`. Stability cannot select lanes, change gates or
+backend schema 3/formula 4, six weighted components, evidence states, safety caps,
+classification and presentation. Formula 4 selects individual AQ conditions per level,
+with configured IAQ fallback only when no individual conditions are configured.
+Routine AQ uses an additional 12-point adjustment recovering over six observed-clear
+hours; missing evidence pauses recovery. CO protections and engine trigger evaluation
+remain independent. It is implemented in the current unreleased candidate; deployment
+to an instance does not change published release identity. Stability cannot select
+lanes, change gates or
 write outputs. Existing control entities/native states remain unchanged; Diagnostics
 adds structured Stability telemetry and a readable summary.
 
@@ -37,9 +41,19 @@ Required live evidence suppresses stale scores when unavailable. Configured miss
 is incomplete evidence, never clean air. Excellent/Good/Unstable/Poor boundaries are
 92/70/55/0; caps and explanatory text belong to the backend.
 
-The four generated/gallery renderers preserve the accepted 82px badge, independent
-LED palette and retained signed ±360 movement. Movement reflects score changes, not
-elapsed time. While collecting, the blue LEDs instead fill clockwise from backend
+The four generated/gallery renderers preserve the accepted 82px badge and independent
+LED palette. Signed ±360 endpoints show net displayed-score change against the oldest
+actual reference within 60 minutes. The backend retains the first publication per
+ten-minute slot, at most seven references, with exact timestamps and actual coverage.
+It converts net points to an angle once; LED colour/intensity still describes the
+latest update, independently of arc side. Score, reference and movement publish
+atomically, including between samples. Unavailable scores or publication gaps over
+eleven minutes reset the movement baseline. Old references expire on the next owned
+update; expiry alone is neutral and never a new measured rise or fall. Pure reads
+cannot advance movement. Bounded ten-minute graph history remains separate, preserves
+gaps and resets on restart. The halo classifies the 72-hour composite score; current
+humidity retains its own backend-derived display. Improvement is not proof of healthy
+current conditions. While collecting, the blue LEDs instead fill clockwise from backend
 valid-sample progress toward 303; collection details use the same minimum target.
 Each valid sample illuminates one centred collection slot; the fixed origin hides
 after the first tick. Counts and target are bounded to 432, with a positive target,
@@ -59,9 +73,32 @@ reload and never advances baseline progress or changes scoring or control.
 Whole-badge tap/keyboard opens detached native dialog details as an explicitly labelled
 snapshot, outside the button-card gesture handlers. Close, Escape and backdrop dismiss;
 focus restores, and navigation or owner removal cleans up the single active dialog.
-Clients without native dialog support fall back to Diagnostics more-info; hold opens
-Diagnostics. Partial and reduced-motion treatments remain explicit. Optional frontend
-resources cannot block runtime operation. See [validation and client limitations](docs/stability-testing.md).
+The existing badge is keyboard-focusable: Enter and a short Space press retain
+normal tap behavior; pressing and holding Space performs the same hold action.
+Clients without native dialog support fall back to Diagnostics more-info. Partial
+and reduced-motion treatments remain explicit. Optional frontend resources cannot
+block runtime operation. See [validation and client limitations](docs/stability-testing.md).
+
+Hold changes only the badge presentation. Disabled retains the same footprint,
+**Disabled** text, a static violet/indigo aurora and segmented LEDs; holding again
+restores the normal display. Tap details and history remain available in either
+state. No switch, button, checkbox or icon is added. Collection, scoring, history,
+control decisions and output ownership continue unchanged.
+
+Home Assistant's authenticated frontend user-data API persists one boolean for the
+signed-in user and opaque HI entry. It applies across that user's Mobile, Tablet
+and browser sessions, survives refresh and does not affect other accounts or entries.
+Read/save failures appear in the existing status label; they cannot establish a
+saved choice or environmental health. There is no localStorage fallback, config
+option or control entity. This preference does not persist score history.
+
+Score details retain the backend headline and individual deductions. Presentation
+may total the backend's rounded deduction terms, but calculated, rounded and capped
+results remain backend-owned and separately explained. Invalid breakdown data never
+overrides a valid headline. The history expander summarizes only retained samples,
+preserves null/omitted gaps and distinguishes the current update from scheduled
+points. A partial displayed interval is neither complete 72-hour coverage nor a
+claim about environmental health.
 
 ## Deterministic Lane Order
 
@@ -123,7 +160,14 @@ of physical moisture production.
 
 Humidity danger and comfort interpretation are profile-relative. Runtime thresholds
 must be derived from the active seasonal or custom target profile, not from stale static
-alert values.
+alert values. The built-in autumn band is inclusive 50–60%; readings above 60% are
+above target, and 64% or higher meets its humidity-danger threshold. Beta.12 adds no
+danger-threshold override. Custom profiles keep their existing derivation: a 50–60%
+custom band produces high risk at 67.5%. These are control-profile boundaries, not
+universal safe cutoffs. Target bounds also affect humidifier start/recovery and
+target-relative mould interpretation; other seasons retain their own bounds. Generated humidity
+context requires an authoritative high-risk bound and degrades neutrally when it is
+missing or invalid.
 
 Temperature comfort display follows the same principle: UI colors and chips should use
 backend comfort truth instead of card-only assumptions.
@@ -346,5 +390,12 @@ without the custom frontend. Export transforms preserve surrounding card content
 and resolve the registered sensor; dashboards and Lovelace resources remain
 user-managed. Observation does not change lane priority, humidifier independence,
 Manual ownership, entity semantics of existing entities, or Stability calculations.
+Reusable custom monitoring meanings are entry-scoped library definitions with stable
+references. Backend classification owns severity, icon and standard guidance; names
+and optional plain-text instructions are additive presentation. Each source retains
+its own identity-bound detection rule. Missing definitions produce explicit monitoring
+gaps. Rename, reclassification and guarded deletion use the existing staged options
+transaction; they introduce no control authority. See
+[custom monitoring meanings](docs/custom-monitoring-meanings.md).
 See [output observation](docs/output-observation.md) for lifecycle, limits,
 prototype migration, and rollback boundaries.

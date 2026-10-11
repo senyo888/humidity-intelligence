@@ -45,12 +45,58 @@ function labelBody(relativePath) {
 const LABEL_BODIES = SURFACES.map(labelBody);
 const LABEL_RENDERERS = LABEL_BODIES.map((body) => new Function('entity', body));
 
+function backendLabel(html) {
+  const match = html.match(/^<span class="hi-stability-backend-label">(.*)<\/span><span class="hi-stability-display-label"><\/span>$/s);
+  assert.ok(match, 'backend status and display preference have separate text surfaces');
+  return match[1];
+}
 function renderLabel(contract) {
-  return assertIdentical(LABEL_RENDERERS.map((render) => render({ attributes: { diagnostics_summary: { stability_score: contract } } })));
+  return backendLabel(assertIdentical(LABEL_RENDERERS.map((render) => render({ attributes: { diagnostics_summary: { stability_score: contract } } }))));
 }
 
 const BODIES = SURFACES.map(gaugeBody);
 const RENDERERS = BODIES.map((body) => new Function('entity', body));
+
+test('recent net gain and latest fall preserve the Poor headline and explain both', () => {
+  const output = renderContract({availability:'available',
+    score:{display_score:43,display_classification:'Poor'},
+    presentation:{primary_text:'43',compact_text:'POOR',tone:'poor'},
+    movement:{comparison_basis:'recent_recorded_display_score_v1',status:'available',
+      start_position_degrees:18,end_position_degrees:11,delta_points:-2,recent_delta_points:3,
+      color_token:'fall_gentle',reference_at:'2026-10-07T12:00:00Z',
+      current_bucket_start_utc:'2026-10-07T12:02:00Z',
+      detail_text:'Recent score change: +3 points from 40 to 43. The score decreased by 2 points since the previous update.'}});
+  assert.match(output, /--hi-stability-color:#ef4444;/);
+  assert.match(output, /--hi-stability-led-color:#fb923c;/);
+  assert.match(output, /--hi-stability-led-sweep:11deg;/);
+  assert.match(output, /<h3>Recent score movement<\/h3>/);
+  assert.match(output, /Recent score change: \+3 points/);
+  assert.match(output, /decreased by 2 points/);
+  assert.match(output, /Recorded reference:/);
+  assert.match(output, /last 60 minutes/);
+  assert.match(output, /An improvement can coexist with poor current humidity/);
+  assert.doesNotMatch(output, /accumulated score movement/);
+});
+
+test('reference expiry with unchanged score retracts neutrally without a change pulse', () => {
+  const output = renderContract({availability:'available',score:{display_score:45,display_classification:'Poor'},
+    movement:{comparison_basis:'recent_recorded_display_score_v1',status:'available',
+      start_position_degrees:18,end_position_degrees:0,delta_points:0,recent_delta_points:0,
+      reference_advanced:true,color_token:'neutral',saturated:false,
+      detail_text:'The recorded reference advanced. The score is unchanged since the previous update.'}});
+  assert.match(output, /--hi-stability-led-color:#94a3b8;/);
+  assert.match(output, /--hi-stability-led-sweep:0deg;/);
+  assert.doesNotMatch(output.split('<template')[0], /hi-stability-change-pulse/);
+});
+
+test('unsupported recent comparison never draws an optimistic arc or its detail', () => {
+  const output = renderContract({availability:'available',score:{display_score:43,display_classification:'Poor'},
+    movement:{comparison_basis:'unknown_future',status:'available',start_position_degrees:0,
+      end_position_degrees:360,detail_text:'Unsupported optimistic movement'}});
+  assert.equal(renderedMarks(output).length, 0);
+  assert.match(output, /Recent score comparison unavailable/);
+  assert.doesNotMatch(output, /Unsupported optimistic movement|accumulated score movement/);
+});
 
 function renderAll(attributes = {}) {
   return RENDERERS.map((render) => render({ state: 'ok', attributes }));
@@ -92,7 +138,8 @@ test('backend collecting presentation reports real sample progress', () => {
   const output = renderContract(contract);
   assert.match(output, /<span>288<\/span><\/div>/);
   assert.equal(renderLabel(contract), 'OF 303');
-  assert.doesNotMatch(output, /OF 303/);
+  assert.doesNotMatch(output.split('<template')[0], /OF 303/);
+  assert.match(output, /Displayed score<\/span><strong>—/);
   assert.match(output, /--hi-stability-color:#38bdf8/);
   assert.match(output, /aria-label="Collecting valid samples\."/);
   assert.doesNotMatch(output, /gauge-white/);
@@ -105,7 +152,7 @@ test('numeric score never overrides the backend classification or class cap', ()
     assert.ok(output.includes(`--hi-stability-color:${color}`));
     assert.ok(output.includes('<span>99</span></div>'));
     assert.equal(renderLabel(contract), classification.toUpperCase());
-    assert.ok(!output.includes(classification.toUpperCase()));
+    assert.ok(!output.split('<template')[0].includes(classification.toUpperCase()));
     assert.equal(output.includes('hi-stability-gauge-white'), classification === 'excellent');
   }
 });
@@ -139,7 +186,7 @@ test('native compact label escapes backend text without deriving score classific
 });
 
 test('LED palette consumes backend tokens independently of the condition halo', () => {
-  for (const [color_token, expected] of [['rise_gentle','#38bdf8'],['rise_strong','#4ade80'],['fall_gentle','#fb923c'],['fall_strong','#ef4444'],['neutral','#94a3b8'],['unknown','#94a3b8']]) {
+  for (const [color_token, expected] of [['rise_gentle','#86bfa0'],['rise_strong','#4ade80'],['fall_gentle','#fb923c'],['fall_strong','#ef4444'],['neutral','#94a3b8'],['unknown','#94a3b8']]) {
     const output = renderContract({
       score: { display_score: 95, display_classification: 'excellent' },
       presentation: { tone: 'excellent', primary_text: '95', compact_text: 'EXCELLENT' },
@@ -162,11 +209,11 @@ function arcs(start, end, extra = {}) {
 }
 
 test('steady endpoint preserves lit marks and backend colour without replaying fades', () => {
-  const {output, left, right} = arcs(-18, -18, {direction: 'steady', color_token: 'fall_gentle'});
+  const {output, left, right} = arcs(-18, -18, {direction: 'steady', color_token: 'neutral'});
   assert.equal(left.length, 6);
   assert.equal(right.length, 0);
   assert.ok(left.every((m) => m.from === 1 && m.to === 1 && m.fixed));
-  assert.ok(output.includes('--hi-stability-led-color:#fb923c;'));
+  assert.ok(output.includes('--hi-stability-led-color:#94a3b8;'));
 });
 
 test('higher trend retracts an existing left arc toward the origin', () => {
@@ -193,7 +240,7 @@ test('crossing the origin clears the old side before filling the new side', () =
 
 test('half and full circle endpoints are bounded and reveal at the agreed pace', () => {
   for (const sign of [1, -1]) {
-    for (const [extent, count, duration] of [[180, 60, 1200], [360, 120, 2280]]) {
+    for (const [extent, count, duration] of [[180, 60, 300], [360, 120, 300]]) {
       const rendered = arcs(0, sign * extent);
       const marks = sign === 1 ? rendered.right : rendered.left;
       assert.equal(marks.length, count);
@@ -295,7 +342,7 @@ test('badge provides an inert dialog snapshot with backend explanation evidence 
   assert.match(output, /These details capture the moment you opened this panel/);
   assert.match(output, /<p>Backend partial evidence explanation\.<\/p>/);
   assert.match(output, /<p>Rolling-window coverage: 303 of 432 valid samples\.<\/p>/);
-  assert.match(output, /<h3>Recent trend<\/h3>/);
+  assert.match(output, /<h3>Score movement<\/h3>/);
   assert.match(output, /Arc position represents accumulated score movement\./);
   assert.match(output, /<p>Backend movement explanation\.<\/p>/);
   assert.match(output, /<button type="button" class="hi-stability-close" aria-label="Close" title="Close" autofocus><svg aria-hidden="true"/);
@@ -344,7 +391,7 @@ test('legacy score locations use the same strict numeric validation', () => {
       assert.match(output, /<span>—<\/span><\/div>/);
       assert.match(output, /--hi-stability-color:#94a3b8;/);
       assert.doesNotMatch(output, /gauge-white/);
-      assert.equal(assertIdentical(LABEL_RENDERERS.map(render => render({attributes}))), 'Unavailable');
+      assert.equal(backendLabel(assertIdentical(LABEL_RENDERERS.map(render => render({attributes})))), 'Unavailable');
     }
   }
 });
@@ -402,8 +449,8 @@ test('collection fills clockwise by actual minimum-sample progress without compl
     assert.match(output, /hi-stability-direction-higher/);
     assert.match(output, /--hi-stability-led-color:#38bdf8;/);
     assert.ok(output.includes(`Baseline progress: ${samples} of 303 valid samples.`));
-    assert.match(output, /Baseline collection/);
-    assert.doesNotMatch(output, /Recent trend|arc retains accumulated score movement|of 432 valid samples/);
+    assert.match(output, /Building your baseline/);
+    assert.doesNotMatch(output, /Score movement|arc retains accumulated score movement|of 432 valid samples/);
   }
 });
 
@@ -439,7 +486,7 @@ test('available score keeps movement LEDs and reports rolling-window coverage se
   assert.equal(renderedMarks(output).length, 6);
   assert.match(output, /--hi-stability-led-color:#fb923c;/);
   assert.match(output, /Rolling-window coverage: 303 of 432 valid samples\./);
-  assert.match(output, /Recent trend/);
+  assert.match(output, /Score movement/);
   assert.doesNotMatch(output, /Baseline collection/);
 });
 
@@ -584,4 +631,285 @@ test('maximum collection density retains positive gaps and scored ticks keep ori
     const source = fs.readFileSync(path.join(ROOT,surface),'utf8');
     assert.match(source,/var\(--hi-mark-width, 0\.8deg\)/);
   }
+});
+
+function refinedContract(extra = {}) {
+  return {
+    availability: 'available',
+    score: { display_score: 84, display_classification: 'Good' },
+    presentation: { primary_text: '84', tone: 'good' },
+    explanation: {
+      maximum_points: 100, component_shortfall_points: 8, evidence_deduction_points: 2,
+      aq_adjustment_points: 6, pre_cap_score: 84, final_score: 84, safety_ceiling: null,
+      component_shortfalls: [{ key: 'balance', label: 'Balance across rooms', points: 8 }],
+      evidence_deductions: [{ key: 'coverage', label: 'Window coverage', points: 2 }],
+    },
+    ...extra,
+  };
+}
+
+test('equation renders backend-owned terms and ceiling without calculating a new score', () => {
+  const output = renderContract(refinedContract());
+  assert.match(output, /100 − 16 = <strong>84<\/strong>/);
+  assert.match(output, /Total deductions<\/th><td>16<\/td>/);
+  assert.ok(output.indexOf('Total deductions') < output.indexOf('100 − 16'));
+  assert.ok(output.indexOf('Displayed score</span>') < output.indexOf('What contributes'));
+  assert.doesNotMatch(output, /100 − 8 − 2 − 6/);
+  assert.match(output, /Balance across rooms<\/th><td>−8<\/td>/);
+  assert.match(output, /Displayed score: <strong>84<\/strong>/);
+  assert.match(output, /backend rounds the calculated score to a whole point/);
+  const capped = refinedContract();
+  capped.score.display_score = 54;
+  capped.explanation.final_score = 54;
+  capped.explanation.safety_ceiling = 54;
+  assert.match(renderContract(capped), /safety ceiling of 54/);
+  assert.match(renderContract(capped), /Displayed score: <strong>54<\/strong>/);
+  for (const bad of ['84', NaN, Infinity, -1, 101]) {
+    const stale = refinedContract(); stale.explanation.pre_cap_score = bad;
+    assert.doesNotMatch(renderContract(stale), /<p class="hi-stability-equation">/);
+  }
+  const stale = refinedContract(); stale.explanation.final_score = 83;
+  assert.doesNotMatch(renderContract(stale), /<p class="hi-stability-equation">/);
+});
+
+test('selected AQ scope and paused recovery preserve backend evidence truth', () => {
+  const output = renderContract(refinedContract({
+    aq_selection: { policy: 'raw_first_per_level_v1', levels: [
+      {level: 'Level 1', basis:'raw', selected_triggers:['co2_high','pm25_high'], excluded_iaq:true, complete:false},
+      {level: 'Level 2', basis:'iaq_fallback', selected_triggers:['iaq_bad'], excluded_iaq:false, complete:true},
+    ]},
+    aq_adjustment: {status:'paused_missing',points:6,max_points:12,required_clear_seconds:21600,remaining_clear_seconds:10800},
+  }));
+  assert.match(output, /Level 1: CO₂, PM2.5/);
+  assert.match(output, /IAQ is shown separately and does not also count here/);
+  assert.match(output, /Some selected readings are unavailable/);
+  assert.match(output, /Level 2: IAQ \(index fallback\)/);
+  assert.match(output, /Recovery is paused/);
+  assert.match(output, /3h 0m of observed clear readings remain/);
+  assert.match(output, /additional adjustment is at most 12/);
+  assert.match(output, /AQ also contributes to the underlying components/);
+});
+
+test('decimal calculated score, backend rounding and nonbinding ceiling remain distinct', () => {
+  const contract = refinedContract();
+  contract.score.display_score = 65; contract.presentation.primary_text = '65';
+  Object.assign(contract.explanation, {component_shortfall_points:27.09,pre_cap_score:64.91,final_score:65,safety_ceiling:91});
+  contract.explanation.component_shortfalls[0].points = 27.09;
+  const output = renderContract(contract);
+  assert.match(output, /Total deductions<\/th><td>35.09<\/td>/);
+  assert.match(output, /100 − 35.09 = <strong>64.91<\/strong>/);
+  assert.match(output, /Displayed score<\/span><strong>65/);
+  assert.match(output, /Displayed score: <strong>65<\/strong>/);
+  assert.match(output, /safety ceiling of 91/);
+  assert.match(output, /upper limit, not another deduction/);
+  // Python ties-to-even is authoritative. JS Math.round(64.5) would be wrong.
+  Object.assign(contract.explanation, {component_shortfall_points:27.5,pre_cap_score:64.5,final_score:64});
+  contract.explanation.component_shortfalls[0].points = 27.5;
+  contract.score.display_score = 64; contract.presentation.primary_text = '64';
+  assert.match(renderContract(contract), /100 − 35.50 = <strong>64.50<\/strong>/);
+  assert.match(renderContract(contract), /Displayed score: <strong>64<\/strong>/);
+});
+
+test('incomplete, inconsistent or invalid explanation cannot imply a reconciled calculation', () => {
+  for (const mutate of [
+    c => { delete c.explanation; },
+    c => { delete c.explanation.component_shortfalls; },
+    c => { c.explanation.component_shortfalls = []; },
+    c => { c.explanation.component_shortfalls[0].points = '8'; },
+    c => { c.explanation.component_shortfalls.push({label:'Missing'}); },
+    c => { c.explanation.evidence_deductions = []; },
+    c => { c.explanation.pre_cap_score = 83; },
+    c => { c.explanation.safety_ceiling = NaN; },
+    c => { c.explanation.safety_ceiling = '91'; },
+  ]) {
+    const contract = refinedContract(); mutate(contract);
+    const output = renderContract(contract);
+    assert.match(output, /Displayed score<\/span><strong>84/);
+    assert.match(output, /Calculation breakdown unavailable/);
+    assert.doesNotMatch(output, /Total deductions<\/th>|100 −/);
+  }
+  for (const state of ['unknown','unavailable','insufficient_coverage']) {
+    const output = renderContract(refinedContract({availability:state}));
+    assert.match(output, /Displayed score<\/span><strong>—/);
+    assert.doesNotMatch(output, /Total deductions<\/th>|100 −/);
+  }
+});
+
+test('prominent headline preserves backend partial qualifier and condition precedence', () => {
+  const partial = refinedContract({score:{display_score:94,display_classification:'Excellent'},presentation:{primary_text:'94',compact_text:'PARTIAL',state_code:'available_partial_evidence',tone:'incomplete'}});
+  const output = renderContract(partial);
+  assert.match(output, /Displayed score<\/span><strong>94[\s\S]*?<\/strong><span>PARTIAL<\/span>/);
+  const condition = refinedContract({score:{display_score:54,display_classification:'Poor'},presentation:{primary_text:'54',compact_text:'POOR',state_code:'available',evidence_status:'partial',tone:'poor'}});
+  assert.match(renderContract(condition), /Displayed score<\/span><strong>54[\s\S]*?<\/strong><span>POOR<\/span>/);
+});
+
+test('zero, exact zero and fractional totals do not invent deductions or a clamp', () => {
+  const contract = refinedContract();
+  Object.assign(contract.explanation, {component_shortfall_points:0,evidence_deduction_points:0,aq_adjustment_points:0,pre_cap_score:100,final_score:100,clamped_at_zero:false});
+  contract.explanation.component_shortfalls[0].points = 0;
+  contract.explanation.evidence_deductions[0].points = 0;
+  contract.score.display_score = 100; contract.presentation.primary_text = '100';
+  assert.match(renderContract(contract), /100 − 0 = <strong>100<\/strong>/);
+  contract.explanation.component_shortfalls[0].points = 100;
+  Object.assign(contract.explanation, {component_shortfall_points:100,pre_cap_score:0,final_score:0,clamped_at_zero:true});
+  contract.score.display_score = 0; contract.presentation.primary_text = '0';
+  const output = renderContract(contract);
+  assert.match(output, /100 − 100 = <strong>0<\/strong>/);
+  assert.doesNotMatch(output, /max\(0|Deductions exceed/);
+});
+
+const historyPoint = (index, score) => ({at: new Date(Date.UTC(2026,0,1,0,index*10)).toISOString(), score});
+const scoreHistory = (points) => ({status:'available',capacity:432,sample_minutes:10,window_hours:72,reset_on_restart:true,points});
+function historyOutput(points) {return renderContract(refinedContract({score_history:scoreHistory(points)}));}
+
+test('history uses genuine samples and does not join unavailable or missing buckets', () => {
+  const output = historyOutput([historyPoint(0,54),historyPoint(1,56),historyPoint(2,null),historyPoint(3,60),historyPoint(5,61)]);
+  assert.match(output, /<details class="hi-stability-history"><summary>Score history/);
+  assert.match(output, /4 scored observations. Latest recorded score: 61/);
+  const paths = output.match(/<g class="hi-stability-history-line">(.*?)<\/g>/)[1];
+  assert.equal((paths.match(/<path/g)||[]).length,1);
+  const dots = output.match(/<g class="hi-stability-history-points">(.*?)<\/g>/)[1];
+  assert.equal((dots.match(/<circle/g)||[]).length,4);
+  assert.match(output, /role="img" aria-label="4 scored observations/);
+  assert.match(output, /History resets when HI restarts or reloads/);
+  assert.match(output, /Changes between samples are not shown/);
+});
+
+test('history bounds data, admits zero, and rejects malformed or unsorted series', () => {
+  assert.match(historyOutput([historyPoint(0,0)]), /Latest recorded score: 0/);
+  assert.match(historyOutput([]), /No recorded scores in retained history/);
+  assert.match(historyOutput([historyPoint(0,null)]), /No recorded scores in retained history/);
+  assert.match(historyOutput(Array.from({length:432},(_,i)=>historyPoint(i,i%101))), /432 scored observations/);
+  for (const points of [
+    Array.from({length:433},(_,i)=>historyPoint(i,60)),
+    [historyPoint(1,60),historyPoint(0,61)],
+    [historyPoint(0,60),historyPoint(0,61)],
+    [historyPoint(0,60),historyPoint(432,61)],
+    [historyPoint(0,'60')],[historyPoint(0,true)],[historyPoint(0,101)],
+    [{at:'2026-01-01T00:01:00Z',score:60}],
+    [{at:'<script>',score:60}],
+    [{at:'2026-01-01T00:00:00',score:60}],
+  ]) {
+    const output = historyOutput(points);
+    assert.match(output, /Score history is not available/);
+    assert.doesNotMatch(output, /<svg class="hi-stability-history-graph"/);
+  }
+});
+
+test('history hierarchy distinguishes gaps, empty, unavailable, and a single zero', () => {
+  const partial = historyOutput([historyPoint(0,54),historyPoint(1,null),historyPoint(3,61)]);
+  assert.match(partial, /Gaps in history/);
+  assert.match(partial, /Recorded range<\/span><strong>54–61/);
+  assert.match(partial, /Scored samples<\/span><strong>2<span class="hi-stability-scale"> \/ 4/);
+  assert.match(partial, /2 of 4 ten-minute slots in the shown interval have no score/);
+  assert.match(partial, /not the full 72-hour capacity/);
+  assert.match(historyOutput([]), /No ten-minute samples are retained/);
+  assert.match(historyOutput([historyPoint(0,null)]), /1 recorded sample has no score/);
+  assert.match(historyOutput([historyPoint(0,null),historyPoint(1,null)]), /Missing scores are not zero/);
+  const single = historyOutput([historyPoint(0,0)]);
+  assert.match(single, /One observation/);
+  assert.match(single, /Latest recorded<\/span><strong>0/);
+  assert.match(single, /A trend needs more recorded scores/);
+  assert.doesNotMatch(single, /<g class="hi-stability-history-line"><path/);
+  assert.match(renderContract(refinedContract()), /History unavailable/);
+});
+
+test('current unavailable score does not erase recorded history or become a graph point', () => {
+  const history = scoreHistory([historyPoint(0,60),historyPoint(1,62)]);
+  history.current = {at:'2026-01-01T00:11:24Z',score:null};
+  const output = renderContract({availability:'unavailable',score:{display_score:null},score_history:history});
+  assert.match(output, /Displayed score<\/span><strong>—/);
+  assert.match(output, /Latest update: score unavailable/);
+  assert.equal((output.match(/<circle /g)||[]).length,2);
+  assert.match(output, /Latest recorded score: 62/);
+  for (const current of [{at:'bad',score:65},{at:'2026-01-01T00:11:24Z',score:'65'},{at:'2026-01-01T00:11:24Z',score:NaN}]) {
+    history.current=current;
+    assert.match(renderContract(refinedContract({score_history:history})), /Latest update unavailable in this snapshot/);
+  }
+});
+
+test('unscored retained history does not imply that a current score has never existed', () => {
+  const history = scoreHistory([historyPoint(0,null)]);
+  history.current = {at:'2026-01-01T00:01:24Z',score:84};
+  const output = renderContract(refinedContract({score_history:history}));
+  assert.match(output, /No recorded scores in retained history/);
+  assert.match(output, /Earlier scores may have expired or been cleared/);
+  assert.match(output, /Latest update: 84/);
+  assert.doesNotMatch(output, /No scores yet|No scored observations yet|<circle /);
+});
+
+test('all added dynamic equation and selection labels are escaped', () => {
+  const contract = refinedContract({aq_selection:{policy:'raw_first_per_level_v1',levels:[{level:'<script>',basis:'raw',selected_triggers:['<img>'],complete:true}]}});
+  contract.explanation.component_shortfalls[0].label = '<svg onload="bad">';
+  const output = renderContract(contract);
+  assert.doesNotMatch(output, /<script>|<img>|<svg onload/);
+  assert.match(output, /&lt;svg onload=&quot;bad&quot;&gt;/);
+  assert.match(output, /&lt;script&gt;/);
+});
+
+test('recent trend leads with backend change wording and keeps LED help separate', () => {
+  const output = renderContract(refinedContract({movement:{detail_text:'Up 3 points since the previous update, from 81 to 84.',current_bucket_start_utc:'2026-01-01T00:10:00+00:00'}}));
+  const trend = output.slice(output.indexOf('<h3>Score movement</h3>'),output.indexOf('<details class="hi-stability-help">'));
+  assert.match(trend, /Up 3 points/);
+  assert.doesNotMatch(trend, /blue|green|orange|red|fixed-UTC/i);
+  assert.match(trend, /Latest update:/);
+  assert.match(output, /<summary>How the LEDs work<\/summary>/);
+});
+
+test('dedicated unrecorded payload takes precedence and malformed dedicated truth cannot revive a legacy score', () => {
+  const old = refinedContract(); old.score.display_score=54; old.presentation.primary_text='54';
+  const current = refinedContract();
+  assert.match(assertIdentical(renderAll({stability_score:current,diagnostics_summary:{stability_score:old}})), /<span>84<\/span>/);
+  for (const malformed of [null,undefined,false,'bad',[],{}, {presentation:{primary_text:'99',tone:'excellent'}}]) {
+    const output=assertIdentical(renderAll({stability_score:malformed,diagnostics_summary:{stability_score:old},stability_score_display_score:99,stability_score_availability:'available'}));
+    assert.match(output, /<span>—<\/span>/);
+    assert.doesNotMatch(output, /<p class="hi-stability-equation">/);
+  }
+});
+
+test('floored equation explains zero without pretending a negative subtraction equals zero', () => {
+  const contract=refinedContract();
+  contract.score.display_score=0;contract.presentation.primary_text='0';
+  Object.assign(contract.explanation,{component_shortfall_points:96,evidence_deduction_points:2,aq_adjustment_points:6,pre_cap_score:0,final_score:0,clamped_at_zero:true});
+  contract.explanation.component_shortfalls[0].points=96;
+  assert.match(renderContract(contract), /max\(0, 100 − 104\) = <strong>0<\/strong>/);
+  assert.match(renderContract(contract), /The score stops at zero/);
+});
+
+test('latest live score is separate text and cannot invent a graph sample', () => {
+  const history=scoreHistory([historyPoint(0,60),historyPoint(1,62)]);
+  history.current={at:'2026-01-01T00:11:24Z',score:65};
+  const output=renderContract(refinedContract({score_history:history}));
+  assert.match(output, /Latest update: 65<\/strong><span>/);
+  assert.match(output, /separate from the ten-minute samples/);
+  assert.equal((output.match(/<circle /g)||[]).length,2);
+  assert.match(output,/Latest recorded score: 62/);
+});
+
+
+test('saturated changes pulse once per publication and never for steady or unavailable', () => {
+  for (const render of RENDERERS) {
+    const host = {isConnected:true};
+    const movement = {status:'available', start_position_degrees:360, end_position_degrees:360,
+      saturated:true, delta_points:1, previous_display_score:80, current_display_score:81,
+      current_bucket_start_utc:'2026-01-01T00:00:00Z'};
+    const entity = {attributes:{stability_score:{availability:'available', score:{display_score:81}, movement}}};
+    assert.match(render.call(host, entity), /hi-stability-change-pulse/);
+    assert.doesNotMatch(render.call(host, entity), /hi-stability-change-pulse/);
+    movement.current_bucket_start_utc = '2026-01-01T00:10:00Z';
+    assert.match(render.call(host, entity), /hi-stability-change-pulse/);
+    movement.delta_points = 0;
+    assert.doesNotMatch(render.call(host, entity), /hi-stability-change-pulse/);
+    movement.status = 'unavailable'; movement.delta_points = 1;
+    assert.doesNotMatch(render.call(host, entity), /hi-stability-change-pulse/);
+  }
+  for (const relativePath of SURFACES) {
+    const source = fs.readFileSync(path.join(ROOT, relativePath), 'utf8');
+    assert.match(source, /prefers-reduced-motion: reduce[\s\S]*hi-stability-direction\.hi-stability-change-pulse \{ animation:none !important;/);
+  }
+});
+
+test('card label stays concise even when backend movement summary is available', () => {
+  assert.equal(renderLabel({availability:'available', score:{display_score:80}, presentation:{compact_text:'GOOD'}, movement:{status:'available', summary_text:'— Holding steady'}}), 'GOOD');
+  assert.equal(renderLabel({availability:'available', score:{display_score:80}, presentation:{compact_text:'GOOD'}, movement:{status:'available', summary_text:'↑ 2 · Improving'}}), 'GOOD');
 });

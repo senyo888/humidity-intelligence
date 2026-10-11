@@ -6,23 +6,183 @@ All notable changes to Humidity Intelligence will be documented in this file.
 
 This project follows a practical changelog format for Home Assistant and HACS users. Add new entries under a fresh `Unreleased` section before publishing a future release.
 
-## Unreleased — v2.1.0-rc.1 source-review foundation
+## Unreleased — v2.1.0-rc.1
 
-Part 1 of the V2.1 review split. This source snapshot contains the beta.7 foundation
-plus source-history reconciliation, documentation identity and review routing.
-It is not the complete RC.1 candidate on `senyo888-patch-1` and is not intended for
-installation or publication. Final-candidate Stable evidence does not apply to it.
-The manifest uses RC metadata for compatibility with `develop`; exact Git commits
-identify this partial snapshot and the complete candidate separately.
+Unpublished release candidate prepared from beta.12. Published Stable remains
+v2.0.12. Earlier HA Stable acceptance, including its seven-day drift history advisory,
+is evidence for the previous exact package. Review corrections change component
+bytes; fresh installed-candidate and final release validation remain pending. The RC label does not claim promotion,
+a release tag or HACS availability.
 
-Review corrections keep Drift detail snapshots open during normal telemetry updates,
-contain monitoring-management discovery errors, and avoid repeated validation of an
-unchanged adaptive Outputs feed. Native controls still receive every state update.
-V2 layouts advance to revision 3; generator/schema remain 1. No control behavior or
-configuration/entity migration is introduced. Installing the eventual complete package requires a full restart and
-fresh, fully replaced card exports; restarting resets in-memory Stability history.
+- Prepares the approved README and website content, Home Assistant introduction,
+  selected V2.1 release artwork and decorative clockwise header LEDs. Website and
+  Wiki publication remain separate from source preparation.
+- Moves detailed setup, service and support guidance into the prepared Wiki
+  material and keeps the README focused on the integration and current release.
+- Corrects the stale scenario test expectation without changing runtime behavior;
+  aligns documentation and metadata checks with the candidate identity.
+- Corrects `v205_release_check` recognition of adaptive Outputs panels on Mobile
+  and Tablet. Native and adaptive panels are both accepted when enabled; missing
+  panels and panels present while disabled still fail. This changes diagnostic
+  validation only, with no control-engine or generated-card changes.
+- Corrects recovery scoring for installations with no routine AQ sensors, including
+  CO-only configurations. Missing configured AQ still prevents full recovery;
+  missing-AQ score limits and independent CO protections remain unchanged.
+- Keeps Diagnostics polling publication on Home Assistant’s event loop alongside
+  scheduled updates, avoiding concurrent mutation of Stability history and movement.
+- Preserves open Drift detail snapshots during telemetry updates, contains monitoring
+  discovery errors without replacing saved settings, and skips unchanged adaptive
+  Outputs payload validation while continuing to update native controls.
+- Distinguishes unavailable display-preference reads from unconfirmed writes, and
+  prevents the touch-test checkout from retaining its GitHub token.
+- Keeps the backend-rendered Stability badge visible while its display preference
+  loads or cannot be read; only confirmed Disabled hides it. Preference feedback
+  and backend no-score states remain explicit. Repairs the beta.12 interaction-guide link.
+- **UI revision advanced**: both V2 layouts use revision 9, superseding revisions
+  1–8. Stamp schema/generator 1 and Stability schema 3/formula 4 remain. Export and
+  replace saved V2 cards. V1 Mobile also needs replacement YAML for its Drift fix.
+  Control-engine logic and existing entity IDs are unchanged.
+- Requires no configuration migration. An authorized package update requires a full
+  restart and resets in-memory Stability history. Installation and final release
+  validation remain separate from RC source preparation.
+
+## v2.1.0-beta.12 — Earlier unpublished candidate
+
+Unpublished source candidate extending beta.11. Published Stable remains v2.0.12;
+installation, restart, tag, GitHub Release and HACS publication are separate actions.
+
+- Changes built-in autumn humidity targets from 47–58% to 50–60%, retaining the 64%
+  high-risk threshold: above 60% is above target; 64% or higher meets humidity danger.
+  No separate danger override is added. Existing custom derivation stays unchanged
+  (50–60% custom gives 67.5% high risk). Target-relative mould interpretation and humidifier start/
+  recovery follow the new band. Other seasons, custom overrides, temperature bands,
+  lane order and CO precedence remain unchanged.
+- Bounds the Stability LED arc to net displayed-score change against an actual
+  recorded reference from the last 60 minutes. The backend retains at most seven
+  first-publication references, one per ten-minute slot, with exact observation
+  times. One angle conversion avoids accumulated rounding drift. This changes
+  movement presentation, not score weights, rounding, caps or evidence rules.
+- Keeps LED colour tied to the latest update and exposes both net change and the
+  actual comparison interval. Unchanged scores use neutral LEDs; old references
+  expire on the next owned update without implying a new measured change. Missing
+  scores or publication gaps over eleven minutes establish a fresh movement baseline.
+- Preserves the 72-hour score/classification halo, sampled history, collection,
+  Partial/unavailable states and saved hold-to-disable preference. Recent improvement
+  can coexist with poor current humidity; the humidity and reason panels retain
+  current-condition truth.
+- Uses authoritative humidity high-risk bounds in generated cards. Missing or invalid
+  bounds now show neutral context instead of an invented target-high-plus-eight limit.
+- Advances both V2 layouts from revision 6 to 7, superseding revisions 1–6. Stamp
+  schema/generator 1 and Stability schema 3/formula 4 remain. No config-entry or entity
+  migration is required. An authorized installation needs the complete package and
+  restart, then fresh exports and complete saved-card replacement. Restart clears
+  in-memory Stability history; rollback restores package and cards separately.
+
+## v2.1.0-beta.11 — Earlier unpublished candidate
+
+Unpublished candidate extending beta.10. Published Stable remains v2.0.12;
+no tag, GitHub Release or HACS publication is claimed.
+
+- Polishes Stability details with the displayed score first, every individual
+  deduction retained, a total and one calculation below the breakdown. Rounding,
+  the zero floor and safety ceilings remain separate from the calculated score;
+  incomplete explanations are explicitly unavailable.
+- Refreshes the existing Score history expander with latest recorded score, range,
+  sample coverage and a readable 0–100 chart. Only retained observations are drawn;
+  missing scores, absent history and updates between samples remain distinct.
+- Adds hold-to-toggle Stability presentation on the existing badge. Disabled keeps
+  the badge visible with distinct static aurora/LEDs; hold restores the display.
+  Tap, Enter and a short Space press open details/history; holding Space on the
+  focused badge performs the same hold action. Scoring, collection and control
+  continue. Home Assistant saves the preference for the signed-in user and HI entry
+  across sessions; failures remain explicit. No extra control is added.
+- Advances both V2 layout revisions from 5 to 6 for this presentation refinement,
+  preserving schema/generator 1 and formula 4. The package advances to beta.11.
+  Fresh exports and full saved-card replacement are required to display it.
+- Aligns configuration, monitoring, score and upgrade guidance with the current
+  v2.1 implementation. Replaces current state examples with privacy-sanitized
+  captures with neutral example labels; old score explanation images remain private,
+  and retained configuration images carry an earlier-layout note. Website and Wiki source
+  preparation remain separate from publication.
+- Repairs native configuration-flow test cleanup and verifies Save changes through
+  shutdown and a fresh Home Assistant instance. Setup/options behavior is unchanged;
+  [native test guidance](docs/config-flow-testing.md) records the separate dependency
+  shutdown issue and requires a clean process exit as well as passing assertions.
+
+## v2.1.0-beta.10 — Earlier unpublished candidate
+
+Unpublished candidate extending beta.9. Published Stable remains v2.0.12;
+no tag, GitHub Release or HACS publication is claimed.
+
+- Refines LED feedback: unchanged scores retain position with neutral LEDs, movement
+  completes within 300 ms, details explain each change, and further score
+  changes at the arc limit receive one brief pulse (respecting reduced motion).
+
+- Uses configured individual AQ conditions per level for Stability, with configured
+  IAQ fallback only where no individual conditions are enabled. Missing individual
+  readings remain incomplete; engine triggers and CO protections are unchanged.
+- Replaces routine AQ headline ceilings with one additional adjustment of up to
+  twelve points. Six hours of observed-clear evidence reduces it to zero; missing
+  or interrupted evidence pauses recovery, and a new crossing resets it.
+- Publishes the score and LED movement together. Small increases use soft green,
+  stronger increases bright green; declines use orange/red. Blue remains baseline
+  collection. One-to-four-point changes are gentle; five or more are strong,
+  independently of retained arc position.
+- Adds a backend-valued calculation breakdown, plain-language trend and coverage,
+  selected AQ scope, recovery status and a graph of actual ten-minute score samples.
+- Uses formula 4 with additive schema-3 Diagnostics fields and advances both V2
+  layout revisions to 5. Existing entity IDs, service schemas and control remain.
+- Requires a fresh baseline; older combined AQ samples cannot be reinterpreted.
+  Restart/reload resets scoring, AQ recovery and graph history. Installation and
+  saved-card replacement require separate activation; rollback restores the prior
+  package and corresponding cards. See the [Stability contract](docs/stability-score-accepted-baseline.md).
+
+## v2.1.0-beta.9 — Earlier unpublished candidate
+
+Unpublished candidate extending beta.8. Published Stable remains v2.0.12;
+no tag, GitHub Release, HACS publication or deployment is claimed here.
+
+- Repairs native-button touch activation in canonical V2 mobile/tablet surfaces,
+  preserving existing button-card control actions and Home Assistant handoffs.
+- Restores UI revision verification after reconnect when button-card reuses its
+  states wrapper; connected, ready and fresh available Diagnostics evidence remain required.
+- Retains mouse/keyboard activation, details/history navigation, manual dismissal
+  and existing inactivity custody. [Interaction contract and evidence limits](docs/ui-interactions.md).
+- Advances both V2 layout revisions to 4 with generator contract 1. Activation
+  requires the complete package and restart, followed by fresh export and full
+  saved-YAML replacement for both layouts; refresh cached clients as needed.
+- Preserves beta.8 custom monitoring meanings/guidance, deterministic control,
+  entity primary states and Stability scoring. Restart resets in-memory history.
+  No configuration migration is required; retain the preceding package and card YAML
+  for rollback.
+
+## v2.1.0-beta.8 — Earlier unpublished candidate
+
+Unpublished candidate extending beta.7. Published Stable remains v2.0.12;
+no tag, GitHub Release, HACS publication or deployment is claimed here.
+
+- Adds entry-local reusable monitoring meanings: a custom name, an existing HI
+  classification and optional plain-text **What to do** guidance. Each source keeps
+  its own detection rule; guidance supplements the standard device advice.
+- Stages creation, reuse, rename, reclassification and guarded deletion in the
+  existing options transaction. Previews show affected rules; only the main
+  **Save changes** persists edits. Nested cancellation preserves earlier drafts.
+- Preserves explicit gaps for missing saved meanings and distinguishes shared-source
+  associations. Existing configurations continue with built-in meanings and an empty
+  library; no manual migration is required.
+- Keeps output control, lane ordering, entity primary states and Stability scoring
+  unchanged. Backend-authored text uses the existing frontend contract.
+- Activation requires the complete package and restart; options save retains the
+  existing reload lifecycle and its in-memory-history reset. Downgrade requires the
+  matching prior settings and monitoring custody, as well as the earlier package.
+  [Configuration, lifecycle and rollback](docs/custom-monitoring-meanings.md).
 
 ## v2.1.0-beta.7 — Earlier unpublished candidate
+
+- Adds two-minute inactivity closing to HI-owned details and adaptive Outputs.
+  Real interaction renews the timer; manual dismissal remains immediate. Native HA
+  more-info and the existing shared legacy Outputs timer retain their ownership.
+  [Inactivity contract](docs/ui-inactivity.md).
 
 Unpublished candidate packaging the reviewed UI harmonisation after beta.6. Published
 Stable remains v2.0.12; no tag, GitHub Release or HACS publication is implied.

@@ -78,8 +78,9 @@ and does not remove or rewrite Git history or any published release.
 
 The isolated `tools/stability-scenario/` demo and its tests are repository validation
 material and are excluded from the integration package. Other unclassified runtime-
-looking files under `tools/` still fail closed. The Stability helpers bring the
-component inventory to 55 files; the artifact manifest is an additional packaging file.
+looking files under `tools/` still fail closed. The beta.12 component inventory contains 76 files; the artifact manifest is an
+additional packaging file. Derive each later candidate’s inventory from its exact
+commit and artifact manifest rather than reusing this dated count.
 
 ## V2.1.0 candidate identity
 

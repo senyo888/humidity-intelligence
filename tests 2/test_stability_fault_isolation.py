@@ -123,7 +123,7 @@ def test_scheduler_capture_exception_rearms_and_breaks_movement_chain():
     assert runtime_data["stability_failed_buckets"] == {failed_at}
     assert failed["movement"]["status"] == "unavailable"
     assert failed["movement"]["active_led_steps"] == 0
-    assert runtime_data["stability_movement_last_score"] is None
+    assert runtime_data["stability_published"]["score"]["display_score"] is None
     assert len(registrations["points"]) == 2
     assert registrations["points"][1]["point_in_time"] == failed_at + timedelta(minutes=10)
 

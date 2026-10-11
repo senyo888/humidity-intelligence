@@ -58,6 +58,9 @@ integration manifest, export timestamp or file download. Unknown schema/generato
 contracts remain unverified. A valid newer card against an older backend remains a
 revision difference, never a fabricated update or healthy match.
 
+Revision details use the [two-minute inactivity policy](ui-inactivity.md), while
+Close, Escape and backdrop dismissal remain available.
+
 The self-contained footer uses the existing button-card dependency and its live HA
 connection. Disconnection invalidates current status even if old entities remain
 cached; reconnect requires fresh evidence. It creates no output commands, automatic
@@ -81,7 +84,11 @@ unknown input, humidity uses finite numeric evidence, comfort describes position
 relative to the seasonal band, and Outputs names come from the mapped entities.
 The seasonal description never prescribes an action in competition with the backend
 reason. Outputs expansion remains shared per entry and retains its existing timer.
-Stability presentation, collection, scoring and lane selection are unchanged.
+The revision indicator itself leaves Stability and lane selection unchanged. In the
+corrected RC.1 source, both layouts use revision 9, superseding revisions 1–8.
+This includes the earlier movement/humidity presentation and reviewed adaptive Outputs
+and preference handling corrections. Stamp schema and
+generator contract remain 1. See [the candidate compatibility record](release-governance.md#rendered-ui-revision-check-for-every-version-update).
 
 Installing the Python metadata changes requires the normal complete-package update
 and Home Assistant restart. A restart resets in-memory Stability collection; it is

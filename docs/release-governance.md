@@ -3,25 +3,15 @@
 Humidity Intelligence uses semantic versioning with explicit prerelease markers for
 testing and validation branches.
 
-## Source-review split boundary
-
-This branch is part 1 of a two-PR source review reconstructed from beta.7. Its
-`2.1.0-rc.1` manifest is a source integration label, not a claim to be the complete
-RC.1 candidate on `senyo888-patch-1`. Exact commit identity distinguishes these
-snapshots. Do not install, publish or transfer final-candidate Stable acceptance to
-this partial foundation. Part 2 restores the complete approved candidate.
-
-The split changes review organization only. Subsequent review corrections to Drift
-snapshots and adaptive Outputs advance this foundation to V2 layout revision 3,
-explicitly superseding revisions 1 and 2. Schema/generator remain 1. These source
-changes require fresh card exports when the eventual complete package is installed. Both PRs need their own source checks and review; neither is authorized
-to merge by preparation. The final PR temporarily targets the foundation branch
-for a bounded review diff, and returns to `develop` after its dependency merges.
-
 ## Canonical Version Model
 
-- `2.1.0-rc.1`: current unpublished source-review foundation only; see the boundary above.
-- `2.1.0-beta.7`: earlier unpublished candidate with restrained V2 styling, a truthful UI revision indicator and preserved native/adaptive Outputs.
+- `2.1.0-rc.1`: current unpublished release candidate prepared from beta.12, with approved public content, a test-only scenario correction and corrected adaptive Outputs recognition in the release checker. Review corrections address recovery without routine AQ, event-loop Diagnostics publication, monitoring discovery and UI handling. Both V2 layouts now use revision 9; control-engine logic and entity IDs remain unchanged. Earlier HA Stable acceptance belongs to the previous exact package; fresh installed-candidate and final release validation remain pending. No release tag, GitHub Release or HACS publication is implied.
+- `2.1.0-beta.12`: earlier unpublished source candidate with autumn targets of 50–60% (high risk 64%) and bounded recent score movement. Both V2 layouts advance from revision 6 to 7; stamp schema/generator 1 and Stability schema 3/formula 4 remain. No configuration migration; an authorized update requires the complete package, restart and replacement card exports. See [Stability contract](stability-score-accepted-baseline.md).
+- `2.1.0-beta.11`: earlier unpublished candidate polishing score details/history and hold-to-toggle presentation. Both V2 layouts advance from revision 5 to 6; metadata schema/generator 1 and formula 4 remain. Install the complete package, restart, export and replace both saved cards; rollback restores package and cards separately. See [Stability contract](stability-score-accepted-baseline.md).
+- `2.1.0-beta.10`: earlier unpublished candidate introducing formula 4, individual-first AQ evidence, observed-clear recovery and synchronized score/LED feedback. Earlier formulas require a fresh baseline.
+- `2.1.0-beta.9`: earlier unpublished candidate repairing native HI button touch routing inside button-card; both V2 layouts advance to revision 4. See [interaction contract and validation limits](ui-interactions.md).
+- `2.1.0-beta.8`: earlier unpublished candidate with reusable entry-local monitoring meanings and optional plain-text guidance alongside the existing classification advice. Source rules and control ownership remain unchanged; see [lifecycle and rollback](custom-monitoring-meanings.md).
+- `2.1.0-beta.7`: earlier unpublished candidate with restrained V2 styling, a truthful UI revision indicator, preserved native/adaptive Outputs and two-minute inactivity dismissal for custom HI details (manual closing retained; see [scope and exceptions](ui-inactivity.md)).
 - `2.1.0-beta.6`: earlier unpublished candidate with clearer Outputs/settings wording and bounded cancel-return correction.
 - `2.1.0-beta.5`: earlier unpublished candidate with compact Outputs summaries and on-demand controls.
 - `2.1.0-beta.4`: earlier unpublished candidate with optional output observation and adaptive Outputs.
@@ -44,7 +34,7 @@ must remain aligned with the
 published GitHub Release/tag.
 
 Published Stable is [v2.0.12](https://github.com/senyo888/humidity-intelligence/releases/tag/v2.0.12),
-released on 2026-09-09. The current `2.1.0-rc.1` review foundation is unpublished and not installable release evidence.
+released on 2026-09-09. The current `2.1.0-rc.1` release candidate is unpublished.
 The earlier `2.1.0-beta.1` source was committed and pushed through `144570b` on
 `senyo888-patch-1`; beta.2 began at `76285b0`, and beta.3 collects the subsequent UI work through `4f86e66`. There is no v2.1 tag,
 GitHub Release or HACS offering.
@@ -394,6 +384,58 @@ and post-release observation as separate evidence states.
   approval gates are complete for the exact final head.
 
 ## Rendered UI revision check for every version update
+
+RC.1 follow-up remediation is **UI revision advanced** against reviewed source
+`083959567d8ace94ba3618ccab715edeacc5dc38`. Both layouts advance from 8 to 9,
+explicitly superseding revisions 1–8. Stamp schema/generator 1 and Stability
+schema 3/formula 4 remain. Only confirmed Disabled now hides the Stability badge;
+loading or unavailable preferences retain the backend-rendered display with explicit
+status feedback. Earlier review fixes changed adaptive Outputs and preference handling; the
+V1 Mobile Drift snapshot fix also requires replacement YAML without a revision stamp.
+Export and replace complete saved cards, then refresh clients as needed.
+
+Control-engine logic and existing entity IDs are unchanged. Recovery scoring and
+Diagnostics publication corrections change component bytes, so prior Stable
+acceptance is historical evidence only for its original package. Fresh installed-
+candidate validation remains pending, coordinated separately with Stable maintenance.
+An authorized package update requires a full restart, clearing in-memory Stability
+history. Source checks do not authorize installation, merge, tagging or publication.
+
+The two-PR review compares each corrected source with its own previous head and
+base, checks generated stamps/Diagnostics targets, and preserves the complete final
+candidate on `senyo888-patch-1`. The foundation remains a partial review snapshot.
+
+### Historical beta.12 UI transition
+
+The beta.12 refinement is **UI revision advanced** against beta.11 source
+`49856cbbd160c29efda90f8bfeb98514cd3d9be2`: Mobile and Tablet move from 6 to 7,
+with earlier revisions 1–6 listed as superseded. Stamp schema and generator contract
+remain 1; entry association, mapping, stamping and Diagnostics advertisement
+semantics are unchanged. Stability schema 3/formula 4, score weights, rounding,
+caps and eligibility remain. The additive movement comparison identifies its basis
+as `recent_recorded_display_score_v1`; updated cards retain explicit legacy handling
+and show unavailable movement for an unknown comparison basis.
+
+The backend arc now compares actual displayed scores over at most 60 minutes,
+retaining exact reference timestamps separately from sampled graph history. Latest
+change colour remains independent. Missing scores and publication gaps over eleven
+minutes start a fresh movement baseline; expiry happens on an owned update and is
+neutral when the latest score is unchanged. Hold-to-disable, keyboard/touch details,
+history and collection behavior remain. The autumn default change affects target-
+relative mould and humidifier behavior; readings above 60% are above target and
+humidity danger stays at 64%. No separate danger override is added. Other seasons
+and custom derivation stay unchanged (custom 50–60% gives 67.5% high risk).
+Lane ordering and entity IDs/native state contracts
+remain intact; readings and responses may change under the revised autumn band.
+
+The candidate manifest advances from beta.11 to beta.12. Validation must cover the
+exact changed source, generated stamps and Diagnostics targets; earlier candidate
+checks or soak observations do not establish beta.12 behavior. A patch-branch commit
+or push is source publication, not a release tag, GitHub Release or HACS update.
+Loading changed Python requires a complete-package update and restart; saved cards
+separately need regeneration and full replacement. No configuration migration is
+required. Restart clears in-memory Stability history. Activation and rollback remain
+separate authorized actions; this candidate record claims neither was performed.
 
 The V2 LED is a canonical integration contract, maintained with every candidate
 and release. Record one explicit outcome: **UI unchanged and compatible**, or

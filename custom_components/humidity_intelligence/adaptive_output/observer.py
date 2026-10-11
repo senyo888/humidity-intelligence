@@ -6,6 +6,7 @@ explicit watch set. No source writes, polling, credentials or device operations.
 """
 from copy import deepcopy
 from .discovery import discover, validate_retired
+from .meanings import validate_library
 from .model import normalize, MAX_MAPPINGS, MAX_TEXT, MEANING_LABELS
 
 
@@ -16,12 +17,18 @@ def _display(value):
 
 def _meaning(mapping):
     """Presentation of an applicable rule, separate from custody and raw config."""
+    if mapping and mapping.get('meaning_unresolved') is True:
+        return dict(semantic=None, meaning_label='Saved meaning unavailable',
+                    rule_summary='Choose an existing meaning or remove this rule', rule_lines=[])
     if not mapping:
         return dict(semantic=None, meaning_label='Monitoring rule not configured',
                     rule_summary='No monitoring rule applied', rule_lines=[])
     semantic = mapping['semantic']
     rule = mapping['rule']
     result = dict(semantic=semantic, meaning_label=MEANING_LABELS[semantic], rule_lines=[])
+    if mapping.get('custom_label'):
+        result['meaning_label'] = ('Custom meaning: ' + mapping['custom_label']
+                                   + ' · Classification: ' + MEANING_LABELS[semantic])
     if rule == 'binary_active':
         result.update(rule_summary='Binary state interpretation',
                       rule_lines=['Attention when: on', 'Clear when: off'])
@@ -68,13 +75,16 @@ def _presentation(found, gaps, labels):
         association = {key: _display(candidate[key]) for key in ('status', 'title', 'reason', 'scope_label')}
         association.update(label=_display(labels.get(candidate['output'], 'Removed output')),
                            origin_label='Explicit confirmation' if candidate['origin'] == 'confirmed' else 'Automatic discovery')
-        association.update(_meaning(mappings.get((candidate['output'], source))))
+        mapping = mappings.get((candidate['output'], source))
+        association.update(_meaning(mapping))
+        if mapping and not mapping.get('meaning_unresolved') and mapping.get('custom_instructions'):
+            association['reason'] += '\nConfigured guidance: ' + mapping['custom_instructions']
         row['associations'].append(association)
     for row in grouped.values():
         associations = row['associations']
         first = associations[0]
         statuses = {a['status'] for a in associations}
-        meanings = {(a['status'], a['semantic'], a['rule_summary'], tuple(a['rule_lines'])) for a in associations}
+        meanings = {(a['status'], a['semantic'], a['meaning_label'], a['reason'], a['rule_summary'], tuple(a['rule_lines'])) for a in associations}
         different = len(meanings) > 1
         row['title'] = 'Different meanings by output' if different else first['title']
         row['association_label'] = _display(' · '.join(a['label'] for a in associations))
@@ -88,11 +98,12 @@ def _presentation(found, gaps, labels):
 
 
 class DiscoverySession:
-    def __init__(self, configured, registry, states, confirmations=None, *, known=None, retired=None):
+    def __init__(self, configured, registry, states, confirmations=None, *, known=None, retired=None, custom_meanings=None):
         self.configured = deepcopy(configured)
         self.registry = deepcopy(registry)
         self.states = deepcopy(states)
         self.confirmations = deepcopy(confirmations or [])
+        self.custom_meanings = validate_library({} if custom_meanings is None else custom_meanings)
         self.retired = deepcopy(validate_retired([] if retired is None else retired))
         retired_identities = {(r['output_identity'], r['source_identity']) for r in self.retired}
         self.known = {pair: deepcopy(row) for pair, row in (known or {}).items()
@@ -102,7 +113,7 @@ class DiscoverySession:
         self.snapshot = self._evaluate()
 
     def _evaluate(self):
-        found = discover(self.configured, self.registry, self.states, self.confirmations, self.retired)
+        found = discover(self.configured, self.registry, self.states, self.confirmations, self.retired, self.custom_meanings)
         current = {(m['output'], m['source']): deepcopy(m) for m in found['mappings']}
         configured_ids = {row['entity_id'] for row in self.configured}
         gaps = []
@@ -232,7 +243,7 @@ class DiscoverySession:
     def registry_changed(self, registry):
         # Validate before touching state. A restored/enabled/replaced source must
         # report again; cached state from before the registry change is not proof.
-        discover(self.configured, registry, self.states, self.confirmations, self.retired)
+        discover(self.configured, registry, self.states, self.confirmations, self.retired, self.custom_meanings)
         old = {r['entity_id']:r for r in self.registry}
         new = {r['entity_id']:r for r in registry}
         invalid = set(old) - set(new)
@@ -247,7 +258,7 @@ class DiscoverySession:
             raise
 
     def confirm(self, confirmations):
-        discover(self.configured, self.registry, self.states, confirmations, self.retired)
+        discover(self.configured, self.registry, self.states, confirmations, self.retired, self.custom_meanings)
         removed = {(c['output'], c['source']) for c in self.confirmations} - {(c['output'], c['source']) for c in confirmations}
         revoked = {(c.get('output_identity'), c.get('source_identity')) for c in self.confirmations} - {(c.get('output_identity'), c.get('source_identity')) for c in confirmations}
         previous_known = deepcopy(self.known)

@@ -102,6 +102,78 @@ def test_hidden_alert_only_and_default_exports_do_not_add_adaptive_dependency():
             assert yaml.safe_load(rendered[kind])
 
 
+def _release_visibility_result(services, config, rendered):
+    report = services._build_v205_release_check_entry_report(
+        fixtures._FakeHass(config, {}),
+        config,
+        {"cards": rendered, "unresolved_placeholders_by_card": {}},
+        manifest_version="2.1.0-rc.1",
+    )
+    return next(check for check in report["checks"] if check["id"] == "output_details_visibility")
+
+
+def test_release_check_accepts_generated_native_adaptive_and_hidden_outputs():
+    register, _ = load()
+    generated = []
+    for presentation, visible in (("native", True), ("adaptive", True), ("adaptive", False)):
+        config = entry(
+            output_observation={"enabled": True, "presentation": presentation},
+            show_output_entity_details=visible,
+        )
+        rendered = asyncio.run(generate(register, config))
+        for layout in ("v2_mobile", "v2_tablet"):
+            adaptive_panels = [node for node in nodes(yaml.safe_load(rendered[layout]))
+                               if node.get("type") == "custom:hi-adaptive-output-card"]
+            assert len(adaptive_panels) == int(visible and presentation == "adaptive")
+        generated.append((config, rendered))
+
+    services = fixtures._load_services_module()
+    for config, rendered in generated:
+        result = _release_visibility_result(services, config, rendered)
+        assert result["status"] == "pass", result
+        assert result["details"]["failures"] == []
+
+
+def test_release_check_rejects_missing_and_disabled_generated_outputs():
+    register, _ = load()
+    generated = []
+    for presentation in ("native", "adaptive"):
+        config = entry(
+            output_observation={"enabled": True, "presentation": presentation},
+            show_output_entity_details=True,
+        )
+        generated.append((config, asyncio.run(generate(register, config))))
+
+    services = fixtures._load_services_module()
+    for config, rendered in generated:
+        for layout in ("v2_mobile", "v2_tablet"):
+            missing = dict(rendered, **{layout: "type: markdown\ncontent: Outputs unavailable\n"})
+            result = _release_visibility_result(services, config, missing)
+            assert result["status"] == "fail"
+            assert result["details"]["failures"] == [f"{layout}: output details panel expected but not found"]
+
+        config.options = {"show_output_entity_details": False}
+        result = _release_visibility_result(services, config, rendered)
+        assert result["status"] == "fail"
+        assert result["details"]["failures"] == [
+            f"{layout}: output details panel present while disabled"
+            for layout in ("v2_mobile", "v2_tablet")
+        ]
+
+
+def test_release_check_does_not_treat_adaptive_mentions_as_output_panels():
+    services = fixtures._load_services_module()
+    for text in (
+        "# type: custom:hi-adaptive-output-card\ntype: markdown\ncontent: No panel\n",
+        "type: markdown\ncontent: 'type: custom:hi-adaptive-output-card'\n",
+        "type: custom:hi-adaptive-output-card-example\n",
+    ):
+        rendered = {layout: text for layout in ("v2_mobile", "v2_tablet")}
+        result = _release_visibility_result(services, entry(show_output_entity_details=True), rendered)
+        assert result["status"] == "fail"
+        assert len(result["details"]["failures"]) == 2
+
+
 def test_static_resource_registration_is_retryable_and_once():
     load()
     path = fixtures.INTEGRATION_ROOT / "adaptive_output" / "frontend.py"

@@ -190,7 +190,7 @@ def test_flow_cancel_false_confirm_and_identity_change_do_not_stage(modules):
 
 def test_whole_section_defaults_and_unknown_fields_reject(modules):
     m, _ = modules
-    assert m.section(None) == {'enabled': False, 'presentation': 'native', 'confirmations': [], 'retired': []}
+    assert m.section(None) == {'enabled': False, 'presentation': 'native', 'confirmations': [], 'retired': [], 'custom_meanings': {}}
     with pytest.raises(ValueError): m.section({'enabled': 'true'})
     with pytest.raises(ValueError): m.section({'presentation': 'guess'})
     with pytest.raises(ValueError): m.section({'unexpected': 1})

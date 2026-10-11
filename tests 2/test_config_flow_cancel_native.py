@@ -5,15 +5,21 @@ Run directly in a supported HA environment, separately from stub-based tests:
 No integration setup, live target, or device services are used.
 """
 import copy
+import gc
 import importlib
 from pathlib import Path
 import sys
 import tempfile
-from types import ModuleType, SimpleNamespace
+from types import MappingProxyType, ModuleType, SimpleNamespace
 import unittest
+import weakref
 
+from homeassistant import core as ha_core
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers import area_registry, device_registry, entity_registry
+from homeassistant.config_entries import ConfigEntries, ConfigEntry
+from homeassistant.helpers import (
+    area_registry, device_registry, entity_registry, issue_registry, label_registry,
+)
 
 ROOT = Path(__file__).resolve().parents[1]
 PACKAGE = '_hi_cancel_native'
@@ -21,12 +27,47 @@ package = ModuleType(PACKAGE)
 package.__path__ = [str(ROOT / 'custom_components/humidity_intelligence')]
 sys.modules[PACKAGE] = package
 config_flow = importlib.import_module(PACKAGE + '.config_flow')
+HA_INSTANCES = []
+
+
+def tearDownModule():
+    """Collect stopped fixture cycles before extension modules are finalized.
+
+    orjson.Fragment retained in cycles can crash during interpreter shutdown in
+    the pinned native environment. This is fixture cleanup, not an upstream fix;
+    see docs/config-flow-testing.md for the independent reproducer and limits.
+    """
+    # Registry singleton caches otherwise own stopped instances until module
+    # destruction. Clear only the native registries used by this isolated suite.
+    for registry in (area_registry, entity_registry, issue_registry, label_registry):
+        registry.async_get.cache_clear()
+    gc.collect()
+    if any(reference() is not None for reference in HA_INSTANCES):
+        raise AssertionError('Native flow fixture retained a Home Assistant instance')
+    HA_INSTANCES.clear()
 
 
 class NativeCancelTests(unittest.IsolatedAsyncioTestCase):
+    async def stop_hass(self, hass):
+        """Finish writes and release the test-owned thread-local HA reference."""
+        try:
+            if hass.state is not ha_core.CoreState.stopped:
+                await hass.async_stop(force=True)
+        finally:
+            # HA's native test fixtures also reset this per-thread reference.
+            if ha_core.async_get_hass_or_none() is hass:
+                ha_core._hass.__dict__.clear()
+            if getattr(self, 'hass', None) is hass:
+                self.hass = None
+
     async def asyncSetUp(self):
         self.temp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp.cleanup)
         self.hass = HomeAssistant(self.temp.name)
+        HA_INSTANCES.append(weakref.ref(self.hass))
+        # This fixture never starts HA. force=True runs its shutdown lifecycle
+        # even in not_running state, before the temporary storage is removed.
+        self.addAsyncCleanup(self.stop_hass, self.hass)
         device_registry.async_setup(self.hass)
         await device_registry.async_load(self.hass)
         await entity_registry.async_load(self.hass)
@@ -34,10 +75,6 @@ class NativeCancelTests(unittest.IsolatedAsyncioTestCase):
         self.sensor = dict(entity_id='sensor.example_humidity', sensor_type='humidity',
                            level='level1', room='Example room', friendly_name='Example room')
         self.entry = SimpleNamespace(data={'telemetry': [self.sensor]}, options={})
-
-    async def asyncTearDown(self):
-        await self.hass.async_block_till_done()
-        self.temp.cleanup()
 
     def flow(self, options=False):
         if options:
@@ -126,6 +163,65 @@ class NativeCancelTests(unittest.IsolatedAsyncioTestCase):
             result = await getattr(flow, 'async_step_' + prefix + 'cancel_confirm')({'action': 'return'})
             self.assertEqual(result['step_id'], prefix + 'telemetry')
             self.assertEqual(self.entry.options, {})
+
+    async def test_custom_meaning_main_save_persists_and_reopens_from_native_entry_store(self):
+        """Exercise HI Save changes and HA's real finish/persistence boundary."""
+        manager = ConfigEntries(self.hass, {})
+        self.hass.config_entries = manager
+        await manager.async_initialize()
+        registry = entity_registry.async_get(self.hass)
+        output = registry.async_get_or_create('fan', 'test', 'example_output',
+                                              suggested_object_id='example_output')
+        source = registry.async_get_or_create('sensor', 'test', 'example_filter',
+                                              suggested_object_id='example_filter')
+        entry = ConfigEntry(domain='humidity_intelligence', version=1, minor_version=1,
+            title='Example HI', source='user', unique_id=None, discovery_keys=MappingProxyType({}),
+            subentries_data=[], data={'zones': {'zone1': {'outputs': [output.entity_id]}}}, options={})
+        # Register only fixture custody: no integration setup or device calls.
+        manager._entries[entry.entry_id] = entry
+        flow = config_flow.HumidityIntelligenceOptionsFlow(entry)
+        flow.hass = self.hass
+        flow.handler = entry.entry_id
+        await flow.async_step_options_output_add({'output': output.entity_id,
+            'source': source.entity_id, 'semantic': '__add_custom__', 'rule': 'enum_active_values'})
+        await flow.async_step_options_output_meaning_edit({'name': 'Check media',
+            'classification': 'replace_filter', 'instructions': 'Inspect using the device manual.'})
+        await flow.async_step_options_output_rule({'active_values': ['replace'], 'clear_values': ['clear']})
+        self.assertEqual(dict(entry.options), {})
+        self.assertEqual(flow._observation()['custom_meanings'], {})
+        await flow.async_step_options_output_confirm({'confirm': True})
+        await flow.async_step_options_output_back()
+        staged = copy.deepcopy(flow._options['output_observation'])
+        self.assertEqual(dict(entry.options), {})
+        ident = next(iter(staged['custom_meanings']))
+        self.assertEqual(staged['confirmations'][0]['custom_meaning_id'], ident)
+
+        # This is the actual main-menu Save changes step, followed by HA's
+        # unmodified options-flow manager which commits its CREATE_ENTRY result.
+        result = await flow.async_step_options_done()
+        self.assertEqual(result['type'], 'create_entry')
+        self.assertEqual(dict(entry.options), {})
+        await manager.options.async_finish_flow(flow, result)
+        self.assertEqual(entry.options['output_observation'], staged)
+        # Shutdown must flush HA's scheduled save to disk. A fresh HA instance
+        # cannot reuse the original instance's in-memory storage cache.
+        await self.stop_hass(self.hass)
+        restarted_hass = HomeAssistant(self.temp.name)
+        HA_INSTANCES.append(weakref.ref(restarted_hass))
+        self.addAsyncCleanup(self.stop_hass, restarted_hass)
+        reloaded = ConfigEntries(restarted_hass, {})
+        restarted_hass.config_entries = reloaded
+        await reloaded.async_initialize()
+        persisted = reloaded.async_get_known_entry(entry.entry_id)
+        self.assertIsNot(persisted, entry)
+        reopened = config_flow.HumidityIntelligenceOptionsFlow(persisted)
+        reopened.hass = restarted_hass
+        self.assertEqual(reopened._observation(), staged)
+        self.assertEqual(reopened._observation()['custom_meanings'][ident]['instructions'],
+                         'Inspect using the device manual.')
+        self.assertEqual(reopened._observation()['confirmations'][0]['active_values'], ['replace'])
+        self.assertEqual(reopened._observation()['confirmations'][0]['source_identity'],
+                         staged['confirmations'][0]['source_identity'])
 
 
 if __name__ == '__main__':

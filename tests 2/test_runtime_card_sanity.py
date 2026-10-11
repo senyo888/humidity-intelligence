@@ -3563,7 +3563,9 @@ def test_default_public_card_surfaces_use_passive_stability_badge_instead_of_pau
         assert "document.body.appendChild(dialog)" in block
         assert "dialog.showModal()" in block
         assert "browser_mod" not in block
-        assert "hold_action:\n            action: more-info" in block
+        assert "hold_action:\n            action: javascript" in block
+        assert "humidity_intelligence.stability_presentation.owner.v1" in block
+        assert "frontend/set_user_data" in block
         assert "call-service" not in block
         assert "perform-action" not in block
         assert "type: custom:custom-gauge-card" not in block
@@ -3901,16 +3903,23 @@ def test_readme_uses_manifest_version_badge_not_static_ha_compatibility_badge():
     assert "Home%20Assistant-2026.4.3%2B" not in readme_source
 
 
-def test_readme_keeps_candidate_and_stable_before_previous_releases():
+def test_readme_keeps_candidate_and_stable_visible_with_older_releases_collapsed():
     readme_source = (ROOT / "README.md").read_text()
     release_notes = readme_source.split("## Release Notes", 1)[1]
     visible_notes, previous_releases = release_notes.split("<details>", 1)
 
     assert "### v2.1.0-rc.1" in visible_notes
+    assert "### v2.1.0-beta.12" in previous_releases
+    assert "### v2.1.0-beta.11" in previous_releases
+    assert "### v2.1.0-beta.10" in previous_releases
+    assert "### v2.1.0-beta.8" in previous_releases
+    assert "### v2.1.0-beta.7" in previous_releases
+    assert "### v2.1.0-beta.6" in previous_releases
     assert "### v2.1.0-beta.3" in previous_releases
     assert "### v2.1.0-beta.2" in previous_releases
     assert "### v2.1.0-beta.1" in previous_releases
     assert "### v2.0.12 (Current Published Stable)" in visible_notes
+    assert "### v2.0.11" not in visible_notes
     assert "### v2.0.11 — Poetic Justice (Previous Published Stable)" in previous_releases
     assert "### v2.0.10" not in visible_notes
     assert "### v2.0.10" in previous_releases
@@ -3935,7 +3944,7 @@ def test_readme_keeps_candidate_and_stable_before_previous_releases():
         b"\x89PNG\r\n\x1a\n"
     )
     assert "<summary>Previous Releases</summary>" in previous_releases
-    assert "current candidate, current Published" in visible_notes
+    assert "Current candidate and current Published Stable are expanded" in visible_notes
     assert (
         "https://my.home-assistant.io/redirect/hacs_repository/"
         "?owner=senyo888&repository=humidity-intelligence&category=integration"
@@ -3955,17 +3964,20 @@ def test_v21_candidate_surfaces_preserve_published_stable_and_history():
     assert "v2.1.0-rc.1" in notes and "v2.1.0-rc.1" in changelog
     assert "v2.1.0-beta.1" in changelog
     previous = readme.split("<summary>Previous Releases</summary>", 1)[1]
-    beta1 = previous.split("### v2.1.0-beta.1", 1)[1].split("### ", 1)[0]
+    assert "### v2.1.0-beta.10 (" in previous
+    beta1 = previous.split("### v2.1.0-beta.1 (", 1)[1].split("### ", 1)[0]
     assert "303" in beta1 and "432" in beta1
-    assert "drift" in notes.lower() and "Baseline" in notes
-    assert "0dd3e68ab9f35608641dc64efc4b2c4bfacb06ce" in readme
+    assert "drift" in previous.lower() and "Baseline" in previous
+    assert "two-minute inactivity" in previous.lower()
+    assert "touch" in notes.lower()
+    assert "0dd3e68ab9f35608641dc64efc4b2c4bfacb06ce" in previous
     assert "## 2.0.11 - 2026-08-11" in changelog
     for historical in ("2.0.12-beta.2", "2.0.12-beta.3", "2.0.12-beta.4", "2.0.12-rc.1"):
         assert historical in changelog
     assert "2.1.0-rc.1" in governance and "2.0.12" in governance
     assert "No configuration/entity migration" in governance
     assert "## v2.0.12 Release Checklist" in governance
-    assert "regenerate" in notes.lower() or "fresh" in notes.lower()
+    assert "export" in notes.lower()
 
 
 def test_dump_cards_without_layout_exports_all_cached_layouts():
@@ -5773,10 +5785,11 @@ def test_v205_release_check_service_is_documented_and_registered():
     assert "SERVICE_V205_RELEASE_CHECK" in services_source.split("async_unregister_services", 1)[1]
     assert "v205_release_check:" in services_yaml
     assert "v2.0.5-v2.0.12" in services_yaml
-    assert "v2.0.5-v2.0.12" in readme_source
+    assert "v2.0.5-v2.0.12" in (ROOT / "docs" / "support.md").read_text()
     assert "write_test_exports" in services_yaml
-    assert "humidity_intelligence.v205_release_check" in readme_source
-    assert "humidity_intelligence_v205_release_check.json" in readme_source
+    assert "wiki/Services-Reference" in readme_source
+    assert "wiki/Release-Validation-for-Users" in readme_source
+    assert "humidity_intelligence_v205_release_check.json" in services_yaml
     assert manifest["version"] == "2.1.0-rc.1"
 
 
@@ -5796,9 +5809,12 @@ def test_owned_ui_path_discovery_and_legacy_cleanup_guidance_is_explicit():
     assert "Use this instead of dump_cards when path discovery is the priority" in (
         services_yaml
     )
-    assert "Manually Removing Files Purge Intentionally Retains" in readme_source
-    assert "does not own or purge registered dashboards" in readme_source
-    assert "Never overwrite a dashboard file" in readme_source
+    assert "wiki/Services-Reference" in readme_source
+    normalized_support = " ".join(support_source.split())
+    assert "For an artifact that exact purge intentionally retains" in normalized_support
+    assert "delete only the confirmed regular file" in normalized_support
+    assert "overwrite a dashboard file with a Manual-card fragment" in normalized_support
+    assert "It retains Home Assistant dashboards" in normalized_support
     assert "Dashboard Setup Guidance" in services_yaml
     assert "performs no file or dashboard writes" in services_yaml
     assert "dashboards are user-managed and are never listed or removed" in services_yaml
@@ -5963,8 +5979,11 @@ def test_v206_drift_statistics_helper_docs_preserve_repair_status_split():
 
     assert "House Humidity Mean 7d" in readme
     assert "Statistics helper" in readme
-    assert "Do not fabricate history" in readme
+    assert "wiki/Configuration-Walkthrough#house-humidity-drift-7d" in readme
     assert "not ready or unavailable" in readme
+    support = (ROOT / "docs" / "support.md").read_text()
+    assert "source_value_valid" in support
+    assert "repair_required" in support and "repair_kind" in support
     assert "2.0.7" in changelog
     assert "setup/repair" in changelog
     assert "algorithm" not in changelog.lower()
@@ -7048,6 +7067,31 @@ def test_release_check_rejects_unsupported_or_malformed_v21_versions():
                     "2.1.0-beta.01", "2.1.0-alpha.1", "2.1.0-beta.1extra"):
         status, _ = services._release_check_manifest_status(version)
         assert status == "fail", version
+
+
+def test_readme_contents_headings_have_unique_github_anchors():
+    """Keep navigation valid across Markdown and disclosure heading layouts."""
+    import re
+
+    source = (ROOT / "README.md").read_text()
+    headings = re.findall(r"^## (.+)$|<summary><h2>(.*?)</h2></summary>", source, re.MULTILINE)
+    slugs = [
+        re.sub(r"[^\w -]", "", (markdown or disclosure).lower()).replace(" ", "-")
+        for markdown, disclosure in headings
+    ]
+    assert len(slugs) == len(set(slugs))
+    explicit = re.findall(r'<a id="([^"]+)"></a>', source)
+    assert len(explicit) == len(set(explicit))
+    assert not set(slugs).intersection(explicit)
+    contents = source.split("## Contents", 1)[1].split("\n---\n", 1)[0]
+    for target in re.findall(r"\]\(#([^)]+)\)", contents):
+        assert (slugs + explicit).count(target) == 1, target
+    for legacy_target in (
+        "v2012-maintenance-candidate-not-published",
+        "v2011--poetic-justice-current-published-stable",
+        "v2010-previous-published-stable",
+    ):
+        assert explicit.count(legacy_target) == 1
 
 
 if __name__ == "__main__":

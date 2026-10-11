@@ -1777,7 +1777,18 @@ def _output_details_visibility_failures(cards: dict, show_output_details: bool) 
     failures: List[str] = []
     for layout in ("v2_mobile", "v2_tablet"):
         card = str(cards.get(layout, ""))
-        has_output_panel = "name: Outputs" in card or "entity: input_boolean.air_control_output_expanded" in card or "entity: switch.hi_input_air_control_output_expanded" in card
+        # The adaptive generator replaces the native header/expander pair.
+        # Match its emitted YAML type field, not a mention in prose or a comment.
+        has_adaptive_panel = re.search(
+            r"(?m)^[ \t]*(?:-[ \t]+)?type:[ \t]+custom:hi-adaptive-output-card[ \t]*$",
+            card,
+        ) is not None
+        has_output_panel = (
+            "name: Outputs" in card
+            or "entity: input_boolean.air_control_output_expanded" in card
+            or "entity: switch.hi_input_air_control_output_expanded" in card
+            or has_adaptive_panel
+        )
         if show_output_details and not has_output_panel:
             failures.append(f"{layout}: output details panel expected but not found")
         if not show_output_details and has_output_panel:

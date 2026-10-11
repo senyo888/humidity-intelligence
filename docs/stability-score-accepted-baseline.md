@@ -1,9 +1,8 @@
 # Accepted Stability Score baseline
 
-Status: accepted functional and presentation contract for the beta.7-based V2.1
-source-review foundation, following its introduction in beta.1. This partial snapshot
-uses formula 3 and V2 layout revision 3; later formula and interaction refinements
-belong to the complete candidate on `senyo888-patch-1`. It is not an installable candidate.
+Status: accepted functional and presentation contract; integrated in the unpublished
+RC.1 candidate, following its introduction in beta.1 and refinement through beta.12.
+The local refinement uses formula 4 with additive schema-3 diagnostics.
 This records the accepted behaviour for the current implementation work. It does not
 claim publication, HACS availability, deployment, or a newly approved release version.
 Historical release notes retain their original scope.
@@ -50,7 +49,7 @@ cannot populate an empty bucket or replace a complete sample; the last complete
 scheduled observation is the bucket representative. Exceptions must not stop future
 scheduling. Bounded sampling diagnostics report status, latest bucket and missed count.
 
-History and movement are in memory only. Restart or entry reload resets both; 303 new
+History and movement are in memory only. Restart or entry reload resets both, including AQ recovery and score history; 303 new
 valid samples are required. There is no Recorder recovery, durable ring persistence,
 synthetic seeding or interpolation. With uninterrupted capture, eligibility takes
 50h20m after the first sample, up to about 50h30m after setup. Preserve this limitation
@@ -79,6 +78,21 @@ independent evidence. Full-envelope recovery uses the source's combined humidity
 condensation/mould, available drift and AQ conditions; preserve its exact missing
 component treatment and timestamp behaviour through fixtures.
 
+AQ scoring selects configured conditions separately for each enabled level. If any
+CO2, PM2.5 or VOC conditions are enabled, use those individual measurements and
+exclude the composite IAQ condition from scoring. Use configured IAQ only when no
+individual condition is configured. Invalid mappings, thresholds, units or unavailable
+individual readings remain incomplete evidence; they never activate IAQ fallback.
+Coverage denominators count selected conditions only. Details identify the selected
+basis and excluded IAQ without publishing private source identifiers.
+
+This selection applies consistently to AQ clearance, combined recovery and the
+short-term AQ adjustment. Existing per-type sensor averages and equal level weighting
+remain. One individual measurement does not imply comprehensive pollutant coverage.
+CO warnings and CO emergency protections remain independent. Engine AQ trigger
+selection and ventilation decisions are unchanged: an IAQ-driven control action can
+coexist with individual-measurement Stability scoring.
+
 AQ is based on configured conditions, not merely visible sensor chips. IAQ crosses
 at or below threshold; PM2.5/VOC/CO2/CO at or above. Accepted units: IAQ unitless/index,
 PM2.5 micrograms/m3 (supported normalized spellings), VOC ppb, CO2/CO ppm. Unsupported
@@ -99,17 +113,43 @@ coverage: no score. With adequate overall coverage:
   subtract 3 points and apply incomplete-AQ cap.
 - Eligible partial AQ: include AQ component and subtract
   `min(3, round((1 - AQ coverage) * 10, 2))`.
-- Clamp penalized result to 0–100 and retain a two-decimal `window_score`.
-  Headline uses Python integer rounding, then the strictest applicable cap.
+- Round the weighted component total and short-term AQ adjustment to two decimal
+  places before subtracting evidence deductions and the adjustment. Clamp to 0–100
+  and retain a two-decimal `window_score`.
+  Headline uses Python integer rounding, then the strictest remaining protective cap.
 
 | Condition | Maximum headline |
 | --- | --- |
 | Current backend CO emergency | 0 / Poor |
-| Current condensation/mould Danger or configured AQ crossing | 54 / Poor |
+| Current condensation/mould Danger or CO warning | 54 / Poor |
 | Recorded CO emergency in prior 12 hours | 54 / Poor |
-| Recorded condensation/mould Danger or AQ crossing in prior 12 hours | 69 / Unstable |
+| Recorded condensation/mould Danger or CO warning in prior 12 hours | 69 / Unstable |
 | Incomplete current AQ evidence, or unavailable historical AQ component | 91 / Good |
-| Condensation Risk, mould Risk or AQ crossing in >=10% of fixed 144 expected buckets over 24h (at least 15 buckets) | 91 / Good |
+| Condensation Risk, mould Risk or CO warning in >=10% of fixed 144 expected buckets over 24h (at least 15 buckets) | 91 / Good |
+
+Routine non-CO AQ crossings no longer impose the 54/69/91 ceilings. Instead, a
+crossing applies one **additional** 12-point adjustment. It decreases linearly with
+six hours of observed-clear selected AQ evidence:
+
+`AQ adjustment = 12 × (1 − credited_clear_seconds / 21600)`
+
+Clamp credited time to 0–21600 seconds. A new crossing resets the adjustment to 12;
+repeated crossings never stack. Missing or invalid selected AQ pauses recovery.
+The first clear observation establishes a baseline; only consecutive complete clear
+observations at most 660 seconds apart earn time. Unsupported observation gaps earn
+no credit; returning data cannot certify a preceding unknown interval. A missed
+scheduled history point remains a graph gap, while intervening valid live observations
+can still support the score and clear-time accounting.
+Show remaining observed-clear time and an explicit paused status in details. This
+is not six elapsed wall-clock hours when observations are missing.
+
+The twelve points limit the additional adjustment, not all AQ influence. The
+15-point historical AQ component and AQ's contribution to the 10-point combined
+recovery component remain separately visible. Formula-3 aggregates cannot be
+reinterpreted as raw-first evidence. A fresh formula-4 baseline is required. Changes
+to AQ configuration or AQ telemetry mappings conservatively reset the scoring,
+recovery and history state, including changes to excluded IAQ settings. This prevents
+incompatible evidence from mixing; normal options reload also resets the baseline.
 
 Classification: 92–100 Excellent, 70–91 Good, 55–69 Unstable, 0–54 Poor.
 Retain raw score, uncapped window score, penalties, all cap reasons and highest-priority
@@ -119,7 +159,7 @@ command. Certified alarms retain their authority.
 
 ## Presentation and interaction contract
 
-Backend schema 3/formula 3 owns availability, displayed integer/classification,
+Backend schema 3/formula 4 owns availability, displayed integer/classification,
 labels, explanatory text, cap and evidence states, movement endpoints and colour token.
 Frontend only renders presentation and visual geometry; it does not recalculate or
 repair backend truth. Escape every dynamic text surface.
@@ -185,26 +225,88 @@ bucket removes its failure. Record only actual incomplete captures and known mis
 scheduled buckets, never inferred offline or pre-setup gaps. Dense marks may overlap:
 the popup's exact backend count is authoritative, not visual counting. Explain the
 72-hour window in details. This history is retained only in memory and resets on
-restart/reload alongside baseline samples. Available-score movement remains unchanged
-and does not show this separate failure track.
+restart/reload alongside baseline samples. Available-score movement remains separate
+from this failure track.
 
-Once a score is available, LED movement retains signed integer endpoints within [-360,+360]. Each scheduled
-valid score comparison adds signed `ceil(abs(delta) * 3.6)` degrees, higher clockwise,
-lower counter-clockwise. Saturate each step; at full circle hold until reversal.
-Reversal retracts from retained endpoint, potentially crossing the origin. Steady
-holds endpoint and colour; no per-cycle restart. Arc position is accumulated displayed
-score movement, including cap changes, **not elapsed time**.
+Once a score is available, the LED arc shows **recent net score change** against the
+oldest actual reference within the last 60 minutes. The backend keeps the first valid
+publication in each ten-minute UTC slot at its exact observation time: at most seven
+references, separate from sampled graph history. The latest published score is the
+endpoint. Details show the reference time, reference score and actual comparison
+span; a shorter interval never claims a full hour. There is no interpolation,
+backfill or additional sampler.
 
-Independent colour: gentle rise blue `#38bdf8`, strong rise green `#4ade80`, gentle
-fall orange `#fb923c`, strong fall red `#ef4444`. Strong means absolute rate >=5 score
-points per ten minutes, normalized by actual positive comparison interval. Invalid
-timing is neutral. The first scored movement baseline and unavailable states are
-unlit; collection progress is the separate presentation described above. Scheduled unavailable truth resets
-the chain; a later valid score establishes a new baseline. Read-time unavailable hides
-the arc without mutating stored scheduled history. Late skipped callbacks add no move.
+The backend converts net displayed points once to signed
+`ceil(abs(net_delta) * 3.6)` degrees within [-360,+360]. A higher score is clockwise,
+a lower score counter-clockwise. Previous geometry supplies only the animation's
+start; it does not accumulate rounding or clipping history. A +5 then −2 score
+sequence remains +3 relative to the same reference. This example concerns score
+points, not a promised response to a particular humidity change.
 
-Only changed marks fade sequentially (138ms fade, 18ms stagger); retained marks remain.
-Half-circle settles in about 1.2s, full circle about 2.4s; at most 120 marks per winding.
+LED colour remains independent: gentle rise soft green `#86bfa0`, strong rise bright
+green `#4ade80`, gentle fall orange `#fb923c`, strong fall red `#ef4444`. Strong means
+at least five displayed points **since the previous update**; one to four is gentle.
+Thus a positive recent arc can show orange for the latest decline. Unchanged scores
+use neutral LEDs. The halo and headline retain the 72-hour composite classification,
+including caps and Partial evidence. A rising score can coexist with poor current
+humidity; the humidity and reason panels carry current-condition truth.
+
+References expire on the next owned backend publication. When expiry changes the
+arc but the latest score is unchanged, the LEDs stay neutral, with explicit
+reference-advanced wording and no score-change pulse. Time passing or a repeated read
+cannot manufacture a fresh observation. Transitions finish within 300 ms; colour
+changes immediately. A nonzero latest change at saturation triggers one brief pulse
+per publication, suppressed for reduced motion.
+
+The backend publishes score, reference, net comparison, latest-update comparison,
+movement and observation time atomically, including between ten-minute samples.
+Unavailable scores clear movement references. A publication gap longer than eleven
+minutes (the ten-minute cadence plus existing 60-second grace) establishes a fresh
+movement baseline; it does not change score eligibility. A missed graph sample alone
+does not break genuine intervening live publications. A first or fresh baseline has
+no delta, rather than a zero-change comparison. Restart/reload and AQ source-policy
+resets clear references alongside existing in-memory history.
+
+Details lead with the backend's displayed score. The contribution table retains
+individual component shortfalls, evidence deductions and the recent AQ adjustment,
+then shows **Total deductions** and one **100 − total deductions = calculated score**
+equation. The calculated result comes from backend `pre_cap_score`; the frontend
+only adds the already-rounded deduction terms for presentation. For totals over
+100, the equation explicitly includes the zero floor: `max(0, 100 − total) = 0`.
+Exact zero does not imply that a floor reduced the result. Missing or inconsistent
+breakdown data is labelled unavailable while a valid displayed score remains visible.
+
+Rounding and any safety ceiling are explained separately: the backend rounds the
+calculated score to a whole point, then applies the ceiling. For example, calculated
+64.91 can display as 65 with a ceiling of 91; that ceiling is an upper limit, not an
+additional deduction. The renderer never substitutes JavaScript rounding for the
+backend's Python ties-to-even result. Effective weights and missing-AQ renormalization must
+reconcile, including the component-table rounding residual; the frontend never
+calculates a competing score. Recent trend states the
+change and local time, with colour mechanics secondary. Coverage means usable
+observations, not healthy time. Technical UTC storage does not dictate display time.
+
+The Score history entry opens a graph of actual published ten-minute samples, at
+most 432 slots across 72 hours, with unavailable periods left as gaps. It does not
+reconstruct old scores, interpolate missing evidence or claim every intra-slot
+change was recorded. History is in memory and resets on restart/reload; there is
+no new numeric entity, Recorder backfill or optional chart-card requirement.
+The existing expander groups the latest recorded score, recorded range and scored
+sample count above a fixed 0–100 chart. Counts describe only the shown interval;
+they do not imply complete 72-hour coverage or healthy air. Null and omitted slots
+break the line. A single score is a point, including a score of zero. Empty history,
+retained samples without scores, malformed/unavailable history and history with gaps
+have distinct messages. The latest current update stays separate from scheduled
+samples and never adds a graph point. Both layouts and gallery mirrors share this
+presentation, including narrow-screen wrapping and accessible graph descriptions.
+The full live Stability payload uses a dedicated unrecorded Diagnostics attribute;
+the existing compact summary retains its prior fields without duplicating graph
+history into Recorder on each update. Updated cards prefer the dedicated attribute
+and retain legacy payload fallback.
+
+Only changed marks fade sequentially; retained marks remain. Each fade lasts 138 ms,
+with a proportional stagger bounded at 162 ms, so movement finishes within 300 ms.
+Each winding contains at most 120 marks.
 Crossing origin can render both windings temporarily. Invalid endpoints fail closed.
 
 Tap/click/keyboard activation of the whole badge opens a native modal dialog through
@@ -215,17 +317,37 @@ explanation and, while collecting, **Baseline progress: N of 303 valid samples**
 `window.valid_samples` and `window.minimum_valid_samples`, never a hardcoded
 denominator. During collection, details explain the clockwise sample-progress ring
 and that score eligibility still depends on backend evidence requirements. Once
-scored, **Recent trend** explains retained arc versus current colour plus exact
-backend movement detail. Outside collection, the tally is explicitly labelled
+scored, **Recent score movement** explains the bounded comparison, recorded reference
+and latest-update colour using backend detail. Outside collection, the tally is
+explicitly labelled
 **Rolling-window coverage: N of 432 valid samples**, using backend expected samples.
 A visible sticky Close control, native Escape and backdrop activation dismiss the
 dialog and restore focus. Only one Stability dialog is open at a time. Navigation
 or removal of the owning card cleans it up. Telemetry refresh must not replace an
 open snapshot or detach its Close control; reopen to see updated evidence.
-Hold opens HI Diagnostics more-info. If native `showModal` is unavailable, tap also
-falls back to Home Assistant's Diagnostics more-info. The readable Diagnostics
+The existing badge remains keyboard-focusable. Enter and a short Space press perform
+the normal tap; pressing and holding Space performs the same hold action. If native `showModal` is unavailable, tap falls
+back to Home Assistant's Diagnostics more-info. The readable Diagnostics
 attribute exposes score, baseline progress, failure history and movement; native
 Activity is not a substitute telemetry panel.
+
+Hold toggles only the badge presentation. Disabled keeps the existing footprint,
+**Disabled** text, a static violet/indigo aurora and segmented LEDs; another hold
+restores the normal display. Tap details/history remain available even when Disabled
+or backend score data is unavailable. There is no added switch, button, checkbox or
+icon. Backend collection, calculation, history and runtime control continue unchanged.
+
+The preference is a boolean in Home Assistant's authenticated frontend user data,
+scoped to the signed-in user and opaque HI entry identity. It survives refresh and
+applies to that user's Mobile, Tablet and browser sessions for the same entry.
+Other users and entries are unaffected. The existing status label reports loading,
+saving, **Display preference unavailable** and **Save unconfirmed** states; failed
+reads or writes never establish success or healthy environmental evidence. There is
+no localStorage fallback or frontend score calculation. Only confirmed Disabled
+hides the backend-rendered badge. Loading or unavailable preferences retain its
+score, collection or no-score display alongside the preference status label.
+This preference is separate from the in-memory score/history lifecycle and adds
+no config option or control entity.
 
 `count/303` is progress toward the minimum sample requirement; it does not guarantee
 score eligibility on its own. The 432 buckets remain the 72-hour rolling-window
@@ -245,8 +367,22 @@ Tablet, and both default gallery cards. Repository `ui-gallery/` remains canonic
 the Wiki is an explanatory index. A passing static or synthetic check does not prove
 animation or compatibility on an untested client.
 
+## Review corrections
+
+Recovery treats incomplete routine AQ as blocking only when routine AQ conditions
+are configured. No-AQ and CO-only installations retain their existing missing-AQ
+limits and independent CO protections without a fictitious continuous excursion.
+Diagnostics polling publishes on Home Assistant’s event loop, sharing ownership with
+scheduled updates. Preference reads that fail show **Display preference unavailable**;
+**Save unconfirmed** is reserved for a write that was attempted.
+
+These corrections change component and UI bytes. Earlier Stable acceptance remains
+bound to its original package; the corrected candidate needs fresh installed validation.
+
 ## Installation, compatibility and rollback
 
+The corrected RC.1 source uses V2 UI revision 9 for both layouts, superseding revisions
+1–8, with stamp schema/generator 1 and Stability schema 3/formula 4 retained.
 No configuration, entity-registry or stored-data migration is required. The Diagnostics
 readable attribute is additive; existing entity IDs and native states are unchanged.
 After installing changed Python, perform a full Home Assistant restart. Restart and

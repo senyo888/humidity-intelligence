@@ -173,8 +173,9 @@ test('history action uses the resolved entity and connected owner without a serv
   }
 });
 
-test('open Drift snapshot survives telemetry changes and cleans up on source or owner removal',()=>{
- for(const action of bodies('javascript')){
+test('V1 Drift snapshot survives telemetry changes and cleans up on source or owner removal',()=>{
+ // V2 uses its complete history/inactivity harness in test_badge_summary_interaction.
+ for(const action of [bodies('javascript')[0],bodies('javascript')[3]]){
   for(const removal of ['source','owner','navigation']){
    let observe,disconnected=false,removed=false,focusRestored=false;
    const buttons=new Map(['.hi-drift-close','.hi-drift-history'].map(key=>[key,new EventTarget()]));

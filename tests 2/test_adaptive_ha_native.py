@@ -104,6 +104,32 @@ class NativeHomeAssistantTests(unittest.IsolatedAsyncioTestCase):
         finally:
             unsubscribe()
 
+    async def test_diagnostics_poll_publishes_on_native_ha_event_loop(self):
+        import threading
+        from datetime import datetime, timedelta, timezone
+        main_sensor = importlib.import_module(PACKAGE + '.sensor')
+        runtime = self.hass.data[DOMAIN][self.entry.entry_id]
+        runtime.update(config=dict(self.entry.data), options={}, runtime_mode='normal')
+        sensor = main_sensor.HIDiagnosticsSensor(self.hass, self.entry.entry_id)
+        loop, owner_thread = asyncio.get_running_loop(), threading.get_ident()
+        published = []
+        real_publish = main_sensor.publish_stability_score
+        def publish(data, **kwargs):
+            self.assertEqual(threading.get_ident(), owner_thread)
+            self.assertIs(asyncio.get_running_loop(), loop)
+            published.append(kwargs['observed_at'])
+            return real_publish(data, **kwargs)
+        start = datetime(2026, 10, 11, 12, tzinfo=timezone.utc)
+        with patch.object(main_sensor, 'publish_stability_score', side_effect=publish), \
+             patch.object(main_sensor, '_utc_now', side_effect=[start, start + timedelta(seconds=30)]), \
+             patch.object(type(self.hass.services), 'async_call') as service_call:
+            for _ in range(2):
+                # Exercise HA's actual polling dispatcher, which otherwise runs update in its executor.
+                await sensor.async_device_update(warning=False)
+                self.assertEqual(sensor._attr_extra_state_attributes['stability_score'], runtime['stability_published'])
+            service_call.assert_not_called()
+        self.assertEqual(published, [start, start + timedelta(seconds=30)])
+
     async def test_native_lifecycle_and_state_events(self):
         observer = await self.start_observer()
         self.assertIn(self.source.entity_id, observer._watch)
@@ -117,6 +143,67 @@ class NativeHomeAssistantTests(unittest.IsolatedAsyncioTestCase):
         self.assertFalse(observer._unsub)
         self.assertIsNone(observer._state_unsub)
         self.assertIsNone(observer._report_unsub)
+
+    async def test_entry_custom_meanings_refresh_and_custody_reload_without_actuation(self):
+        meanings = importlib.import_module(PACKAGE + '.adaptive_output.meanings')
+        mappings = importlib.import_module(PACKAGE + '.adaptive_output.mappings')
+        ident = 'custom_' + 'a' * 32
+        library = {ident: {'name': 'Inspect intake', 'classification': 'generic_attention',
+                           'instructions': 'Read the device label.'}}
+        binding = mappings.bind(dict(self.entry.data), {},
+            [coordinator.registry_row(row) for row in self.registry.entities.values()],
+            {'output': self.output.entity_id, 'source': self.source.entity_id,
+             'semantic': 'generic_attention', 'custom_meaning_id': ident,
+             'rule': 'binary_active'}, custom_meanings=library)
+        settings = mappings.section({'enabled': True, 'custom_meanings': library,
+                                     'confirmations': [binding]})
+        self.hass.config_entries.async_update_entry(self.entry, options={'output_observation': settings})
+        self.hass.states.async_set(self.source.entity_id, 'on')
+        await self.hass.async_block_till_done()
+        output_before = self.hass.states.get(self.output.entity_id)
+        # Calls to HA services would violate this observer's read-only contract.
+        with patch.object(type(self.hass.services), 'async_call') as service_call:
+            observer = await self.start_observer()
+            attention = observer.payload['attention'][0]
+            self.assertEqual(attention['title'], 'Inspect intake')
+            self.assertEqual(attention['code'], 'generic_attention')
+            self.assertIn('Your guidance: Read the device label.', attention['action'])
+
+            changed = meanings.save_meaning(settings, 'Intake obstruction', 'obstruction', ident,
+                                            instructions='Consult the device manual.')
+            self.hass.config_entries.async_update_entry(self.entry, options={'output_observation': changed})
+            observer.refresh()
+            self.assertIsNotNone(observer.payload, observer.failure)
+            attention = observer.payload['attention'][0]
+            self.assertEqual((attention['title'], attention['code']), ('Intake obstruction', 'obstruction'))
+            self.assertIn('Consult the device manual.', attention['action'])
+            self.assertEqual(changed['confirmations'][0]['source_identity'], binding['source_identity'])
+
+            await observer.async_stop()
+            saved_path = Path(self.temp.name) / '.storage' / observer.store.key
+            saved = json.loads(saved_path.read_text())['data']
+            self.assertEqual(saved['known'][0]['custom_meaning_id'], ident)
+            self.assertNotIn('custom_label', json.dumps(saved))
+            self.assertNotIn('custom_instructions', json.dumps(saved))
+            self.assertNotIn('Consult the device manual.', json.dumps(saved))
+            restarted = await self.start_observer()
+            self.assertEqual(restarted.payload['attention'][0]['title'], 'Intake obstruction')
+
+            # A retained off state would be clear under either saved or automatic
+            # binary rules, but a deleted definition must block both interpretations.
+            self.hass.config_entries.async_update_entry(self.entry, options={
+                'output_observation': {**changed, 'custom_meanings': {}}})
+            await self.set_and_observe(restarted, self.source.entity_id, 'off')
+            self.assertEqual(restarted.payload['coverage']['state'], 'incomplete')
+            self.assertEqual(restarted.payload['discovery']['review_count'], 1)
+            self.assertEqual(restarted.payload['attention'][0]['code'], 'monitoring_unknown')
+            self.assertIn('Saved meaning unavailable', json.dumps(restarted.payload))
+            await restarted.async_stop()
+            missing_reloaded = await self.start_observer()
+            self.assertEqual(missing_reloaded.payload['attention'][0]['code'], 'monitoring_unknown')
+            self.assertEqual(missing_reloaded.payload['coverage']['state'], 'incomplete')
+            service_call.assert_not_called()
+        self.assertIs(self.hass.states.get(self.output.entity_id), output_before)
 
     async def test_registry_quarantine_survives_real_store_reload(self):
         observer = await self.start_observer()

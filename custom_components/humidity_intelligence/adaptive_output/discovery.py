@@ -8,6 +8,7 @@ Identity tokens are internal binding metadata, not public diagnostics output.
 import json
 from math import isfinite
 from .model import ENTITY, MAX_CONFIG, MAX_MAPPINGS, ROLES, SEMANTICS
+from .meanings import MEANING_ID, validate_library
 
 MAX_REGISTRY = 4096
 MAX_CANDIDATES = 256
@@ -49,6 +50,11 @@ def _rule(confirmation):
     if not isinstance(semantic, str) or (semantic not in SEMANTICS and semantic not in ('battery_low', 'disconnected')):
         raise ValueError('Confirmation requires a supported attention semantic.')
     result = dict(semantic=semantic, rule=rule)
+    if "custom_meaning_id" in confirmation:
+        ident = confirmation["custom_meaning_id"]
+        if not isinstance(ident, str) or not MEANING_ID.fullmatch(ident):
+            raise ValueError("invalid_meanings")
+        result["custom_meaning_id"] = ident
     if rule == 'binary_active':
         return result
     if rule == 'enum_active_values':
@@ -90,7 +96,7 @@ def validate_retired(retired):
     return retired
 
 
-def discover(configured, registry_entries, states, confirmations=None, retired=None):
+def discover(configured, registry_entries, states, confirmations=None, retired=None, custom_meanings=None):
     """Discover device-scoped sources from supplied snapshots without writes.
 
     Confirmations bind explicit output/source IDs and both stable identity tokens.
@@ -98,6 +104,7 @@ def discover(configured, registry_entries, states, confirmations=None, retired=N
     This stateless call does not remember disappeared auto sources: a lifecycle
     owner must retain prior inventory for removal/rename notices.
     """
+    library = validate_library({} if custom_meanings is None else custom_meanings)
     retired = validate_retired([] if retired is None else retired)
     retired_identities = {(row['output_identity'], row['source_identity']) for row in retired}
     confirmations = [] if confirmations is None else confirmations
@@ -150,7 +157,14 @@ def discover(configured, registry_entries, states, confirmations=None, retired=N
             raise ValueError('Duplicate confirmation pair is ambiguous.')
         if item['source'].split('.')[0] not in ('sensor', 'binary_sensor'):
             raise ValueError('Only sensor diagnostics can be confirmed.')
-        confirmed[pair] = (item, _rule(item))
+        rule = _rule(item)
+        if 'custom_meaning_id' in item:
+            definition = library.get(item['custom_meaning_id'])
+            if definition is not None:
+                rule.update(semantic=definition['classification'], custom_label=definition['name'], custom_instructions=definition['instructions'])
+            else:
+                rule['meaning_unresolved'] = True
+        confirmed[pair] = (item, rule)
     candidates, mappings, notices, watch = [], [], [], set(outputs)
     retired_pairs = {}
     for item in retired:
@@ -228,7 +242,10 @@ def discover(configured, registry_entries, states, confirmations=None, retired=N
                 mappings.append(mapping)
                 candidate.update(status='confirmed' if item else 'auto_mapped', title='Confirmed monitoring rule' if item else 'Standard monitoring rule', semantic=rule['semantic'],
                                  reason='This rule explicitly defines how the reading is interpreted.' if item else 'This rule uses the source standard Home Assistant device class.')
-            elif source.startswith('sensor.') and cls in ('battery', 'signal_strength'):
+            if rule.get('meaning_unresolved') is True:
+                candidate.update(status='needs_confirmation', title='Saved meaning unavailable',
+                                 reason='The custom meaning is missing. Choose an existing meaning or remove this rule; no previous classification is applied.')
+            elif source.startswith('sensor.') and cls in ('battery', 'signal_strength') and not rule:
                 candidate.update(status='context_only', title='Supporting reading', reason='Reading discovered automatically. No attention threshold is invented.')
         candidate['scope_label'] = 'This report applies to the device; it does not identify the affected component.' if same_device else 'This source was explicitly linked to this output.'
         candidates.append(candidate)

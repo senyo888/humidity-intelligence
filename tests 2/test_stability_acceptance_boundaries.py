@@ -73,8 +73,8 @@ def test_closed_excursions_use_elapsed_time_and_median_despite_missing_buckets(
     [
         ({"worst_condensation_state": "Risk"}, "condensation_risk_duration_24h"),
         ({"worst_mould_state": "Risk"}, "mould_risk_duration_24h"),
-        ({"air_quality_clearance": 0.0, "air_quality_bad_condition_count": 1},
-         "air_quality_bad_duration_24h"),
+        ({"co_warning_active": True},
+         "co_warning_duration_24h"),
     ],
 )
 @pytest.mark.parametrize("risk_buckets", [14, 15])
@@ -83,7 +83,7 @@ def test_sustained_cap_starts_at_fifteen_of_144_expected_buckets(
 ):
     # With the final bucket at 431, the fixed 24h window is 288..431.
     # 14/144 = 9.722...%, whereas 15/144 = 10.416...%. Place all affected
-    # buckets at its beginning so the separate 12h AQ cap and live caps
+    # buckets at its beginning so the separate 12h CO-warning cap and live caps
     # cannot obscure the threshold being tested.
     mod = _load_stability_module()
     samples = [
