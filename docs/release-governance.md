@@ -5,7 +5,7 @@ testing and validation branches.
 
 ## Canonical Version Model
 
-- `2.1.0-rc.1`: current unpublished release candidate prepared from beta.12, with approved public content and a test-only scenario correction. Runtime logic and generated cards are unchanged; both V2 layouts retain revision 7. HA Stable acceptance and final release validation remain pending. No release tag, GitHub Release, HACS publication or deployment is implied.
+- `2.1.0-rc.1`: current unpublished release candidate prepared from beta.12, with approved public content, a test-only scenario correction and corrected adaptive Outputs recognition in the release checker. Control-engine logic and generated cards are unchanged; both V2 layouts retain revision 7. HA Stable acceptance is recorded with a seven-day drift history advisory; final release validation remains pending. No release tag, GitHub Release or HACS publication is implied.
 - `2.1.0-beta.12`: earlier unpublished source candidate with autumn targets of 50–60% (high risk 64%) and bounded recent score movement. Both V2 layouts advance from revision 6 to 7; stamp schema/generator 1 and Stability schema 3/formula 4 remain. No configuration migration; an authorized update requires the complete package, restart and replacement card exports. See [Stability contract](stability-score-accepted-baseline.md).
 - `2.1.0-beta.11`: earlier unpublished candidate polishing score details/history and hold-to-toggle presentation. Both V2 layouts advance from revision 5 to 6; metadata schema/generator 1 and formula 4 remain. Install the complete package, restart, export and replace both saved cards; rollback restores package and cards separately. See [Stability contract](stability-score-accepted-baseline.md).
 - `2.1.0-beta.10`: earlier unpublished candidate introducing formula 4, individual-first AQ evidence, observed-clear recovery and synchronized score/LED feedback. Earlier formulas require a fresh baseline.
@@ -377,12 +377,14 @@ and post-release observation as separate evidence states.
 RC.1 is **UI unchanged and compatible** against beta.12 source
 `c69d7d27408c3f1647dbba9b12809562e812562e`. Both layouts retain revision 7;
 stamp schema/generator 1, superseded revisions 1–6, Diagnostics targets and
-Stability schema 3/formula 4 are unchanged. Runtime logic, card templates and
-renderers are unchanged. A version-only transition must not mark compatible
+Stability schema 3/formula 4 are unchanged. Control-engine logic, card templates and
+renderers are unchanged; the diagnostic release checker now recognises adaptive
+Outputs panels. A version-only transition must not mark compatible
 beta.12 cards stale; it requires no card replacement solely for the RC label.
 Older cards still need regeneration and replacement. An authorized package update
-requires a restart, which clears in-memory Stability history. HA Stable acceptance,
-the develop PR and final release validation are deferred by the maintainer.
+requires a restart, which clears in-memory Stability history. HA Stable acceptance
+is recorded with a seven-day drift history advisory. The develop PR and final
+release validation remain the next release step.
 
 The branch preparation checks compare UI compatibility against that exact beta.12
 source and exercise generated stamps/Diagnostics metadata. They do not constitute

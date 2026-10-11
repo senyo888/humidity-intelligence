@@ -9,8 +9,9 @@ This project follows a practical changelog format for Home Assistant and HACS us
 ## Unreleased — v2.1.0-rc.1
 
 Unpublished release candidate prepared from beta.12. Published Stable remains
-v2.0.12. HA Stable acceptance and final release validation are pending; the RC
-label does not claim deployment, promotion, a release tag or HACS availability.
+v2.0.12. HA Stable acceptance is recorded with a seven-day drift history advisory;
+final release validation remains pending. The RC label does not claim promotion,
+a release tag or HACS availability.
 
 - Prepares the approved README and website content, Home Assistant introduction,
   selected V2.1 release artwork and decorative clockwise header LEDs. Website and
@@ -30,7 +31,7 @@ label does not claim deployment, promotion, a release tag or HACS availability.
   require regeneration and replacement.
 - Requires no configuration migration. An authorized package update requires a full
   restart and resets in-memory Stability history. Installation and final release
-  validation remain separate from this source-only RC preparation.
+  validation remain separate from RC source preparation.
 
 ## v2.1.0-beta.12 — Earlier unpublished candidate
 

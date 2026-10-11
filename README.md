@@ -62,7 +62,8 @@ Current development manifest version: **v2.1.0-rc.1**, an unpublished candidate.
 V2.1 is led by **Stability Score**, with clearer badge explanations and history,
 optional output monitoring, reusable monitoring meanings and a simpler status row.
 RC.1 retains beta.12 control behavior and prepares the approved public content.
-HA Stable acceptance and final release validation remain pending.
+HA Stable acceptance is recorded with a seven-day drift history advisory;
+final release validation remains pending.
 The current published Stable is **v2.0.12**, released on 9 September 2026 and available
 through HACS. See [Release Notes](#release-notes) for candidate scope and upgrade steps.
 
@@ -849,8 +850,9 @@ for the cumulative update. RC.1 retains the beta.12 control behavior:
   Outputs panels without relaxing missing/disabled-panel checks. Control-engine logic
   and generated-card bytes are unchanged from beta.12; **UI unchanged and compatible**
 - [RC.1 preparation changes](CHANGELOG.md#unreleased--v210-rc1). Published Stable remains
-  v2.0.12. HA Stable acceptance and final release validation remain pending; this
-  source candidate does not claim deployment, release or website publication
+  v2.0.12. HA Stable acceptance is recorded with a seven-day drift history advisory;
+  final release validation remains pending. This candidate does not claim release
+  or website publication
 
 ### v2.0.12 (Current Published Stable)
 
