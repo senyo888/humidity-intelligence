@@ -5087,12 +5087,8 @@ card:
             .hi-stability-display-label, .hi-stability-presentation-overlay { display:none; }
             :host([data-hi-stability-feedback="yes"]) .hi-stability-backend-label { display:none; }
             :host([data-hi-stability-feedback="yes"]) .hi-stability-display-label { display:inline; }
-            :host([data-hi-stability-presentation="disabled"]) .hi-stability-interactive > .hi-stability-gauge,
-            :host([data-hi-stability-presentation="loading"]) .hi-stability-interactive > .hi-stability-gauge,
-            :host([data-hi-stability-presentation="unavailable"]) .hi-stability-interactive > .hi-stability-gauge { visibility:hidden; }
-            :host([data-hi-stability-presentation="disabled"]) .hi-stability-presentation-overlay,
-            :host([data-hi-stability-presentation="loading"]) .hi-stability-presentation-overlay,
-            :host([data-hi-stability-presentation="unavailable"]) .hi-stability-presentation-overlay { display:grid; }
+            :host([data-hi-stability-presentation="disabled"]) .hi-stability-interactive > .hi-stability-gauge { visibility:hidden; }
+            :host([data-hi-stability-presentation="disabled"]) .hi-stability-presentation-overlay { display:grid; }
             .hi-stability-presentation-overlay { position:absolute; inset:0; place-items:center; border-radius:50%; background:#08080d; color:#e2e8f0; }
             .hi-stability-presentation-overlay::before { content:""; position:absolute; inset:14px; border-radius:50%; box-shadow:0 0 9px 3px #64748b; opacity:.4; }
             .hi-stability-presentation-center { position:relative; z-index:1; font-size:23px; font-weight:650; letter-spacing:-.02em; }

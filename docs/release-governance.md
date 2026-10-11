@@ -5,7 +5,7 @@ testing and validation branches.
 
 ## Canonical Version Model
 
-- `2.1.0-rc.1`: current unpublished release candidate prepared from beta.12, with approved public content, a test-only scenario correction and corrected adaptive Outputs recognition in the release checker. Review corrections address recovery without routine AQ, event-loop Diagnostics publication, monitoring discovery and UI handling. Both V2 layouts now use revision 8; control-engine logic and entity IDs remain unchanged. Earlier HA Stable acceptance belongs to the previous exact package; fresh installed-candidate and final release validation remain pending. No release tag, GitHub Release or HACS publication is implied.
+- `2.1.0-rc.1`: current unpublished release candidate prepared from beta.12, with approved public content, a test-only scenario correction and corrected adaptive Outputs recognition in the release checker. Review corrections address recovery without routine AQ, event-loop Diagnostics publication, monitoring discovery and UI handling. Both V2 layouts now use revision 9; control-engine logic and entity IDs remain unchanged. Earlier HA Stable acceptance belongs to the previous exact package; fresh installed-candidate and final release validation remain pending. No release tag, GitHub Release or HACS publication is implied.
 - `2.1.0-beta.12`: earlier unpublished source candidate with autumn targets of 50–60% (high risk 64%) and bounded recent score movement. Both V2 layouts advance from revision 6 to 7; stamp schema/generator 1 and Stability schema 3/formula 4 remain. No configuration migration; an authorized update requires the complete package, restart and replacement card exports. See [Stability contract](stability-score-accepted-baseline.md).
 - `2.1.0-beta.11`: earlier unpublished candidate polishing score details/history and hold-to-toggle presentation. Both V2 layouts advance from revision 5 to 6; metadata schema/generator 1 and formula 4 remain. Install the complete package, restart, export and replace both saved cards; rollback restores package and cards separately. See [Stability contract](stability-score-accepted-baseline.md).
 - `2.1.0-beta.10`: earlier unpublished candidate introducing formula 4, individual-first AQ evidence, observed-clear recovery and synchronized score/LED feedback. Earlier formulas require a fresh baseline.
@@ -385,10 +385,12 @@ and post-release observation as separate evidence states.
 
 ## Rendered UI revision check for every version update
 
-RC.1 review remediation is **UI revision advanced** against pre-review source
-`b9ecd7a05b78b39cdf477f28ed9d629120a2130e`. Both layouts now use revision 8,
-explicitly superseding revisions 1–7. Stamp schema/generator 1 and Stability
-schema 3/formula 4 remain. Adaptive Outputs and preference handling changed; the
+RC.1 follow-up remediation is **UI revision advanced** against reviewed source
+`083959567d8ace94ba3618ccab715edeacc5dc38`. Both layouts advance from 8 to 9,
+explicitly superseding revisions 1–8. Stamp schema/generator 1 and Stability
+schema 3/formula 4 remain. Only confirmed Disabled now hides the Stability badge;
+loading or unavailable preferences retain the backend-rendered display with explicit
+status feedback. Earlier review fixes changed adaptive Outputs and preference handling; the
 V1 Mobile Drift snapshot fix also requires replacement YAML without a revision stamp.
 Export and replace complete saved cards, then refresh clients as needed.
 

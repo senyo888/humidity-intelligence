@@ -343,8 +343,11 @@ applies to that user's Mobile, Tablet and browser sessions for the same entry.
 Other users and entries are unaffected. The existing status label reports loading,
 saving, **Display preference unavailable** and **Save unconfirmed** states; failed
 reads or writes never establish success or healthy environmental evidence. There is
-no localStorage fallback or frontend score calculation. This preference is separate
-from the in-memory score/history lifecycle and adds no config option or control entity.
+no localStorage fallback or frontend score calculation. Only confirmed Disabled
+hides the backend-rendered badge. Loading or unavailable preferences retain its
+score, collection or no-score display alongside the preference status label.
+This preference is separate from the in-memory score/history lifecycle and adds
+no config option or control entity.
 
 `count/303` is progress toward the minimum sample requirement; it does not guarantee
 score eligibility on its own. The 432 buckets remain the 72-hour rolling-window
@@ -378,8 +381,8 @@ bound to its original package; the corrected candidate needs fresh installed val
 
 ## Installation, compatibility and rollback
 
-The corrected RC.1 source uses V2 UI revision 8 for both layouts, superseding revisions
-1–7, with stamp schema/generator 1 and Stability schema 3/formula 4 retained.
+The corrected RC.1 source uses V2 UI revision 9 for both layouts, superseding revisions
+1–8, with stamp schema/generator 1 and Stability schema 3/formula 4 retained.
 No configuration, entity-registry or stored-data migration is required. The Diagnostics
 readable attribute is additive; existing entity IDs and native states are unchanged.
 After installing changed Python, perform a full Home Assistant restart. Restart and

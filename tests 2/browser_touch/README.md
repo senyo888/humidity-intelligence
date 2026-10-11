@@ -34,6 +34,10 @@ investigation and **does not constitute a complete suite pass**. `VISUAL_REVIEW=
 adds two Chromium responsive-review groups across 320, 390, 430, 820 and 1024 pixels,
 producing 60 captures plus layout measurements; omit it for interaction checks only.
 
+Preference fallback cases inject subscription rejection and timeout in both browser
+engines and layouts. They check rendered gauge visibility during loading and failure,
+retained tap details, backend no-score truth, and absence of preference or control writes.
+
 The runner writes `results.json` and failure screenshots into `FIXTURE_DIR`.
 The JSON includes the dependency hash, actual browser/Playwright versions,
 viewport profile, user agent, coarse-pointer capability and actual

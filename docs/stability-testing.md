@@ -1,6 +1,6 @@
 # Stability Score testing
 
-Status: formula 4 with UI revision 8 in the current unreleased 2.1.0-rc.1 candidate. This guide describes
+Status: formula 4 with UI revision 9 in the current unreleased 2.1.0-rc.1 candidate. This guide describes
 validation of [the canonical contract](stability-score-accepted-baseline.md); it is
 not a release, deployment or live-observation claim.
 
@@ -48,7 +48,7 @@ scores must not acquire a calculation.
 | Rendering | Four identical Mobile/Tablet/gallery renderers; 82px footprint; classification halo; independent soft-green/bright-green/orange/red LEDs; blue baseline collection; 6s Partial pulse and reduced motion |
 | Collection rendering | One blue tick per valid sample at 0, 1, 4, 151, 302 and 303; centred slots and hidden origin after first tick; strict integer count/target bounds and matching rounded backend ratio; no early full circle; separate red fixed-slot history; malformed history fails closed |
 | Interaction | Whole-badge tap/click/keyboard; detached snapshot dialog; sticky Close/Escape/backdrop; focus restoration; deduplication; refresh, navigation and owner-removal cleanup; unsupported-modal Diagnostics fallback; existing badge is focusable; Enter/short Space retain normal tap, held Space uses the hold action |
-| Presentation preference | Hold-only toggle, visible Disabled aurora/LEDs, retained tap details/history, native authenticated HA user-data boolean, refresh/cross-session persistence, user/opaque-entry isolation, explicit read/save failure feedback, no extra control or localStorage fallback, no backend/control effects |
+| Presentation preference | Hold-only toggle, visible Disabled aurora/LEDs, retained tap details/history, native authenticated HA user-data boolean, refresh/cross-session persistence, user/opaque-entry isolation, explicit read/save failure feedback, visible backend badge during preference loading/rejection/timeout, no extra control or localStorage fallback, no backend/control effects |
 | Score explanation | Backend headline and qualifier; reconciled rows and total; one bottom calculation; 64.91 calculated / 65 displayed / 91 ceiling; ties-to-even rounding, exact zero and deductions above 100; missing, contradictory or malformed arithmetic remains unavailable |
 | Score history | Actual ten-minute scores, 432-slot bound, fixed 0–100 scale, disconnected gaps, single point, empty/null-only/malformed history, interval-specific counts, no read-driven growth/backfill, restart reset and expiry, separate latest update; full Stability attribute excluded from Recorder, no history duplication in the legacy summary |
 | Autumn | Inclusive 50–60 band and unchanged 64 high-risk boundary; auto September–November and explicit autumn; other seasons, custom/legacy overrides and temperature unchanged; target-relative mould and humidifier recovery; missing high-risk UI evidence neutral |
@@ -137,7 +137,7 @@ stored-data or entity migration is required. Restart or entry reload resets hist
 Score history has no durable persistence, Recorder recovery or startup backfill.
 The saved badge display preference is separate from that history.
 
-For UI revision 8, review the recent reference, actual comparison interval, headline,
+For UI revision 9, review the recent reference, actual comparison interval, headline,
 deduction table and existing history expander at narrow phone, wider phone and tablet widths. Check that labels remain readable,
 content does not overflow, and Close remains reachable when the history is expanded.
 Keep offline fixture screenshots labelled as synthetic; supplied state captures that

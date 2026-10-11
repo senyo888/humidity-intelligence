@@ -523,7 +523,7 @@ must be reviewable from tracked repository files.
 - **Autumn refinement:** the built-in target band is 50–60%, with humidity danger
   still at 64%. Other seasons and custom profile rules retain their existing behavior.
 
-Both V2 layouts now use UI revision 8, superseding revisions 1–7. Export and replace
+Both V2 layouts now use UI revision 9, superseding revisions 1–8. Export and replace
 the complete saved cards, then refresh the frontend. The V1 Mobile Drift correction
 also requires replacement YAML; that layout has no revision indicator. An authorized package update requires a full Home Assistant restart.
 Restart/reload starts Stability history collection again. See
@@ -844,9 +844,10 @@ for the cumulative update. RC.1 retains the beta.12 control behavior:
 - corrects recovery scoring when no routine AQ sensors are configured and keeps
   Diagnostics publication on Home Assistant’s event loop. Missing configured AQ
   evidence, score ceilings and CO protections remain explicit
-- advances both V2 layouts to revision 8 for review corrections: Drift snapshots
+- advances both V2 layouts to revision 9 for review corrections: Drift snapshots
   remain open during telemetry updates, preference read failures are distinguished
   from uncertain saves, and unchanged adaptive Outputs data avoids repeated work.
+  Loading or unavailable preferences leave the backend-rendered Stability badge visible.
   Touch/keyboard details and hold-to-disable remain available. Stamp schema/generator
   1 and Stability schema 3/formula 4 remain
 - requires no configuration migration. An authorized package update requires a full

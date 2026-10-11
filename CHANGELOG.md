@@ -35,8 +35,11 @@ a release tag or HACS availability.
   Outputs payload validation while continuing to update native controls.
 - Distinguishes unavailable display-preference reads from unconfirmed writes, and
   prevents the touch-test checkout from retaining its GitHub token.
-- **UI revision advanced**: both V2 layouts use revision 8, superseding revisions
-  1–7. Stamp schema/generator 1 and Stability schema 3/formula 4 remain. Export and
+- Keeps the backend-rendered Stability badge visible while its display preference
+  loads or cannot be read; only confirmed Disabled hides it. Preference feedback
+  and backend no-score states remain explicit. Repairs the beta.12 interaction-guide link.
+- **UI revision advanced**: both V2 layouts use revision 9, superseding revisions
+  1–8. Stamp schema/generator 1 and Stability schema 3/formula 4 remain. Export and
   replace saved V2 cards. V1 Mobile also needs replacement YAML for its Drift fix.
   Control-engine logic and existing entity IDs are unchanged.
 - Requires no configuration migration. An authorized package update requires a full

@@ -55,6 +55,44 @@ for(const engine of (process.env.BROWSERS||'chromium,webkit').split(',')){
   await check(prefix+'/native-Outputs-single-action',async()=>{await open(page,layout);await page.locator('button-card[data-hi-name="Outputs"] #card').tap();await page.waitForTimeout(100);const calls=await page.evaluate(()=>fixture.events.services);assert.equal(calls.length,1);assert.equal(calls[0].domain,'switch');assert.equal(calls[0].service,'toggle');assert.equal(calls[0].data.entity_id,await page.evaluate(()=>fixture.mapping['input_boolean.air_control_output_expanded']));},page);
   await check(prefix+'/adaptive-backdrop-Escape-evidence-source',async()=>{await open(page,layout+'_adaptive');const a=page.locator('hi-adaptive-output-card');await a.locator('.header').tap();await a.locator('.reason').tap();await opened(page);assert.match(await a.locator('dialog').textContent(),/Inspect the intake/);const box=await a.locator('dialog').boundingBox();await page.touchscreen.tap(Math.max(1,box.x-5),box.y+box.height/2);assert.equal(await a.locator('dialog[open]').count(),0);await a.locator('.footer').tap();await opened(page);await page.keyboard.press('Escape');assert.equal(await a.locator('dialog[open]').count(),0);await a.locator('.reason').tap();await opened(page);await a.getByRole('button',{name:/Why Example output is shown/}).first().tap();await page.locator('dialog[data-native-stub=true]').waitFor();await close(page);await a.locator('.footer').tap();await opened(page);await a.getByRole('button',{name:'Open Example diagnostic details',exact:true}).tap();await page.locator('dialog[data-native-stub=true]').waitFor();assert.equal(await page.evaluate(()=>fixture.events.moreInfo.at(-1).entityId),'binary_sensor.fixture_source');await close(page);assert.equal(await page.evaluate(()=>fixture.events.services.length),0);},page);
   await check(prefix+'/adaptive-child-idle-reset-reopen-stale',async()=>{await open(page,layout+'_adaptive');const a=page.locator('hi-adaptive-output-card');await a.locator('.header').tap();await a.locator('.footer').tap();await opened(page);await page.clock.fastForward(110000);await a.locator('dialog h3').first().tap();await page.clock.fastForward(110000);assert.equal(await a.locator('dialog[open]').count(),1);assert.equal(await a.locator('.header').getAttribute('aria-expanded'),'true');await page.evaluate(()=>fixture.publish());await page.clock.fastForward(10001);assert.equal(await a.locator('dialog[open]').count(),0);assert.equal(await a.locator('.header').getAttribute('aria-expanded'),'false');await a.locator('.header').tap();await a.locator('.footer').tap();await opened(page);await page.clock.fastForward(60000);await close(page);await a.locator('.footer').tap();await opened(page);await page.clock.fastForward(60001);assert.equal(await a.locator('dialog[open]').count(),1);await close(page);},page);
+  for(const failure of ['reject','timeout'])await check(prefix+'/Stability-preference-score-fallback-'+failure,async()=>{
+   await page.request.post(origin+'/fixture-preference',{data:{reset:true}});
+   const pending=[];
+   const intercept=async route=>{
+    if(route.request().postDataJSON().type!=='frontend/subscribe_user_data')return route.continue();
+    if(failure==='reject')return route.fulfill({status:503,body:'Synthetic preference read failure'});
+    pending.push(route);
+   };
+   await page.route('**/fixture-preference',intercept);
+   try{
+    await open(page,layout);await page.evaluate(()=>fixture.scoreCase('available'));
+    const badge=page.locator('button-card[data-hi-name="Stability Score"]');
+    const gauge=badge.locator('.hi-stability-gauge'),overlay=badge.locator('.hi-stability-presentation-overlay');
+    const visibleScore=async()=>{
+     assert.equal(await gauge.evaluate(el=>getComputedStyle(el).visibility),'visible');
+     assert.equal(await overlay.evaluate(el=>getComputedStyle(el).display),'none');
+     assert.match(await gauge.locator('.hi-stability-center').textContent(),/^\d+$/);
+    };
+    if(failure==='timeout'){
+     await badge.locator('.hi-stability-display-label').filter({hasText:'Loading display preference'}).waitFor();
+     await visibleScore();await page.clock.fastForward(12001);
+    }
+    await badge.locator('.hi-stability-display-label').filter({hasText:'Display preference unavailable'}).waitFor();
+    await visibleScore();
+    await badge.screenshot({path:path.join(output,`${engine}-${layout}-preference-${failure}-offline-fixture.png`)});
+    await badge.locator('#card').tap();await opened(page);await close(page);
+    await page.evaluate(()=>fixture.scoreCase('unavailable'));
+    assert.equal(await gauge.locator('.hi-stability-center').textContent(),'—','backend unavailable remains authoritative');
+    assert.equal(await gauge.evaluate(el=>getComputedStyle(el).visibility),'visible');
+    assert.equal(await overlay.evaluate(el=>getComputedStyle(el).display),'none');
+    assert.equal(await page.evaluate(()=>fixture.events.services.length),0);
+    assert.equal(await page.evaluate(()=>fixture.events.preferences.filter(x=>x.type==='frontend/set_user_data').length),0);
+   }finally{
+    await page.unroute('**/fixture-preference',intercept);
+    // Navigation or teardown may have already cancelled a held request.
+    for(const route of pending)await route.abort().catch(()=>{});
+   }
+  },page);
   if(engine==='chromium'){
    await check(prefix+'/Stability-preference-hold-refresh-unavailable',async()=>{
     await page.request.post(origin+'/fixture-preference',{data:{reset:true}});await open(page,layout);

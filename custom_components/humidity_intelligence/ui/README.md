@@ -281,7 +281,7 @@ Control row:
   expiry alone stays neutral, and a fresh baseline is not a zero-change comparison
 - keep score/classification distinct from current humidity. Formula 4, caps and
   72-hour history remain; a recent gain does not establish healthy current air
-- both V2 layouts use revision 8, superseding 1–7, with stamp schema/generator 1.
+- both V2 layouts use revision 9, superseding 1–8, with stamp schema/generator 1.
   Install the complete package and restart before exporting/replacing saved cards;
   restart clears in-memory Stability history and no configuration migration is needed
 - whole-badge tap/click/keyboard activation opens a native modal dialog through the
@@ -300,6 +300,8 @@ Control row:
   scoped to the signed-in user and opaque HI entry. It survives refresh and applies
   across that user's Mobile, Tablet and browser sessions for the same entry. Other
   accounts/entries are unaffected; there is no localStorage fallback or config option
+- only confirmed Disabled hides the backend-rendered badge. Loading or unavailable
+  preferences retain its score, collection or no-score display and show status feedback
 - show read/save failures in the existing status label: **Display preference
   unavailable** or **Save unconfirmed**. Do not infer success or environmental health
 - clients without native `showModal` support retain Home Assistant's Diagnostics
