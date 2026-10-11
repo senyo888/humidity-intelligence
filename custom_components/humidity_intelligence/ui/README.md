@@ -148,7 +148,7 @@ Dialog sizing accounts for device safe areas; physical-client
 appearance must be checked separately from synthetic browser validation.
 
 The changes apply only to V2 Mobile, V2 Tablet and their canonical gallery copies.
-V1 remains unchanged, with retirement owned by the separate v2.1 migration work.
+V1 remains unchanged; retirement requires a separately approved migration.
 Refresh exports and replace pasted Manual-card YAML, then refresh the client.
 No configuration/data migration, Python restart, runtime decision, entity or
 service change is introduced by this template-only update. Rollback restores the
@@ -273,7 +273,7 @@ Control row:
 
 - preserve the v2.0.7 tap-to-toggle behavior for the System and Manual helper buttons
 - keep Stability observational: its display preference must not pause/resume, select lanes, or create output writes
-- for the integrated, unpublished `2.1.0-rc.1` Stability candidate, render backend schema 3/formula 4
+- for Stability in the `2.1.0` release source, render backend schema 3/formula 4
   score, classifications and evidence states; missing/malformed payloads show no score
 - preserve the accepted 82px footprint, independent latest-update LED colours,
   signed recent-net movement within 60 minutes, six-second Partial pulse and
@@ -472,7 +472,7 @@ If mismatch occurs:
   context are escaped before insertion into HTML.
 - Already-pasted V1 Manual cards are static and must be re-exported and re-copied to
   receive the escaping fix.
-- V1 Mobile removal is deferred to a separately approved v2.1 migration proposal.
+- V1 Mobile removal is deferred to a separately approved migration proposal.
 
 ### v2.0.5 Current Contract
 
@@ -506,7 +506,7 @@ If mismatch occurs:
 
 ## Legacy v1 UI Support
 
-`v1_mobile.yaml` remains exportable in the current v2.1 candidate, but is deprecated
+`v1_mobile.yaml` remains exportable in v2.1.0, but is deprecated
 for new dashboards. Prefer `v2_mobile.yaml`.
 
 Legacy support keeps the V2 backend contract. V1 backend templates and packages stay
@@ -514,7 +514,7 @@ retired.
 
 The legacy V1 backend must be fully removed before using the V2 runtime. Removing
 the retained V1 presentation skin requires a separate approved migration and
-rollback plan; the current candidate does not remove it.
+rollback plan; v2.1.0 does not remove it.
 
 ---
 

@@ -58,15 +58,11 @@ It gives you:
 - native Home Assistant diagnostics for support and triage
 - services for dashboard export, self-check, diagnostics, pause/resume, and release validation
 
-Current development manifest version: **v2.1.0-rc.1**, an unpublished candidate.
+Current release-source version: **v2.1.0**, prepared for publication.
 V2.1 is led by **Stability Score**, with clearer badge explanations and history,
 optional output monitoring, reusable monitoring meanings and a simpler status row.
-RC.1 retains beta.12 control behavior and prepares the approved public content.
-The earlier package passed HA Stable validation with a seven-day drift history
-advisory. Subsequent review corrections require fresh installed-candidate validation;
-final release validation remains pending.
 The current published Stable is **v2.0.12**, released on 9 September 2026 and available
-through HACS. See [Release Notes](#release-notes) for candidate scope and upgrade steps.
+through HACS. See [Release Notes](#release-notes) for V2.1 scope and upgrade steps.
 
 Optional HA Lab evidence is advisory and does not block promotion, tagging, or
 publication.
@@ -505,7 +501,7 @@ must be reviewable from tracked repository files.
 
 ## Current Release Highlights
 
-**V2.1 candidate improvements** — the source version is `2.1.0-rc.1`.
+**V2.1 improvements** — source version `2.1.0` is prepared for publication.
 
 - **Stability Score:** an explained view of 72-hour environmental consistency,
   with deductions, evidence coverage, safety ceilings and recorded history.
@@ -523,8 +519,9 @@ must be reviewable from tracked repository files.
 - **Autumn refinement:** the built-in target band is 50–60%, with humidity danger
   still at 64%. Other seasons and custom profile rules retain their existing behavior.
 
-Both V2 layouts now use UI revision 9, superseding revisions 1–8. Export and replace
-the complete saved cards, then refresh the frontend. The V1 Mobile Drift correction
+Both V2 layouts use UI revision 9, superseding revisions 1–8. Replace older saved
+cards with complete fresh exports, then refresh the frontend. Revision-9 cards from
+RC.1 remain compatible; the final version bump does not require another card refresh. The V1 Mobile Drift correction
 also requires replacement YAML; that layout has no revision indicator. An authorized package update requires a full Home Assistant restart.
 Restart/reload starts Stability history collection again. See
 [HACS and Updates](https://github.com/senyo888/humidity-intelligence/wiki/HACS-and-Updates)
@@ -826,42 +823,34 @@ CO emergency pressure. Details are in
 
 ## Release Notes
 
-### v2.1.0-rc.1 (Unpublished release candidate)
+### v2.1.0 (Stable source — publication pending)
 
-V2.1 introduces **Stability Score**, its evidence and deduction breakdown, retained
-score history and hold-to-disable presentation. It also adds badge explanations and
-available history, optional output monitoring, reusable monitoring meanings,
-configuration transaction fixes and a compact Current Air Control status row.
-See the [V2.1 overview](#v21--stability-score) and [complete change history](CHANGELOG.md)
-for the cumulative update. RC.1 retains the beta.12 control behavior:
+![Humidity Intelligence V2.1 Stability Score release header](assets/release_banner/v2.1_release.png)
 
-- sets the built-in autumn humidity band to **50–60%**, retaining the **64%**
-  danger threshold. Target-relative mould and humidifier behavior follow the new
-  band; other seasons and custom targets remain unchanged
-- shows recent score movement against an actual recorded reference within 60
-  minutes. LED colour still shows the latest change; the halo describes the
-  72-hour score. Improving scores can coexist with poor current humidity
-- corrects recovery scoring when no routine AQ sensors are configured and keeps
-  Diagnostics publication on Home Assistant’s event loop. Missing configured AQ
-  evidence, score ceilings and CO protections remain explicit
-- advances both V2 layouts to revision 9 for review corrections: Drift snapshots
-  remain open during telemetry updates, preference read failures are distinguished
-  from uncertain saves, and unchanged adaptive Outputs data avoids repeated work.
-  Loading or unavailable preferences leave the backend-rendered Stability badge visible.
-  Touch/keyboard details and hold-to-disable remain available. Stamp schema/generator
-  1 and Stability schema 3/formula 4 remain
-- requires no configuration migration. An authorized package update requires a full
-  restart, which resets in-memory Stability history. Saved cards require regeneration
-  and complete replacement, including V1 Mobile for its Drift snapshot correction
-- includes the approved README and website refinements, selected V2.1 release artwork
-  and test-only scenario correction. The release checker also recognises adaptive
-  Outputs panels without relaxing missing/disabled-panel checks. Monitoring setup
-  errors preserve existing settings. Control-engine logic and entity IDs are unchanged;
-  the compatibility outcome is **UI revision advanced**
-- [RC.1 preparation changes](CHANGELOG.md#unreleased--v210-rc1). Published Stable remains
-  v2.0.12. Earlier HA Stable acceptance belongs to the previous exact package; fresh
-  installed-candidate and final release validation remain pending. This candidate does not claim release
-  or website publication
+V2.1 introduces **Stability Score**, its evidence and deduction breakdown, recorded
+history and hold-to-disable presentation. It adds clearer badge explanations,
+optional output monitoring, reusable monitoring meanings and a compact Current Air
+Control row. See the [V2.1 overview](#v21--stability-score) and
+[complete change history](CHANGELOG.md#unreleased--v210).
+
+- Uses a rolling 72-hour window, explicit evidence coverage and safety ceilings.
+  Recent movement compares actual scores within 60 minutes; LED colour shows the
+  latest change. Improving scores can coexist with poor current conditions.
+- Sets built-in autumn humidity targets to **50–60%**, with humidity danger at
+  **64%**. Other seasons, custom derivation, lane ordering and CO precedence remain.
+- Includes the RC review corrections for recovery without routine AQ, event-loop
+  Diagnostics publication, Drift snapshots, monitoring setup and display-preference
+  errors. Loading or unavailable preferences keep the backend-rendered badge visible.
+- Retains touch/keyboard detail controls and hold-to-disable. Both V2 layouts use
+  **revision 9**, stamp schema/generator 1 and Stability schema 3/formula 4.
+- Requires no V2 configuration or entity migration. Install the complete package and
+  restart Home Assistant; restart/reload clears in-memory Stability history. Export
+  and replace older V2 cards, plus V1 Mobile for its Drift correction. Existing RC.1
+  revision-9 cards remain compatible; final version metadata does not make them stale.
+- Preserves the reviewed runtime and generated-card bytes from RC.1. The final package
+  has its own manifest identity; RC.1 installation evidence is recorded separately
+  from final-package registration. Publication remains pending; **v2.0.12 is the
+  current published Stable release**.
 
 <a id="v2012-maintenance-candidate-not-published"></a>
 
@@ -890,6 +879,16 @@ maintainer's request, v2.0.11 and older releases remain under Previous Releases;
 CHANGELOG.md retains the complete detailed history. -->
 <details>
 <summary>Previous Releases</summary>
+
+### v2.1.0-rc.1 (Earlier unpublished release candidate)
+
+- Prepared the approved V2.1 public content and completed the review corrections,
+  including adaptive Outputs validation, AQ recovery, Diagnostics publication,
+  monitoring setup, Drift details and display-preference handling.
+- Advanced both V2 layouts to revision 9, with schema/generator 1 retained. The exact
+  revision-9 package completed Stable and Lab installation checks; advisory Lab
+  observation remains separate from source promotion and publication.
+- Remained unpublished. See [the complete RC.1 changes](CHANGELOG.md#unreleased--v210-rc1).
 
 ### v2.1.0-beta.12 (Earlier unpublished candidate)
 

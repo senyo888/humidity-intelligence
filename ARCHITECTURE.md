@@ -20,7 +20,7 @@ schemas, tracked generated-card templates, and release documentation. Ignored lo
 planning notes may inform maintainer review, but they do not override tracked runtime
 truth.
 
-## Observational Stability Score (unreleased)
+## Observational Stability Score
 
 The [accepted Stability contract](docs/stability-score-accepted-baseline.md) defines
 backend schema 3/formula 4, six weighted components, evidence states, safety caps,
@@ -28,8 +28,9 @@ classification and presentation. Formula 4 selects individual AQ conditions per 
 with configured IAQ fallback only when no individual conditions are configured.
 Routine AQ uses an additional 12-point adjustment recovering over six observed-clear
 hours; missing evidence pauses recovery. CO protections and engine trigger evaluation
-remain independent. It is implemented in the current unreleased candidate; deployment
-to an instance does not change published release identity. Stability cannot select
+remain independent. It is implemented in the v2.1.0 release source, prepared for
+publication; published Stable remains v2.0.12. Deployment to an instance does not
+change published release identity. Stability cannot select
 lanes, change gates or
 write outputs. Existing control entities/native states remain unchanged; Diagnostics
 adds structured Stability telemetry and a readable summary.
@@ -314,7 +315,7 @@ dashboard documents and must not be written to `<config>/dashboards/`; dashboard
 creation, registration, editing, and deletion stay within Home Assistant's UI.
 
 Dynamic state or attribute text rendered through generated-card HTML must be escaped
-at the HTML sink. The V1 Mobile presentation remains available but deprecated in this candidate;
+at the HTML sink. The V1 Mobile presentation remains available but deprecated in v2.1.0;
 any removal requires a separately approved migration contract.
 
 V2 generated cards carry an entry- and layout-scoped rendered UI revision, separate

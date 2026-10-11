@@ -1,6 +1,6 @@
 # V2 touch and keyboard interactions
 
-The unpublished v2.1.0-rc.1 candidate retains the beta.9 native-button activation
+The v2.1.0 release source retains the beta.9 native-button activation
 repair and beta.11 hold-to-toggle behavior. Both canonical layouts use V2 UI revision
 9 with generator contract 1. Interaction ownership and custom monitoring meanings
 are unchanged; [beta.12 changes](../CHANGELOG.md#v210-beta12--earlier-unpublished-candidate) separately
@@ -113,7 +113,7 @@ native dialogs. Existing source-change dismissal remains in effect where support
 Renderer changes require synchronized mobile/tablet and gallery embeds, generated
 YAML validation and UI revision checks. The current V2 target is UI revision 9;
 package version alone does not update a pasted card.
-Install the complete candidate package, restart Home Assistant, then export and
+Install the complete package, restart Home Assistant, then export and
 replace the full saved mobile and tablet Manual-card YAML. Refresh clients as
 needed to load the updated optional adaptive resource and rendered configuration.
 Restart resets existing in-memory Stability history. No configuration or entity

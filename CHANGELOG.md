@@ -6,13 +6,53 @@ All notable changes to Humidity Intelligence will be documented in this file.
 
 This project follows a practical changelog format for Home Assistant and HACS users. Add new entries under a fresh `Unreleased` section before publishing a future release.
 
-## Unreleased — v2.1.0-rc.1
+## Unreleased — v2.1.0
 
-Unpublished release candidate prepared from beta.12. Published Stable remains
-v2.0.12. Earlier HA Stable acceptance, including its seven-day drift history advisory,
-is evidence for the previous exact package. Review corrections change component
-bytes; fresh installed-candidate and final release validation remain pending. The RC label does not claim promotion,
-a release tag or HACS availability.
+Stable release source prepared from the reviewed RC.1 revision-9 candidate.
+Publication is pending; v2.0.12 remains the published Stable release.
+
+### V2.1 highlights
+
+- Adds observational Stability Score: a rolling 72-hour view of humidity, steadiness,
+  room balance, moisture risk, configured air quality and recovery, with explicit
+  evidence coverage, deductions, rounding and safety ceilings. Scoring has no output
+  authority; missing evidence can limit or prevent a score.
+- Adds recorded score history, recent movement against an actual reference within
+  60 minutes, and saved hold-to-disable presentation. Restart/reload clears the
+  in-memory history. Disabled presentation retains collection, details and control.
+- Expands badge explanations and histories, refines native touch/keyboard interaction
+  and adds two-minute inactivity dismissal for V2 custom HI details and expanded adaptive Outputs.
+- Adds opt-in output observation and reusable monitoring names/guidance through the
+  existing saved options transaction. Native controls retain their action contracts;
+  reported state and command evidence do not establish physical device performance.
+- Sets built-in autumn humidity targets to 50–60%, retaining humidity danger at 64%.
+  Other seasons and custom derivation remain unchanged. CO precedence, ventilation
+  lane ordering, independent humidifier lanes and global gates remain intact.
+- Includes the RC.1 corrections below and the approved website, README, Home Assistant
+  introduction and V2.1 release artwork.
+
+### RC.1 to final source
+
+- Changes version metadata to `2.1.0` and aligns current release documentation and
+  contract assertions. Runtime Python, services, translations, entity semantics,
+  renderer JavaScript and generated-card YAML are unchanged from reviewed RC.1.
+- **UI unchanged**: both V2 layouts remain revision 9, with stamp schema/generator 1.
+  Existing revision-9 cards stay compatible; the version bump requires no new export.
+  Upgrades from older V2 cards require complete fresh exports; V1 Mobile needs its
+  RC.1 Drift correction. No V2 configuration or entity migration is required.
+- Final installation requires the complete package and a full Home Assistant restart,
+  which resets in-memory Stability history. The final manifest produces a distinct
+  package identity. RC.1 installation and advisory soak evidence remain bound to
+  their original package and are not final-package registration evidence.
+
+<a id="unreleased--v210-rc1"></a>
+
+## v2.1.0-rc.1 — Earlier unpublished release candidate
+
+Unpublished release candidate prepared from beta.12. Its final revision-9 package
+completed installation validation on Stable and Lab. Earlier acceptance remains tied
+to the corresponding earlier package. The advisory revision-9 Lab campaign is separate
+from final-source preparation; no completed-soak, tag or HACS publication is claimed.
 
 - Prepares the approved README and website content, Home Assistant introduction,
   selected V2.1 release artwork and decorative clockwise header LEDs. Website and
