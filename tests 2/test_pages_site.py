@@ -129,7 +129,6 @@ class PagesSiteTests(unittest.TestCase):
             "https://github.com/senyo888/Humidity-Intelligence/wiki",
             "https://github.com/senyo888/Humidity-Intelligence/wiki/UI-Gallery",
             "https://github.com/senyo888/Humidity-Intelligence/tree/main/ui-gallery",
-            "https://github.com/senyo888/Humidity-Intelligence/stargazers",
             "https://github.com/sponsors/senyo888",
         }
 

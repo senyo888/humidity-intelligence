@@ -140,7 +140,7 @@ Useful Wiki pages:
 - [UI Gallery](https://github.com/senyo888/humidity-intelligence/wiki/UI-Gallery)
 - [Diagnostics and Support Bundle](https://github.com/senyo888/humidity-intelligence/wiki/Diagnostics-and-Support-Bundle)
 - [HACS and Updates](https://github.com/senyo888/humidity-intelligence/wiki/HACS-and-Updates)
-- [Migration Guide - v1 to v2](https://github.com/senyo888/humidity-intelligence/wiki/Migration-v1-to-v2)
+- [Migration Guide - v1 to v2](https://github.com/senyo888/humidity-intelligence/blob/v2.0.12/README.md#migration-guide---v1-to-v2)
 - [Air Quality and CO Safety](https://github.com/senyo888/humidity-intelligence/wiki/Air-Quality-and-CO-Safety)
 - [Troubleshooting Generated UI](https://github.com/senyo888/humidity-intelligence/wiki/Troubleshooting-Generated-UI)
 - [Release Validation for Users](https://github.com/senyo888/humidity-intelligence/wiki/Release-Validation-for-Users)
@@ -649,7 +649,7 @@ V1 was template-based. V2 is a structured integration with configuration flow an
 runtime validation.
 
 **Migration is required.** Follow the
-[complete migration guide](https://github.com/senyo888/humidity-intelligence/wiki/Migration-v1-to-v2)
+[preserved V1-to-V2 migration guide](https://github.com/senyo888/humidity-intelligence/blob/v2.0.12/README.md#migration-guide---v1-to-v2)
 for HACS setup, V1 cleanup, the drift helper and dashboard checks.
 
 ---
