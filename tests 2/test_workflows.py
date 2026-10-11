@@ -16,7 +16,7 @@ import unittest
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 FIRST_INTERACTION_V3_SHA = "1c4688942c71f71d4f5502a26ea67c331730fa4d"
 ACTIONS_CHECKOUT_V7_SHA = "3d3c42e5aac5ba805825da76410c181273ba90b1"
-ACTIONS_SETUP_NODE_V7_SHA = "820762786026740c76f36085b0efc47a31fe5020"
+ACTIONS_SETUP_NODE_V7_SHA = "949feb2413d6458794dcd2491c4babbbce0c15c1"
 HACS_ACTION_MAIN_SHA = "1ebf01c408f29afcb6406bd431bc98fd8cbb15aa"
 MUTABLE_ACTION_REF_RE = re.compile(
     r"^\s*uses:\s*[^@\s]+@(main|master|v?\d+(?:\.\d+){0,2})\s*(?:#.*)?$",
@@ -127,7 +127,7 @@ class WorkflowConfigurationTests(unittest.TestCase):
         self.assertIn(
             'node --test "tests 2/test_stability_badge_renderer.mjs"', workflow
         )
-        setup_node = f"actions/setup-node@{ACTIONS_SETUP_NODE_V7_SHA} # v7.0.0"
+        setup_node = f"actions/setup-node@{ACTIONS_SETUP_NODE_V7_SHA} # v7.1.0"
         self.assertIn(setup_node, workflow)
         self.assertIn('node-version: "24"', workflow)
         self.assertLess(
