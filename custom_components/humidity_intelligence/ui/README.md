@@ -70,8 +70,9 @@ inputs show **Unavailable**, with context in the details.
 Tap or use Enter/Space to open the explanation and **View history**. History opens
 Home Assistant's native more-info surface for the registered drift entity; its
 recorded values depend on Recorder and retention. Hold also opens native more-info.
-The details use a native modal dialog and close on changed badge evidence,
-navigation or card removal. Browsers without native dialog support use more-info
+The details use a native modal dialog and preserve the opening snapshot during
+telemetry updates. Explicit dismissal, navigation, card removal or removal of the
+details template closes it. Browsers without native dialog support use more-info
 as the tap fallback. Button-card 7.0.1 was exercised with synthetic entity data and
 a minimal Home Assistant event router; live Companion/WallPanel validation is
 separate.
@@ -135,8 +136,8 @@ Summaries identify their mapped history sources. Enhanced history is available
 when at least one source is mapped; native history links follow their mapped entity. Dynamic text is escaped. Only one HI details dialog
 is open at a time; Close, Escape, navigation and card removal dispose of it.
 New summaries close when their displayed evidence changes. Stability preserves
-its opening snapshot and now explains that below the main content; drift retains
-its existing evidence-change behavior. Native entity details remain the fallback
+its opening snapshot and now explains that below the main content. Drift also keeps
+its opening snapshot while readings change. Native entity details remain the fallback
 when modal dialogs cannot be opened.
 
 Ready, Zone 1, Zone 2 and AQ retain their labels, active tint, borders and alert
@@ -272,7 +273,7 @@ Control row:
 
 - preserve the v2.0.7 tap-to-toggle behavior for the System and Manual helper buttons
 - keep the Stability Score badge passive; it must not pause/resume, select lanes, or create output writes
-- for the integrated, unpublished `2.1.0-beta.1` Stability candidate, render backend schema 3/formula 3
+- for the beta.7-based partial V2.1 source-review foundation, render backend schema 3/formula 3
   score, classifications and evidence states; missing/malformed payloads show no score
 - preserve the accepted 82px footprint, independent LED colours, retained signed
   full-circle movement, six-second Partial pulse and reduced-motion alternatives

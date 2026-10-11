@@ -159,7 +159,7 @@ test('history action uses the resolved entity and connected owner without a serv
     assert.match(action, /bubbles: true, composed: true/);
     assert.doesNotMatch(action, /callService|call-service|crypto|randomUUID|sensor\.house_humidity/);
     assert.match(action, /observer\?\.disconnect/);
-    assert.match(action, /current\.innerHTML !== snapshot/);
+
   }
 });
 
@@ -171,4 +171,28 @@ test('history action uses the resolved entity and connected owner without a serv
     assert.match(html, /aria-label="Seven-day humidity drift: Baseline · 25%/);
     assert.doesNotMatch(html, /onclick=|onkeydown=|popovertarget/);
   }
+});
+
+test('open Drift snapshot survives telemetry changes and cleans up on source or owner removal',()=>{
+ for(const action of bodies('javascript')){
+  for(const removal of ['source','owner','navigation']){
+   let observe,disconnected=false,removed=false,focusRestored=false;
+   const buttons=new Map(['.hi-drift-close','.hi-drift-history'].map(key=>[key,new EventTarget()]));
+   const dialog=new EventTarget();Object.assign(dialog,{open:false,setAttribute(){},querySelector:key=>buttons.get(key),showModal(){this.open=true;},close(){this.open=false;this.dispatchEvent(new Event('close'));},remove(){removed=true;}});
+   let current={innerHTML:'Initial evidence'};
+   const previousFocus={isConnected:true,focus(){focusRestored=true;}};
+   const owner={isConnected:true,shadowRoot:{querySelector:()=>current,activeElement:previousFocus},dispatchEvent(){}};
+   const window=new EventTarget();const document={querySelector:()=>null,createElement:()=>dialog,body:{appendChild(){}}};
+   class Observer {constructor(callback){observe=callback;}observe(){}disconnect(){disconnected=true;}}
+   new Function('entity','document','window','MutationObserver','CustomEvent',action).call(owner,{entity_id:'sensor.example_drift'},document,window,Observer,Event);
+   assert.equal(dialog.open,true);assert.equal(dialog.innerHTML,'Initial evidence');
+   current={innerHTML:'New telemetry and baseline progress'};observe();
+   assert.equal(dialog.open,true);assert.equal(dialog.innerHTML,'Initial evidence');assert.equal(disconnected,false);
+   if(removal==='source'){current=null;observe();}
+   if(removal==='owner'){owner.isConnected=false;observe();}
+   if(removal==='navigation')window.dispatchEvent(new Event('location-changed'));
+   assert.equal(dialog.open,false);assert.equal(disconnected,true);assert.equal(removed,true);
+   assert.equal(focusRestored,removal!=='owner');
+  }
+ }
 });

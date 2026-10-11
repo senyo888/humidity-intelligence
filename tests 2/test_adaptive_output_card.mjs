@@ -79,3 +79,24 @@ test('legacy overflow and monitoring entry remain truthful',async()=>{
  const h=harness();await tick();const p=payload(7);delete p.compact;p.chips.push({label:'First report'},{label:'+6 more outputs'});p.discovery.lost_notice='1 source lost';h.update(p);const c=h.card;assert.equal(c._chips.children.length,3);assert.match(c._chips.textContent,/6 more/);assert.match(c._sources.textContent,/1 source lost/);assert.match(c._sources.textContent,/Monitoring 2\/10/);
  h.update(payload(0));assert.match(c._body.querySelector('.reason').className,/quiet/);c._body.querySelector('.reason').onclick();assert.equal(c.shadowRoot.activeElement,c._sources);
 });
+
+test('unrelated HA updates skip payload traversal but still reach native controls',async()=>{
+ const h=harness();await tick();let traversals=0;
+ const p=new Proxy(payload(),{ownKeys(target){traversals++;return Reflect.ownKeys(target);}});
+ h.update(p);const c=h.card,feed=c._hass.states[h.config.entity],native=c._nativeCard;
+ const initial=traversals;assert(initial>0);
+ for(let i=0;i<5;i++){
+  const next={connected:true,states:{[h.config.entity]:feed,'sensor.unrelated':{state:String(i)}}};
+  c.hass=next;assert.equal(native.hass,next);
+ }
+ assert.equal(traversals,initial);assert.equal(h.mounts(),1);
+ c.hass={connected:false,states:{[h.config.entity]:feed}};
+ assert.match(c._body.textContent,/Monitoring unavailable/);
+ c.hass={connected:true,states:{[h.config.entity]:feed}};
+ assert(traversals>initial);assert.doesNotMatch(c._body.textContent,/Monitoring unavailable/);
+ const afterReconnect=traversals;h.update(p);assert(traversals>afterReconnect);
+ c.hass={connected:true,states:{[h.config.entity]:{state:'unavailable',attributes:{payload:p}}}};
+ assert.match(c._body.textContent,/Monitoring unavailable/);
+ h.update(p);assert.doesNotMatch(c._body.textContent,/Monitoring unavailable/);
+ const beforeConfig=traversals;c.setConfig({...h.config});assert(traversals>beforeConfig);
+});

@@ -1,7 +1,9 @@
 # Accepted Stability Score baseline
 
-Status: accepted functional and presentation contract; integrated in the unpublished
-`2.1.0-beta.3` candidate, following its introduction in beta.1.
+Status: accepted functional and presentation contract for the beta.7-based V2.1
+source-review foundation, following its introduction in beta.1. This partial snapshot
+uses formula 3 and V2 layout revision 3; later formula and interaction refinements
+belong to the complete candidate on `senyo888-patch-1`. It is not an installable candidate.
 This records the accepted behaviour for the current implementation work. It does not
 claim publication, HACS availability, deployment, or a newly approved release version.
 Historical release notes retain their original scope.

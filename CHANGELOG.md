@@ -15,9 +15,11 @@ installation or publication. Final-candidate Stable evidence does not apply to i
 The manifest uses RC metadata for compatibility with `develop`; exact Git commits
 identify this partial snapshot and the complete candidate separately.
 
-No additional control or generated-card behavior is introduced by the split. V2
-layouts retain revision 2 and generator/schema 1. No configuration/entity migration
-is introduced. Installing the eventual complete package requires a full restart and
+Review corrections keep Drift detail snapshots open during normal telemetry updates,
+contain monitoring-management discovery errors, and avoid repeated validation of an
+unchanged adaptive Outputs feed. Native controls still receive every state update.
+V2 layouts advance to revision 3; generator/schema remain 1. No control behavior or
+configuration/entity migration is introduced. Installing the eventual complete package requires a full restart and
 fresh, fully replaced card exports; restarting resets in-memory Stability history.
 
 ## v2.1.0-beta.7 — Earlier unpublished candidate

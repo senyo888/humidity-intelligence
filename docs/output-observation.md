@@ -1,8 +1,10 @@
 # Optional output monitoring
 
-This guide describes the unpublished beta.6 candidate. Output monitoring, introduced
-in beta.4, is opt-in and is not part of published Stable v2.0.12. Existing installations
-default to monitoring disabled and native Outputs presentation. Installing beta.6
+This guide describes the beta.7-based source-review foundation for V2.1. It is a
+partial review snapshot, not an installable release candidate. The complete candidate
+remains on `senyo888-patch-1`. Output monitoring, introduced in beta.4, is opt-in and
+is not part of published Stable v2.0.12. Existing installations default to monitoring
+disabled and native Outputs presentation. Installing the eventual complete package
 requires a full Home Assistant restart to load its Python modules.
 
 ## What it observes

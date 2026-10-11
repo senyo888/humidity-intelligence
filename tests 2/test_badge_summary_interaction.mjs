@@ -199,7 +199,8 @@ test('new summaries, drift and Stability dispose one another without changing sn
   assert.equal(h.document.querySelectorAll('[data-hi-drift-dialog]').length,0);assert.equal(h.document.querySelectorAll('[data-hi-stability-dialog]').length,1);assert.equal(h.observers.size,1);
   stability.shadowRoot.replaceChildren();h.flushObservers();assert.equal(h.document.querySelectorAll('[data-hi-stability-dialog]').length,1);
   h.invoke(regular,source);assert.equal(h.document.querySelectorAll('[data-hi-stability-dialog]').length,0);assert.equal(h.dialogs().length,1);assert.equal(h.observers.size,1);
-  h.invoke(drift,source,'7 Day Drift');drift.shadowRoot.querySelector('template.hi-drift-details-template').innerHTML+='new evidence';h.flushObservers();assert.equal(h.observers.size,0);assert.equal(h.document.querySelectorAll('[data-hi-drift-dialog]').length,0);
+  h.invoke(drift,source,'7 Day Drift');drift.shadowRoot.querySelector('template.hi-drift-details-template').innerHTML+='new evidence';h.flushObservers();assert.equal(h.observers.size,1);assert.equal(h.document.querySelectorAll('[data-hi-drift-dialog]').length,1);
+  drift.shadowRoot.replaceChildren();h.flushObservers();assert.equal(h.observers.size,0);assert.equal(h.document.querySelectorAll('[data-hi-drift-dialog]').length,0);
  }
 });
 

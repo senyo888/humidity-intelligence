@@ -1245,7 +1245,9 @@ CO emergency pressure. Details are in
   summaries/history and optional read-only output observation from the beta.7 source
 - retains backend-owned score and evidence semantics, deterministic control and
   existing output ownership; later formula and interaction refinements are in part 2
-- keeps the V2 revision indicator at layout revision 2, with schema/generator 1
+- advances V2 layout revisions to 3 for review corrections, with schema/generator 1
+- keeps Drift details open during telemetry updates, contains monitoring setup errors
+  and avoids revalidating unchanged Outputs data on unrelated state updates
 - preserves configuration/entity compatibility and native diagnostics schema 1
 - this partial source snapshot is for review only: no installation, publication or
   Stable acceptance is claimed; the complete candidate remains on `senyo888-patch-1`

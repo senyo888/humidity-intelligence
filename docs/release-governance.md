@@ -11,9 +11,10 @@ RC.1 candidate on `senyo888-patch-1`. Exact commit identity distinguishes these
 snapshots. Do not install, publish or transfer final-candidate Stable acceptance to
 this partial foundation. Part 2 restores the complete approved candidate.
 
-The split changes review organization only. This foundation retains V2 layout
-revision 2 and schema/generator 1. The version-label change does not make unchanged
-cards stale. Both PRs need their own source checks and review; neither is authorized
+The split changes review organization only. Subsequent review corrections to Drift
+snapshots and adaptive Outputs advance this foundation to V2 layout revision 3,
+explicitly superseding revisions 1 and 2. Schema/generator remain 1. These source
+changes require fresh card exports when the eventual complete package is installed. Both PRs need their own source checks and review; neither is authorized
 to merge by preparation. The final PR temporarily targets the foundation branch
 for a bounded review diff, and returns to `develop` after its dependency merges.
 

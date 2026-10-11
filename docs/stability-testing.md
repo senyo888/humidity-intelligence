@@ -1,8 +1,10 @@
 # Stability Score testing
 
-Status: implemented in the unreleased 2.1.0-beta.3 candidate. This guide describes
-validation of [the canonical contract](stability-score-accepted-baseline.md); it is
-not a release, deployment or live-observation claim.
+Status: source validation for the beta.7-based V2.1 review foundation (formula 3,
+V2 layout revision 3). This partial snapshot is not an installable candidate. The
+complete candidate remains on `senyo888-patch-1`. This guide describes validation of
+[the canonical contract](stability-score-accepted-baseline.md); it is not a release,
+deployment or live-observation claim.
 
 ## Offline validation
 

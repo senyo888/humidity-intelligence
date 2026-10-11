@@ -24,8 +24,9 @@ truth.
 
 The [accepted Stability contract](docs/stability-score-accepted-baseline.md) defines
 backend schema 3/formula 3, six weighted components, evidence states, safety caps,
-classification and presentation. It is implemented in the unreleased 2.1.0-beta.1
-candidate; deployment to an instance does not change published release identity. Stability cannot select lanes, change gates or
+classification and presentation in this beta.7-based partial V2.1 source-review
+foundation. This snapshot is not an installable candidate; the complete candidate
+remains on `senyo888-patch-1`. Stability cannot select lanes, change gates or
 write outputs. Existing control entities/native states remain unchanged; Diagnostics
 adds structured Stability telemetry and a readable summary.
 
