@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timedelta
+import hashlib
+import json
+from datetime import datetime, timedelta, timezone
 from functools import partial
 from math import ceil
 from typing import Callable
@@ -20,6 +22,20 @@ from homeassistant.util import dt as dt_util
 from .const import DOMAIN
 from .helpers.drift_repairs import async_update_humidity_drift_repair_issue
 from .helpers.level_labels import resolve_level_label_details
+from .helpers.air_quality import capture_configured_aq_evidence
+from .helpers.stability import (
+    publish_stability_score,
+    SNAPSHOT_LATE_GRACE_SECONDS,
+    StabilitySnapshotRing,
+    bucket_start_for,
+    capture_stability_snapshot,
+    crossed_bucket_count,
+    next_bucket_boundary_after,
+    record_stability_score_movement,
+    record_stability_bucket_outcome,
+    stability_diagnostics_payload,
+    stability_snapshot_invalid_reasons,
+)
 from .helpers.zone_validation import (
     detect_zone_mapping_duplicates,
     summarize_zone_mapping_duplicate_count_warning,
@@ -41,6 +57,10 @@ TIMER_KEYS = [
 ]
 
 
+def _utc_now() -> datetime:
+    return datetime.now(timezone.utc)
+
+
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities) -> None:
     alert_only_mode = bool(_entry_section(entry, "alert_only_mode", False))
     sensors, binary_sensors, sources = build_entities(hass, entry)
@@ -56,10 +76,20 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
     await async_update_humidity_drift_repair_issue(hass)
 
     hass.data.setdefault(DOMAIN, {}).setdefault(entry.entry_id, {})
-    hass.data[DOMAIN][entry.entry_id]["core_sensors"] = sensors
-    hass.data[DOMAIN][entry.entry_id]["core_binary_sensors"] = binary_sensors
-    hass.data[DOMAIN][entry.entry_id]["slope_map"] = slope_map
-    hass.data[DOMAIN][entry.entry_id]["hi_timers"] = {t._key: t for t in timer_sensors}
+    runtime_data = hass.data[DOMAIN][entry.entry_id]
+    runtime_data["core_sensors"] = sensors
+    runtime_data["core_binary_sensors"] = binary_sensors
+    runtime_data["slope_map"] = slope_map
+    runtime_data["hi_timers"] = {t._key: t for t in timer_sensors}
+    runtime_data.setdefault("stability_snapshot_ring", StabilitySnapshotRing())
+    runtime_data["stability_failed_buckets"] = set()
+    sampling = runtime_data["stability_sampling"] = {
+        "scheduler_active": True,
+        "last_capture_status": "pending",
+        "last_bucket_start_utc": None,
+        "missed_buckets_since_setup": 0,
+        "last_invalid_reasons": [],
+    }
 
     async def _handle_change(event) -> None:
         for sensor in sensors:
@@ -68,16 +98,175 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
         for sensor in binary_sensors:
             sensor.update_from_hass()
             sensor.async_write_ha_state()
+        # Publish only after the dependent core sensors have refreshed.
+        diagnostics.update()
+        diagnostics.async_write_ha_state()
         await async_update_humidity_drift_repair_issue(hass)
+
+    stopped = False
+    unsubscribe = None
+
+    def _arm_stability_bucket(scheduled_at: datetime) -> None:
+        nonlocal unsubscribe
+        if stopped:
+            return
+        unsubscribe = async_track_point_in_utc_time(
+            hass,
+            _capture_stability_bucket,
+            scheduled_at,
+        )
+
+    @callback
+    def _capture_stability_bucket(scheduled_at: datetime) -> None:
+        nonlocal unsubscribe
+        unsubscribe = None
+        if stopped:
+            return
+        current_runtime_data = hass.data.get(DOMAIN, {}).get(entry.entry_id)
+        if current_runtime_data is not runtime_data:
+            return
+        scheduled_at = (
+            scheduled_at.replace(tzinfo=timezone.utc)
+            if scheduled_at.tzinfo is None
+            else scheduled_at.astimezone(timezone.utc)
+        )
+        observed_at = _utc_now()
+        observed_at = (
+            observed_at.replace(tzinfo=timezone.utc)
+            if observed_at.tzinfo is None
+            else observed_at.astimezone(timezone.utc)
+        )
+        sampling["last_bucket_start_utc"] = scheduled_at.isoformat()
+        lateness = (observed_at - scheduled_at).total_seconds()
+        capture_failed = False
+        try:
+            if lateness < 0 or lateness > SNAPSHOT_LATE_GRACE_SECONDS:
+                sampling["last_capture_status"] = "late_skipped"
+                sampling["missed_buckets_since_setup"] += crossed_bucket_count(
+                    scheduled_at,
+                    observed_at,
+                )
+                sampling["last_invalid_reasons"] = []
+                runtime_data["stability_snapshot_ring"].prune(observed_at)
+                return
+            _refresh_stability_aq(hass, runtime_data)
+            snapshot = capture_stability_snapshot(
+                hass,
+                entry,
+                runtime_data,
+                observed_at=observed_at,
+            )
+            if snapshot is None:
+                sampling["last_capture_status"] = "incomplete"
+                sampling["missed_buckets_since_setup"] += 1
+                sampling["last_invalid_reasons"] = []
+                runtime_data["stability_snapshot_ring"].prune(observed_at)
+                return
+            invalid_reasons = stability_snapshot_invalid_reasons(snapshot)
+            stored = runtime_data["stability_snapshot_ring"].add(snapshot)
+            sampling["last_capture_status"] = (
+                "captured" if stored else "incomplete"
+            )
+            sampling["last_invalid_reasons"] = invalid_reasons
+            if not stored:
+                sampling["missed_buckets_since_setup"] += 1
+        except Exception:
+            capture_failed = True
+            sampling["last_capture_status"] = "incomplete"
+            sampling["missed_buckets_since_setup"] += 1
+            sampling["last_invalid_reasons"] = []
+            raise
+        finally:
+            try:
+                record_stability_bucket_outcome(
+                    runtime_data, scheduled_at, observed_at,
+                    successful=sampling["last_capture_status"] == "captured",
+                    missed_range=sampling["last_capture_status"] == "late_skipped",
+                )
+            except Exception:
+                _LOGGER.exception("Unable to record Stability collection history")
+            if lateness >= 0:
+                try:
+                    if sampling["last_capture_status"] == "late_skipped":
+                        # A missed history sample is not proof that live inputs failed.
+                        _refresh_stability_aq(hass, runtime_data)
+                        publish_stability_score(runtime_data, observed_at=observed_at,
+                            sample_history=True, history_available=False)
+                    else:
+                        record_stability_score_movement(
+                            runtime_data, observed_at=observed_at,
+                            capture_available=not capture_failed and sampling["last_capture_status"] == "captured",
+                        )
+                    diagnostics.update(publish=False)
+                    diagnostics.async_write_ha_state()
+                except Exception:
+                    _LOGGER.exception(
+                        "Unable to record Stability Score movement for HI entry %s",
+                        entry.entry_id,
+                    )
+            if (
+                not stopped
+                and hass.data.get(DOMAIN, {}).get(entry.entry_id)
+                is runtime_data
+            ):
+                _arm_stability_bucket(next_bucket_boundary_after(observed_at))
 
     all_sources = list(set(sources + slope_sources))
     unsub = async_track_state_change_event(hass, all_sources, _handle_change)
-    hass.data[DOMAIN][entry.entry_id]["core_unsub"] = unsub
+    runtime_data["core_unsub"] = unsub
+    _arm_stability_bucket(next_bucket_boundary_after(_utc_now()))
+
+    def _stop_stability_scheduler() -> None:
+        nonlocal stopped, unsubscribe
+        if stopped:
+            return
+        stopped = True
+        sampling["scheduler_active"] = False
+        if unsubscribe is not None:
+            unsubscribe()
+            unsubscribe = None
+
+    runtime_data["stability_snapshot_unsub"] = _stop_stability_scheduler
+    entry.async_on_unload(_stop_stability_scheduler)
+
+    # Observation is optional and cannot prevent existing sensors or control setup.
+    observation_settings = _entry_section(entry, "output_observation", {})
+    if isinstance(observation_settings, dict) and observation_settings.get("enabled") is True:
+        try:
+            from .adaptive_output.sensor import async_setup_observation
+
+            await async_setup_observation(hass, entry, async_add_entities)
+        except Exception:
+            _LOGGER.exception("Optional output-status setup failed; existing HI sensors remain available")
+
+
+def _refresh_stability_aq(hass, runtime_data: dict) -> None:
+    """Capture score-specific evidence without changing engine AQ configuration."""
+    config = dict(runtime_data.get("config") or {})
+    config.update(dict(runtime_data.get("options") or {}))
+    policy = {
+        "aq": {str(level): {key: value.get(key) for key in ("enabled", "triggers", "thresholds")}
+            for level, value in (config.get("aq", {}) or {}).items() if isinstance(value, dict)},
+        "telemetry": [{key: item.get(key) for key in ("entity_id", "sensor_type", "level")}
+            for item in config.get("telemetry", []) or [] if isinstance(item, dict)
+            and item.get("sensor_type") in {"co2", "pm25", "voc", "iaq", "co"}],
+    }
+    fingerprint = hashlib.sha256(json.dumps(policy, sort_keys=True, default=str).encode()).hexdigest()
+    previous = runtime_data.get("stability_source_fingerprint")
+    if previous is not None and previous != fingerprint:
+        runtime_data["stability_snapshot_ring"] = StabilitySnapshotRing()
+        runtime_data["stability_failed_buckets"] = set()
+        for key in ("stability_published", "stability_aq_adjustment", "stability_score_movement", "stability_score_history", "stability_movement_observations"):
+            runtime_data.pop(key, None)
+    runtime_data["stability_source_fingerprint"] = fingerprint
+    runtime_data["stability_selected_aq"] = capture_configured_aq_evidence(hass, config, stability_selection=True)
 
 
 class HIDiagnosticsSensor(SensorEntity):
     """Expose configuration and entity mapping diagnostics."""
     _attr_should_poll = True
+    _unrecorded_attributes = frozenset({"stability_score"})
+
     def __init__(self, hass: HomeAssistant, entry_id: str) -> None:
         self.hass = hass
         self.entry_id = entry_id
@@ -86,8 +275,15 @@ class HIDiagnosticsSensor(SensorEntity):
         self._attr_icon = "mdi:clipboard-text"
         self._attr_native_value = "ok"
 
-    def update(self) -> None:
+    async def async_update(self) -> None:
+        """Keep polling publication on the loop with scheduled Stability updates."""
+        self.update()
+
+    def update(self, *, publish: bool = True) -> None:
         data = self.hass.data.get(DOMAIN, {}).get(self.entry_id, {})
+        if publish:
+            _refresh_stability_aq(self.hass, data)
+            publish_stability_score(data, observed_at=_utc_now())
         config = data.get("config", {})
         options = data.get("options", {}) if isinstance(data.get("options", {}), dict) else {}
         telemetry = config.get("telemetry", []) if isinstance(config, dict) else []
@@ -107,11 +303,36 @@ class HIDiagnosticsSensor(SensorEntity):
             entity_map,
             data,
         )
+        compact_summary = _compact_diagnostics_summary(summary)
+        previous_attributes = getattr(self, "_attr_extra_state_attributes", None) or {}
+        previous_score = previous_attributes.get("diagnostics_summary", {}).get("stability_score", {})
+        compact_score = compact_summary.get("stability_score", {})
+        previous_movement = previous_score.get("movement", {})
+        current_movement = compact_score.get("movement", {})
+        if (
+            isinstance(previous_movement, dict) and isinstance(current_movement, dict)
+            and previous_movement.get("direction") == current_movement.get("direction") == "steady"
+            and previous_movement.get("current_display_score") == current_movement.get("current_display_score")
+            and previous_movement.get("end_position_degrees") == current_movement.get("end_position_degrees")
+            and previous_movement.get("color_token") == current_movement.get("color_token")
+            and all(previous_movement.get(key) == current_movement.get(key) for key in (
+                "comparison_basis", "reference_at", "reference_display_score",
+                "recent_delta_points", "reference_advanced",
+            ))
+        ):
+            # Keep the recorded steady comparison stable; the live attribute retains
+            # each fresh publication and its precise observation timestamps.
+            compact_score["movement"] = dict(previous_movement)
         self._attr_extra_state_attributes = {
-            "diagnostics_summary": _sanitize_json(_compact_diagnostics_summary(summary)),
+            "Stability Score": _readable_stability_score(summary.get("stability_score")),
+            "stability_score": _sanitize_json(summary.get("stability_score", {})),
+            "diagnostics_summary": _sanitize_json(compact_summary),
             "config": _sanitize_json(_compact_ui_config(config, options)),
             "slope_map": _sanitize_json(data.get("slope_map") or {}),
             "cards": list(cards.keys()),
+            # Describes successfully generated compatible UI revisions only;
+            # exporting a file does not verify any saved or rendered dashboard.
+            "ui_revision": _sanitize_json(data.get("ui_revision") or {}),
             "unresolved_placeholders_count": len(unresolved),
             "unresolved_placeholders": _sanitize_json(unresolved[:20]),
             "unresolved_placeholders_by_card_count": len(unresolved_by_card),
@@ -126,6 +347,71 @@ class HIDiagnosticsSensor(SensorEntity):
             },
             "full_diagnostics": "Use service humidity_intelligence.dump_diagnostics for full config, options, entity map, and state export.",
         }
+
+
+def _readable_stability_score(score) -> str:
+    """Expose backend explanations in the tablet-accessible entity details."""
+    score = score if isinstance(score, dict) else {}
+    presentation = score.get("presentation")
+    presentation = presentation if isinstance(presentation, dict) else {}
+    detail = presentation.get("detail_text") or score.get("message")
+    lines = [detail if isinstance(detail, str) and detail.strip() else "Stability Score unavailable."]
+    window = score.get("window")
+    window = window if isinstance(window, dict) else {}
+    valid = window.get("valid_samples")
+    minimum = window.get("minimum_valid_samples")
+    if presentation.get("state_code") == "collecting":
+        if type(valid) is int and valid >= 0 and type(minimum) is int and minimum > 0:
+            lines.append(f"Baseline progress: {valid} of {minimum} valid samples.")
+        else:
+            lines.append("Baseline progress unavailable.")
+    expected = window.get("expected_samples")
+    hours = window.get("duration_hours")
+    if all(type(value) is int for value in (valid, expected, hours)) and 0 <= valid <= expected and expected > 0 and hours > 0:
+        lines.append(f"Window: {valid}/{expected} valid snapshots over {hours} hours.")
+    else:
+        lines.append("Window coverage unavailable.")
+    sampling = score.get("sampling")
+    sampling = sampling if isinstance(sampling, dict) else {}
+    history = sampling.get("failure_history")
+    history = history if isinstance(history, dict) else {}
+    failed = history.get("failed_bucket_count")
+    if history.get("status") == "available" and type(failed) is int and 0 <= failed <= 432:
+        lines.append(f"Unsuccessful collections: {failed} scheduled buckets in the current 72-hour window.")
+    else:
+        lines.append("Collection failure history unavailable.")
+    movement = score.get("movement")
+    movement = movement if isinstance(movement, dict) else {}
+    movement_detail = movement.get("detail_text")
+    if isinstance(movement_detail, str) and movement_detail.strip():
+        lines.append(movement_detail)
+    return "\n\n".join(lines)
+
+
+def _compact_stability_score(score: dict) -> dict:
+    """Keep Stability Score diagnostics compact and read-only."""
+    if not isinstance(score, dict):
+        return {}
+    return {
+        "schema": score.get("schema"),
+        "formula_version": score.get("formula_version"),
+        "availability": score.get("availability"),
+        "message": score.get("message"),
+        "score_basis": score.get("score_basis"),
+        "environmental_evidence": score.get("environmental_evidence"),
+        "live_truth": score.get("live_truth", {}),
+        "window": score.get("window", {}),
+        "score": score.get("score", {}),
+        "subscores": score.get("subscores", {}),
+        "caps": score.get("caps", {}),
+        "component_coverage": score.get("component_coverage", {}),
+        "penalties": score.get("penalties", {}),
+        "presentation": score.get("presentation", {}),
+        "movement": score.get("movement", {}),
+        "snapshot": score.get("snapshot", {}),
+        "sampling": score.get("sampling", {}),
+        "control_contract": score.get("control_contract", {}),
+    }
 
 
 class HITimerSensor(SensorEntity):
@@ -267,6 +553,7 @@ def _compact_diagnostics_summary(summary: dict) -> dict:
         "visual_alerts": _compact_visual_alerts(summary.get("visual_alerts", [])),
         "active_alert_resolution": active_alerts,
         "humidity_drift_7d": summary.get("humidity_drift_7d", {}),
+        "stability_score": _compact_stability_score(summary.get("stability_score", {})),
         "humidifier_reconciliation": _compact_humidifier_reconciliation(
             summary.get("humidifier_reconciliation", {})
         ),

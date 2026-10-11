@@ -16,7 +16,7 @@ import unittest
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 FIRST_INTERACTION_V3_SHA = "1c4688942c71f71d4f5502a26ea67c331730fa4d"
 ACTIONS_CHECKOUT_V7_SHA = "3d3c42e5aac5ba805825da76410c181273ba90b1"
-ACTIONS_SETUP_NODE_V7_SHA = "820762786026740c76f36085b0efc47a31fe5020"
+ACTIONS_SETUP_NODE_V7_SHA = "949feb2413d6458794dcd2491c4babbbce0c15c1"
 HACS_ACTION_MAIN_SHA = "1ebf01c408f29afcb6406bd431bc98fd8cbb15aa"
 MUTABLE_ACTION_REF_RE = re.compile(
     r"^\s*uses:\s*[^@\s]+@(main|master|v?\d+(?:\.\d+){0,2})\s*(?:#.*)?$",
@@ -25,6 +25,21 @@ MUTABLE_ACTION_REF_RE = re.compile(
 
 
 class WorkflowConfigurationTests(unittest.TestCase):
+    def test_every_version_update_checks_rendered_ui_contract(self) -> None:
+        workflow = (ROOT / ".github/workflows/version-governance.yml").read_text()
+        for required in (
+            "fetch-depth: 0", "check_ui_revision_governance.py",
+            "sync_ui_revision.py --check", "sync_badge_history.py --check",
+            "test_ui_revision_governance.py", "test_ui_revision_contract.py",
+            "test_adaptive_cards.py", "test_ui_revision_status.mjs",
+            "sync_ui_inactivity.py --check", "test_ui_inactivity.mjs",
+            "test_ui_revision_idle.mjs", "test_adaptive_output_card.mjs",
+        ):
+            self.assertIn(required, workflow)
+        self.assertRegex(workflow, r"(?m)^  push:$")
+        self.assertRegex(workflow, r"(?m)^  pull_request:$")
+
+
     def test_secret_scan_fails_closed_when_tracked_mode_has_no_files(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             workdir = pathlib.Path(tmpdir)
@@ -127,7 +142,7 @@ class WorkflowConfigurationTests(unittest.TestCase):
         self.assertIn(
             'node --test "tests 2/test_stability_badge_renderer.mjs"', workflow
         )
-        setup_node = f"actions/setup-node@{ACTIONS_SETUP_NODE_V7_SHA} # v7.0.0"
+        setup_node = f"actions/setup-node@{ACTIONS_SETUP_NODE_V7_SHA} # v7.1.0"
         self.assertIn(setup_node, workflow)
         self.assertIn('node-version: "24"', workflow)
         self.assertLess(
@@ -161,7 +176,18 @@ class WorkflowConfigurationTests(unittest.TestCase):
             ],
             cwd=ROOT,
         ).split(b"\0")
-        self.assertEqual(53, len([path for path in tracked_component_files if path]))
+        # Check the tracked brand layout itself: unrelated module additions must
+        # not invalidate this branding contract, and untracked copies cannot pass.
+        tracked = {path.decode("utf-8") for path in tracked_component_files if path}
+        component_prefix = "custom_components/humidity_intelligence/"
+        expected_brand = {component_prefix + "brand/" + name for name in ("icon.png", "logo.png")}
+        self.assertEqual(
+            expected_brand,
+            {path for path in tracked if path.startswith(component_prefix + "brand/")},
+        )
+        self.assertTrue(
+            tracked.isdisjoint({component_prefix + name for name in ("icon.png", "logo.png")})
+        )
 
         for workflow_name in ("hassfest.yaml", "release.yml", "validate.yml"):
             workflow = (

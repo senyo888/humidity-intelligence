@@ -38,6 +38,12 @@ class VersionGovernanceTests(unittest.TestCase):
                     result = self.governance.main()
         return result, stdout.getvalue(), stderr.getvalue()
 
+    def test_v21_beta_is_allowed_on_patch_lane_but_not_main_or_develop(self) -> None:
+        for branch, expected in (("senyo888-patch-1", 0), ("main", 1), ("develop", 1)):
+            with self.subTest(branch=branch):
+                result, _stdout, _stderr = self._run_check(branch=branch, version="2.1.0-beta.1")
+                self.assertEqual(expected, result)
+
     def test_manifest_path_targets_conventional_component(self) -> None:
         self.assertEqual(
             ROOT

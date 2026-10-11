@@ -20,6 +20,87 @@ schemas, tracked generated-card templates, and release documentation. Ignored lo
 planning notes may inform maintainer review, but they do not override tracked runtime
 truth.
 
+## Observational Stability Score
+
+The [accepted Stability contract](docs/stability-score-accepted-baseline.md) defines
+backend schema 3/formula 4, six weighted components, evidence states, safety caps,
+classification and presentation. Formula 4 selects individual AQ conditions per level,
+with configured IAQ fallback only when no individual conditions are configured.
+Routine AQ uses an additional 12-point adjustment recovering over six observed-clear
+hours; missing evidence pauses recovery. CO protections and engine trigger evaluation
+remain independent. It is implemented in the v2.1.0 release source, prepared for
+publication; published Stable remains v2.0.12. Deployment to an instance does not
+change published release identity. Stability cannot select
+lanes, change gates or
+write outputs. Existing control entities/native states remain unchanged; Diagnostics
+adds structured Stability telemetry and a readable summary.
+
+Sampling uses 432 ten-minute UTC buckets over 72 hours, with 303 valid samples needed
+for eligibility plus consecutive-pair and balance coverage. History and retained
+movement are in memory only: restart/reload resets both, with no startup backfill.
+Required live evidence suppresses stale scores when unavailable. Configured missing AQ
+is incomplete evidence, never clean air. Excellent/Good/Unstable/Poor boundaries are
+92/70/55/0; caps and explanatory text belong to the backend.
+
+The four generated/gallery renderers preserve the accepted 82px badge and independent
+LED palette. Signed ±360 endpoints show net displayed-score change against the oldest
+actual reference within 60 minutes. The backend retains the first publication per
+ten-minute slot, at most seven references, with exact timestamps and actual coverage.
+It converts net points to an angle once; LED colour/intensity still describes the
+latest update, independently of arc side. Score, reference and movement publish
+atomically, including between samples. Unavailable scores or publication gaps over
+eleven minutes reset the movement baseline. Old references expire on the next owned
+update; expiry alone is neutral and never a new measured rise or fall. Pure reads
+cannot advance movement. Bounded ten-minute graph history remains separate, preserves
+gaps and resets on restart. The halo classifies the 72-hour composite score; current
+humidity retains its own backend-derived display. Improvement is not proof of healthy
+current conditions. While collecting, the blue LEDs instead fill clockwise from backend
+valid-sample progress toward 303; collection details use the same minimum target.
+Each valid sample illuminates one centred collection slot; the fixed origin hides
+after the first tick. Counts and target are bounded to 432, with a positive target,
+and must agree with the backend progress ratio. Invalid evidence remains unlit;
+incomplete collection cannot appear as a full ring.
+Scored details retain rolling-window coverage out of 432. Backend evidence gates
+remain authoritative; reaching the sample target never forces a score.
+
+A separate inner red track displays observed failed or missed scheduled collection
+buckets during collection or unscored incomplete/live-data states. Backend history
+contains unique buckets in the current 72-hour window, bounded to 432; valid stored
+buckets cannot also be failed. No offline, pre-setup or future failures are inferred.
+Positions are fixed UTC sampling slots, not a timeline beginning at the top. Missing
+history is unavailable, not proof of zero failures. The history resets on restart or
+reload and never advances baseline progress or changes scoring or control.
+
+Whole-badge tap/keyboard opens detached native dialog details as an explicitly labelled
+snapshot, outside the button-card gesture handlers. Close, Escape and backdrop dismiss;
+focus restores, and navigation or owner removal cleans up the single active dialog.
+The existing badge is keyboard-focusable: Enter and a short Space press retain
+normal tap behavior; pressing and holding Space performs the same hold action.
+Clients without native dialog support fall back to Diagnostics more-info. Partial
+and reduced-motion treatments remain explicit. Optional frontend resources cannot
+block runtime operation. See [validation and client limitations](docs/stability-testing.md).
+
+Hold changes only the badge presentation. Disabled retains the same footprint,
+**Disabled** text, a static violet/indigo aurora and segmented LEDs; holding again
+restores the normal display. Tap details and history remain available in either
+state. No switch, button, checkbox or icon is added. Collection, scoring, history,
+control decisions and output ownership continue unchanged.
+
+Home Assistant's authenticated frontend user-data API persists one boolean for the
+signed-in user and opaque HI entry. It applies across that user's Mobile, Tablet
+and browser sessions, survives refresh and does not affect other accounts or entries.
+Read/save failures appear in the existing status label; they cannot establish a
+saved choice or environmental health. There is no localStorage fallback, config
+option or control entity. This preference does not persist score history.
+
+Score details retain the backend headline and individual deductions. Presentation
+may total the backend's rounded deduction terms, but calculated, rounded and capped
+results remain backend-owned and separately explained. Invalid breakdown data never
+overrides a valid headline. The history expander summarizes only retained samples,
+preserves null/omitted gaps and distinguishes the current update from scheduled
+points. A partial displayed interval is neither complete 72-hour coverage nor a
+claim about environmental health.
+
 ## Deterministic Lane Order
 
 Ventilation lane priority is fixed:
@@ -80,7 +161,14 @@ of physical moisture production.
 
 Humidity danger and comfort interpretation are profile-relative. Runtime thresholds
 must be derived from the active seasonal or custom target profile, not from stale static
-alert values.
+alert values. The built-in autumn band is inclusive 50–60%; readings above 60% are
+above target, and 64% or higher meets its humidity-danger threshold. Beta.12 adds no
+danger-threshold override. Custom profiles keep their existing derivation: a 50–60%
+custom band produces high risk at 67.5%. These are control-profile boundaries, not
+universal safe cutoffs. Target bounds also affect humidifier start/recovery and
+target-relative mould interpretation; other seasons retain their own bounds. Generated humidity
+context requires an authoritative high-risk bound and degrades neutrally when it is
+missing or invalid.
 
 Temperature comfort display follows the same principle: UI colors and chips should use
 backend comfort truth instead of card-only assumptions.
@@ -227,8 +315,18 @@ dashboard documents and must not be written to `<config>/dashboards/`; dashboard
 creation, registration, editing, and deletion stay within Home Assistant's UI.
 
 Dynamic state or attribute text rendered through generated-card HTML must be escaped
-at the HTML sink. The V1 Mobile presentation remains available but deprecated through
-v2.0.9; any removal requires a separately approved v2.1 migration contract.
+at the HTML sink. The V1 Mobile presentation remains available but deprecated in v2.1.0;
+any removal requires a separately approved migration contract.
+
+V2 generated cards carry an entry- and layout-scoped rendered UI revision, separate
+from the integration manifest. Additive Diagnostics metadata advertises compatible
+targets only for successful generation. The small footer compares declared revisions;
+it does not establish installed dashboard bytes, configuration freshness, arbitrary
+customization, cache state or integration-update availability. Missing/unsupported
+or disconnected evidence is unverified; an explicitly superseded revision is an
+update, while a rollback mismatch is a difference. Export success never proves card
+replacement. This observation adds no writer, lane input or frontend runtime
+dependency. See [the rendered UI revision contract](docs/ui-revision-status.md).
 
 ## Home Assistant And HACS Boundaries
 
@@ -276,3 +374,29 @@ as risk context, but none of those states is a promotion or release veto. Promot
 tagging, GitHub Release publication, HACS publication, and Stable approval are decided
 only by the canonical tracked validation, review, version-governance, CI, and explicit
 maintainer gates documented for the release scope.
+
+## Optional output observation
+
+The opt-in `adaptive_output` subsystem observes configured outputs and diagnostic
+sources without feeding the control engine or writing outputs. Its status sensor
+and optional frontend are failure-isolated from core setup. Exact identity-bound
+source rules and backend-authored coverage determine presentation; observed On is
+not command success or physical-device proof. Registry invalidations remain
+quarantined across orderly reload until later relevant state evidence arrives.
+Custody persistence is best effort, not crash durability.
+
+Structured options stage explicit confirmations and per-association context-only
+retirement before the existing options save. Native presentation remains available
+without the custom frontend. Export transforms preserve surrounding card content
+and resolve the registered sensor; dashboards and Lovelace resources remain
+user-managed. Observation does not change lane priority, humidifier independence,
+Manual ownership, entity semantics of existing entities, or Stability calculations.
+Reusable custom monitoring meanings are entry-scoped library definitions with stable
+references. Backend classification owns severity, icon and standard guidance; names
+and optional plain-text instructions are additive presentation. Each source retains
+its own identity-bound detection rule. Missing definitions produce explicit monitoring
+gaps. Rename, reclassification and guarded deletion use the existing staged options
+transaction; they introduce no control authority. See
+[custom monitoring meanings](docs/custom-monitoring-meanings.md).
+See [output observation](docs/output-observation.md) for lifecycle, limits,
+prototype migration, and rollback boundaries.

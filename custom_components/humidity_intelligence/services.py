@@ -15,6 +15,7 @@ from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import config_validation as cv
 
+from .helpers.stability import stability_diagnostics_payload
 from .const import CONF_SHOW_OUTPUT_ENTITY_DETAILS, DEFAULT_SHOW_OUTPUT_ENTITY_DETAILS, DOMAIN
 from .helpers.cleanup import (
     RELEASE_CHECK_CARD_BASE,
@@ -124,7 +125,7 @@ _SAFE_FILENAME_RE = re.compile(r"^[A-Za-z0-9._-]{1,128}$")
 _OWNED_REPORT_FILENAME_PREFIX = "humidity_intelligence_"
 _OWNED_REPORT_FILENAME_SUFFIX = ".json"
 _RELEASE_CHECK_MANIFEST_VERSION_RE = re.compile(
-    r"^2\.0\.(?:5|(?:[6-9]|1[0-2])(?:-(?:beta|rc)\.[1-9]\d*)?)$"
+    r"^2\.(?:0\.(?:5|(?:[6-9]|1[0-2])(?:-(?:beta|rc)\.[1-9]\d*)?)|1\.0(?:-(?:beta|rc)\.[1-9]\d*)?)$"
 )
 _SENSITIVE_ATTR_EXACT = {
     "access_token",
@@ -1400,6 +1401,7 @@ def _build_diagnostics_summary(
         "active_alert_resolution": runtime_data.get("alert_telemetry", []),
         "visual_alerts": _visual_alert_summary(alerts),
         "humidity_drift_7d": drift_dependency,
+        "stability_score": stability_diagnostics_payload(runtime_data),
         "humidifier_reconciliation": humidifier_reconciliation,
         "pm25_entity_id_normalization": pm25_normalization,
         "local_version_preservation": local_version_status or cached_local_version_status(hass),
@@ -1662,11 +1664,11 @@ def _release_check_manifest_status(manifest_version: Optional[str]) -> Tuple[str
     if manifest_version and _RELEASE_CHECK_MANIFEST_VERSION_RE.fullmatch(manifest_version):
         return (
             "pass",
-            f"Manifest version is {version}; release-check contract is valid for the v2.0.5-v2.0.12 line.",
+            f"Manifest version is {version}; release-check contract accepts the v2.0.5-v2.0.12 and v2.1.0 lines.",
         )
     return (
         "fail",
-        f"Manifest version is {version}; expected v2.0.5 or a v2.0.6-v2.0.12 beta/rc/stable version.",
+        f"Manifest version is {version}; expected v2.0.5, a v2.0.6-v2.0.12 beta/rc/stable version, or v2.1.0 beta/rc/stable.",
     )
 
 
@@ -1775,7 +1777,18 @@ def _output_details_visibility_failures(cards: dict, show_output_details: bool) 
     failures: List[str] = []
     for layout in ("v2_mobile", "v2_tablet"):
         card = str(cards.get(layout, ""))
-        has_output_panel = "name: Outputs" in card or "entity: input_boolean.air_control_output_expanded" in card or "entity: switch.hi_input_air_control_output_expanded" in card
+        # The adaptive generator replaces the native header/expander pair.
+        # Match its emitted YAML type field, not a mention in prose or a comment.
+        has_adaptive_panel = re.search(
+            r"(?m)^[ \t]*(?:-[ \t]+)?type:[ \t]+custom:hi-adaptive-output-card[ \t]*$",
+            card,
+        ) is not None
+        has_output_panel = (
+            "name: Outputs" in card
+            or "entity: input_boolean.air_control_output_expanded" in card
+            or "entity: switch.hi_input_air_control_output_expanded" in card
+            or has_adaptive_panel
+        )
         if show_output_details and not has_output_panel:
             failures.append(f"{layout}: output details panel expected but not found")
         if not show_output_details and has_output_panel:

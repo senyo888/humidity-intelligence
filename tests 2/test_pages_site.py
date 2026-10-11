@@ -100,10 +100,8 @@ class PagesSiteTests(unittest.TestCase):
         self.assertEqual(parser.canonical, PAGES_URL)
         self.assertEqual(parser.meta.get("robots"), "index,follow")
         self.assertNotIn("noindex", " ".join(parser.meta.values()).lower())
+        self.assertIn("Humidity Intelligence", parser.meta.get("description", ""))
         self.assertIn("Home Assistant", parser.meta.get("description", ""))
-        self.assertIn("smart sensor data", parser.meta.get("description", ""))
-        self.assertIn("humidity balance", parser.meta.get("description", ""))
-        self.assertIn("clearer home routine", parser.meta.get("description", ""))
 
     def test_pages_site_has_search_discovery_structured_data(self) -> None:
         _html, parser = parse_index()
@@ -131,7 +129,6 @@ class PagesSiteTests(unittest.TestCase):
             "https://github.com/senyo888/Humidity-Intelligence/wiki",
             "https://github.com/senyo888/Humidity-Intelligence/wiki/UI-Gallery",
             "https://github.com/senyo888/Humidity-Intelligence/tree/main/ui-gallery",
-            "https://github.com/senyo888/Humidity-Intelligence/stargazers",
             "https://github.com/sponsors/senyo888",
         }
 
@@ -152,13 +149,19 @@ class PagesSiteTests(unittest.TestCase):
         self.assertIn("assets/site/github-pages-hero.png", assets)
         self.assertIn("assets/release_banner/v2.0.12_release.png", parser.images)
         self.assertIn("A focused maintenance release.", html)
-        self.assertIn("v2.0.12 maintenance notes", html)
+        self.assertIn("v2.0.12 published Stable", html)
         self.assertIn("included in the HACS default integration repository", normalized_html)
-        self.assertIn("GitHub Releases records the latest published Stable", normalized_html)
-        self.assertIn("choose an available version in HACS to install it", normalized_html)
+        self.assertIn("Published Stable v2.0.12", normalized_html)
+        manifest = json.loads(
+            (ROOT / "custom_components/humidity_intelligence/manifest.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        self.assertIn(f"V{manifest['version']} · prepared for publication", normalized_html)
+        self.assertIn("awaits publication and is not available there", normalized_html)
         self.assertNotIn("Install from GitHub", html)
         self.assertIn("Open in HACS", html)
-        self.assertIn("published release</span><span class=\"badge-value\">Latest", html)
+        self.assertIn("published release</span><span class=\"badge-value\">v2.0.12", html)
 
         for asset in assets:
             with self.subTest(asset=asset):

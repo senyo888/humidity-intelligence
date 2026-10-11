@@ -13,7 +13,8 @@ approval.
 - Artifact name: `humidity-intelligence-controller-package`
 - Retention: seven days
 - Source profile: `public_patch_1`
-- Package contract: `hi-package-public-v20-conventional-1`
+- Package contract: `hi-package-public-v20-conventional-1` for V2.0;
+  `hi-package-public-v21-conventional-1` for V2.1.0 beta/rc/stable
 - Provenance subject: the strict `artifact-manifest.json` produced from the exact
   workflow commit
 
@@ -74,3 +75,21 @@ The mutable Patch 1 branch is not a rollback store. If a separately authorized
 controller deployment occurs later, rollback remains bound to the exact verified
 predecessor retained by that deployment. Artifact expiry after seven days is expected
 and does not remove or rewrite Git history or any published release.
+
+The isolated `tools/stability-scenario/` demo and its tests are repository validation
+material and are excluded from the integration package. Other unclassified runtime-
+looking files under `tools/` still fail closed. The beta.12 component inventory contains 76 files; the artifact manifest is an
+additional packaging file. Derive each later candidate’s inventory from its exact
+commit and artifact manifest rather than reusing this dated count.
+
+## V2.1.0 candidate identity
+
+The V2.1.0 artifact has an explicit new contract ID; the existing V2.0 identity is
+unchanged. Source profile, branch, selected paths, manifest schema, deterministic
+hashing and security checks remain the same. A controller must explicitly recognize
+the V2.1 contract before accepting this candidate. Producing this artifact does not
+assert downstream controller compatibility or authorize controller changes/deployment.
+
+Beta.4 also packages the optional `adaptive_output/` subsystem and its JavaScript
+resource. Completeness checks compare every tracked component file, so this directory
+cannot be silently omitted from controller artifacts.

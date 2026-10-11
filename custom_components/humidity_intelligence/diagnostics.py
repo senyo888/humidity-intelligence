@@ -10,6 +10,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import __version__ as HA_VERSION
 from homeassistant.core import HomeAssistant
 
+from .helpers.stability import stability_diagnostics_payload
 from .const import (
     CONF_ALERT_HANDLING_ENABLED,
     CONF_AUTO_REFRESH_UI_ON_STARTUP,
@@ -109,6 +110,15 @@ async def async_get_config_entry_diagnostics(
         },
     }
 
+    observer = runtime_data.get("output_observer")
+    observed = observer.payload if observer else None
+    payload["output_observation"] = {
+        "configured": observer is not None,
+        "available": observed is not None,
+        "state": observed["state"] if observed else "unavailable",
+        "counts": dict(observed["counts"]) if observed else {},
+        "coverage_state": observed["coverage"]["state"] if observed else "unknown",
+    }
     return redact_diagnostics_payload(payload)
 
 
@@ -473,6 +483,7 @@ def _diagnostics_summary(
         "active_alert_resolution": _alert_resolution_summary(runtime_data.get("alert_telemetry", [])),
         "visual_alerts": _visual_alert_summary(alerts),
         "humidity_drift_7d": drift_dependency,
+        "stability_score": stability_diagnostics_payload(runtime_data),
         "setup_assist": setup_assist,
         "pm25_entity_id_normalization": pm25_normalization,
         "humidifier_reconciliation": humidifier_reconciliation,

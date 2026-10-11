@@ -13,6 +13,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 0
 
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
@@ -20,3 +22,56 @@ jobs:
 
       - name: Validate branch/version policy
         run: python scripts/check_version_governance.py
+
+      - name: Validate rendered UI revision policy
+        run: python scripts/check_ui_revision_governance.py
+
+      - name: Verify canonical renderer and gallery synchronisation
+        run: |
+          python scripts/sync_ui_inactivity.py --check
+          python scripts/sync_ui_revision.py --check
+          python scripts/sync_badge_history.py --check
+          python scripts/sync_stability_presentation.py --check
+
+      - name: Install revision contract test dependencies
+        run: python -m pip install pytest==9.1.1 PyYAML==6.0.3
+
+      - name: Validate revision targets and generated card stamps
+        run: python -m pytest -q "tests 2/test_ui_revision_governance.py" "tests 2/test_ui_revision_contract.py" "tests 2/test_adaptive_cards.py" "tests 2/test_adaptive_meanings.py"
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "24"
+
+      - name: Validate revision LED and connection lifecycle
+        run: node --test "tests 2/test_ui_revision_status.mjs" "tests 2/test_ui_revision_idle.mjs" "tests 2/test_ui_inactivity.mjs" "tests 2/test_adaptive_output_card.mjs"
+
+  touch-interactions:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.14"
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "24"
+      - name: Install browser test dependencies
+        run: |
+          python -m pip install pytest==9.1.1 PyYAML==6.0.3
+          npm install --prefix .codex/browser-deps --no-package-lock --ignore-scripts --no-audit --no-fund playwright@1.63.0
+          node .codex/browser-deps/node_modules/playwright/cli.js install --with-deps chromium webkit
+      - name: Obtain pinned button-card dependency
+        run: |
+          mkdir -p .codex/reports/browser-touch
+          curl --fail --location --silent --show-error https://github.com/custom-cards/button-card/releases/download/v7.0.1/button-card.js --output .codex/reports/browser-touch/button-card.js
+      - name: Verify generated mobile and tablet touch interactions
+        env:
+          FIXTURE_DIR: .codex/reports/browser-touch
+          BUTTON_CARD_PATH: .codex/reports/browser-touch/button-card.js
+        run: |
+          python "tests 2/browser_touch/build_fixture.py" --output "$FIXTURE_DIR"
+          PLAYWRIGHT_MODULE="$PWD/.codex/browser-deps/node_modules/playwright" node "tests 2/browser_touch/run.mjs"

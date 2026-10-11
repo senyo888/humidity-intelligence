@@ -8,3 +8,4 @@ reviews:
     enabled: true
     base_branches:
       - "develop"
+      - "senyo888-v21-foundation"

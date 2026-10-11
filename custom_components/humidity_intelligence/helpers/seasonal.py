@@ -68,8 +68,8 @@ SEASONAL_PROFILES: dict[str, TargetProfile] = {
     "autumn": TargetProfile(
         key="autumn",
         label="Autumn",
-        low=47.0,
-        high=58.0,
+        low=50.0,
+        high=60.0,
         high_risk=64.0,
         condensation_danger_spread=2.3,
         condensation_risk_spread=4.3,

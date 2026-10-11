@@ -40,32 +40,144 @@ Difference:
 
 Feature parity is maintained.
 
+## Compact UI revision footer
+
+The bottom-left LED compares this rendered card's revision with its backend's
+compatible target. It distinguishes current, update, differing revision and
+unverified evidence. It does not verify downloaded files, browser caches or saved
+dashboard contents. See [revision meanings and replacement steps](../../../docs/ui-revision-status.md).
+
+Mobile and tablet retain their existing footprints and actions with restrained
+neutral depth. System/Manual unknown states remain explicit, humidity requires
+finite evidence, comfort text describes the seasonal band, and native Outputs use
+mapped entity names. Footer styling does not change the Stability calculation or
+its independent movement feedback.
+
 ---
+
+## Seven-day humidity drift — v2.1.0-beta.2
+
+The drift badge shows the current house average humidity minus its seven-day mean,
+measured in percentage points. Positive values mean wetter than that average;
+negative values mean drier.
+
+While the backend reports insufficient history, **Baseline · 25%** shows progress
+of reported Statistics time coverage toward the backend requirement. For example,
+22% coverage against an 85% requirement displays 25% after rounding down. Coverage
+can stall, fall or reset. Missing progress metadata shows **Waiting for history**;
+a missing Statistics helper shows **Setup needed**. Other blocked or malformed
+inputs show **Unavailable**, with context in the details.
+
+Tap or use Enter/Space to open the explanation and **View history**. History opens
+Home Assistant's native more-info surface for the registered drift entity; its
+recorded values depend on Recorder and retention. Hold also opens native more-info.
+The details use a native modal dialog and preserve the opening snapshot during
+telemetry updates. Explicit dismissal, navigation, card removal or removal of the
+details template closes it. Browsers without native dialog support use more-info
+as the tap fallback. Button-card 7.0.1 was exercised with synthetic entity data and
+a minimal Home Assistant event router; live Companion/WallPanel validation is
+separate.
+
+The change applies to V1 Mobile, V2 Mobile, V2 Tablet and their default gallery
+mirrors. Drift calculation, readiness, history ownership, control and entity/service
+contracts are unchanged. After installing the updated templates, run `refresh_ui`
+and `view_cards`, then replace the pasted Manual-card YAML and refresh the client.
+The template-only change needs no configuration/data migration or Python restart;
+other changes in an installed beta package may have their own restart requirements.
+Reverting the card YAML restores the earlier interaction without changing history.
+
+## V2 badge summaries
+
+Humidity, Condensation, Mould, Current Air Control, Ready, Zone 1, Zone 2 and AQ
+open a short explanation before **View history**. Humidity and Ready retain native
+Home Assistant entity details; Ready links to house humidity. Zone 1/2 link to their
+resolved humidity reading, which can be a fallback rather than a whole-zone
+measurement.
+
+Beta.3 collects the V2 summaries, compact status row, friendly wording and history
+updates introduced after beta.2. Refresh exports and replace saved V2 cards to
+apply them while preserving the running Stability collection.
+
+Condensation, Mould, Current Air Control and AQ use a shared recorded-history panel:
+
+- **24 hours** and **7 days** select a bounded window. **Back** returns to the
+  explanation and retains the selected range; **Close** dismisses the dialog.
+- Condensation/Mould show categorical risk and worst-room source as separate
+  time-aligned ribbons, with timestamped records. Independently recorded updates
+  retain their own timing and source context. Unknown and unavailable remain
+  distinct from recorded risk categories. Source rooms have individual colours and
+  matching labelled legends. Room colours stay consistent across both histories,
+  range changes and reopenings within the same page session; they identify rooms
+  independently of risk. Unknown/unavailable source states use a neutral grey.
+- Current Air Control shows recorded operating mode and separately timestamped
+  reason text where Recorder retained it. This records controller state;
+  physical output activity is available through the corresponding output entities.
+- AQ shows an independent numeric chart for each available mapped IAQ, PM2.5, VOC
+  and CO aggregate. Recorded units are used when present; otherwise the chart identifies
+  the unit as unspecified. Invalid/unavailable values and unit changes break
+  traces. Values follow the recorded aggregates and their own scales. Use dedicated CO
+  safety status when assessing CO emergencies.
+
+History is requested only after **View history**, through the authenticated Home
+Assistant history WebSocket API, for at most four mapped entities. Loading, empty,
+failed and partial results retain explicit availability labels. A carried value
+at the start of the window is labelled as starting context. Transitions retain
+their recorded evidence; recording frequency follows the source. Bounded rendering discloses
+truncation and preserves the retained transitions. Native **Open entity
+details** remains available. Back, Close, navigation, card removal and range changes
+invalidate pending requests so the latest selected view stays authoritative.
+
+The renderer lives in `badge_history.js` and is embedded in the exported YAML;
+Manual cards include the renderer directly.
+After editing that source, run `python scripts/sync_badge_history.py` from the repo
+root and verify the generated copies with its `--check` option. History preserves
+Recorder configuration, retention, entity semantics and runtime control.
+
+Summaries identify their mapped history sources. Enhanced history is available
+when at least one source is mapped; native history links follow their mapped entity. Dynamic text is escaped. Only one HI details dialog
+is open at a time; Close, Escape, navigation and card removal dispose of it.
+New summaries close when their displayed evidence changes. Stability preserves
+its opening snapshot and now explains that below the main content; Drift also retains
+its opening snapshot while readings change. Native entity details remain the fallback
+when modal dialogs cannot be opened.
+
+Ready, Zone 1, Zone 2 and AQ retain their labels, active tint, borders and alert
+emphasis in compact icon-free rows. Their targets remain at least 44px high and
+allow text to grow. Close uses a compact circular X with a 44px touch target and an accessible label.
+Dialog sizing accounts for device safe areas; physical-client
+appearance must be checked separately from synthetic browser validation.
+
+The changes apply only to V2 Mobile, V2 Tablet and their canonical gallery copies.
+V1 remains unchanged; retirement requires a separately approved migration.
+Refresh exports and replace pasted Manual-card YAML, then refresh the client.
+No configuration/data migration, Python restart, runtime decision, entity or
+service change is introduced by this template-only update. Rollback restores the
+previous templates and saved card YAML. Other changes in an installed beta package
+may have their own restart requirements.
+
+The summary and history explanations use plain language. Recorded changes, value
+selectors and availability messages describe the available data and useful next
+steps. Backend classifications, historical units and CO safety context remain
+authoritative. The local Stability fallback reads **Unavailable** when the
+score payload needs valid evidence.
 
 ## UI Preview
 
-### Live 2.0.10-beta.7 Card State
+### Current Air Control
 
-These captures were taken from an exact live `2.0.10-beta.7` installation after Home
-Assistant restart, fresh card export, complete Manual-card YAML replacement, and
-dashboard/browser cache refresh.
+The card brings the active response, environmental readings and backend reason
+together. These examples show normal monitoring and an air-quality response.
 
-<img src="../../../assets/ui/v2.0.10-beta.7/mobile-aq-humidifier-retrying.png" width="320" alt="Live HI 2.0.10-beta.7 mobile AQ card with a humidifier retry state">
-<img src="../../../assets/ui/v2.0.10-beta.7/tablet-zone1-cooking-output-on.jpg" width="320" alt="Live HI 2.0.10-beta.7 tablet Zone 1 cooking card with observed outputs on">
+<img src="../../../assets/ui/v2.1/normal-monitoring.png" width="320" alt="Normal monitoring with environmental readings and Stability score">
+<img src="../../../assets/ui/v2.1/air-quality-response.png" width="320" alt="Air-quality response with the selected lane and reason">
 
-These images demonstrate the refreshed package and cards. They are not soak,
-Stable, release-approval, or HACS-publication evidence.
-
-### The simple reason
-
-The before/after assets are editorial comparisons built from refreshed beta.7 UI
-evidence, not continuous playback records.
-
-<img src="../../../assets/ui/v2.0.10-beta.7/comparison-alert-reason-before-after.png" width="760" alt="Editorial comparison of the alert reason presentation before and in v2.0.10">
-<img src="../../../assets/ui/v2.0.10-beta.7/comparison-reason-field-before-after.png" width="760" alt="Editorial comparison of reason field presentation before and in v2.0.10">
+For humidity alerts, operating gates and humidification, browse the
+[UI Gallery](https://github.com/senyo888/humidity-intelligence/wiki/UI-Gallery).
+The [Stability guide](../../../docs/stability-score-accepted-baseline.md) explains
+deductions, the calculated score, rounding and safety ceilings.
 
 <details>
-<summary>Historical layout references — not beta.7 playback</summary>
+<summary>Earlier layouts</summary>
 
 ### v1 Mobile (Deprecated Legacy-Compatible Skin)
 <img src="../../../assets/readme/ui_v1_mobile.png" width="320" alt="HI v1 mobile UI preview">
@@ -151,13 +263,91 @@ Temperature chips:
 - show room slope chips only for configured temperature slope sources or provided slope sensors
 - resolve calculated slope chips through diagnostics/backend slope mapping so Home Assistant registry-assigned entity IDs stay truthful
 
+Current humidity context uses backend target and high-risk bounds. The beta.12 autumn
+default is inclusive 50–60%: above 60% is above target, and 64% or higher is high risk.
+Custom profiles retain their existing derivation; a custom 50–60% band gives 67.5%
+high risk. These profile boundaries are not universal safe cutoffs.
+Missing or invalid high-risk bounds leave the affected humidity context neutral.
+
 Control row:
 
 - preserve the v2.0.7 tap-to-toggle behavior for the System and Manual helper buttons
-- keep the Stability Score badge passive; it must not pause/resume, select lanes, or create output writes
-- render absent future Stability diagnostics as the neutral-white `2.1 / PREVIEW`
-  state with the established six-second breathing shimmer; use a dedicated preview
-  class so it remains distinct from a real completed backend score
+- keep Stability observational: its display preference must not pause/resume, select lanes, or create output writes
+- for Stability in the `2.1.0` release source, render backend schema 3/formula 4
+  score, classifications and evidence states; missing/malformed payloads show no score
+- preserve the accepted 82px footprint, independent latest-update LED colours,
+  signed recent-net movement within 60 minutes, six-second Partial pulse and
+  reduced-motion alternatives. Render the backend reference time and actual span;
+  expiry alone stays neutral, and a fresh baseline is not a zero-change comparison
+- keep score/classification distinct from current humidity. Formula 4, caps and
+  72-hour history remain; a recent gain does not establish healthy current air
+- both V2 layouts use revision 9, superseding 1–8, with stamp schema/generator 1.
+  Install the complete package and restart before exporting/replacing saved cards;
+  restart clears in-memory Stability history and no configuration migration is needed
+- whole-badge tap/click/keyboard activation opens a native modal dialog through the
+  button-card action. Details are a labelled snapshot copied from the owning card's
+  inert template, mounted outside its gesture handlers; there is no nested opener
+- keep a visible sticky Close control, native Escape and backdrop dismissal, focus
+  restoration, and cleanup on navigation or owner removal. Only one Stability dialog
+  may be open; telemetry updates must not silently replace its snapshot
+- hold toggles only the badge presentation. Disabled retains the badge footprint,
+  **Disabled** text, a static violet/indigo aurora and segmented LEDs; hold restores
+  the normal display. No extra control or icon is added. Tap details/history remain
+  available in both states; backend collection, scoring, history and control continue.
+  The existing badge is focusable: Enter/short Space opens details; held Space
+  invokes the same hold action without adding a keyboard-only control
+- persist the boolean through Home Assistant's authenticated frontend user-data API,
+  scoped to the signed-in user and opaque HI entry. It survives refresh and applies
+  across that user's Mobile, Tablet and browser sessions for the same entry. Other
+  accounts/entries are unaffected; there is no localStorage fallback or config option
+- only confirmed Disabled hides the backend-rendered badge. Loading or unavailable
+  preferences retain its score, collection or no-score display and show status feedback
+- show read/save failures in the existing status label: **Display preference
+  unavailable** or **Save unconfirmed**. Do not infer success or environmental health
+- clients without native `showModal` support retain Home Assistant's Diagnostics
+  more-info as the tap fallback, including readable baseline/failure evidence
+- collection LEDs fill clockwise from the top, one per valid sample in backend-defined
+  slots (currently 303). Centre ticks in their slots and hide the origin after the first
+  tick. Strict integer counts and a target in [1,432] must agree with the finite backend
+  ratio; invalid/conflicting progress stays unlit. Incomplete collection never fills
+  the ring. This is sample progress, not elapsed time or score movement
+- while collecting, details show `Baseline progress: N of 303 valid samples`, using the backend minimum
+  rather than a fixed denominator. The 432 buckets remain rolling-window capacity,
+  not the baseline target; outside collection the tally is labelled `Rolling-window coverage`.
+  Collection details explain that backend evidence requirements still apply;
+  do not hold a full ring or delay backend state transitions
+- non-scored collection/evidence states show a separate thin red track for backend
+  `sampling.failure_history`: known failed or missed scheduled buckets over 72 hours.
+  Use backend angles/count/description; do not infer history in the card. At most
+  432 unique UTC positions are retained, expire with the window, and clear if their
+  bucket is later captured successfully. Dense marks can overlap; details give the
+  exact count. This track does not alter blue progress or available-score movement
+- failure history is in memory only: restart/reload clears it with the baseline.
+  No offline or pre-start failures are inferred. Installing the Python history
+  update requires restart; no configuration or stored-data migration is needed
+- after changed Python, restart Home Assistant; run `refresh_ui`, obtain fresh
+  `dump_cards`/`view_cards` exports, replace complete pasted YAML, and refresh frontend
+  caches. No configuration/entity migration is needed. Restart/reload resets history
+- restore package and dashboard YAML separately on rollback; package rollback needs
+  restart and does not restore pasted cards
+
+Score details retain the headline and each backend contribution/deduction. The end
+of the breakdown shows **Total deductions** and one calculation: **100 − total
+deductions = calculated score**. A separate backend explanation retains any zero
+floor, integer rounding and protective ceiling; the calculated score and displayed
+score can differ. Missing arithmetic remains unavailable instead of being rebuilt
+in the card.
+
+The existing **Score history** expander presents genuine recorded ten-minute
+samples with readable time and score context. Missing samples stay as gaps; empty,
+unavailable and partial history remain explicit. History is bounded to 432 slots
+over 72 hours and resets on restart/reload. It is distinct from Home Assistant
+Recorder history used by other badge charts. Neither graph supplies scoring inputs
+or a second score calculation.
+
+The [accepted Stability contract](../../../docs/stability-score-accepted-baseline.md)
+and [testing guide](../../../docs/stability-testing.md) own detailed thresholds,
+missing AQ treatment, sampling/reset semantics and four-surface parity checks.
 
 Output details:
 
@@ -282,7 +472,7 @@ If mismatch occurs:
   context are escaped before insertion into HTML.
 - Already-pasted V1 Manual cards are static and must be re-exported and re-copied to
   receive the escaping fix.
-- V1 Mobile removal is deferred to a separately approved v2.1 migration proposal.
+- V1 Mobile removal is deferred to a separately approved migration proposal.
 
 ### v2.0.5 Current Contract
 
@@ -316,15 +506,15 @@ If mismatch occurs:
 
 ## Legacy v1 UI Support
 
-`v1_mobile.yaml` remains compatible with the V2 engine through v2.0.9, but is
-deprecated for new dashboards. Prefer `v2_mobile.yaml`.
+`v1_mobile.yaml` remains exportable in v2.1.0, but is deprecated
+for new dashboards. Prefer `v2_mobile.yaml`.
 
 Legacy support keeps the V2 backend contract. V1 backend templates and packages stay
 retired.
 
-Backend must be fully removed before using V2 runtime. Removing the V1 presentation
-skin is a separate proposed v2.1 change with an explicit user migration and rollback
-plan; v2.0.9 does not remove it.
+The legacy V1 backend must be fully removed before using the V2 runtime. Removing
+the retained V1 presentation skin requires a separate approved migration and
+rollback plan; v2.1.0 does not remove it.
 
 ---
 
@@ -337,3 +527,7 @@ plan; v2.0.9 does not remove it.
 - reason text remains readable
 
 Humidity Intelligence V2 UI is a structured runtime interface for a deterministic environmental engine.
+
+HI-owned detail dialogs and adaptive Outputs now use two-minute inactivity closing,
+with manual dismissal preserved. See [the timeout contract](../../../docs/ui-inactivity.md)
+for the unchanged shared native expander and Home Assistant more-info exceptions.
