@@ -6,10 +6,15 @@ All notable changes to Humidity Intelligence will be documented in this file.
 
 This project follows a practical changelog format for Home Assistant and HACS users. Add new entries under a fresh `Unreleased` section before publishing a future release.
 
-## Unreleased — v2.1.0
+<a id="unreleased--v210"></a>
 
-Stable release source prepared from the reviewed RC.1 revision-9 candidate.
-Publication is pending; v2.0.12 remains the published Stable release.
+## v2.1.0 — Published Stable (2026-10-12)
+
+Published on 12 October 2026 as a non-prerelease
+[GitHub Release](https://github.com/senyo888/humidity-intelligence/releases/tag/v2.1.0),
+with tag `v2.1.0` at `6da820967173d3d29910c909a3a2a688965aa3ac`.
+The final package preserves the reviewed RC.1 revision-9 runtime and generated-card
+bytes. Publication and an individual Home Assistant installation remain separate facts.
 
 ### V2.1 highlights
 
@@ -44,6 +49,10 @@ Publication is pending; v2.0.12 remains the published Stable release.
   which resets in-memory Stability history. The final manifest produces a distinct
   package identity. RC.1 installation and advisory soak evidence remain bound to
   their original package and are not final-package registration evidence.
+
+The beta and RC entries below retain their original preparation and evidence scope.
+Their publication statements describe those historical checkpoints, not the current
+Stable release above.
 
 <a id="unreleased--v210-rc1"></a>
 
@@ -88,7 +97,7 @@ from final-source preparation; no completed-soak, tag or HACS publication is cla
 
 ## v2.1.0-beta.12 — Earlier unpublished candidate
 
-Unpublished source candidate extending beta.11. Published Stable remains v2.0.12;
+Unpublished source candidate extending beta.11. At that checkpoint, published Stable was v2.0.12;
 installation, restart, tag, GitHub Release and HACS publication are separate actions.
 
 - Changes built-in autumn humidity targets from 47–58% to 50–60%, retaining the 64%
@@ -120,7 +129,7 @@ installation, restart, tag, GitHub Release and HACS publication are separate act
 
 ## v2.1.0-beta.11 — Earlier unpublished candidate
 
-Unpublished candidate extending beta.10. Published Stable remains v2.0.12;
+Unpublished candidate extending beta.10. At that checkpoint, published Stable was v2.0.12;
 no tag, GitHub Release or HACS publication is claimed.
 
 - Polishes Stability details with the displayed score first, every individual
@@ -151,7 +160,7 @@ no tag, GitHub Release or HACS publication is claimed.
 
 ## v2.1.0-beta.10 — Earlier unpublished candidate
 
-Unpublished candidate extending beta.9. Published Stable remains v2.0.12;
+Unpublished candidate extending beta.9. At that checkpoint, published Stable was v2.0.12;
 no tag, GitHub Release or HACS publication is claimed.
 
 - Refines LED feedback: unchanged scores retain position with neutral LEDs, movement
@@ -179,7 +188,7 @@ no tag, GitHub Release or HACS publication is claimed.
 
 ## v2.1.0-beta.9 — Earlier unpublished candidate
 
-Unpublished candidate extending beta.8. Published Stable remains v2.0.12;
+Unpublished candidate extending beta.8. At that checkpoint, published Stable was v2.0.12;
 no tag, GitHub Release, HACS publication or deployment is claimed here.
 
 - Repairs native-button touch activation in canonical V2 mobile/tablet surfaces,
@@ -198,7 +207,7 @@ no tag, GitHub Release, HACS publication or deployment is claimed here.
 
 ## v2.1.0-beta.8 — Earlier unpublished candidate
 
-Unpublished candidate extending beta.7. Published Stable remains v2.0.12;
+Unpublished candidate extending beta.7. At that checkpoint, published Stable was v2.0.12;
 no tag, GitHub Release, HACS publication or deployment is claimed here.
 
 - Adds entry-local reusable monitoring meanings: a custom name, an existing HI
@@ -269,8 +278,7 @@ Stability history. Rollback restores the prior full package and matching saved c
 
 ## v2.1.0-beta.6 — Earlier unpublished candidate
 
-Unpublished development candidate based on beta.5 (`f1d6f48`). Published Stable
-remains v2.0.12; no tag or HACS publication is implied.
+Unpublished development candidate based on beta.5 (`f1d6f48`). At that checkpoint, published Stable was v2.0.12; no tag or HACS publication is implied.
 
 - Separates neutral configured meanings such as Filter replacement from active
   Filter replacement suggested alerts. Faults remain explicitly reported.
@@ -296,8 +304,7 @@ restores the complete beta.5 package and matching cards/resources.
 
 ## v2.1.0-beta.5 — Earlier unpublished candidate
 
-Unpublished development candidate based on beta.4 (`a3f135e`). Published Stable
-remains v2.0.12; no tag or HACS publication is implied.
+Unpublished development candidate based on beta.4 (`a3f135e`). At that checkpoint, published Stable was v2.0.12; no tag or HACS publication is implied.
 
 - Uses `mdi:hvac` for shared Outputs identity while retaining individual device icons.
 - Reduces the Outputs expansion to a compact backend-authored summary, up to two
@@ -318,8 +325,7 @@ restores the complete beta.4 package and matching cards/resources.
 
 ## v2.1.0-beta.4 — Earlier unpublished candidate
 
-Unpublished development candidate based on beta.3 (`345a840`). Published Stable
-remains v2.0.12. No release tag or HACS publication is implied.
+Unpublished development candidate based on beta.3 (`345a840`). At that checkpoint, published Stable was v2.0.12. No release tag or HACS publication is implied.
 
 - Integrates optional, read-only output observation with structured exact-rule
   confirmations, identity-bound recovery, per-association context-only retirement,
@@ -356,7 +362,7 @@ Rollback restores the complete beta.3 package and prior cards/options/resources.
 ## v2.1.0-beta.3 — Earlier unpublished candidate
 
 Development candidate, prepared from all changes since the beta.2 version commit
-`76285b0`, through `4f86e66`. Published Stable remains v2.0.12; this beta remains
+`76285b0`, through `4f86e66`. At that checkpoint, published Stable was v2.0.12; this beta remains
 an unpublished candidate.
 
 ### V2 badge summaries
@@ -421,7 +427,7 @@ an unpublished candidate.
 ## v2.1.0-beta.2 — Earlier unpublished candidate
 
 Version introduced at `76285b0`; subsequent V2 summary and history work is collected
-under beta.3 above. Published Stable remains v2.0.12.
+under beta.3 above. At that checkpoint, published Stable was v2.0.12.
 
 ### Seven-day drift badge
 
@@ -437,7 +443,7 @@ under beta.3 above. Published Stable remains v2.0.12.
 
 Committed and pushed through `144570b` on `senyo888-patch-1`, with earlier
 collection work through `07dc87a`. This candidate remains unpublished: no tag, GitHub Release or HACS
-offering. Published Stable remains v2.0.12.
+offering. At that checkpoint, published Stable was v2.0.12.
 
 ### Accepted Stability Score integration
 
