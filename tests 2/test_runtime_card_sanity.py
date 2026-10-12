@@ -3903,12 +3903,12 @@ def test_readme_uses_manifest_version_badge_not_static_ha_compatibility_badge():
     assert "Home%20Assistant-2026.4.3%2B" not in readme_source
 
 
-def test_readme_keeps_candidate_and_stable_visible_with_older_releases_collapsed():
+def test_readme_keeps_current_stable_visible_with_older_releases_collapsed():
     readme_source = (ROOT / "README.md").read_text()
     release_notes = readme_source.split("## Release Notes", 1)[1]
     visible_notes, previous_releases = release_notes.split("<details>", 1)
 
-    assert "### v2.1.0 (Stable source — publication pending)" in visible_notes
+    assert "### v2.1.0 (Current Published Stable)" in visible_notes
     assert "### v2.1.0-rc.1" not in visible_notes
     assert "### v2.1.0-rc.1 (Earlier unpublished release candidate)" in previous_releases
     assert "### v2.1.0-beta.12" in previous_releases
@@ -3920,7 +3920,8 @@ def test_readme_keeps_candidate_and_stable_visible_with_older_releases_collapsed
     assert "### v2.1.0-beta.3" in previous_releases
     assert "### v2.1.0-beta.2" in previous_releases
     assert "### v2.1.0-beta.1" in previous_releases
-    assert "### v2.0.12 (Current Published Stable)" in visible_notes
+    assert "### v2.0.12" not in visible_notes
+    assert "### v2.0.12 (Previous Published Stable)" in previous_releases
     assert "### v2.0.11" not in visible_notes
     assert "### v2.0.11 — Poetic Justice (Previous Published Stable)" in previous_releases
     assert "### v2.0.10" not in visible_notes
@@ -3946,7 +3947,7 @@ def test_readme_keeps_candidate_and_stable_visible_with_older_releases_collapsed
         b"\x89PNG\r\n\x1a\n"
     )
     assert "<summary>Previous Releases</summary>" in previous_releases
-    assert "Current candidate and current Published Stable are expanded" in visible_notes
+    assert "Current Published Stable is expanded" in visible_notes
     assert (
         "https://my.home-assistant.io/redirect/hacs_repository/"
         "?owner=senyo888&repository=humidity-intelligence&category=integration"
@@ -3955,16 +3956,18 @@ def test_readme_keeps_candidate_and_stable_visible_with_older_releases_collapsed
     assert "it does not install automatically" in readme_source
 
 
-def test_v21_release_source_preserves_published_stable_and_candidate_history():
+def test_v21_publication_preserves_stable_and_candidate_history():
     readme = (ROOT / "README.md").read_text()
     notes = readme.split("## Release Notes", 1)[1].split("<details>", 1)[0]
     changelog = (ROOT / "CHANGELOG.md").read_text()
     governance = (ROOT / "docs/release-governance.md").read_text()
-    assert "Current release-source version: **v2.1.0**" in readme
-    assert "prepared for publication" in readme
-    assert "current published Stable is **v2.0.12**" in readme
-    assert "### v2.1.0 (Stable source" in notes
-    assert "## Unreleased — v2.1.0" in changelog
+    assert "Current published Stable: **v2.1.0**" in readme
+    assert "released on 12 October 2026" in readme
+    assert "releases/tag/v2.1.0" in readme
+    assert "publication pending" not in notes
+    assert "### v2.1.0 (Current Published Stable)" in notes
+    assert "## v2.1.0 — Published Stable (2026-10-12)" in changelog
+    assert "6da820967173d3d29910c909a3a2a688965aa3ac" in changelog
     assert "## v2.1.0-rc.1 — Earlier unpublished release candidate" in changelog
     assert "v2.1.0-beta.1" in changelog
     previous = readme.split("<summary>Previous Releases</summary>", 1)[1]
@@ -3982,6 +3985,8 @@ def test_v21_release_source_preserves_published_stable_and_candidate_history():
     assert "No configuration/entity migration" in governance
     assert "## v2.0.12 Release Checklist" in governance
     assert "export" in notes.lower()
+    assert "`refresh_ui`" in notes and "`view_cards`" in notes and "`dump_cards`" in notes
+    assert "revision-9 cards remain compatible" in notes
 
 
 def test_dump_cards_without_layout_exports_all_cached_layouts():

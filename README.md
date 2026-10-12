@@ -58,11 +58,11 @@ It gives you:
 - native Home Assistant diagnostics for support and triage
 - services for dashboard export, self-check, diagnostics, pause/resume, and release validation
 
-Current release-source version: **v2.1.0**, prepared for publication.
+Current published Stable: **v2.1.0**, [released on 12 October 2026](https://github.com/senyo888/humidity-intelligence/releases/tag/v2.1.0).
 V2.1 is led by **Stability Score**, with clearer badge explanations and history,
 optional output monitoring, reusable monitoring meanings and a simpler status row.
-The current published Stable is **v2.0.12**, released on 9 September 2026 and available
-through HACS. See [Release Notes](#release-notes) for V2.1 scope and upgrade steps.
+Check the version offered in HACS and refresh its repository information if an older
+version is shown. See [Release Notes](#release-notes) for V2.1 scope and upgrade steps.
 
 Optional HA Lab evidence is advisory and does not block promotion, tagging, or
 publication.
@@ -108,7 +108,7 @@ starts collection again. The [Stability guide](https://github.com/senyo888/humid
 explains coverage, deductions and ceilings; the [calculation contract](docs/stability-score-accepted-baseline.md)
 records the exact rules.
 
-Current development includes an opt-in [output observation candidate](docs/output-observation.md). It adds read-only diagnostic context and an optional adaptive Outputs view; it is not part of the published release claim above.
+V2.1 includes opt-in [output observation](docs/output-observation.md), adding read-only diagnostic context and an optional adaptive Outputs view.
 The adaptive Outputs panel uses an HVAC icon and a compact attention summary; full evidence and existing native controls are available on demand.
 
 ---
@@ -501,7 +501,7 @@ must be reviewable from tracked repository files.
 
 ## Current Release Highlights
 
-**V2.1 improvements** — source version `2.1.0` is prepared for publication.
+**V2.1 improvements** — [published Stable v2.1.0](https://github.com/senyo888/humidity-intelligence/releases/tag/v2.1.0).
 
 - **Stability Score:** an explained view of 72-hour environmental consistency,
   with deductions, evidence coverage, safety ceilings and recorded history.
@@ -519,13 +519,14 @@ must be reviewable from tracked repository files.
 - **Autumn refinement:** the built-in target band is 50–60%, with humidity danger
   still at 64%. Other seasons and custom profile rules retain their existing behavior.
 
-Both V2 layouts use UI revision 9, superseding revisions 1–8. Replace older saved
-cards with complete fresh exports, then refresh the frontend. Revision-9 cards from
-RC.1 remain compatible; the final version bump does not require another card refresh. The V1 Mobile Drift correction
+Both V2 layouts use UI revision 9, superseding revisions 1–8. Run `refresh_ui`, export
+with `view_cards` or `dump_cards`, replace the complete YAML in older saved cards,
+then refresh the frontend. Revision-9 cards from RC.1 remain compatible; the final
+version bump does not require another card refresh. The V1 Mobile Drift correction
 also requires replacement YAML; that layout has no revision indicator. An authorized package update requires a full Home Assistant restart.
 Restart/reload starts Stability history collection again. See
 [HACS and Updates](https://github.com/senyo888/humidity-intelligence/wiki/HACS-and-Updates)
-for package, card and rollback steps. Published Stable remains v2.0.12.
+for package, card and rollback steps.
 
 ---
 
@@ -823,7 +824,7 @@ CO emergency pressure. Details are in
 
 ## Release Notes
 
-### v2.1.0 (Stable source — publication pending)
+### v2.1.0 (Current Published Stable)
 
 ![Humidity Intelligence V2.1 Stability Score release header](assets/release_banner/v2.1_release.png)
 
@@ -831,8 +832,10 @@ V2.1 introduces **Stability Score**, its evidence and deduction breakdown, recor
 history and hold-to-disable presentation. It adds clearer badge explanations,
 optional output monitoring, reusable monitoring meanings and a compact Current Air
 Control row. See the [V2.1 overview](#v21--stability-score) and
-[complete change history](CHANGELOG.md#unreleased--v210).
+[complete change history](CHANGELOG.md#v210--published-stable-2026-10-12).
 
+- [Published on 12 October 2026](https://github.com/senyo888/humidity-intelligence/releases/tag/v2.1.0)
+  as a non-prerelease GitHub Release from the reviewed `v2.1.0` tag.
 - Uses a rolling 72-hour window, explicit evidence coverage and safety ceilings.
   Recent movement compares actual scores within 60 minutes; LED colour shows the
   latest change. Improving scores can coexist with poor current conditions.
@@ -844,17 +847,28 @@ Control row. See the [V2.1 overview](#v21--stability-score) and
 - Retains touch/keyboard detail controls and hold-to-disable. Both V2 layouts use
   **revision 9**, stamp schema/generator 1 and Stability schema 3/formula 4.
 - Requires no V2 configuration or entity migration. Install the complete package and
-  restart Home Assistant; restart/reload clears in-memory Stability history. Export
-  and replace older V2 cards, plus V1 Mobile for its Drift correction. Existing RC.1
-  revision-9 cards remain compatible; final version metadata does not make them stale.
+  restart Home Assistant; restart/reload clears in-memory Stability history. Run
+  `refresh_ui`, export with `view_cards` or `dump_cards`, and replace the complete
+  YAML in older V2 cards, plus V1 Mobile for its Drift correction. Refresh the client.
+  Existing RC.1 revision-9 cards remain compatible; final version metadata does not
+  make them stale.
 - Preserves the reviewed runtime and generated-card bytes from RC.1. The final package
   has its own manifest identity; RC.1 installation evidence is recorded separately
-  from final-package registration. Publication remains pending; **v2.0.12 is the
-  current published Stable release**.
+  from final-package registration. Publication does not establish that an existing
+  Home Assistant installation has loaded the final package.
+
+<!-- Current Published Stable is expanded. Earlier releases and candidates remain
+under Previous Releases; CHANGELOG.md retains the complete detailed history. -->
+<details>
+<summary>Previous Releases</summary>
+
+Earlier candidate entries retain their original preparation and validation scope.
+References to the published Stable at those checkpoints are historical; v2.1.0 is
+the current published release.
 
 <a id="v2012-maintenance-candidate-not-published"></a>
 
-### v2.0.12 (Current Published Stable)
+### v2.0.12 (Previous Published Stable)
 
 ![Humidity Intelligence v2.0.12 release header celebrating repository-level HACS inclusion](assets/release_banner/v2.0.12_release.png)
 
@@ -873,12 +887,6 @@ Control row. See the [V2.1 overview](#v21--stability-score) and
 - the observed beta.4-to-Stable update registered the exact final package after one
   completed restart. Historical beta validation used two; that is not a permanent
   installation requirement. Keep rollback copies outside `custom_components`
-
-<!-- Current candidate and current Published Stable are expanded. At the
-maintainer's request, v2.0.11 and older releases remain under Previous Releases;
-CHANGELOG.md retains the complete detailed history. -->
-<details>
-<summary>Previous Releases</summary>
 
 ### v2.1.0-rc.1 (Earlier unpublished release candidate)
 
@@ -910,8 +918,7 @@ for the cumulative update. The latest beta.12 refinement:
 - requires no configuration migration. For an authorized update, install the complete
   package, restart, then export and replace saved cards. Restart resets in-memory
   Stability history; rollback restores the package and saved cards separately
-- [Complete beta.12 changes](CHANGELOG.md#v210-beta12--earlier-unpublished-candidate). Published Stable
-  remains v2.0.12; this source candidate does not claim deployment or publication
+- [Complete beta.12 changes](CHANGELOG.md#v210-beta12--earlier-unpublished-candidate). At that checkpoint, published Stable was v2.0.12; this source candidate does not claim deployment or publication
 
 
 <a id="v2011--poetic-justice-current-published-stable"></a>
@@ -924,7 +931,7 @@ for the cumulative update. The latest beta.12 refinement:
 
 - was published on 11 August 2026 as a non-prerelease GitHub Release and immutable tag
   from exact commit `0dd3e68ab9f35608641dc64efc4b2c4bfacb06ce`; it is the
-  immediately preceding published Stable release
+  preceding published Stable release at the v2.0.12 preparation checkpoint
 - is now available through the existing HACS default integration listing; the later
   HACS inclusion milestone does not alter the published v2.0.11 package bytes or tag
 - restores the established centred Stability Score preview across generated V2
@@ -962,8 +969,7 @@ for the cumulative update. The latest beta.12 refinement:
   restart resets the in-memory baseline and history
 - retains existing configuration, entities and services; rollback restores the prior
   complete package and matching card YAML
-- [Complete beta.11 changes](CHANGELOG.md#v210-beta11--earlier-unpublished-candidate). Published Stable
-  remains v2.0.12; this candidate has no release tag or HACS publication
+- [Complete beta.11 changes](CHANGELOG.md#v210-beta11--earlier-unpublished-candidate). At that checkpoint, published Stable was v2.0.12; this candidate has no release tag or HACS publication
 
 ### v2.1.0-beta.10 (Earlier unpublished candidate)
 
@@ -986,8 +992,7 @@ history. Both V2 layouts used revision 5. Restart resets its in-memory baseline.
   primary states and Stability scoring; restart resets in-memory Stability history
 - no configuration migration is required; rollback restores the preceding complete
   package and matching card YAML
-- [Complete beta.9 changes](CHANGELOG.md#v210-beta9--earlier-unpublished-candidate). Published Stable
-  remains v2.0.12; source preparation does not establish live deployment or publication
+- [Complete beta.9 changes](CHANGELOG.md#v210-beta9--earlier-unpublished-candidate). At that checkpoint, published Stable was v2.0.12; source preparation does not establish live deployment or publication
 
 
 
@@ -1005,8 +1010,7 @@ history. Both V2 layouts used revision 5. Restart resets its in-memory baseline.
   history. Compatible adaptive cards receive the added backend text without re-export
 - downgrade restores the earlier package, matching saved options and monitoring
   custody together; [configuration and recovery](docs/custom-monitoring-meanings.md)
-- [Complete beta.8 changes](CHANGELOG.md#v210-beta8--earlier-unpublished-candidate). Published Stable
-  remains v2.0.12; candidate preparation does not establish deployment or publication
+- [Complete beta.8 changes](CHANGELOG.md#v210-beta8--earlier-unpublished-candidate). At that checkpoint, published Stable was v2.0.12; candidate preparation does not establish deployment or publication
 
 ### v2.1.0-beta.7 (Earlier unpublished candidate)
 
@@ -1022,8 +1026,7 @@ history. Both V2 layouts used revision 5. Restart resets its in-memory baseline.
   accepted Stability behavior; no configuration or entity migration is required
 - install the complete package and restart, then export and replace the full saved
   V2 Manual-card YAML; refresh cached clients if needed. Restart resets Stability history
-- [Complete beta.7 changes](CHANGELOG.md#v210-beta7--earlier-unpublished-candidate). Published Stable
-  remains v2.0.12; package preparation does not establish installation or publication
+- [Complete beta.7 changes](CHANGELOG.md#v210-beta7--earlier-unpublished-candidate). At that checkpoint, published Stable was v2.0.12; package preparation does not establish installation or publication
 
 ### v2.1.0-beta.6 (Earlier unpublished candidate)
 
@@ -1035,8 +1038,7 @@ history. Both V2 layouts used revision 5. Restart resets its in-memory baseline.
   summaries and histories; control logic, entity semantics and mappings are unchanged
 - install the full package, restart Home Assistant and refresh frontend resources
   and saved cards; no migration is required. Restart resets Stability collection
-- [Complete beta.6 changes](CHANGELOG.md#v210-beta6--earlier-unpublished-candidate). Published Stable
-  remains v2.0.12; earlier beta evidence does not establish beta.6 validation
+- [Complete beta.6 changes](CHANGELOG.md#v210-beta6--earlier-unpublished-candidate). At that checkpoint, published Stable was v2.0.12; earlier beta evidence does not establish beta.6 validation
 
 ### v2.1.0-beta.5 (Earlier unpublished candidate)
 
@@ -1047,8 +1049,7 @@ history. Both V2 layouts used revision 5. Restart resets its in-memory baseline.
 - control behavior, existing entity semantics and configured mappings are unchanged
 - install the full package, restart Home Assistant and refresh frontend resources
   and saved cards; no migration is required. Restart resets Stability collection
-- [Complete beta.5 changes](CHANGELOG.md#v210-beta5--earlier-unpublished-candidate). Published Stable
-  remains v2.0.12; previous beta observation does not establish beta.5 validation
+- [Complete beta.5 changes](CHANGELOG.md#v210-beta5--earlier-unpublished-candidate). At that checkpoint, published Stable was v2.0.12; previous beta observation does not establish beta.5 validation
 
 
 ### v2.1.0-beta.4 (Earlier unpublished candidate)
@@ -1065,8 +1066,7 @@ history. Both V2 layouts used revision 5. Restart resets its in-memory baseline.
 - to enable the optional UI, register its resource, regenerate fresh exports and
   replace saved Manual cards. [Setup and rollback](docs/output-observation.md)
   explain companion migration and native fallback
-- [Complete beta.4 changes](CHANGELOG.md#v210-beta4--earlier-unpublished-candidate). Published Stable
-  remains v2.0.12; beta.3 soak evidence does not establish beta.4 validation
+- [Complete beta.4 changes](CHANGELOG.md#v210-beta4--earlier-unpublished-candidate). At that checkpoint, published Stable was v2.0.12; beta.3 soak evidence does not establish beta.4 validation
 
 
 

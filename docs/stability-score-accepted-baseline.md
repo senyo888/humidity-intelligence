@@ -1,9 +1,10 @@
 # Accepted Stability Score baseline
 
-Status: accepted functional and presentation contract in the v2.1.0 release source,
-prepared for publication after the reviewed RC.1 revision-9 candidate. Formula 4 and
-additive schema-3 diagnostics are retained. Published Stable remains v2.0.12; source
-preparation does not establish final-package installation or HACS availability.
+Status: accepted functional and presentation contract in
+[published Stable v2.1.0](https://github.com/senyo888/humidity-intelligence/releases/tag/v2.1.0),
+released on 12 October 2026 after the reviewed RC.1 revision-9 candidate. Formula 4
+and additive schema-3 diagnostics are retained. Publication does not establish
+final-package installation; check the version offered by HACS and loaded by Home Assistant.
 Historical beta and RC release notes retain their original scope.
 
 Stability is integrated alongside the current control engine. Existing Manual handover,

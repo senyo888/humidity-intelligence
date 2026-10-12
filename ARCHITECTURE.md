@@ -28,8 +28,8 @@ classification and presentation. Formula 4 selects individual AQ conditions per 
 with configured IAQ fallback only when no individual conditions are configured.
 Routine AQ uses an additional 12-point adjustment recovering over six observed-clear
 hours; missing evidence pauses recovery. CO protections and engine trigger evaluation
-remain independent. It is implemented in the v2.1.0 release source, prepared for
-publication; published Stable remains v2.0.12. Deployment to an instance does not
+remain independent. It is included in [published Stable v2.1.0](https://github.com/senyo888/humidity-intelligence/releases/tag/v2.1.0),
+released on 12 October 2026. Deployment to an instance does not
 change published release identity. Stability cannot select
 lanes, change gates or
 write outputs. Existing control entities/native states remain unchanged; Diagnostics

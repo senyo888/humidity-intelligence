@@ -1,8 +1,9 @@
 # Stability Score testing
 
-Status: formula 4 with UI revision 9 in the v2.1.0 release source, prepared for publication. This guide describes
-validation of [the canonical contract](stability-score-accepted-baseline.md); it is
-not a release, deployment or live-observation claim.
+Status: formula 4 with UI revision 9 in [published Stable v2.1.0](https://github.com/senyo888/humidity-intelligence/releases/tag/v2.1.0),
+released on 12 October 2026. This guide describes validation of
+[the canonical contract](stability-score-accepted-baseline.md); it does not establish
+an individual deployment or live-observation result.
 
 Review regressions must exercise real snapshot capture with no routine AQ sensors,
 CO-only configurations and configured-but-missing AQ. Only the last case blocks

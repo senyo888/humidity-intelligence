@@ -5,7 +5,7 @@ testing and validation branches.
 
 ## Canonical Version Model
 
-- `2.1.0`: current stable release source, prepared for publication from reviewed RC.1 revision 9. The final version and documentation preserve runtime and generated-card behavior. Both V2 layouts stay revision 9 with schema/generator 1; installed RC.1 cards remain compatible. Publication and final-package registration are separate evidence.
+- `2.1.0`: current published Stable, released on 2026-10-12 from reviewed RC.1 revision 9. The final version and documentation preserve runtime and generated-card behavior. Both V2 layouts stay revision 9 with schema/generator 1; installed RC.1 cards remain compatible. Publication and final-package registration are separate evidence.
 - `2.1.0-rc.1`: earlier unpublished release candidate, including the approved public content, adaptive Outputs release-check correction and review fixes for AQ recovery, event-loop Diagnostics publication, monitoring discovery and UI handling. Its exact revision-9 package completed Stable and Lab installation validation; advisory observation remains bound to that package.
 - `2.1.0-beta.12`: earlier unpublished source candidate with autumn targets of 50–60% (high risk 64%) and bounded recent score movement. Both V2 layouts advance from revision 6 to 7; stamp schema/generator 1 and Stability schema 3/formula 4 remain. No configuration migration; an authorized update requires the complete package, restart and replacement card exports. See [Stability contract](stability-score-accepted-baseline.md).
 - `2.1.0-beta.11`: earlier unpublished candidate polishing score details/history and hold-to-toggle presentation. Both V2 layouts advance from revision 5 to 6; metadata schema/generator 1 and formula 4 remain. Install the complete package, restart, export and replace both saved cards; rollback restores package and cards separately. See [Stability contract](stability-score-accepted-baseline.md).
@@ -19,8 +19,8 @@ testing and validation branches.
 - `2.1.0-beta.3`: earlier unpublished candidate with V2 summaries, recorded histories and source-room colours.
 - `2.1.0-beta.2`: earlier unpublished candidate, introduced at `76285b0`, with seven-day drift progress/details.
 - `2.1.0-beta.1`: earlier committed/pushed, unpublished Stability candidate.
-- `2.0.12`: current published Stable, released on 2026-09-09.
-- `2.0.11`: immediately preceding published Stable, released on 2026-08-11.
+- `2.0.12`: preceding published Stable, released on 2026-09-09.
+- `2.0.11`: earlier published Stable, released on 2026-08-11.
 
 The historical v2.0.12 beta.1–beta.4 and rc.1 sequence below retains its original
 scope and evidence. It does not describe the current candidate or reopen that release.
@@ -33,11 +33,18 @@ must remain aligned with the
 `custom_components/humidity_intelligence/manifest.json` version contained in the
 published GitHub Release/tag.
 
-Published Stable is [v2.0.12](https://github.com/senyo888/humidity-intelligence/releases/tag/v2.0.12),
-released on 2026-09-09. The current `2.1.0` release source is prepared for publication.
+Published Stable is [v2.1.0](https://github.com/senyo888/humidity-intelligence/releases/tag/v2.1.0),
+released on 2026-10-12 as a non-prerelease GitHub Release. Tag `v2.1.0` identifies
+reviewed `main` commit `6da820967173d3d29910c909a3a2a688965aa3ac`.
+HACS refresh state and final-package installation remain separate from publication;
+verify the offered and loaded versions rather than assuming either from a source merge.
+
+### Historical beta.1–beta.3 preparation checkpoint
+
 The earlier `2.1.0-beta.1` source was committed and pushed through `144570b` on
-`senyo888-patch-1`; beta.2 began at `76285b0`, and beta.3 collects the subsequent UI work through `4f86e66`. There is no v2.1 tag,
-GitHub Release or HACS offering.
+`senyo888-patch-1`; beta.2 began at `76285b0`, and beta.3 collected the subsequent UI
+work through `4f86e66`. At that checkpoint there was no v2.1 tag, GitHub Release or
+HACS offering.
 Source status does not certify an installation or authorize further runtime mutation.
 Release readiness still requires scope-appropriate validation, reviews and explicit
 maintainer approval. Local operational evidence does not replace tracked correctness.
@@ -291,8 +298,9 @@ record:
 
 ## README Release-Note Structure
 
-The README keeps the current candidate and current Published Stable summaries
-expanded. Preceding Stable releases and earlier candidates belong in the collapsible
+The README keeps the current Published Stable summary expanded, alongside a current
+candidate when one exists. Preceding Stable releases and earlier candidates belong
+in the collapsible
 `Previous Releases` container, with their historical publication facts and links
 preserved. Move a displaced current summary into that container when a newer release
 takes its place.
@@ -337,13 +345,17 @@ even when the manifest version already carries a stable number on `senyo888-patc
 
 ## v2.1 Candidate Validation
 
+This records the validation scope used during v2.1 preparation; publication is recorded
+above. Apply the same evidence boundaries to later candidates.
+
 For the exact new candidate, record commit/tree/package identity; run the complete
 tracked suite, compile, version governance, deterministic package checks and the
 [Stability acceptance matrix](stability-testing.md). Verify accepted valid-score parity,
 malformed-score rejection, the real shared Diagnostics pipeline, scheduler lifecycle,
 control invariants and all four generated/gallery surfaces. Client checks cover
-Popover interactions and reduced motion. Existing v2.0.12 or sandbox evidence does
-not establish candidate installation or release readiness. Lab evidence stays optional.
+native modal interactions, compatibility fallback and reduced motion. Existing
+v2.0.12 or sandbox evidence does not establish candidate installation or release
+readiness. Lab evidence stays optional.
 
 ## v2.0.12 Release Checklist
 
@@ -385,7 +397,7 @@ and post-release observation as separate evidence states.
 
 ## Rendered UI revision check for every version update
 
-Final `2.1.0` preparation is **UI unchanged** against the reviewed and installed
+Published `2.1.0` is **UI unchanged** against the reviewed and installed
 RC.1 revision-9 source `f2282d93b6fd3b61d992d149d0fe56ef62738c57` and its merged
 `develop` tree at `02525c1f143f84736045a11bed66daed5e28c19a`. Runtime Python,
 services, translations, renderer JavaScript, generated cards, gallery YAML and
@@ -395,7 +407,7 @@ a package version change alone must not request a new export. The manifest and
 packaged UI guidance change, so the final package has a new identity. Record that
 identity separately from RC.1 installation and the continuing advisory Lab campaign.
 A final-package installation requires its own loaded-identity confirmation after a
-full restart; this source preparation does not perform that installation.
+full restart; release publication does not perform that installation.
 
 ### Historical RC.1 revision-9 transition
 
