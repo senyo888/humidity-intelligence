@@ -840,7 +840,8 @@ their unavailable state and missing-mapping warnings.
 - Restart after installation, then `refresh_ui`, export and replace saved V2 cards.
   Restart resets Stability history; no configuration migration. Stable remains v2.1.0.
 - [Candidate notes](CHANGELOG.md#unreleased--v211-beta2) include coverage limits;
-  the optional Lab record applies to the earlier revision-10 package.
+  [optional Lab verification](docs/issue-129-verification.md) records four passing
+  single-level cases on beta.2 and remains non-blocking.
 
 ### v2.1.0 (Current Published Stable)
 
@@ -884,7 +885,7 @@ under Previous Releases; CHANGELOG.md retains the complete detailed history. -->
 
 Introduced the [#129 single-level export fix](CHANGELOG.md#unreleased--v211-beta1)
 with V2 revision 10. Its [optional Lab verification](docs/issue-129-verification.md)
-records four passing live cases and a running soak; that evidence belongs to beta.1.
+retains four passing live cases and a stopped, incomplete soak for beta.1.
 This candidate was not published as a beta or made available through HACS.
 
 Earlier candidate entries retain their original preparation and validation scope.

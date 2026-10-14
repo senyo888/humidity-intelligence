@@ -5,8 +5,8 @@ testing and validation branches.
 
 ## Canonical Version Model
 
-- `2.1.1-beta.2`: current unpublished candidate correcting single-level V2 exports (#129), with follow-up device-text, calculated-trend and issue-summary hardening. Both layouts use revision 11 with schema/generator 1. Install the complete candidate, restart, regenerate and replace saved V2 cards; no configuration migration. Source preparation does not establish beta publication or HACS availability. [Optional Lab verification](issue-129-verification.md) covers the earlier revision-10 package only and remains non-blocking.
-- `2.1.1-beta.1`: earlier unpublished revision-10 candidate. Its single-level Lab results and running soak remain optional evidence for `f6e64c7`, not beta.2.
+- `2.1.1-beta.2`: current unpublished candidate correcting single-level V2 exports (#129), with follow-up device-text, calculated-trend and issue-summary hardening. Both layouts use revision 11 with schema/generator 1. Install the complete candidate, restart, regenerate and replace saved V2 cards; no configuration migration. Source preparation does not establish beta publication or HACS availability. [Optional Lab verification](issue-129-verification.md) records four passing single-level cases on the exact beta.2 package and remains non-blocking.
+- `2.1.1-beta.1`: earlier unpublished revision-10 candidate. Its single-level Lab results and stopped, incomplete soak remain historical optional evidence for `f6e64c7`, not beta.2.
 - `2.1.0`: current published Stable, released on 2026-10-12 from reviewed RC.1 revision 9. The final version and documentation preserve runtime and generated-card behavior. Both V2 layouts stay revision 9 with schema/generator 1; installed RC.1 cards remain compatible. Publication and final-package registration are separate evidence.
 - `2.1.0-rc.1`: earlier unpublished release candidate, including the approved public content, adaptive Outputs release-check correction and review fixes for AQ recovery, event-loop Diagnostics publication, monitoring discovery and UI handling. Its exact revision-9 package completed Stable and Lab installation validation; advisory observation remains bound to that package.
 - `2.1.0-beta.12`: earlier unpublished source candidate with autumn targets of 50–60% (high risk 64%) and bounded recent score movement. Both V2 layouts advance from revision 6 to 7; stamp schema/generator 1 and Stability schema 3/formula 4 remain. No configuration migration; an authorized update requires the complete package, restart and replacement card exports. See [Stability contract](stability-score-accepted-baseline.md).
@@ -426,8 +426,11 @@ Run the revision check with `--base 88fe1c3` (and `--base v2.1.0` for the Stable
 comparison). Validate generated stamps, Diagnostics targets, YAML and embedded
 JavaScript for one, two and zero levels, missing mappings, unavailable readings and
 configuration transitions, plus native-label and bounded-trend regressions.
-The [optional Lab record](issue-129-verification.md) and its ongoing soak cover
-`f6e64c7`/revision 10 only; neither validates these later source changes.
+The [optional Lab record](issue-129-verification.md) separates the historical
+`f6e64c7`/revision-10 evidence from four passing live single-level cases on
+`32e54ba`/revision 11. It records restoration, soak status and coverage limits.
+Neither the live matrix nor a soak provides exhaustive follow-up-hardening coverage
+or release approval; Lab evidence remains non-blocking.
 An authorized installation needs the complete package and a full restart, followed
 by regeneration and full replacement of saved V2 cards. Restart clears in-memory
 Stability history. No configuration/entity migration is required. Publication,

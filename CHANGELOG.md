@@ -44,8 +44,10 @@ changes. Restart/reload clears in-memory Stability history. Run `refresh_ui`, ex
 with `view_cards` or `dump_cards`, replace the complete saved V2 Manual-card YAML,
 and refresh the client. Rollback restores the previous complete package and its
 saved cards; a revision-11 card against a revision-9 or revision-10 backend reports
-“UI differs”. The optional [Lab record](docs/issue-129-verification.md) covers the
-earlier revision-10 package only, not these follow-up changes.
+“UI differs”. The optional [Lab record](docs/issue-129-verification.md) records all
+four single-level Mobile/Tablet cases passing on this beta.2 package, with exact
+restoration and explicit coverage limits. This evidence remains non-blocking; the
+live #129 matrix does not exhaustively validate the other follow-up changes.
 Source validation and house-agent review do not establish live installation or release.
 
 <a id="unreleased--v211-beta1"></a>
