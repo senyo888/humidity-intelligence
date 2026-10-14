@@ -5331,13 +5331,16 @@ card:
           ]]]
       label: |
         [[[
+          const escape = (value) => String(value).replace(/[&<>"']/g, (char) => ({
+            '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+          }[char]));
           const fanTxt = (id) => {
             const st = states[id]?.state;
             const pct = states[id]?.attributes?.percentage;
             const preset = states[id]?.attributes?.preset_mode;
-            if (!st) return 'UNAVAILABLE';
+            if (typeof st !== 'string' || !st) return 'UNAVAILABLE';
             if (st !== 'on') return st.toUpperCase();
-            if (pct != null) return `${pct}%`;
+            if (typeof pct === 'number' && Number.isFinite(pct)) return `${pct}%`;
             if (preset) return String(preset).toUpperCase();
             return 'ON';
           };
@@ -5355,7 +5358,7 @@ card:
           const outputText = outputIds
             .filter((id, index, ids) => ids.indexOf(id) === index)
             .map(id => `${fanName(id)}: ${fanTxt(id)}`).join(' • ');
-          return `${outputText || 'Output status unavailable'}${co}${iso}`;
+          return escape(`${outputText || 'Output status unavailable'}${co}${iso}`);
         ]]]
       styles:
         card:

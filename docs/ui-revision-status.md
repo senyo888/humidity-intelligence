@@ -38,7 +38,7 @@ Every package version update includes the [canonical release revision check](rel
 ### Single-level installations
 
 V2.1.0 can leave both layout targets empty when only one level is configured,
-even after a complete fresh export. The unpublished v2.1.1-beta.1 candidate fixes
+even after a complete fresh export. The unpublished v2.1.1-beta.2 candidate fixes
 this by excluding unconfigured-level humidity and temperature chips and references
 during generation.
 Adding a dummy level or clearing the browser cache does not repair that generator defect.
@@ -100,8 +100,8 @@ relative to the seasonal band, and Outputs names come from the mapped entities.
 The seasonal description never prescribes an action in competition with the backend
 reason. Outputs expansion remains shared per entry and retains its existing timer.
 The revision indicator itself leaves Stability and lane selection unchanged.
-The unpublished v2.1.1-beta.1 candidate uses revision 10 in both layouts, superseding
-revisions 1–9, and requires fresh exports and full saved-card replacement.
+The unpublished v2.1.1-beta.2 candidate uses revision 11 in both layouts, superseding
+revisions 1–10, and requires fresh exports and full saved-card replacement.
 Published v2.1.0 retains revision 9 and its compatibility with RC.1 revision-9 cards.
 Stamp schema and generator contract remain 1. See
 [the release compatibility record](release-governance.md#rendered-ui-revision-check-for-every-version-update).

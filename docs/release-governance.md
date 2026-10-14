@@ -5,7 +5,8 @@ testing and validation branches.
 
 ## Canonical Version Model
 
-- `2.1.1-beta.1`: current unpublished candidate correcting single-level V2 exports (#129). Both layouts advance to revision 10 with schema/generator 1. Install the complete candidate, restart, regenerate and replace saved V2 cards; no configuration migration. Source preparation does not establish beta publication or HACS availability. [Optional Lab verification](issue-129-verification.md) records the single-level checks and their limits; it is non-blocking.
+- `2.1.1-beta.2`: current unpublished candidate correcting single-level V2 exports (#129), with follow-up device-text, calculated-trend and issue-summary hardening. Both layouts use revision 11 with schema/generator 1. Install the complete candidate, restart, regenerate and replace saved V2 cards; no configuration migration. Source preparation does not establish beta publication or HACS availability. [Optional Lab verification](issue-129-verification.md) covers the earlier revision-10 package only and remains non-blocking.
+- `2.1.1-beta.1`: earlier unpublished revision-10 candidate. Its single-level Lab results and running soak remain optional evidence for `f6e64c7`, not beta.2.
 - `2.1.0`: current published Stable, released on 2026-10-12 from reviewed RC.1 revision 9. The final version and documentation preserve runtime and generated-card behavior. Both V2 layouts stay revision 9 with schema/generator 1; installed RC.1 cards remain compatible. Publication and final-package registration are separate evidence.
 - `2.1.0-rc.1`: earlier unpublished release candidate, including the approved public content, adaptive Outputs release-check correction and review fixes for AQ recovery, event-loop Diagnostics publication, monitoring discovery and UI handling. Its exact revision-9 package completed Stable and Lab installation validation; advisory observation remains bound to that package.
 - `2.1.0-beta.12`: earlier unpublished source candidate with autumn targets of 50–60% (high risk 64%) and bounded recent score movement. Both V2 layouts advance from revision 6 to 7; stamp schema/generator 1 and Stability schema 3/formula 4 remain. No configuration migration; an authorized update requires the complete package, restart and replacement card exports. See [Stability contract](stability-score-accepted-baseline.md).
@@ -398,23 +399,35 @@ and post-release observation as separate evidence states.
 
 ## Rendered UI revision check for every version update
 
-### v2.1.1-beta.1 single-level export correction
+### v2.1.1-beta.2 single-level exports and follow-up hardening
 
-The unpublished `2.1.1-beta.1` candidate is **UI revision advanced** against
-published `v2.1.0` source. Both layouts advance from 9 to 10, with compatible
-revisions 1–9 listed in `supersedes`. The shared generator now derives humidity and
-temperature level-chip inventories from effective telemetry before mapping and required-placeholder
-validation. Configured missing mappings still prevent successful advertisement;
-mapped unavailable readings remain visible. Control and entity creation are unchanged.
+The unpublished `2.1.1-beta.2` candidate is **UI revision advanced** against
+published `v2.1.0` and the initial revision-10 candidate at `88fe1c3`. Both layouts
+now use revision 11, with compatible revisions 1–10 listed in `supersedes`.
+The shared generator derives humidity and temperature level-chip inventories from
+effective telemetry before mapping and required-placeholder validation. Configured
+missing mappings still prevent advertisement; mapped unavailable readings stay visible.
 
-Stamp schema 1 and generator contract 1 are retained: entry association, layout
-identity, target shape and comparison semantics are unchanged. Revision-9 cards
-receive an update indication; revision-10 cards against revision-9 metadata report
-a difference. Both canonical templates and gallery mirrors carry the correction.
+Native Outputs now escapes the complete device-text label and accepts only finite
+numeric percentages, falling back to preset/on/off text for malformed percentages.
+Both canonical templates and gallery mirrors carry this change. Stamp schema 1 and
+generator contract 1 remain compatible: entry association, layout identity, target
+shape and comparison semantics are unchanged. Revision-9/10 cards receive an update
+indication; revision-11 cards against revision-9/10 metadata report a difference.
 
-Run the revision check with `--base v2.1.0` and validate actual generated stamps,
-Diagnostics targets, YAML and embedded JavaScript for one, two and zero telemetry
-levels, missing mappings, unavailable readings, and configuration transitions.
+Calculated temperature slopes retain at most 61 observations in one hour, replacing
+each minute's point with its latest actual reading and refreshing only that source.
+This changes burst weighting and may change slope-dependent decisions, while lane
+priority, CO protection, provided slopes and entity IDs remain intact. It is a source
+behavior change, not a metadata-only update. Issue-summary redaction also avoids
+ambiguous repeated Markdown decorators without changing its privacy contract.
+
+Run the revision check with `--base 88fe1c3` (and `--base v2.1.0` for the Stable
+comparison). Validate generated stamps, Diagnostics targets, YAML and embedded
+JavaScript for one, two and zero levels, missing mappings, unavailable readings and
+configuration transitions, plus native-label and bounded-trend regressions.
+The [optional Lab record](issue-129-verification.md) and its ongoing soak cover
+`f6e64c7`/revision 10 only; neither validates these later source changes.
 An authorized installation needs the complete package and a full restart, followed
 by regeneration and full replacement of saved V2 cards. Restart clears in-memory
 Stability history. No configuration/entity migration is required. Publication,

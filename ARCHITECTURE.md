@@ -20,6 +20,16 @@ schemas, tracked generated-card templates, and release documentation. Ignored lo
 planning notes may inform maintainer review, but they do not override tracked runtime
 truth.
 
+## Calculated temperature trends
+
+Calculated slopes retain the latest actual reading per minute within one hour,
+with at most 61 retained points per configured source. Updates refresh that source
+immediately; the five-minute periodic sampler and startup baseline remain. Actual
+timestamps are preserved and missing minutes are not filled. Frequent readings no
+longer receive event-rate weighting, so slope values and slope-dependent decisions
+can change. Provided slopes, units, entity identity and lane priority remain intact.
+See [source validation and limits](docs/runtime-simulation-validation.md#calculated-temperature-trends).
+
 ## Observational Stability Score
 
 The [accepted Stability contract](docs/stability-score-accepted-baseline.md) defines

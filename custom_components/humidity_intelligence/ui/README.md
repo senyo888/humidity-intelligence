@@ -269,6 +269,10 @@ Custom profiles retain their existing derivation; a custom 50–60% band gives 6
 high risk. These profile boundaries are not universal safe cutoffs.
 Missing or invalid high-risk bounds leave the affected humidity context neutral.
 
+The native Outputs summary renders names, presets and states as escaped text.
+Percentages appear only for finite numeric values (including zero); malformed
+percentages use the existing preset/on/off fallback. Gallery mirrors share this rule.
+
 Control row:
 
 - preserve the v2.0.7 tap-to-toggle behavior for the System and Manual helper buttons
@@ -281,7 +285,7 @@ Control row:
   expiry alone stays neutral, and a fresh baseline is not a zero-change comparison
 - keep score/classification distinct from current humidity. Formula 4, caps and
   72-hour history remain; a recent gain does not establish healthy current air
-- both V2 layouts in the v2.1.1-beta.1 candidate use revision 10, superseding 1–9,
+- both V2 layouts in the v2.1.1-beta.2 candidate use revision 11, superseding 1–10,
   with stamp schema/generator 1. Published v2.1.0 retains revision 9.
   Install the complete package and restart before exporting/replacing saved cards;
   restart clears in-memory Stability history and no configuration migration is needed
@@ -374,7 +378,7 @@ Only telemetry-configured levels appear in V2 humidity and temperature chip rows
 Core creates both averages for each such level, even when one metric has no inputs.
 Configured unavailable readings remain visible; failed required registry mappings
 remain errors. Removed levels stay absent even if old registry entries remain.
-The v2.1.1-beta.1 candidate uses revision 10 for both layouts; refresh, export and
+The v2.1.1-beta.2 candidate uses revision 11 for both layouts; refresh, export and
 replace saved V2 cards after installation. Stamp schema/generator remain 1.
 
 Inventory files:

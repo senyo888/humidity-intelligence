@@ -6,6 +6,10 @@ optional and non-blocking:** its availability, result, playback coverage or soak
 status is not a merge, promotion, tag, publication or release gate. A passing check
 also does not grant release approval.
 
+The record is pinned to the revision-10 package below. The beta.2 candidate uses
+revision 11 and adds device-text, calculated-trend and issue-summary hardening.
+Those changes are not covered by these live results or the ongoing soak. Validation does not transfer to changed package bytes.
+
 ## Tested identity
 
 - Issue: [#129](https://github.com/senyo888/humidity-intelligence/issues/129).

@@ -24,6 +24,8 @@ _LOGGER = logging.getLogger(__name__)
 
 WINDOW = timedelta(hours=1)
 SAMPLE_INTERVAL = timedelta(minutes=5)
+# An inclusive hour can intersect 61 minute buckets. Keep actual observation times.
+MAX_SAMPLES = 61
 
 
 @dataclass
@@ -66,11 +68,17 @@ class SlopeTracker:
 
     def record(self, entity_id: str, value: float, ts: Optional[datetime] = None) -> None:
         ts = ts or datetime.now()
-        series = self._series.setdefault(entity_id, deque())
+        series = self._series.setdefault(entity_id, deque(maxlen=MAX_SAMPLES))
         if not series:
             # Seed a baseline point so slopes begin at 0.0 instead of "unknown".
             series.append(_Point(ts=ts - SAMPLE_INTERVAL, value=value))
-        series.append(_Point(ts=ts, value=value))
+        point = _Point(ts=ts, value=value)
+        # A noisy source contributes its latest reading per minute, not event-rate
+        # weighting. Publication remains immediate; no pending timer or backfill.
+        if series[-1].ts.replace(second=0, microsecond=0) == ts.replace(second=0, microsecond=0):
+            series[-1] = point
+        else:
+            series.append(point)
         cutoff = ts - WINDOW
         while series and series[0].ts < cutoff:
             series.popleft()
@@ -130,6 +138,7 @@ def build_slope_entities(hass: HomeAssistant, entry: ConfigEntry) -> Tuple[List[
     tracker = SlopeTracker()
 
     sensors: List[SensorEntity] = []
+    sensors_by_source: Dict[str, List[HISlopeSensor]] = {}
     source_to_slope: Dict[str, str] = {}
 
     for entity_id in sources:
@@ -139,6 +148,7 @@ def build_slope_entities(hass: HomeAssistant, entry: ConfigEntry) -> Tuple[List[
         name = f"HI {room_name} Temperature Slope"
         sensor = HISlopeSensor(hass, name, unique_id, entity_id, tracker)
         sensors.append(sensor)
+        sensors_by_source.setdefault(entity_id, []).append(sensor)
         registered_entity_id = _registered_slope_entity_id(hass, unique_id)
         sensor_entity_id = getattr(sensor, "entity_id", None)
         source_to_slope[entity_id] = (
@@ -169,10 +179,11 @@ def build_slope_entities(hass: HomeAssistant, entry: ConfigEntry) -> Tuple[List[
         tracker.record(entity_id, value)
         return True
 
-    def _refresh_sensors() -> None:
-        for sensor in sensors:
-            sensor.update_from_hass()
-            sensor.async_write_ha_state()
+    def _refresh_sensors(entity_ids: List[str]) -> None:
+        for entity_id in entity_ids:
+            for sensor in sensors_by_source[entity_id]:
+                sensor.update_from_hass()
+                sensor.async_write_ha_state()
 
     for source in sources:
         _record_state(source)
@@ -181,18 +192,15 @@ def build_slope_entities(hass: HomeAssistant, entry: ConfigEntry) -> Tuple[List[
 
     async def _handle_change(event) -> None:
         entity_id = event.data.get("entity_id")
-        if entity_id not in sources:
+        if entity_id not in sensors_by_source:
             return
         if _record_state(entity_id):
-            _refresh_sensors()
+            _refresh_sensors([entity_id])
 
     async def _periodic_sample(now) -> None:
-        updated = False
-        for source in sources:
-            if _record_state(source):
-                updated = True
+        updated = [source for source in sources if _record_state(source)]
         if updated:
-            _refresh_sensors()
+            _refresh_sensors(updated)
 
     unsub_state = async_track_state_change_event(hass, sources, _handle_change)
     unsub_periodic = async_track_time_interval(hass, _periodic_sample, SAMPLE_INTERVAL)

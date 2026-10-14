@@ -59,8 +59,8 @@ It gives you:
 - services for dashboard export, self-check, diagnostics, pause/resume, and release validation
 
 Current published Stable: **v2.1.0**, [released on 12 October 2026](https://github.com/senyo888/humidity-intelligence/releases/tag/v2.1.0).
-Current development candidate: **v2.1.1-beta.1**, unpublished; see the
-[single-level dashboard fix](#v211-beta1-current-unpublished-candidate).
+Current development candidate: **v2.1.1-beta.2**, unpublished; see the
+[single-level dashboard fix](#v211-beta2-current-unpublished-candidate).
 V2.1 is led by **Stability Score**, with clearer badge explanations and history,
 optional output monitoring, reusable monitoring meanings and a simpler status row.
 Check the version offered in HACS and refresh its repository information if an older
@@ -826,20 +826,21 @@ CO emergency pressure. Details are in
 
 ## Release Notes
 
-### v2.1.1-beta.1 (Current unpublished candidate)
+### v2.1.1-beta.2 (Current unpublished candidate)
 
 Fixes [#129](https://github.com/senyo888/humidity-intelligence/issues/129): freshly
 exported V2 Mobile and Tablet cards can verify their UI revision when only one level
 is configured. Unconfigured-level humidity and temperature chips are omitted; configured sensors retain
 their unavailable state and missing-mapping warnings.
 
-- Both layouts advance to **revision 10**, superseding revisions 1–9; stamp
-  schema/generator 1 remain. Control logic and Stability calculations are unchanged.
-- After installing this candidate, restart Home Assistant, run `refresh_ui`, export
-  with `view_cards` or `dump_cards`, and replace the complete saved V2 card YAML.
-  Restart resets in-memory Stability history. No configuration migration is needed.
-- Awaiting publication; published Stable remains v2.1.0. See the
-  [complete candidate notes](CHANGELOG.md#unreleased--v211-beta1).
+- Both layouts use **revision 11**, superseding 1–10; schema/generator 1 remain.
+  Native Outputs renders device text safely; issue-summary filtering is hardened.
+- Calculated trends keep the latest reading per minute within one hour. Frequent
+  readings can change slope values and slope-dependent decisions; lane priority remains.
+- Restart after installation, then `refresh_ui`, export and replace saved V2 cards.
+  Restart resets Stability history; no configuration migration. Stable remains v2.1.0.
+- [Candidate notes](CHANGELOG.md#unreleased--v211-beta2) include coverage limits;
+  the optional Lab record applies to the earlier revision-10 package.
 
 ### v2.1.0 (Current Published Stable)
 
@@ -878,6 +879,13 @@ Control row. See the [V2.1 overview](#v21--stability-score) and
 under Previous Releases; CHANGELOG.md retains the complete detailed history. -->
 <details>
 <summary>Previous Releases</summary>
+
+### v2.1.1-beta.1 (Earlier unpublished candidate)
+
+Introduced the [#129 single-level export fix](CHANGELOG.md#unreleased--v211-beta1)
+with V2 revision 10. Its [optional Lab verification](docs/issue-129-verification.md)
+records four passing live cases and a running soak; that evidence belongs to beta.1.
+This candidate was not published as a beta or made available through HACS.
 
 Earlier candidate entries retain their original preparation and validation scope.
 References to the published Stable at those checkpoints are historical; v2.1.0 is
