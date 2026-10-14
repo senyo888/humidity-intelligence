@@ -59,6 +59,8 @@ It gives you:
 - services for dashboard export, self-check, diagnostics, pause/resume, and release validation
 
 Current published Stable: **v2.1.0**, [released on 12 October 2026](https://github.com/senyo888/humidity-intelligence/releases/tag/v2.1.0).
+Current development candidate: **v2.1.1-beta.1**, unpublished; see the
+[single-level dashboard fix](#v211-beta1-current-unpublished-candidate).
 V2.1 is led by **Stability Score**, with clearer badge explanations and history,
 optional output monitoring, reusable monitoring meanings and a simpler status row.
 Check the version offered in HACS and refresh its repository information if an older
@@ -519,7 +521,7 @@ must be reviewable from tracked repository files.
 - **Autumn refinement:** the built-in target band is 50–60%, with humidity danger
   still at 64%. Other seasons and custom profile rules retain their existing behavior.
 
-Both V2 layouts use UI revision 9, superseding revisions 1–8. Run `refresh_ui`, export
+Published v2.1.0 uses UI revision 9 in both V2 layouts, superseding revisions 1–8. Run `refresh_ui`, export
 with `view_cards` or `dump_cards`, replace the complete YAML in older saved cards,
 then refresh the frontend. Revision-9 cards from RC.1 remain compatible; the final
 version bump does not require another card refresh. The V1 Mobile Drift correction
@@ -823,6 +825,21 @@ CO emergency pressure. Details are in
 ---
 
 ## Release Notes
+
+### v2.1.1-beta.1 (Current unpublished candidate)
+
+Fixes [#129](https://github.com/senyo888/humidity-intelligence/issues/129): freshly
+exported V2 Mobile and Tablet cards can verify their UI revision when only one level
+is configured. Unconfigured-level humidity and temperature chips are omitted; configured sensors retain
+their unavailable state and missing-mapping warnings.
+
+- Both layouts advance to **revision 10**, superseding revisions 1–9; stamp
+  schema/generator 1 remain. Control logic and Stability calculations are unchanged.
+- After installing this candidate, restart Home Assistant, run `refresh_ui`, export
+  with `view_cards` or `dump_cards`, and replace the complete saved V2 card YAML.
+  Restart resets in-memory Stability history. No configuration migration is needed.
+- Awaiting publication; published Stable remains v2.1.0. See the
+  [complete candidate notes](CHANGELOG.md#unreleased--v211-beta1).
 
 ### v2.1.0 (Current Published Stable)
 

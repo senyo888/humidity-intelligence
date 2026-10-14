@@ -152,19 +152,15 @@ class PagesSiteTests(unittest.TestCase):
         self.assertIn("v2.0.12 · previous Stable release", html)
         self.assertIn("included in the HACS default integration repository", normalized_html)
         self.assertIn("V2.0.12 improved Manual-mode handover", normalized_html)
-        manifest = json.loads(
-            (ROOT / "custom_components/humidity_intelligence/manifest.json").read_text(
-                encoding="utf-8"
-            )
-        )
-        self.assertIn(f"V{manifest['version']} · published Stable", normalized_html)
+        # Website publication truth is independent of an unpublished candidate manifest.
+        self.assertIn("V2.1.0 · published Stable", normalized_html)
         self.assertIn("Released on 12 October 2026", normalized_html)
         self.assertIn("releases/tag/v2.1.0", html)
         self.assertIn("refresh repository information if an older version is shown", normalized_html)
         self.assertNotIn("awaits publication", normalized_html)
         self.assertNotIn("Install from GitHub", html)
         self.assertIn("Open in HACS", html)
-        self.assertIn(f"published release</span><span class=\"badge-value\">v{manifest['version']}", html)
+        self.assertIn("published release</span><span class=\"badge-value\">v2.1.0", html)
         self.assertIn("replace the complete saved YAML", normalized_html)
         self.assertIn("Existing RC.1 revision-9 cards remain compatible", normalized_html)
 

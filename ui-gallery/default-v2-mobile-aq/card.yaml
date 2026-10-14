@@ -2386,8 +2386,13 @@ card:
               return '#94a3b8';
             };
             const hh = num('sensor.house_average_humidity');
-            const dh = num('sensor.air_control_downstairs_average_humidity');
-            const uh = num('sensor.air_control_upstairs_average_humidity');
+            const levelHumiditySources = [["Upstairs AVG", "sensor.air_control_upstairs_average_humidity"], ["Downstairs AVG", "sensor.air_control_downstairs_average_humidity"]]; // HI level humidity inventory
+            const levelHumidityChips = levelHumiditySources
+              .map(([label, id]) => {
+                const value = num(id);
+                return chip(label, value === null ? null : Math.round(value), '%', cH(value));
+              })
+              .join('');
             const roomHumidityChips = zoneTelemetry('humidity')
               .map((item) => {
                 const value = num(item.entity);
@@ -2398,8 +2403,7 @@ card:
             return `
               <div class="cv-scroll">
                 ${chip('House AVG', hh === null ? null : Math.round(hh), '%', cH(hh))}
-                ${chip('Upstairs AVG', uh === null ? null : Math.round(uh), '%', cH(uh))}
-                ${chip('Downstairs AVG', dh === null ? null : Math.round(dh), '%', cH(dh))}
+                ${levelHumidityChips}
                 ${roomHumidityChips}
                 ${roomDeltaChips}
               </div>`;
@@ -2493,6 +2497,10 @@ card:
               if (slopeCfg.mode === 'hi_calculates' && roomKey) return `sensor.hi_${roomKey}_temperature_slope`;
               return null;
             };
+            const levelTemperatureSources = [["Upstairs Temp", "sensor.air_control_upstairs_average_temperature"], ["Downstairs Temp", "sensor.air_control_downstairs_average_temperature"]]; // HI level temperature inventory
+            const levelTemperatureChips = levelTemperatureSources
+              .map(([label, id]) => tempChip(label, id))
+              .join('');
             const roomTemperatureChips = zoneTelemetry('temperature')
               .map((item) => tempChip(item.label, item.entity))
               .join('');
@@ -2507,8 +2515,7 @@ card:
             return `
               <div class="cv-scroll">
                 ${tempChip('House Temp', 'sensor.house_average_temperature')}
-                ${tempChip('Upstairs Temp', 'sensor.air_control_upstairs_average_temperature')}
-                ${tempChip('Downstairs Temp', 'sensor.air_control_downstairs_average_temperature')}
+                ${levelTemperatureChips}
                 ${roomTemperatureChips}
                 ${slopeChips}
               </div>`;

@@ -5,6 +5,7 @@ testing and validation branches.
 
 ## Canonical Version Model
 
+- `2.1.1-beta.1`: current unpublished candidate correcting single-level V2 exports (#129). Both layouts advance to revision 10 with schema/generator 1. Install the complete candidate, restart, regenerate and replace saved V2 cards; no configuration migration. Source preparation does not establish beta publication or HACS availability.
 - `2.1.0`: current published Stable, released on 2026-10-12 from reviewed RC.1 revision 9. The final version and documentation preserve runtime and generated-card behavior. Both V2 layouts stay revision 9 with schema/generator 1; installed RC.1 cards remain compatible. Publication and final-package registration are separate evidence.
 - `2.1.0-rc.1`: earlier unpublished release candidate, including the approved public content, adaptive Outputs release-check correction and review fixes for AQ recovery, event-loop Diagnostics publication, monitoring discovery and UI handling. Its exact revision-9 package completed Stable and Lab installation validation; advisory observation remains bound to that package.
 - `2.1.0-beta.12`: earlier unpublished source candidate with autumn targets of 50–60% (high risk 64%) and bounded recent score movement. Both V2 layouts advance from revision 6 to 7; stamp schema/generator 1 and Stability schema 3/formula 4 remain. No configuration migration; an authorized update requires the complete package, restart and replacement card exports. See [Stability contract](stability-score-accepted-baseline.md).
@@ -396,6 +397,30 @@ and post-release observation as separate evidence states.
   approval gates are complete for the exact final head.
 
 ## Rendered UI revision check for every version update
+
+### v2.1.1-beta.1 single-level export correction
+
+The unpublished `2.1.1-beta.1` candidate is **UI revision advanced** against
+published `v2.1.0` source. Both layouts advance from 9 to 10, with compatible
+revisions 1–9 listed in `supersedes`. The shared generator now derives humidity and
+temperature level-chip inventories from effective telemetry before mapping and required-placeholder
+validation. Configured missing mappings still prevent successful advertisement;
+mapped unavailable readings remain visible. Control and entity creation are unchanged.
+
+Stamp schema 1 and generator contract 1 are retained: entry association, layout
+identity, target shape and comparison semantics are unchanged. Revision-9 cards
+receive an update indication; revision-10 cards against revision-9 metadata report
+a difference. Both canonical templates and gallery mirrors carry the correction.
+
+Run the revision check with `--base v2.1.0` and validate actual generated stamps,
+Diagnostics targets, YAML and embedded JavaScript for one, two and zero telemetry
+levels, missing mappings, unavailable readings, and configuration transitions.
+An authorized installation needs the complete package and a full restart, followed
+by regeneration and full replacement of saved V2 cards. Restart clears in-memory
+Stability history. No configuration/entity migration is required. Publication,
+installation, live validation and rollback execution remain separate actions.
+
+### Published v2.1.0 compatibility record
 
 Published `2.1.0` is **UI unchanged** against the reviewed and installed
 RC.1 revision-9 source `f2282d93b6fd3b61d992d149d0fe56ef62738c57` and its merged

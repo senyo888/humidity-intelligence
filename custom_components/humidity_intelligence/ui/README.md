@@ -281,7 +281,8 @@ Control row:
   expiry alone stays neutral, and a fresh baseline is not a zero-change comparison
 - keep score/classification distinct from current humidity. Formula 4, caps and
   72-hour history remain; a recent gain does not establish healthy current air
-- both V2 layouts use revision 9, superseding 1–8, with stamp schema/generator 1.
+- both V2 layouts in the v2.1.1-beta.1 candidate use revision 10, superseding 1–9,
+  with stamp schema/generator 1. Published v2.1.0 retains revision 9.
   Install the complete package and restart before exporting/replacing saved cards;
   restart clears in-memory Stability history and no configuration migration is needed
 - whole-badge tap/click/keyboard activation opens a native modal dialog through the
@@ -365,9 +366,16 @@ Output details:
 `ui/register.py`:
 
 1. builds placeholder to entity map
-2. substitutes canonical templates
-3. prunes optional rows
-4. reports unresolved non-optional placeholders
+2. builds V2 level-chip inventories from effective telemetry, respecting Options
+3. substitutes canonical templates and prunes optional rows
+4. reports unresolved required placeholders and advertises only successful V2 layouts
+
+Only telemetry-configured levels appear in V2 humidity and temperature chip rows.
+Core creates both averages for each such level, even when one metric has no inputs.
+Configured unavailable readings remain visible; failed required registry mappings
+remain errors. Removed levels stay absent even if old registry entries remain.
+The v2.1.1-beta.1 candidate uses revision 10 for both layouts; refresh, export and
+replace saved V2 cards after installation. Stamp schema/generator remain 1.
 
 Inventory files:
 

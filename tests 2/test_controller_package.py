@@ -41,9 +41,9 @@ class ControllerPackageTests(unittest.TestCase):
     def test_explicit_package_version_contracts(self) -> None:
         for version in ("2.0.12", "2.0.12-rc.1"):
             self.assertEqual("hi-package-public-v20-conventional-1", BUILDER._contract_for_version(version))
-        for version in ("2.1.0-beta.1", "2.1.0-rc.1", "2.1.0"):
+        for version in ("2.1.0-beta.1", "2.1.0-rc.1", "2.1.0", "2.1.1-beta.1", "2.1.1-rc.1", "2.1.1"):
             self.assertEqual("hi-package-public-v21-conventional-1", BUILDER._contract_for_version(version))
-        for version in ("2.1.1", "2.2.0", "3.0.0", "2.1.0-beta.0", "2.1.0-alpha.1", "2.1.0-beta.01"):
+        for version in ("2.1.2", "2.2.0", "3.0.0", "2.1.0-beta.0", "2.1.0-alpha.1", "2.1.0-beta.01"):
             with self.subTest(version=version), self.assertRaises(BUILDER.PackageBuildError):
                 BUILDER._contract_for_version(version)
 
@@ -59,7 +59,7 @@ class ControllerPackageTests(unittest.TestCase):
             self.assertEqual("public_patch_1", first_summary["source_profile"])
             expected_contract = (
                 "hi-package-public-v21-conventional-1"
-                if first_summary["manifest_version"].startswith("2.1.0")
+                if first_summary["manifest_version"].startswith("2.1.")
                 else "hi-package-public-v20-conventional-1"
             )
             self.assertEqual(expected_contract, first_summary["contract_id"])

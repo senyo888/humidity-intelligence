@@ -6,6 +6,35 @@ All notable changes to Humidity Intelligence will be documented in this file.
 
 This project follows a practical changelog format for Home Assistant and HACS users. Add new entries under a fresh `Unreleased` section before publishing a future release.
 
+## Unreleased — v2.1.1-beta.1
+
+Development candidate for [#129](https://github.com/senyo888/humidity-intelligence/issues/129).
+Published Stable remains v2.1.0; this entry does not announce a beta release or HACS availability.
+
+- Fixes V2 Mobile and Tablet exports remaining “UI unverified” in single-level
+  installations. Humidity and temperature chip inventories include only levels
+  present in effective telemetry, including saved Options, and remove their
+  inactive-level JavaScript references.
+- Keeps configured-but-unavailable averages visible and genuine required mapping
+  failures explicit. Stale registry entries cannot reintroduce removed levels.
+- Advances both layouts from revision 9 to **10**, with compatible revisions 1–9
+  explicitly superseded. Stamp schema and generator contract remain 1; entry binding,
+  revision comparison and failure handling retain their meaning.
+- Adds real-entity-creation regression fixtures, generated YAML and JavaScript checks,
+  configuration-transition coverage, and revision-9 upgrade/rollback checks.
+- Extends the existing read-only release-check and controller package version
+  recognition through the v2.1.1 beta/rc/stable line. Service authorization, report
+  ownership, package format and external-controller authority remain unchanged.
+- Control lanes, CO priority, gates, entity creation and Stability calculations are
+  unchanged. No configuration or entity migration is required.
+
+Install the complete candidate package and restart Home Assistant to load the Python
+changes. Restart/reload clears in-memory Stability history. Run `refresh_ui`, export
+with `view_cards` or `dump_cards`, replace the complete saved V2 Manual-card YAML,
+and refresh the client. Rollback restores the previous complete package and its
+saved cards; a revision-10 card against a revision-9 backend reports “UI differs”.
+Source validation and house-agent review do not establish live installation or release.
+
 <a id="unreleased--v210"></a>
 
 ## v2.1.0 — Published Stable (2026-10-12)

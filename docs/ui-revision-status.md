@@ -35,6 +35,21 @@ An integration update that changes no UI need not change the UI revision.
 
 Every package version update includes the [canonical release revision check](release-governance.md#rendered-ui-revision-check-for-every-version-update). The LED is maintained with HI; its revision is not a copy of the package version.
 
+### Single-level installations
+
+V2.1.0 can leave both layout targets empty when only one level is configured,
+even after a complete fresh export. The unpublished v2.1.1-beta.1 candidate fixes
+this by excluding unconfigured-level humidity and temperature chips and references
+during generation.
+Adding a dummy level or clearing the browser cache does not repair that generator defect.
+
+Level presence follows effective configured telemetry, including Options. Any
+configured telemetry type establishes a level; its humidity and temperature
+averages remain visible even when readings are unavailable. A required configured
+entity that cannot be mapped still blocks target publication. Raw unresolved
+placeholder counts include optional features; the per-card list identifies the
+references that prevented an export from advertising its revision.
+
 ## Contributor contract
 
 `ui/revision.py` owns the metadata schema, generator contract and separate mobile
@@ -84,12 +99,12 @@ unknown input, humidity uses finite numeric evidence, comfort describes position
 relative to the seasonal band, and Outputs names come from the mapped entities.
 The seasonal description never prescribes an action in competition with the backend
 reason. Outputs expansion remains shared per entry and retains its existing timer.
-The revision indicator itself leaves Stability and lane selection unchanged. In V2.1,
-both layouts use revision 9, superseding revisions 1–8. The final version bump
-preserves RC.1 revision-9 cards; no additional card export is required for that bump.
-This includes the earlier movement/humidity presentation and reviewed adaptive Outputs
-and preference handling corrections. Stamp schema and
-generator contract remain 1. See [the release compatibility record](release-governance.md#rendered-ui-revision-check-for-every-version-update).
+The revision indicator itself leaves Stability and lane selection unchanged.
+The unpublished v2.1.1-beta.1 candidate uses revision 10 in both layouts, superseding
+revisions 1–9, and requires fresh exports and full saved-card replacement.
+Published v2.1.0 retains revision 9 and its compatibility with RC.1 revision-9 cards.
+Stamp schema and generator contract remain 1. See
+[the release compatibility record](release-governance.md#rendered-ui-revision-check-for-every-version-update).
 
 Installing the Python metadata changes requires the normal complete-package update
 and Home Assistant restart. A restart resets in-memory Stability collection; it is
@@ -103,7 +118,7 @@ Run the focused regression checks from the repository root with pytest and PyYAM
 installed in a development environment:
 
 ```sh
-python -m pytest -q "tests 2/test_adaptive_cards.py" "tests 2/test_ui_revision_contract.py" "tests 2/test_badge_summary_export.py" "tests 2/test_runtime_card_sanity.py"
+python -m pytest -q "tests 2/test_single_level_ui.py" "tests 2/test_adaptive_cards.py" "tests 2/test_ui_revision_contract.py" "tests 2/test_badge_summary_export.py" "tests 2/test_runtime_card_sanity.py"
 node --test "tests 2/test_ui_revision_status.mjs" "tests 2/test_v2_display_truth.mjs"
 python scripts/sync_ui_revision.py --check
 python scripts/sync_badge_history.py --check

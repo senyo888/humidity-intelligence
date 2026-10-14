@@ -177,6 +177,11 @@ backend comfort truth instead of card-only assumptions.
 
 Generated dashboards are presentation surfaces, not decision engines.
 
+V2 humidity and temperature level-chip inventories follow effective configured
+telemetry with Options precedence, matching core entity creation. Unconfigured levels
+contribute no humidity/temperature chip or reference. Configured averages remain visible when readings are unavailable;
+missing required registry mappings still prevent successful revision advertisement.
+
 They may render:
 
 - selected runtime lane
