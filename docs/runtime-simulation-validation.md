@@ -8,6 +8,10 @@ remain separate surfaces.
 HA Lab is an optional advisory surface. Its availability, result, playback coverage,
 or soak state must not be used as a promotion or release blocker.
 
+Record optional live checks separately from simulated tests, including exact package
+identity, scenario coverage, limitations, restoration and soak status. See the
+[issue #129 Lab verification record](issue-129-verification.md) for an example.
+
 ## Scope
 
 The harness in `tests 2/hi_runtime_fixtures.py` creates a fresh fake Home
