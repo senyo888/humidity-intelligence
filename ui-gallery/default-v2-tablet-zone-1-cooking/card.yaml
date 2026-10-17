@@ -5517,8 +5517,8 @@ card:
         revision: |
           [[[
             // HI-UI-REVISION:START
-            /* Canonical read-only UI revision indicator, embedded into generated cards.
-             * Declared revisions describe the renderer, not cache health or arbitrary edits.
+            /* Canonical read-only UI revision and HACS observation footer.
+             * Declared revisions and provider-reported updates remain independent claims.
              */
             const hiUiRevision = (() => {
               // HI-INACTIVITY:START
@@ -5596,6 +5596,39 @@ card:
                 if (target.supersedes.includes(stamp.revision)) return {kind:'update',label:'UI update',reason:'This backend advertises a compatible UI revision that supersedes this displayed revision.'};
                 return {kind:'different',label:'UI differs',reason:'The displayed and backend-advertised revisions differ. This may be a rollback or a different revision; a newer release is not established.'};
               }
+              const version = value => typeof value === 'string' && value.length > 0 && value.length <= 128 && value === value.trim() && !/[\p{C}\p{Z}]/u.test(value.replaceAll(' ','')) && !['unknown','unavailable'].includes(value.toLowerCase());
+              const updateEntity = value => typeof value === 'string' && value.length <= 255 && /^update\.[a-z0-9_]+$/.test(value);
+              const updateLabels = {
+                reported_update:'HI update reported', no_update_reported:'No update reported',
+                skipped:'Update skipped', in_progress:'HI update in progress', unverified:'Updates unverified',
+              };
+              function classifyUpdate(observation, live = false) {
+                const unverified = {kind:'unverified',label:updateLabels.unverified,reason:'A supported HI update source and live Home Assistant evidence are required.',observation:null};
+                if (!live || !object(observation) || observation.schema !== 1 || observation.provider !== 'hacs' || observation.repository !== 'senyo888/humidity-intelligence' || !Object.hasOwn(updateLabels,observation.status)) return unverified;
+                if (observation.status === 'unverified') return {...unverified,reason:'HI update information is missing, unavailable or cannot be verified. UI revision status remains independent.'};
+                if (!updateEntity(observation.entity_id) || !['on','off'].includes(observation.provider_state) || !version(observation.downloaded_version) || !version(observation.latest_version) || !(observation.skipped_version === null || version(observation.skipped_version))) return unverified;
+                if (observation.status === 'reported_update' && observation.provider_state !== 'on') return unverified;
+                if (['no_update_reported','skipped'].includes(observation.status) && observation.provider_state !== 'off') return unverified;
+                if (observation.provider_state === 'on' && (observation.downloaded_version === observation.latest_version || observation.skipped_version === observation.latest_version)) return unverified;
+                const skipped = observation.skipped_version !== null && observation.skipped_version === observation.latest_version && observation.downloaded_version !== observation.latest_version;
+                if ((observation.status === 'skipped') !== skipped && observation.status !== 'in_progress') return unverified;
+                const reasons = {
+                  reported_update:'HACS reports an update for Humidity Intelligence. This is the provider’s report, not an independent comparison with the code currently running.',
+                  no_update_reported:'HACS reports no update. This can also occur when the downloaded version is ahead of the offered version; it does not prove that the latest code is running.',
+                  skipped:'The release currently offered by HACS was skipped. This choice is retained; no update is installed from this card.',
+                  in_progress:'HACS reports an update in progress. A completed download does not establish that Home Assistant has loaded the new code.',
+                };
+                return {kind:observation.status,label:updateLabels[observation.status],reason:reasons[observation.status],observation};
+              }
+              function canViewUpdate(result, hass) {
+                const observation = result.observation;
+                if (!observation || hass?.connection?.connected !== true) return false;
+                const entity = hass.states?.[observation.entity_id];
+                return available(entity) && entity.state === observation.provider_state &&
+                  entity.attributes?.installed_version === observation.downloaded_version &&
+                  entity.attributes?.latest_version === observation.latest_version &&
+                  (entity.attributes?.skipped_version ?? null) === observation.skipped_version;
+              }
               function dispose(owner) { owner?.[KEY]?.dispose(); }
               function render(owner, hass, entity, stamp) {
                 if (!owner || !owner.isConnected) return '';
@@ -5607,6 +5640,7 @@ card:
                   owner[KEY] = state;
                   const usable = () => !state.blocked && state.connection?.connected === true && available(state.entity);
                   state.result = () => classify(state.stamp,state.entity?.attributes?.ui_revision,usable());
+                  state.updateResult = () => classifyUpdate(state.entity?.attributes?.update_observation,usable());
                   state.paint = () => {
                     const button = owner.shadowRoot?.querySelector('.hi-ui-revision');
                     if (state.button !== button) {
@@ -5618,10 +5652,15 @@ card:
                     }
                     if (!button) return;
                     const result=state.result();
+                    const update=state.updateResult();
                     if (button.dataset.status !== result.kind) button.dataset.status=result.kind;
+                    if (button.dataset.updateStatus !== update.kind) button.dataset.updateStatus=update.kind;
                     const label=button.querySelector('.hi-ui-revision-label');
                     if (label && label.textContent !== result.label) label.textContent=result.label;
-                    const accessible=result.label+'. Open UI revision details';
+                    const updateLabel=button.querySelector('.hi-update-label');
+                    const updateText=(update.kind === 'reported_update' ? '↑ ' : '')+update.label;
+                    if (updateLabel && updateLabel.textContent !== updateText) updateLabel.textContent=updateText;
+                    const accessible=result.label+'. '+update.label+'. Open UI and software versions';
                     if (button.getAttribute('aria-label') !== accessible) button.setAttribute('aria-label',accessible);
                   };
                   state.open = () => {
@@ -5632,11 +5671,13 @@ card:
                       return;
                     }
                     const result=state.result();
+                    const update=state.updateResult();
+                    const observation=update.observation;
                     dialog.className='hi-ui-revision-details';
-                    dialog.setAttribute('aria-label','UI revision details');
+                    dialog.setAttribute('aria-label','UI and software versions');
                     const validStamp=object(state.stamp);
                     const target=state.entity?.attributes?.ui_revision?.layouts?.[state.stamp?.layout];
-                    dialog.innerHTML=`<style>.hi-ui-revision-details{box-sizing:border-box;width:min(460px,calc(100vw - 32px));max-height:calc(100dvh - 32px);overflow:auto;padding:20px;border:1px solid #64748b;border-radius:20px;background:#0d1522;color:#e2e8f0;font:14px/1.6 system-ui,sans-serif}.hi-ui-revision-details::backdrop{background:rgba(0,0,0,.55)}.hi-ui-revision-details button{min-width:44px;min-height:44px;float:right;border:1px solid #64748b;border-radius:50%;background:#18253a;color:#e2e8f0;font:inherit}.hi-ui-revision-details button:focus-visible{outline:2px solid #38bdf8;outline-offset:2px}.hi-ui-revision-details p{overflow-wrap:anywhere}</style><button type="button" aria-label="Close" autofocus>×</button><h2>${escape(result.label)}</h2><p>${escape(result.reason)}</p><p>Displayed revision: ${validStamp && positive(state.stamp.revision)?state.stamp.revision:'Unavailable'}. Backend-advertised revision: ${positive(target?.revision)?target.revision:'Unavailable'}.</p><p>To replace the UI, export the selected layout, replace the complete Manual-card YAML, and save the dashboard. Refresh the browser or app if the old UI remains cached.</p><p>This indicator does not diagnose browser caching or confirm that a downloaded file was installed. These details are a snapshot; reopen to check again.</p>`;
+                    dialog.innerHTML=`<style>.hi-ui-revision-details{box-sizing:border-box;width:min(460px,calc(100vw - 32px));max-height:calc(100dvh - 32px);overflow:auto;padding:20px;border:1px solid #64748b;border-radius:20px;background:#0d1522;color:#e2e8f0;font:14px/1.6 system-ui,sans-serif}.hi-ui-revision-details::backdrop{background:rgba(0,0,0,.55)}.hi-ui-revision-details button{min-width:44px;min-height:44px;border:1px solid #64748b;border-radius:10px;background:#18253a;color:#e2e8f0;font:inherit;padding:8px 12px}.hi-ui-revision-details button[aria-label="Close"]{float:right;border-radius:50%;padding:0}.hi-ui-revision-details button:focus-visible{outline:2px solid #38bdf8;outline-offset:2px}.hi-ui-revision-details p{overflow-wrap:anywhere}.hi-ui-revision-details h3{margin-bottom:4px}.hi-ui-revision-details hr{border:0;border-top:1px solid #475569;margin:20px 0}</style><button type="button" aria-label="Close" autofocus>×</button><h2>UI and software versions</h2><h3>${escape(result.label)}</h3><p>${escape(result.reason)}</p><p>Displayed revision: ${validStamp && positive(state.stamp.revision)?state.stamp.revision:'Unavailable'}. Backend-advertised revision: ${positive(target?.revision)?target.revision:'Unavailable'}.</p><p>To replace the UI, export the selected layout, replace the complete Manual-card YAML, and save the dashboard. Refresh the browser or app if the old UI remains cached.</p><hr><h3>${escape(update.label)}</h3><p>${escape(update.reason)}</p>${observation ? `<p>Source: HACS<br>HACS downloaded version: ${escape(observation.downloaded_version)}<br>HACS available version: ${escape(observation.latest_version)}${observation.skipped_version ? `<br>HACS skipped version: ${escape(observation.skipped_version)}` : ''}</p>` : ''}<p>Update information follows HACS’s selected release channel and refresh schedule. It may be cached; a fresh Internet check and the running version are not verified.</p>${canViewUpdate(update,state.hass) ? '<button type="button" data-view-update>View update</button><p data-update-action-status role="status"></p>' : ''}<p>This indicator does not diagnose browser caching or confirm that a downloaded file was installed. These details are a snapshot; reopen to check again.</p>`;
                     const previous=owner.shadowRoot?.activeElement || document.activeElement;
                     let cleaned=false;
                     let stopIdle=()=>{};
@@ -5650,6 +5691,17 @@ card:
                     };
                     state.close=close; window.__hiBadgeDetailsDispose=close;
                     dialog.querySelector('button').addEventListener('click',()=>close());
+                    if (canViewUpdate(update,state.hass)) dialog.querySelector('[data-view-update]')?.addEventListener('click',()=>{
+                      const current=state.updateResult();
+                      // A dialog snapshot must never silently retarget a renamed/replaced source.
+                      if (!canViewUpdate(current,state.hass) || JSON.stringify(current.observation) !== JSON.stringify(observation)) {
+                        const message=dialog.querySelector('[data-update-action-status]');
+                        if(message)message.textContent='Update information changed or is unavailable. Close and reopen these details.';
+                        return;
+                      }
+                      close();
+                      owner.dispatchEvent(new CustomEvent('hass-more-info',{detail:{entityId:observation.entity_id},bubbles:true,composed:true}));
+                    });
                     dialog.addEventListener('close',()=>close(),{once:true});
                     dialog.addEventListener('click',event=>{if(event.target!==dialog)return;const b=dialog.getBoundingClientRect();if(event.clientX<b.left||event.clientX>b.right||event.clientY<b.top||event.clientY>b.bottom)close();});
                     document.body.appendChild(dialog);
@@ -5696,10 +5748,11 @@ card:
                 // fresh available Diagnostics entity after ready, not a new container object.
                 else if(state.blocked && state.ready && available(entity) && entity!==state.blockedEntity)state.blocked=false;
                 const result=state.result();
+                const update=state.updateResult();
                 queueMicrotask(()=>{if(!state.disposed)state.paint();});
-                return `<button type="button" class="hi-ui-revision" data-status="${result.kind}" aria-label="${escape(result.label)}. Open UI revision details"><span class="hi-ui-revision-led" aria-hidden="true"></span><span class="hi-ui-revision-label">${escape(result.label)}</span></button>`;
+                return `<button type="button" class="hi-ui-revision" data-status="${result.kind}" data-update-status="${update.kind}" aria-label="${escape(result.label)}. ${escape(update.label)}. Open UI and software versions"><span class="hi-ui-revision-summary"><span class="hi-ui-revision-led" aria-hidden="true"></span><span class="hi-ui-revision-label">${escape(result.label)}</span></span><span class="hi-update-label">${update.kind === 'reported_update' ? '↑ ' : ''}${escape(update.label)}</span></button>`;
               }
-              return {classify,render,dispose};
+              return {classify,classifyUpdate,canViewUpdate,render,dispose};
             })();
             // HI-UI-REVISION:END
             return hiUiRevision.render(this, hass, entity, variables.hi_ui_stamp);
@@ -5711,27 +5764,30 @@ card:
           - border-radius: 0
           - box-shadow: none
           - padding: 0
-          - height: 24px
+          - min-height: 44px
           - margin-top: 4px
           - overflow: visible
         grid:
           - grid-template-areas: '"revision"'
           - grid-template-columns: 1fr
-          - grid-template-rows: 24px
+          - grid-template-rows: minmax(44px, auto)
         custom_fields:
           revision:
-            - justify-self: start
+            - justify-self: stretch
             - align-self: center
             - text-align: left
             - overflow: visible
       extra_styles: |
         .hi-ui-revision {
-          position: relative; display: inline-flex; align-items: center; gap: 6px;
-          height: 20px; padding: 0 2px; border: 0; background: transparent; pointer-events: auto;
-          color: #b9c7d6; font: 11px/20px system-ui,sans-serif; cursor: pointer;
+          box-sizing: border-box; display: flex; align-items: center; flex-wrap: wrap; gap: 2px 8px;
+          width: 100%; min-height: 44px; padding: 4px 2px; border: 0; background: transparent; pointer-events: auto;
+          color: #b9c7d6; font: 11px/20px system-ui,sans-serif; cursor: pointer; text-align: left;
         }
-        /* The hit area occupies the footer's empty margin and shell padding. */
-        .hi-ui-revision::after { content: ''; position: absolute; inset: -12px -4px; }
+        .hi-ui-revision-summary { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+        .hi-update-label { color: #94a3b8; overflow-wrap: anywhere; }
+        .hi-update-label::before { content: '·'; margin-right: 8px; }
+        .hi-ui-revision[data-update-status="reported_update"] .hi-update-label,
+        .hi-ui-revision[data-update-status="in_progress"] .hi-update-label { color: #7dd3fc; }
         .hi-ui-revision:focus-visible { outline: 2px solid #38bdf8; outline-offset: 3px; border-radius: 3px; }
         .hi-ui-revision-led { width: 8px; height: 8px; flex: none; border-radius: 50%; background: #94a3b8; box-shadow: inset 0 1px 1px rgba(255,255,255,.28); }
         .hi-ui-revision[data-status="current"] .hi-ui-revision-led { background: #4ade80; }

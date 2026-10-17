@@ -36,15 +36,22 @@ class Events {
  count(){return [...this.listeners.values()].reduce((sum,set)=>sum+set.size,0);}
 }
 function harness(){
- const window=new Events();const observers=[];
+ const window=new Events();const observers=[],dialogs=[],moreInfo=[];
  class Observer{constructor(callback){this.callback=callback;observers.push(this);}observe(){}disconnect(){this.stopped=true;}}
- const model=new Function('window','MutationObserver',source+'\nreturn hiUiRevision;')(window,Observer);
- const button=new Events();button.dataset={};button.label={textContent:''};button.attrs={};button.querySelector=()=>button.label;button.getAttribute=name=>button.attrs[name];button.setAttribute=(name,value)=>button.attrs[name]=value;
+ const document={activeElement:null,body:{appendChild(d){d.isConnected=true;}},createElement(){
+  const d=new Events();d.closeButton=new Events();d.updateButton=new Events();d.actionStatus={textContent:''};d.setAttribute=()=>{};
+  d.querySelector=selector=>selector==='button'?d.closeButton:selector==='[data-view-update]'?d.updateButton:d.actionStatus;
+  d.showModal=()=>{d.open=true;};d.close=()=>{d.open=false;d.emit('close');};d.remove=()=>{d.isConnected=false;};
+  d.getBoundingClientRect=()=>({left:0,right:100,top:0,bottom:100});dialogs.push(d);return d;
+ }};
+ class CustomEvent{constructor(type,options){this.type=type;Object.assign(this,options);}}
+ const model=new Function('window','MutationObserver','document','CustomEvent',source+'\nreturn hiUiRevision;')(window,Observer,document,CustomEvent);
+ const button=new Events();button.isConnected=true;button.focus=()=>{};button.dataset={};button.label={textContent:''};button.updateLabel={textContent:''};button.attrs={};button.querySelector=s=>s==='.hi-ui-revision-label'?button.label:button.updateLabel;button.getAttribute=name=>button.attrs[name];button.setAttribute=(name,value)=>button.attrs[name]=value;
  const shadowRoot=new Events();shadowRoot.querySelector=()=>button;
- const owner={isConnected:true,shadowRoot};
+ const owner={isConnected:true,shadowRoot,getRootNode:()=>shadowRoot,dispatchEvent:event=>moreInfo.push(event)};
  const connection=new Events();const entity={state:'ok',attributes:{ui_revision:metadata}};
  const hass={connection,states:{diagnostics:entity}};
- return {model,window,observers,owner,connection,entity,hass,button};
+ return {model,window,observers,owner,connection,entity,hass,button,dialogs,moreInfo};
 }
 test('disconnect paints unknown immediately; ready alone cannot bless cached evidence',async()=>{
  const h=harness();h.model.render(h.owner,h.hass,h.entity,stamp);await Promise.resolve();assert.equal(h.button.dataset.status,'current');
@@ -140,4 +147,73 @@ test('footer replacement detaches every guard and repeated paints do not duplica
  for(const name of ['touchstart','touchend','touchcancel','mousedown','mouseup','keyup'])assert.equal(replacement.listeners.get(name).size,1);
  replacement.emit('click',{stopPropagation(){}});assert.equal(opened,1);
  h.model.dispose(h.owner);assert.equal(replacement.count(),0);assert.equal(h.owner.shadowRoot.count(),0);
+});
+
+const observedUpdate=(overrides={})=>({schema:1,provider:'hacs',repository:'senyo888/humidity-intelligence',
+ status:'reported_update',reason:'provider_reported_update',entity_id:'update.example_hi',provider_state:'on',
+ downloaded_version:'2.1.0',latest_version:'2.1.1',skipped_version:null,...overrides});
+const providerState=observation=>({state:observation.provider_state,attributes:{installed_version:observation.downloaded_version,latest_version:observation.latest_version,skipped_version:observation.skipped_version,in_progress:false}});
+function withUpdate(h,observation=observedUpdate()){
+ h.entity.attributes.update_observation=observation;
+ h.hass.states[observation.entity_id]=providerState(observation);
+ h.model.render(h.owner,h.hass,h.entity,stamp);
+ return h.owner[Symbol.for('humidity_intelligence.ui_revision.lifecycle.v1')];
+}
+test('software status reports provider evidence without comparing versions or changing UI truth',()=>{
+ const cases=[
+  [observedUpdate(),'reported_update','HI update reported'],
+  [observedUpdate({status:'no_update_reported',provider_state:'off',latest_version:'2.1.0'}),'no_update_reported','No update reported'],
+  [observedUpdate({status:'no_update_reported',provider_state:'off',downloaded_version:'2.1.1-beta.3',latest_version:'2.1.0'}),'no_update_reported','No update reported'],
+  [observedUpdate({downloaded_version:'feature-branch',latest_version:'commit-reference'}),'reported_update','HI update reported'],
+  [observedUpdate({status:'skipped',provider_state:'off',skipped_version:'2.1.1'}),'skipped','Update skipped'],
+  [observedUpdate({status:'in_progress'}),'in_progress','HI update in progress'],
+  [observedUpdate({status:'unverified'}),'unverified','Updates unverified'],
+ ];
+ for(const [observation,kind,label] of cases){
+  assert.equal(ui.classifyUpdate(observation,true).kind,kind);assert.equal(ui.classifyUpdate(observation,true).label,label);
+  for(const [revision,meta,uiKind] of [[1,metadata,'current'],[2,metadata,'different'],[1,{...metadata,layouts:{v2_mobile:{revision:2,generator:1,supersedes:[1]}}},'update'],[1,null,'unknown']]){
+   const h=harness();h.entity.attributes.ui_revision=meta;h.entity.attributes.update_observation=observation;
+   const markup=h.model.render(h.owner,h.hass,h.entity,{...stamp,revision});
+   assert.ok(markup.includes(`data-status="${uiKind}"`));assert.ok(markup.includes(`data-update-status="${kind}"`));assert.ok(markup.includes(label));h.model.dispose(h.owner);
+  }
+ }
+});
+test('missing unsupported contradictory or malformed software evidence stays unverified',()=>{
+ for(const observation of [null,{},[],observedUpdate({schema:2}),observedUpdate({provider:'other'}),observedUpdate({repository:'example/fork'}),observedUpdate({status:'current'}),observedUpdate({entity_id:'sensor.example'}),observedUpdate({entity_id:'update.example\n'}),observedUpdate({provider_state:'unknown'}),observedUpdate({status:'reported_update',provider_state:'off'}),observedUpdate({downloaded_version:'2.1.1'}),observedUpdate({skipped_version:'2.1.1'}),observedUpdate({status:'skipped',provider_state:'off'}),observedUpdate({status:'no_update_reported',provider_state:'off',skipped_version:'2.1.1'})]){
+  assert.equal(ui.classifyUpdate(observation,true).kind,'unverified');
+ }
+ for(const value of [null,undefined,3,'',' unknown','unknown','unavailable','2.1\n','2.1\u0085','2.1\u202e','a'.repeat(129)])for(const field of ['downloaded_version','latest_version'])assert.equal(ui.classifyUpdate(observedUpdate({[field]:value}),true).kind,'unverified');
+ assert.equal(ui.classifyUpdate(observedUpdate(),false).kind,'unverified');
+ const installedSkipped=observedUpdate({status:'no_update_reported',provider_state:'off',downloaded_version:'2.1.1',skipped_version:'2.1.1'});
+ assert.equal(ui.classifyUpdate(installedSkipped,true).kind,'no_update_reported');
+});
+test('software coverage remains visible and invalidates with disconnected Diagnostics',async()=>{
+ const h=harness();withUpdate(h);await Promise.resolve();
+ assert.equal(h.button.label.textContent,'UI current');assert.equal(h.button.updateLabel.textContent,'↑ HI update reported');
+ assert.match(h.button.attrs['aria-label'],/UI current\. HI update reported/);
+ h.connection.connected=false;h.connection.emit('disconnected');
+ assert.equal(h.button.dataset.status,'unknown');assert.equal(h.button.dataset.updateStatus,'unverified');
+ h.connection.connected=true;h.connection.emit('ready');assert.equal(h.button.dataset.updateStatus,'unverified');
+ const fresh=structuredClone(h.entity);h.model.render(h.owner,h.hass,fresh,stamp);await Promise.resolve();assert.equal(h.button.dataset.updateStatus,'reported_update');
+ delete fresh.attributes.update_observation;h.model.render(h.owner,h.hass,{...fresh},stamp);await Promise.resolve();
+ assert.equal(h.button.label.textContent,'UI current');assert.equal(h.button.updateLabel.textContent,'Updates unverified');h.model.dispose(h.owner);
+});
+test('details escape provider text and View update opens only the exact current source without services',()=>{
+ const h=harness(),observation=observedUpdate({latest_version:'<img src=x onerror=alert(1)>'});const state=withUpdate(h,observation);
+ h.hass.callService=()=>{throw Error('No services permitted');};state.open();const dialog=h.dialogs.at(-1);
+ assert.match(dialog.innerHTML,/&lt;img src=x onerror=alert\(1\)&gt;/);assert.ok(!dialog.innerHTML.includes('<img'));
+ assert.match(dialog.innerHTML,/HACS downloaded version/);assert.match(dialog.innerHTML,/running version are not verified/);
+ dialog.updateButton.emit('click');assert.equal(dialog.open,false);assert.equal(h.moreInfo.length,1);
+ assert.equal(h.moreInfo[0].type,'hass-more-info');assert.equal(h.moreInfo[0].detail.entityId,'update.example_hi');h.model.dispose(h.owner);
+});
+test('View update refuses changed provider data, missing entities and a retargeted dialog',()=>{
+ for(const change of ['provider','missing','retarget','diagnostics','disconnect']){
+  const h=harness(),state=withUpdate(h);state.open();const dialog=h.dialogs.at(-1);
+  if(change==='provider')h.hass.states['update.example_hi'].attributes.latest_version='2.2.0';
+  if(change==='missing')delete h.hass.states['update.example_hi'];
+  if(change==='retarget'){const observation=observedUpdate({entity_id:'update.renamed_hi'});withUpdate(h,observation);}
+  if(change==='diagnostics')h.entity.state='unavailable';
+  if(change==='disconnect')h.connection.connected=false;
+  dialog.updateButton.emit('click');assert.equal(h.moreInfo.length,0,change);assert.match(dialog.actionStatus.textContent,/changed or is unavailable/);h.model.dispose(h.owner);
+ }
 });

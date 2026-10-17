@@ -1,11 +1,12 @@
 # Rendered UI revision
 
 The V2 mobile and tablet cards include a small bottom-left UI indicator. Open it
-for revision details and the next step. It reports the revision declared by this
+for UI and software version details and the next step. The UI label reports the revision declared by this
 rendered card, compared with the compatible target advertised by its HI backend.
 It is independent of environmental alerts, Stability and control health. Its 4px
-top margin keeps the footer close to Outputs; the 44px interaction target, LED,
-label and bottom inset retain their sizes.
+top margin keeps the footer close to Outputs. A single button occupies at least
+44px of real layout height and wraps its two labels on narrow screens; the UI LED
+retains its size and revision meaning.
 
 | Indicator | Meaning |
 |---|---|
@@ -32,14 +33,59 @@ local YAML edits, entity mappings, options, frontend dependencies, other clients
 or an available integration release. Continue to regenerate and replace cards
 after UI-affecting configuration changes even if their UI revision is unchanged.
 An integration update that changes no UI need not change the UI revision.
+The separate software label below never changes the UI LED's colour or meaning.
 
 Every package version update includes the [canonical release revision check](release-governance.md#rendered-ui-revision-check-for-every-version-update). The LED is maintained with HI; its revision is not a copy of the package version.
+
+## Software update observation
+
+From the unpublished v2.1.1-beta.3 candidate, the same footer also displays HACS's
+reported update state for HI. HACS is optional: manual installations and unavailable
+update sources retain the existing UI revision comparison.
+
+| Software label | Meaning |
+|---|---|
+| HI update reported | HACS reports an update; a blue arrow distinguishes this from a card replacement. |
+| No update reported | HACS currently reports no update. This does not prove globally latest or loaded code. |
+| Update skipped | The currently offered release was skipped; HI preserves that choice. |
+| HI update in progress | HACS reports a download/update in progress, not proof that new code is running. |
+| Updates unverified | The source is absent, disabled, ambiguous, unavailable, malformed, unsupported or disconnected. |
+
+Both labels remain visible. For example, **UI current · HI update reported** means
+the rendered card matches its backend while HACS reports a software update.
+**UI update · HI update reported** preserves both separate next steps.
+
+Open the footer for **UI and software versions**. The software section identifies
+HACS and labels its downloaded, available and skipped versions. **View update**
+opens the exact existing HA update entity's native details only while its current
+state and versions still match the observed source. Changed or missing evidence
+requires reopening the details. The footer does not call an install action,
+download anything, restart HA or replace dashboard YAML.
+
+HACS owns update discovery, release-channel preference and refresh timing. HI
+introduces no GitHub checker or beta selector. HA's `off` can include a skipped
+release or a downloaded version ahead of the offered version; `on` can include
+incomparable version identifiers. These are provider reports, not HI's independent
+version comparison. HACS's downloaded version may differ from manually installed
+or loaded code. Cached provider information and HA entity timestamps do not prove
+a recent successful Internet check. See [HA update states](https://www.home-assistant.io/integrations/update/),
+[HACS updates](https://www.hacs.xyz/docs/use/entities/update/) and
+[HACS prerelease selection](https://www.hacs.xyz/docs/use/entities/switch/).
+
+The backend matches the official HI repository's stable HACS unique ID in HA's
+entity registry, rather than its editable entity ID or display name. It re-resolves
+that identity during existing Diagnostics refreshes, including after renames or
+late HACS startup. `update_observation` is a separate schema-1 attribute and compact
+Diagnostics summary. It contains fixed status/reason values and bounded version
+text; no provider HTML, release URLs, credentials or claimed check timestamps.
+Native/support exports omit the locally resolved source entity ID. No new listener,
+scheduler, control input or Stability publication path is added.
 
 ### Single-level installations
 
 V2.1.0 can leave both layout targets empty when only one level is configured,
-even after a complete fresh export. The unpublished v2.1.1-beta.2 candidate fixes
-this by excluding unconfigured-level humidity and temperature chips and references
+even after a complete fresh export. The v2.1.1 candidates retain the beta.2 fix
+by excluding unconfigured-level humidity and temperature chips and references
 during generation.
 Adding a dummy level or clearing the browser cache does not repair that generator defect.
 
@@ -100,8 +146,10 @@ relative to the seasonal band, and Outputs names come from the mapped entities.
 The seasonal description never prescribes an action in competition with the backend
 reason. Outputs expansion remains shared per entry and retains its existing timer.
 The revision indicator itself leaves Stability and lane selection unchanged.
-The unpublished v2.1.1-beta.2 candidate uses revision 11 in both layouts, superseding
-revisions 1–10, and requires fresh exports and full saved-card replacement.
+The unpublished v2.1.1-beta.3 candidate uses revision 12 in both layouts, superseding
+revisions 1–11, and requires fresh exports and full saved-card replacement.
+Beta.2 remains the earlier revision-11 candidate; its live Lab evidence applies
+only to that package. The update-observation contract is independent of the stamp.
 Published v2.1.0 retains revision 9 and its compatibility with RC.1 revision-9 cards.
 Stamp schema and generator contract remain 1. See
 [the release compatibility record](release-governance.md#rendered-ui-revision-check-for-every-version-update).
@@ -119,6 +167,7 @@ installed in a development environment:
 
 ```sh
 python -m pytest -q "tests 2/test_single_level_ui.py" "tests 2/test_adaptive_cards.py" "tests 2/test_ui_revision_contract.py" "tests 2/test_badge_summary_export.py" "tests 2/test_runtime_card_sanity.py"
+python -m pytest -q "tests 2/test_update_observation.py" "tests 2/test_diagnostics.py"
 node --test "tests 2/test_ui_revision_status.mjs" "tests 2/test_v2_display_truth.mjs"
 python scripts/sync_ui_revision.py --check
 python scripts/sync_badge_history.py --check

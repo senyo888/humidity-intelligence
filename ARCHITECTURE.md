@@ -337,11 +337,23 @@ V2 generated cards carry an entry- and layout-scoped rendered UI revision, separ
 from the integration manifest. Additive Diagnostics metadata advertises compatible
 targets only for successful generation. The small footer compares declared revisions;
 it does not establish installed dashboard bytes, configuration freshness, arbitrary
-customization, cache state or integration-update availability. Missing/unsupported
+customization or cache state. Missing/unsupported
 or disconnected evidence is unverified; an explicitly superseded revision is an
 update, while a rollback mismatch is a difference. Export success never proves card
 replacement. This observation adds no writer, lane input or frontend runtime
 dependency. See [the rendered UI revision contract](docs/ui-revision-status.md).
+
+The same footer presents an independent, optional HACS update observation. The
+backend resolves the official HI repository through Home Assistant's entity
+registry and reads its update entity during existing Diagnostics publication.
+Missing, disabled, ambiguous or malformed evidence stays unverified. Provider
+states are reported without HI version ordering, release-channel selection, remote
+polling or installation actions. A HACS downloaded version is not loaded-runtime
+proof, and entity availability is not a fresh Internet check. UI revision status,
+Diagnostics' primary state, Stability and deterministic control remain independent.
+The additive `update_observation` payload has its own schema 1; native/support
+exports omit the locally resolved update entity ID. See [UI and software version
+details](docs/ui-revision-status.md#software-update-observation).
 
 ## Home Assistant And HACS Boundaries
 

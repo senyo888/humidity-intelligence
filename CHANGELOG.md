@@ -6,7 +6,42 @@ All notable changes to Humidity Intelligence will be documented in this file.
 
 This project follows a practical changelog format for Home Assistant and HACS users. Add new entries under a fresh `Unreleased` section before publishing a future release.
 
-## Unreleased — v2.1.1-beta.2
+## Unreleased — v2.1.1-beta.3
+
+Adds optional, provider-reported software update information to the V2 card footer.
+Published Stable remains v2.1.0; source preparation does not publish a beta or make
+it available through HACS.
+
+- Preserves the UI revision LED's existing current/update/differs/unverified meaning.
+  A separate visible label reports HACS update, no-update, skipped, in-progress or
+  unverified status; one details panel explains both and opens HA's existing update
+  details. Opening the footer never installs, downloads or restarts anything.
+- Resolves the official HI HACS update entity by registry identity, surviving renames.
+  Missing, disabled, ambiguous and malformed sources remain unverified. Existing
+  Diagnostics refreshes read the optional source; no network poller, listener,
+  release-channel selector or version-ordering policy is added.
+- Labels HACS downloaded and available versions explicitly. These do not attest
+  running code or a successful recent Internet check. Native/support exports omit
+  the locally resolved source entity ID; dynamic version text is escaped.
+- Advances both V2 layouts to **revision 12**, superseding 1–11. Stamp schema and
+  generator contract stay 1; separate update-observation schema 1 is additive.
+  The shared footer occupies a real 44px interaction target and wraps on narrow
+  screens while preserving touch, keyboard, focus and dialog cleanup.
+- Retains beta.2's #129 and hardening changes. Lane ordering, CO protection,
+  environmental inputs, output ownership and Stability behavior are unchanged.
+
+Install the complete package and restart HA to load the backend addition, then
+`refresh_ui`, export and replace the complete saved V2 cards. Restart/reload resets
+in-memory Stability history; there is no configuration or entity migration.
+Rollback restores the prior complete package and saved card YAML separately.
+Revision-12 cards against revision-11 metadata report “UI differs”; absent software
+metadata stays unverified. See [footer details](docs/ui-revision-status.md).
+Beta.2 Lab/soak evidence remains optional, non-blocking and bound to that earlier
+package. No beta.3 deployment or completed soak is claimed.
+
+<a id="unreleased--v211-beta2"></a>
+
+## v2.1.1-beta.2 — Earlier unpublished candidate
 
 Development candidate for [#129](https://github.com/senyo888/humidity-intelligence/issues/129),
 with follow-up input-handling and calculated-trend hardening.

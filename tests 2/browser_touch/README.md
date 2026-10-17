@@ -10,8 +10,7 @@ blocked. Nothing connects to Home Assistant or controls a household device.
 ## Run
 
 Use a disposable Python environment with PyYAML and Node with Playwright.
-The current run uses Playwright 1.62.1; earlier complete-harness work used
-1.63.0. Record the actual version. Install Chromium and WebKit for the full matrix. Obtain the unmodified
+Record the actual Playwright version with each run. Install Chromium and WebKit for the full matrix. Obtain the unmodified
 [button-card 7.0.1 release](https://github.com/custom-cards/button-card/releases/download/v7.0.1/button-card.js)
 and set `BUTTON_CARD_PATH` to that local file. The runner rejects any other SHA-256:
 `5d6e9c6afca01e8014653fa56bb5d6aa9248d832c34fb944a7f2c36329bc22d1`.
@@ -19,9 +18,9 @@ and set `BUTTON_CARD_PATH` to that local file. The runner rejects any other SHA-
 From the repository root:
 
 ```sh
-python 'tests 2/browser_touch/build_fixture.py' --output .codex/reports/browser-touch
+python 'tests 2/browser_touch/build_fixture.py' --output output/playwright/browser-touch
 BUTTON_CARD_PATH=/path/to/button-card.js \
-  FIXTURE_DIR="$PWD/.codex/reports/browser-touch" \
+  FIXTURE_DIR="$PWD/output/playwright/browser-touch" \
   VISUAL_REVIEW=1 \
   node 'tests 2/browser_touch/run.mjs'
 ```
@@ -44,6 +43,8 @@ viewport profile, user agent, coarse-pointer capability and actual
 `navigator.maxTouchPoints`. WebKit's reported touch-point count may be zero in
 emulation even when trusted browser touch events are delivered; the harness does
 not override that property. Genuine touchscreen events are separately recorded.
+The fixture also records source hashes and the production update adapter used to
+normalize synthetic HACS states; the result records the exact fixture digest.
 
 ## What is real, and what is substituted
 
@@ -82,6 +83,17 @@ modal is covered by separate component unit tests, not fabricated browser input.
 - Mobile 390px and tablet 1024px touch contexts in both engines.
 - Full layout mount and all ten custom badge/explanation dialogs.
 - LED dot, label and enlarged hit area; keyboard, rapid reopen and dismissal.
+- Combined UI/software footer in both native and adaptive variants: independent
+  UI revision and provider-reported statuses, skipped releases, a manual beta ahead
+  of the offered release, in-progress updates, and visible missing/unavailable
+  coverage. Synthetic HACS registry states run through the production adapter.
+- Exact update-entity more-info handoff with no service writes; stale provider
+  state/version and changed source identity refuse the captured action. Version
+  strings remain escaped text. Disconnect/reconnect requires fresh evidence,
+  duplicate cards retain separate ownership, and removal cleans up open details.
+- Footer and details fit at 320px, 390px, and the layout's default width, with
+  non-overlapping labels and a real 44px minimum touch target. Chromium captures
+  are generated for these cases even without `VISUAL_REVIEW=1`.
 - Embedded history, range changes, Back and native source handoff.
 - System/Manual valid and unavailable states with service spies; native Outputs
   toggles exactly once; Chromium hold routes do not also toggle on release.
@@ -98,6 +110,8 @@ modal is covered by separate component unit tests, not fabricated browser input.
 
 A complete result must contain both engines and layouts. Investigative narrowed
 runs and explicitly unsupported sequences must be reported separately from passes.
+The update tests do not establish installed HACS behavior, release-channel freshness,
+download/install correctness, or compatibility with a particular physical device.
 
 ## Historical beta.11 browser check
 
@@ -127,3 +141,14 @@ The responsive group captures these cases and their scrolled details at five wid
 alongside collection, Partial, unavailable, Disabled and populated history. Fixture
 preferences, browser emulation and rendering do not establish installed persistence
 or physical-device behavior. Keep the exact source inventory with each run's receipts.
+
+## v2.1.1-beta.3 browser check
+
+The 2026-10-17 candidate run recorded **128 passed, 2 not-run and zero failures**
+with Chromium **153.0.8010.12**, WebKit **26.6**, Playwright **1.63.0**, and the verified
+button-card **7.0.1** dependency. The 48 new footer groups cover both layouts, both
+output variants and both engines; the existing interaction and Stability visual
+groups also passed. WebKit arbitrary touch sequences remain explicitly not-run.
+
+This is local synthetic browser evidence. It does not claim a beta.3 deployment,
+physical-device testing, installed HACS verification, or a completed soak.

@@ -133,6 +133,18 @@
         },
         "count": 16
       },
+      "update_observation": {
+        "downloaded_version": null,
+        "entity_id": null,
+        "latest_version": null,
+        "provider": "hacs",
+        "provider_state": null,
+        "reason": "registry_unavailable",
+        "repository": "senyo888/humidity-intelligence",
+        "schema": 1,
+        "skipped_version": null,
+        "status": "unverified"
+      },
       "visual_alert_count": 1,
       "warnings": [
         "16 configured/mapped entity references are missing, unknown, or unavailable.",

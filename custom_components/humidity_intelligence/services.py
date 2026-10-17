@@ -16,6 +16,7 @@ from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import config_validation as cv
 
 from .helpers.stability import stability_diagnostics_payload
+from .helpers.update_observation import support_update_observation, update_observation
 from .const import CONF_SHOW_OUTPUT_ENTITY_DETAILS, DEFAULT_SHOW_OUTPUT_ENTITY_DETAILS, DOMAIN
 from .helpers.cleanup import (
     RELEASE_CHECK_CARD_BASE,
@@ -1135,6 +1136,7 @@ def _support_safe_diagnostics_summary(summary: dict) -> dict:
         else {}
     )
     return {
+        "update_observation": support_update_observation(summary.get("update_observation", {})),
         "runtime_control": {
             "mode": runtime_control.get("mode"),
             "display": runtime_control.get("display"),
@@ -1372,6 +1374,7 @@ def _build_diagnostics_summary(
         warnings.append("One or more humidifier outputs have a conflicting configured output owner.")
 
     summary = {
+        "update_observation": update_observation(hass),
         "runtime_control": runtime_control_summary(runtime_data),
         "target_profile": {
             "mode": effective.get("target_profile", "auto"),

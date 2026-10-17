@@ -5,7 +5,8 @@ testing and validation branches.
 
 ## Canonical Version Model
 
-- `2.1.1-beta.2`: current unpublished candidate correcting single-level V2 exports (#129), with follow-up device-text, calculated-trend and issue-summary hardening. Both layouts use revision 11 with schema/generator 1. Install the complete candidate, restart, regenerate and replace saved V2 cards; no configuration migration. Source preparation does not establish beta publication or HACS availability. [Optional Lab verification](issue-129-verification.md) records four passing single-level cases on the exact beta.2 package and remains non-blocking.
+- `2.1.1-beta.3`: current unpublished candidate adding optional HACS-reported update status beside the independent UI revision LED. Both layouts advance to revision 12, with stamp schema/generator 1 and a separate update-observation schema 1. Install the complete package, restart, regenerate and replace saved V2 cards; no configuration migration. This source update does not publish a beta, establish HACS availability, or change the beta.2 Lab soak.
+- `2.1.1-beta.2`: earlier unpublished candidate correcting single-level V2 exports (#129), with follow-up device-text, calculated-trend and issue-summary hardening. Both layouts use revision 11 with schema/generator 1. [Optional Lab verification](issue-129-verification.md) records four passing single-level cases on the exact beta.2 package and remains non-blocking. That evidence does not validate the changed beta.3 bytes.
 - `2.1.1-beta.1`: earlier unpublished revision-10 candidate. Its single-level Lab results and stopped, incomplete soak remain historical optional evidence for `f6e64c7`, not beta.2.
 - `2.1.0`: current published Stable, released on 2026-10-12 from reviewed RC.1 revision 9. The final version and documentation preserve runtime and generated-card behavior. Both V2 layouts stay revision 9 with schema/generator 1; installed RC.1 cards remain compatible. Publication and final-package registration are separate evidence.
 - `2.1.0-rc.1`: earlier unpublished release candidate, including the approved public content, adaptive Outputs release-check correction and review fixes for AQ recovery, event-loop Diagnostics publication, monitoring discovery and UI handling. Its exact revision-9 package completed Stable and Lab installation validation; advisory observation remains bound to that package.
@@ -398,6 +399,38 @@ and post-release observation as separate evidence states.
   approval gates are complete for the exact final head.
 
 ## Rendered UI revision check for every version update
+
+### v2.1.1-beta.3 UI and software version footer
+
+The unpublished `2.1.1-beta.3` candidate is **UI revision advanced** against
+beta.2 source `4c9f84ba8335857e952c19dac07932fbe0dba404`. Both V2 layouts use
+revision 12, with compatible revisions 1–11 in `supersedes`. Stamp schema 1 and
+generator contract 1 remain compatible: entry binding, layout identity and revision
+comparison are unchanged. The separate optional `update_observation` payload uses
+schema 1 and does not change the UI stamp's interpretation.
+
+The backend reads the exact HI HACS update entity during existing Diagnostics
+refreshes. It reports HACS evidence without adding network polling, version-ordering
+or channel policy, installation actions, control inputs or Stability behavior.
+Missing HACS does not block HI or exports. The footer preserves both status labels,
+wraps within a real 44px button, and opens UI/software details plus the existing HA
+update details. Downloaded code, running code and fresh release discovery remain
+distinct claims. See [the full state contract](ui-revision-status.md#software-update-observation).
+
+Run `python scripts/check_ui_revision_governance.py --base 4c9f84ba8335857e952c19dac07932fbe0dba404`.
+Validate generated stamps/Diagnostics targets and all four template/gallery embeds;
+cross UI states with provider states, missing/renamed/disabled sources, skipped and
+in-progress updates, manual beta/branch versions, source changes, reconnects, narrow
+layouts, single-level configurations and native/adaptive Outputs. Preserve explicit
+text escaping, keyboard/touch activation, focus, inactivity and removal cleanup.
+
+An authorized installation requires the complete package and a full HA restart,
+then regeneration and complete replacement of saved V2 cards. Restart clears
+in-memory Stability history; there is no configuration or entity migration.
+Rollback restores the prior complete package and saved cards independently. A
+revision-12 card against revision-11 metadata reports **UI differs**; unsupported
+update-observation metadata stays unverified. Beta.2 Lab/soak evidence remains
+bound to beta.2 and non-blocking; no beta.3 Lab deployment is implied.
 
 ### v2.1.1-beta.2 single-level exports and follow-up hardening
 

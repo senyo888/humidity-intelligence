@@ -45,7 +45,83 @@ for(const engine of (process.env.BROWSERS||'chromium,webkit').split(',')){
   await context.route('**/*',route=>route.request().url().startsWith(origin)?route.continue():route.abort());
   const page=await context.newPage();page.setDefaultTimeout(7000);await page.clock.install();page.on('pageerror',error=>console.error('BROWSER '+error.message));const prefix=engine+'/'+layout;
   await check(prefix+'/complete-mount',async()=>{await open(page,layout);environments.push({engine,layout,viewport:{width,height},browser:browser.version(),playwright:require(path.join(path.dirname(require.resolve(process.env.PLAYWRIGHT_MODULE||'playwright')),'package.json')).version,...await page.evaluate(()=>({userAgent:navigator.userAgent,maxTouchPoints:navigator.maxTouchPoints,coarse:matchMedia('(pointer:coarse)').matches}))});assert.ok(await page.locator('button-card').count()>10);assert.equal(await page.evaluate(()=>matchMedia('(pointer:coarse)').matches),true);if(engine==='chromium')assert.ok(await page.evaluate(()=>navigator.maxTouchPoints)>0);assert.deepEqual(await page.evaluate(()=>fixture.events.errors),[]);},page);
-  await check(prefix+'/LED-touch-label-dot-hit-area',async()=>{await open(page,layout);for(const part of ['.hi-ui-revision-label','.hi-ui-revision-led']){await page.locator(part).tap();assert.equal(await page.locator('dialog.hi-ui-revision-details[open]').count(),1);await close(page);}const button=page.locator('.hi-ui-revision');await button.scrollIntoViewIfNeeded();const b=await button.boundingBox();await page.touchscreen.tap(b.x+4,b.y-5);assert.equal(await page.locator('dialog.hi-ui-revision-details[open]').count(),1);await close(page);assert.ok((await page.evaluate(()=>fixture.events.touch)).every(e=>e.trusted));assert.equal(await page.evaluate(()=>fixture.events.actions.length),0);assert.equal(await page.evaluate(()=>fixture.events.services.length),0);},page);
+  await check(prefix+'/LED-touch-label-dot-hit-area',async()=>{await open(page,layout);for(const part of ['.hi-ui-revision-label','.hi-ui-revision-led','.hi-update-label']){await page.locator(part).tap();assert.equal(await page.locator('dialog.hi-ui-revision-details[open]').count(),1);await close(page);}const button=page.locator('.hi-ui-revision');await button.scrollIntoViewIfNeeded();const b=await button.boundingBox();assert.ok(b.height>=44,'real footer button has a 44px minimum touch target');await page.touchscreen.tap(b.x+4,b.y+4);assert.equal(await page.locator('dialog.hi-ui-revision-details[open]').count(),1);await close(page);assert.ok((await page.evaluate(()=>fixture.events.touch)).every(e=>e.trusted));assert.equal(await page.evaluate(()=>fixture.events.actions.length),0);assert.equal(await page.evaluate(()=>fixture.events.services.length),0);},page);
+  for(const variant of ['', '_adaptive']){
+   const targetLayout=layout+variant, footerPrefix=prefix+'/beta3-footer'+(variant||'-native');
+   await check(footerPrefix+'/reported-statuses-and-independent-UI',async()=>{
+    await open(page,targetLayout);const footer=page.locator('.hi-ui-revision');
+    for(const [name,status,label] of [['missing','unverified','Updates unverified'],['unavailable','unverified','Updates unverified'],['unknown','unverified','Updates unverified'],['reported_update','reported_update','↑ HI update reported'],['no_update_reported','no_update_reported','No update reported'],['skipped','skipped','Update skipped'],['in_progress','in_progress','HI update in progress']]){
+     await page.evaluate(name=>fixture.updateCase(name),name);await footer.locator('.hi-update-label').filter({hasText:label}).waitFor();
+     assert.equal(await footer.getAttribute('data-update-status'),status);assert.equal(await footer.getAttribute('data-status'),'current');
+     assert.equal(await footer.locator('.hi-ui-revision-label').textContent(),'UI current');
+     assert.match(await footer.getAttribute('aria-label'),/Open UI and software versions/);
+     await footer.tap();const details=page.locator('dialog.hi-ui-revision-details[open]');await details.waitFor();
+     assert.equal(await details.getAttribute('aria-label'),'UI and software versions');
+     assert.equal(await details.locator('[data-view-update]').count(),status==='unverified'?0:1);
+     assert.match(await details.textContent(),/fresh Internet check and the running version are not verified/);
+     if(name==='no_update_reported')assert.match(await details.textContent(),/downloaded version is ahead/);
+     await close(page);
+    }
+    await page.evaluate(()=>{fixture.updateCase('reported_update');fixture.uiUpdate();});
+    await footer.locator('.hi-ui-revision-label').filter({hasText:'UI update'}).waitFor();
+    assert.equal(await footer.getAttribute('data-status'),'update');assert.equal(await footer.getAttribute('data-update-status'),'reported_update');
+    await footer.tap();assert.match(await page.locator('dialog[open]').textContent(),/UI update[\s\S]*HI update reported/);await close(page);
+    assert.equal(await page.evaluate(()=>fixture.events.services.length),0);assert.equal(await page.evaluate(()=>fixture.events.actions.length),0);
+   },page);
+   await check(footerPrefix+'/keyboard-and-exact-native-handoff',async()=>{
+    await open(page,targetLayout);await page.evaluate(()=>fixture.updateCase('reported_update'));const footer=page.locator('.hi-ui-revision');
+    for(const key of ['Enter','Space']){await footer.focus();await page.keyboard.press(key);await opened(page);assert.equal(await page.locator('dialog[open]').count(),1);await page.keyboard.press('Escape');}
+    await footer.locator('.hi-update-label').tap();await page.getByRole('button',{name:'View update',exact:true}).tap();
+    await page.locator('dialog[data-native-stub=true][open]').waitFor();assert.equal(await page.locator('dialog.hi-ui-revision-details').count(),0);
+    assert.deepEqual(await page.evaluate(()=>fixture.events.moreInfo),[{entityId:'update.fixture_hi_renamed'}]);
+    assert.equal(await page.evaluate(()=>fixture.events.services.length),0);assert.equal(await page.evaluate(()=>fixture.events.actions.length),0);await close(page);
+   },page);
+   await check(footerPrefix+'/stale-provider-and-dialog-retarget-guard',async()=>{
+    await open(page,targetLayout);const footer=page.locator('.hi-ui-revision');
+    for(const change of [{state:'unavailable'},{attributes:{latest_version:'2.1.1-beta.4'}}]){
+     await page.evaluate(()=>fixture.updateCase('reported_update'));await footer.tap();
+     await page.evaluate(change=>fixture.providerChange(change),change);await page.getByRole('button',{name:'View update',exact:true}).tap();
+     await page.locator('[data-update-action-status]').filter({hasText:'Close and reopen'}).waitFor();assert.equal(await page.evaluate(()=>fixture.events.moreInfo.length),0);await close(page);
+     await footer.tap();assert.equal(await page.locator('[data-view-update]').count(),0);await close(page);
+    }
+    await page.evaluate(()=>fixture.updateCase('reported_update'));await footer.tap();await page.evaluate(()=>fixture.renameUpdateSource());
+    await page.getByRole('button',{name:'View update',exact:true}).tap();await page.locator('[data-update-action-status]').filter({hasText:'Close and reopen'}).waitFor();
+    assert.equal(await page.evaluate(()=>fixture.events.moreInfo.length),0);await close(page);await footer.tap();await page.getByRole('button',{name:'View update',exact:true}).tap();
+    assert.deepEqual(await page.evaluate(()=>fixture.events.moreInfo),[{entityId:'update.fixture_hi_replaced'}]);await close(page);
+    assert.equal(await page.evaluate(()=>fixture.events.services.length),0);
+   },page);
+   await check(footerPrefix+'/version-text-escaped',async()=>{
+    await open(page,targetLayout);await page.evaluate(()=>fixture.updateCase('escaped_version'));await page.locator('.hi-ui-revision').tap();
+    const details=page.locator('dialog[open]');assert.match(await details.textContent(),/<b data-fixture-untrusted="yes">beta<\/b>/);assert.equal(await details.locator('[data-fixture-untrusted]').count(),0);
+    assert.equal(await page.evaluate(()=>fixture.events.services.length),0);assert.deepEqual(await page.evaluate(()=>fixture.events.errors),[]);await close(page);
+   },page);
+   await check(footerPrefix+'/disconnect-freshness-duplicate-cleanup',async()=>{
+    await open(page,targetLayout);await page.evaluate(()=>fixture.updateCase('reported_update'));const footer=page.locator('.hi-ui-revision');await footer.tap();
+    await page.evaluate(()=>fixture.disconnect());assert.equal(await page.locator('dialog[open]').count(),0);assert.equal(await footer.getAttribute('data-update-status'),'unverified');
+    await page.evaluate(()=>fixture.ready());assert.equal(await footer.getAttribute('data-update-status'),'unverified');
+    await page.evaluate(()=>fixture.fresh());await page.locator('.hi-ui-revision[data-update-status="reported_update"]').waitFor();
+    await page.evaluate(()=>fixture.duplicate());assert.equal(await footer.count(),2);
+    await footer.nth(0).tap();await opened(page);await close(page);await footer.nth(1).tap();await opened(page);assert.equal(await page.locator('dialog[open]').count(),1);
+    await page.evaluate(()=>fixture.remove());await page.locator('dialog[open]').waitFor({state:'hidden'});assert.equal(await page.evaluate(()=>fixture.events.services.length),0);
+   },page);
+   await check(footerPrefix+'/responsive-footer-and-details',async()=>{
+    const measurements=[];
+    for(const viewportWidth of [...new Set([320,390,width])]){
+     await page.setViewportSize({width:viewportWidth,height:1024});await open(page,targetLayout);await page.evaluate(()=>fixture.updateCase('reported_update'));
+     const footer=page.locator('.hi-ui-revision');await footer.scrollIntoViewIfNeeded();
+     const measure=await footer.evaluate(el=>{const box=el.getBoundingClientRect(),parts=[...el.children].map(child=>{const b=child.getBoundingClientRect();return{x:b.x,y:b.y,right:b.right,bottom:b.bottom,width:b.width,height:b.height};});return{box:{x:box.x,y:box.y,right:box.right,bottom:box.bottom,width:box.width,height:box.height},parts,overflow:el.scrollWidth>el.clientWidth,viewport:innerWidth};});
+     assert.ok(measure.box.height>=44);assert.ok(measure.box.x>=0&&measure.box.right<=viewportWidth+1);assert.equal(measure.overflow,false);
+     for(const part of measure.parts)assert.ok(part.x>=measure.box.x-1&&part.right<=measure.box.right+1&&part.y>=measure.box.y-1&&part.bottom<=measure.box.bottom+1,'labels stay inside touch target');
+     const [left,right]=measure.parts;assert.ok(left.right<=right.x+1||right.right<=left.x+1||left.bottom<=right.y+1||right.bottom<=left.y+1,'footer labels do not overlap');
+     if(engine==='chromium'&&!variant)await footer.screenshot({path:path.join(output,`${layout}-beta3-footer-${viewportWidth}-offline-fixture.png`)});
+     await footer.tap();const dialog=page.locator('dialog[open]');const details=await dialog.evaluate(el=>({overflow:el.scrollWidth>el.clientWidth,width:el.getBoundingClientRect().width}));
+     assert.equal(details.overflow,false);assert.ok(details.width<=viewportWidth);if(engine==='chromium'&&!variant)await dialog.screenshot({path:path.join(output,`${layout}-beta3-details-${viewportWidth}-offline-fixture.png`)});
+     measurements.push({viewportWidth,...measure,details});await close(page);
+    }
+    fs.writeFileSync(path.join(output,`${engine}-${targetLayout}-beta3-measurements.json`),JSON.stringify({provenance:'Synthetic normalized provider state; production-generated layouts and renderer; no live Home Assistant',measurements},null,2));
+    await page.setViewportSize({width,height});assert.equal(await page.evaluate(()=>fixture.events.services.length),0);
+   },page);
+  }
   await check(prefix+'/all-custom-dialogs-touch-close',async()=>{await open(page,layout);for(const name of ['Humidity','Condensation','Mould','7 Day Drift','Current Air Control','Ready','Zone 1','Zone 2','AQ','Stability Score']){const card=page.locator(`button-card[data-hi-name="${name}"]`);await card.locator('#card').tap();await opened(page);assert.equal(await page.locator('dialog[open]').count(),1,name);await close(page);assert.equal(await page.locator('dialog[open]').count(),0,name);}assert.equal(await page.evaluate(()=>fixture.events.services.length),0);},page);
   await check(prefix+'/embedded-history-navigation',async()=>{await open(page,layout);await page.locator('button-card[data-hi-name="Condensation"] #card').tap();await page.getByRole('button',{name:'View history',exact:true}).tap();await page.locator('.hi-history').waitFor();assert.equal(await page.evaluate(()=>fixture.events.history.length),1);await page.locator('[data-hours="168"]').tap();assert.equal(await page.evaluate(()=>fixture.events.history.length),2);await page.locator('[data-back]').tap();await page.getByRole('button',{name:'View history',exact:true}).tap();await page.locator('[data-native]').tap();await page.locator('dialog[data-native-stub=true]').waitFor();await close(page);assert.equal(await page.evaluate(()=>fixture.events.services.length),0);},page);
   await check(prefix+'/System-Manual-exact-spies-valid-invalid',async()=>{await open(page,layout);for(const name of ['System','Manual']){const card=page.locator(`button-card[data-hi-name="${name}"]`);await card.locator('#card').tap();}const calls=await page.evaluate(()=>fixture.events.services);assert.equal(calls.length,2);assert.ok(calls.every(c=>c.service==='toggle'));await page.evaluate(()=>{fixture.setState('input_boolean.air_control_enabled','unavailable');fixture.setState('input_boolean.air_control_manual_override','unknown');fixture.reset();});await page.locator('button-card[data-hi-name="System"]').getByText('UNAVAILABLE',{exact:true}).waitFor();await page.locator('button-card[data-hi-name="Manual"]').getByText('UNKNOWN',{exact:true}).waitFor();for(const name of ['System','Manual'])await page.locator(`button-card[data-hi-name="${name}"] #card`).tap();assert.equal(await page.evaluate(()=>fixture.events.services.length),0);},page);
@@ -223,5 +299,5 @@ for(const engine of (process.env.BROWSERS||'chromium,webkit').split(',')){
  }
  await browser.close();browser=null;
 }
-}finally{await browser?.close();await new Promise(r=>server.close(r));fs.writeFileSync(path.join(output,'results.json'),JSON.stringify({buttonCard:{version:'7.0.1',sha256:expected},environments,limitations:['Native HA stack/mod-card/entities substitutes, not HA frontend','No physical iOS/Android or household integration','WebKit arbitrary-touch-sequence limitation explicitly recorded'],results},null,2));}
+}finally{await browser?.close();await new Promise(r=>server.close(r));const fixtureConfig=fs.readFileSync(files['/config.json']);fs.writeFileSync(path.join(output,'results.json'),JSON.stringify({buttonCard:{version:'7.0.1',sha256:expected},fixture:{sha256:crypto.createHash('sha256').update(fixtureConfig).digest('hex'),source_sha256:JSON.parse(fixtureConfig).source_sha256,update_provenance:JSON.parse(fixtureConfig).update_provenance},environments,limitations:['Native HA stack/mod-card/entities substitutes, not HA frontend','No physical iOS/Android or household integration','Synthetic HACS registry/provider states; no installed HACS or live release-channel verification','WebKit arbitrary-touch-sequence limitation explicitly recorded'],results},null,2));}
 const failures=results.filter(r=>r.status==='fail');console.log(`${results.length} cases; ${failures.length} failed`);if(failures.length)process.exitCode=1;
