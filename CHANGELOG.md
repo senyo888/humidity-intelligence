@@ -6,7 +6,38 @@ All notable changes to Humidity Intelligence will be documented in this file.
 
 This project follows a practical changelog format for Home Assistant and HACS users. Add new entries under a fresh `Unreleased` section before publishing a future release.
 
-## Unreleased — v2.1.1-beta.3
+## Unreleased — v2.1.1-beta.4
+
+Makes the V2 software-update footer quieter while retaining its independent UI
+revision indicator. Published Stable remains v2.1.0; this candidate is not a tag,
+GitHub Release or HACS offering.
+
+- Hides the routine **No update reported** label from the footer and removes the
+  separator. Its provider evidence remains available in the existing details and
+  accessible button name; silence does not prove that the latest code is running.
+- Shows **↑ Update available** at the lower right when HACS reports an update.
+  Skipped, in-progress and unverified states remain visible at the right. The UI
+  revision LED/status stays on the left, including replacement and mismatch warnings.
+- Retains one real 44px details button, natural wrapping, keyboard/touch access,
+  focus and dialog cleanup. **View update** keeps its guarded native HA handoff;
+  opening the footer does not install, download, restart or write control outputs.
+- Advances both V2 layouts to **revision 13**, superseding 1–12. Stamp schema and
+  generator contract remain 1, as does the backend update-observation schema.
+  HACS source resolution, state classification, channel/refresh policy, runtime
+  lanes, entity/service contracts and Stability calculation are unchanged.
+
+Install the complete package and restart HA to load the version/revision metadata,
+then regenerate exports and replace the complete saved V2 cards. Restart/reload
+resets in-memory Stability history; no configuration or entity migration is needed.
+Rollback restores the previous complete package and saved card YAML separately:
+revision-13 cards against beta.3 revision-12 metadata report **UI differs**.
+Existing beta.3 deployment/soak evidence remains bound to beta.3 and non-blocking;
+this source change leaves that observation running and makes no beta.4 deployment
+or completed-soak claim. See [footer details](docs/ui-revision-status.md).
+
+<a id="unreleased--v211-beta3"></a>
+
+## v2.1.1-beta.3 — Earlier unpublished candidate
 
 Adds optional, provider-reported software update information to the V2 card footer.
 Published Stable remains v2.1.0; source preparation does not publish a beta or make

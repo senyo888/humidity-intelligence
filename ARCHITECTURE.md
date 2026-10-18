@@ -351,6 +351,12 @@ states are reported without HI version ordering, release-channel selection, remo
 polling or installation actions. A HACS downloaded version is not loaded-runtime
 proof, and entity availability is not a fresh Internet check. UI revision status,
 Diagnostics' primary state, Stability and deterministic control remain independent.
+The footer keeps UI revision status at the left and software cues at the right.
+A positive provider report is labelled **Update available**; its details retain
+HACS's source and freshness limits. The routine no-update cue is visually hidden,
+while its evidence remains in the shared details/accessibility text. Skipped,
+in-progress and unverified states stay visible; absence is not a software-current
+claim. The shared details button adds no new action.
 The additive `update_observation` payload has its own schema 1; native/support
 exports omit the locally resolved update entity ID. See [UI and software version
 details](docs/ui-revision-status.md#software-update-observation).

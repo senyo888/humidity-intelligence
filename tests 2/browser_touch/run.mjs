@@ -31,6 +31,25 @@ async function check(label,fn,page){if(only&&!label.includes(only))return;try{aw
 async function open(page,layout){await page.goto(`${origin}/?layout=${layout}`);await page.waitForSelector('html[data-ready=true]');await page.locator('button-card').first().locator('#card').waitFor();await page.waitForTimeout(120);}
 async function opened(page){await page.locator('dialog[open]').last().waitFor({state:'visible',timeout:3000});}
 async function close(page){const modal=page.locator('dialog[open]');if(await modal.count()){await modal.last().getByRole('button',{name:'Close',exact:true}).tap();await page.waitForTimeout(40);}}
+async function footerMeasure(footer){return footer.evaluate(element=>{
+ const rect=node=>{const box=node.getBoundingClientRect();return {x:box.x,y:box.y,right:box.right,bottom:box.bottom,width:box.width,height:box.height};};
+ const cue=element.querySelector('.hi-update-label'),style=getComputedStyle(element),cueStyle=getComputedStyle(cue);
+ return {box:rect(element),owner:rect(element.getRootNode().host),summary:rect(element.querySelector('.hi-ui-revision-summary')),cue:rect(cue),cueDisplay:cueStyle.display,separator:getComputedStyle(cue,'::before').content,overflow:element.scrollWidth>element.clientWidth,paddingLeft:parseFloat(style.paddingLeft),paddingRight:parseFloat(style.paddingRight),borderLeft:parseFloat(style.borderLeftWidth),borderRight:parseFloat(style.borderRightWidth),fontSize:parseFloat(style.fontSize),viewport:innerWidth};
+});}
+function assertFooterGeometry(measure,visible){
+ assert.ok(measure.box.height>=44,'real button retains 44px minimum');
+ assert.ok(measure.box.x>=0&&measure.box.right<=measure.viewport+1,'footer fits viewport');assert.equal(measure.overflow,false,'footer has no horizontal overflow');
+ assert.ok(measure.box.y>=measure.owner.y-1&&measure.box.bottom<=measure.owner.bottom+1,'owner grows with wrapped footer content');
+ assert.ok(Math.abs(measure.summary.x-(measure.box.x+measure.paddingLeft+measure.borderLeft))<=1,'revision status stays at the left edge');
+ assert.ok(['none','normal','""',"''"].includes(measure.separator),'software cue has no separator');
+ const parts=visible?[measure.summary,measure.cue]:[measure.summary];
+ for(const part of parts)assert.ok(part.x>=measure.box.x-1&&part.right<=measure.box.right+1&&part.y>=measure.box.y-1&&part.bottom<=measure.box.bottom+1,'visible labels stay inside touch target');
+ if(visible){
+  assert.notEqual(measure.cueDisplay,'none');assert.ok(measure.cue.width>0&&measure.cue.height>0);
+  assert.ok(Math.abs(measure.cue.right-(measure.box.right-measure.paddingRight-measure.borderRight))<=1,'software cue aligns to the right content edge');
+  const left=measure.summary,right=measure.cue;assert.ok(left.right<=right.x+1||right.right<=left.x+1||left.bottom<=right.y+1||right.bottom<=left.y+1,'footer labels do not overlap');
+ }else{assert.equal(measure.cueDisplay,'none');assert.equal(measure.cue.width,0);assert.equal(measure.cue.height,0);}
+}
 async function touchGesture(page,locator,kind){await locator.scrollIntoViewIfNeeded();const box=await locator.boundingBox();const x=box.x+box.width/2,y=box.y+box.height/2;const cdp=await page.context().newCDPSession(page);
  await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x,y,id:0}]});
  if(kind==='hold')await page.waitForTimeout(800);
@@ -47,11 +66,11 @@ for(const engine of (process.env.BROWSERS||'chromium,webkit').split(',')){
   await check(prefix+'/complete-mount',async()=>{await open(page,layout);environments.push({engine,layout,viewport:{width,height},browser:browser.version(),playwright:require(path.join(path.dirname(require.resolve(process.env.PLAYWRIGHT_MODULE||'playwright')),'package.json')).version,...await page.evaluate(()=>({userAgent:navigator.userAgent,maxTouchPoints:navigator.maxTouchPoints,coarse:matchMedia('(pointer:coarse)').matches}))});assert.ok(await page.locator('button-card').count()>10);assert.equal(await page.evaluate(()=>matchMedia('(pointer:coarse)').matches),true);if(engine==='chromium')assert.ok(await page.evaluate(()=>navigator.maxTouchPoints)>0);assert.deepEqual(await page.evaluate(()=>fixture.events.errors),[]);},page);
   await check(prefix+'/LED-touch-label-dot-hit-area',async()=>{await open(page,layout);for(const part of ['.hi-ui-revision-label','.hi-ui-revision-led','.hi-update-label']){await page.locator(part).tap();assert.equal(await page.locator('dialog.hi-ui-revision-details[open]').count(),1);await close(page);}const button=page.locator('.hi-ui-revision');await button.scrollIntoViewIfNeeded();const b=await button.boundingBox();assert.ok(b.height>=44,'real footer button has a 44px minimum touch target');await page.touchscreen.tap(b.x+4,b.y+4);assert.equal(await page.locator('dialog.hi-ui-revision-details[open]').count(),1);await close(page);assert.ok((await page.evaluate(()=>fixture.events.touch)).every(e=>e.trusted));assert.equal(await page.evaluate(()=>fixture.events.actions.length),0);assert.equal(await page.evaluate(()=>fixture.events.services.length),0);},page);
   for(const variant of ['', '_adaptive']){
-   const targetLayout=layout+variant, footerPrefix=prefix+'/beta3-footer'+(variant||'-native');
+   const targetLayout=layout+variant, footerPrefix=prefix+'/beta4-footer'+(variant||'-native');
    await check(footerPrefix+'/reported-statuses-and-independent-UI',async()=>{
     await open(page,targetLayout);const footer=page.locator('.hi-ui-revision');
-    for(const [name,status,label] of [['missing','unverified','Updates unverified'],['unavailable','unverified','Updates unverified'],['unknown','unverified','Updates unverified'],['reported_update','reported_update','↑ HI update reported'],['no_update_reported','no_update_reported','No update reported'],['skipped','skipped','Update skipped'],['in_progress','in_progress','HI update in progress']]){
-     await page.evaluate(name=>fixture.updateCase(name),name);await footer.locator('.hi-update-label').filter({hasText:label}).waitFor();
+    for(const [name,status,label] of [['missing','unverified','Updates unverified'],['unavailable','unverified','Updates unverified'],['unknown','unverified','Updates unverified'],['reported_update','reported_update','↑ Update available'],['no_update_reported','no_update_reported','No update reported'],['skipped','skipped','Update skipped'],['in_progress','in_progress','HI update in progress']]){
+     await page.evaluate(name=>fixture.updateCase(name),name);await footer.locator('.hi-update-label').filter({hasText:label}).waitFor({state:name==='no_update_reported'?'hidden':'visible'});
      assert.equal(await footer.getAttribute('data-update-status'),status);assert.equal(await footer.getAttribute('data-status'),'current');
      assert.equal(await footer.locator('.hi-ui-revision-label').textContent(),'UI current');
      assert.match(await footer.getAttribute('aria-label'),/Open UI and software versions/);
@@ -65,8 +84,34 @@ for(const engine of (process.env.BROWSERS||'chromium,webkit').split(',')){
     await page.evaluate(()=>{fixture.updateCase('reported_update');fixture.uiUpdate();});
     await footer.locator('.hi-ui-revision-label').filter({hasText:'UI update'}).waitFor();
     assert.equal(await footer.getAttribute('data-status'),'update');assert.equal(await footer.getAttribute('data-update-status'),'reported_update');
-    await footer.tap();assert.match(await page.locator('dialog[open]').textContent(),/UI update[\s\S]*HI update reported/);await close(page);
+    await footer.tap();assert.match(await page.locator('dialog[open]').textContent(),/UI update[\s\S]*Update available/);await close(page);
     assert.equal(await page.evaluate(()=>fixture.events.services.length),0);assert.equal(await page.evaluate(()=>fixture.events.actions.length),0);
+   },page);
+   await check(footerPrefix+'/quiet-state-matrix-and-transitions',async()=>{
+    await open(page,targetLayout);const footer=page.locator('.hi-ui-revision'),observations=[];
+    const providerCases=[['no_update_reported','no_update_reported','No update reported'],['reported_update','reported_update','Update available'],['skipped','skipped','Update skipped'],['in_progress','in_progress','HI update in progress'],['missing','unverified','Updates unverified'],['no_update_reported','no_update_reported','No update reported']];
+    for(const [ui,label] of [['current','UI current'],['update','UI update'],['different','UI differs'],['unknown','UI unverified']]){
+     let leftPosition,ledColor;
+     for(const [fixture,status,softwareLabel] of providerCases){
+      await page.evaluate(({fixture:provider,ui})=>{window.fixture.updateCase(provider);window.fixture.uiCase(ui);},{fixture,ui});
+      await page.locator(`.hi-ui-revision[data-status="${ui}"][data-update-status="${status}"]`).waitFor();
+      assert.equal(await footer.locator('.hi-ui-revision-label').textContent(),label);
+      assert.equal(await footer.getAttribute('aria-label'),`${label}. ${softwareLabel}. Open UI and software versions`);
+      assert.equal(await footer.locator('.hi-update-label').textContent(),(status==='reported_update'?'↑ ':'')+softwareLabel);
+      assert.equal(await footer.locator('.hi-update-label').isVisible(),status!=='no_update_reported');
+      const measure=await footerMeasure(footer);assertFooterGeometry(measure,status!=='no_update_reported');
+      const currentColor=await footer.locator('.hi-ui-revision-led').evaluate(element=>getComputedStyle(element).backgroundColor);
+      const relativeLeft=measure.summary.x-measure.box.x;
+      if(leftPosition===undefined){leftPosition=relativeLeft;ledColor=currentColor;}else{assert.equal(relativeLeft,leftPosition,'provider transitions do not move revision summary');assert.equal(currentColor,ledColor,'provider transitions do not alter revision LED');}
+      await footer.focus();await page.keyboard.press('Enter');const detail=page.locator('dialog.hi-ui-revision-details[open]');await detail.waitFor();
+      assert.equal(await detail.getByRole('heading',{name:softwareLabel,exact:true}).count(),1);
+      if(status==='no_update_reported')assert.match(await detail.textContent(),/HACS reports no update/);
+      if(status==='reported_update')assert.match(await detail.textContent(),/HACS reports an update/);
+      await close(page);observations.push({ui,providerStatus:status,visible:status!=='no_update_reported',measure});
+     }
+    }
+    assert.equal(await page.evaluate(()=>fixture.events.services.length),0);assert.equal(await page.evaluate(()=>fixture.events.actions.length),0);
+    fs.writeFileSync(path.join(output,`${engine}-${targetLayout}-beta4-status-matrix.json`),JSON.stringify({provenance:'20 distinct backend-derived UI/provider combinations, plus quiet-state return transitions; synthetic loopback fixture',observations},null,2));
    },page);
    await check(footerPrefix+'/keyboard-and-exact-native-handoff',async()=>{
     await open(page,targetLayout);await page.evaluate(()=>fixture.updateCase('reported_update'));const footer=page.locator('.hi-ui-revision');
@@ -78,7 +123,7 @@ for(const engine of (process.env.BROWSERS||'chromium,webkit').split(',')){
    },page);
    await check(footerPrefix+'/stale-provider-and-dialog-retarget-guard',async()=>{
     await open(page,targetLayout);const footer=page.locator('.hi-ui-revision');
-    for(const change of [{state:'unavailable'},{attributes:{latest_version:'2.1.1-beta.4'}}]){
+    for(const change of [{state:'unavailable'},{attributes:{latest_version:'2.1.1-beta.5'}}]){
      await page.evaluate(()=>fixture.updateCase('reported_update'));await footer.tap();
      await page.evaluate(change=>fixture.providerChange(change),change);await page.getByRole('button',{name:'View update',exact:true}).tap();
      await page.locator('[data-update-action-status]').filter({hasText:'Close and reopen'}).waitFor();assert.equal(await page.evaluate(()=>fixture.events.moreInfo.length),0);await close(page);
@@ -107,18 +152,24 @@ for(const engine of (process.env.BROWSERS||'chromium,webkit').split(',')){
    await check(footerPrefix+'/responsive-footer-and-details',async()=>{
     const measurements=[];
     for(const viewportWidth of [...new Set([320,390,width])]){
-     await page.setViewportSize({width:viewportWidth,height:1024});await open(page,targetLayout);await page.evaluate(()=>fixture.updateCase('reported_update'));
-     const footer=page.locator('.hi-ui-revision');await footer.scrollIntoViewIfNeeded();
-     const measure=await footer.evaluate(el=>{const box=el.getBoundingClientRect(),parts=[...el.children].map(child=>{const b=child.getBoundingClientRect();return{x:b.x,y:b.y,right:b.right,bottom:b.bottom,width:b.width,height:b.height};});return{box:{x:box.x,y:box.y,right:box.right,bottom:box.bottom,width:box.width,height:box.height},parts,overflow:el.scrollWidth>el.clientWidth,viewport:innerWidth};});
-     assert.ok(measure.box.height>=44);assert.ok(measure.box.x>=0&&measure.box.right<=viewportWidth+1);assert.equal(measure.overflow,false);
-     for(const part of measure.parts)assert.ok(part.x>=measure.box.x-1&&part.right<=measure.box.right+1&&part.y>=measure.box.y-1&&part.bottom<=measure.box.bottom+1,'labels stay inside touch target');
-     const [left,right]=measure.parts;assert.ok(left.right<=right.x+1||right.right<=left.x+1||left.bottom<=right.y+1||right.bottom<=left.y+1,'footer labels do not overlap');
-     if(engine==='chromium'&&!variant)await footer.screenshot({path:path.join(output,`${layout}-beta3-footer-${viewportWidth}-offline-fixture.png`)});
-     await footer.tap();const dialog=page.locator('dialog[open]');const details=await dialog.evaluate(el=>({overflow:el.scrollWidth>el.clientWidth,width:el.getBoundingClientRect().width}));
-     assert.equal(details.overflow,false);assert.ok(details.width<=viewportWidth);if(engine==='chromium'&&!variant)await dialog.screenshot({path:path.join(output,`${layout}-beta3-details-${viewportWidth}-offline-fixture.png`)});
-     measurements.push({viewportWidth,...measure,details});await close(page);
+     await page.setViewportSize({width:viewportWidth,height:1024});await open(page,targetLayout);
+     for(const status of ['no_update_reported','reported_update','in_progress','missing'])for(const scale of [1,2]){
+      await page.evaluate(status=>fixture.updateCase(status),status);
+      const footer=page.locator('.hi-ui-revision');
+      // Local font-size stress tests wrapping; this is not an OS accessibility setting.
+      await footer.evaluate((element,scale)=>{element.style.fontSize=11*scale+'px';element.style.lineHeight=20*scale+'px';},scale);
+      await footer.scrollIntoViewIfNeeded();const measure=await footerMeasure(footer);assertFooterGeometry(measure,status!=='no_update_reported');
+      if(scale===2&&viewportWidth===320&&status==='in_progress')assert.ok(measure.cue.y>=measure.summary.bottom,'large text wraps below the revision summary');
+      const capture=engine==='chromium'&&!variant&&((scale===1&&['no_update_reported','reported_update'].includes(status))||(scale===2&&viewportWidth===320&&status==='in_progress'));
+      if(capture)await footer.screenshot({path:path.join(output,`${layout}-beta4-footer-${status}-${viewportWidth}-${scale}x-offline-fixture.png`)});
+      if(status==='reported_update'&&scale===1){
+       await footer.tap();const dialog=page.locator('dialog[open]');const details=await dialog.evaluate(element=>({overflow:element.scrollWidth>element.clientWidth,width:element.getBoundingClientRect().width}));
+       assert.equal(details.overflow,false);assert.ok(details.width<=viewportWidth);if(engine==='chromium'&&!variant)await dialog.screenshot({path:path.join(output,`${layout}-beta4-details-${viewportWidth}-offline-fixture.png`)});
+       measurements.push({viewportWidth,status,scale,...measure,details});await close(page);
+      }else measurements.push({viewportWidth,status,scale,...measure});
+     }
     }
-    fs.writeFileSync(path.join(output,`${engine}-${targetLayout}-beta3-measurements.json`),JSON.stringify({provenance:'Synthetic normalized provider state; production-generated layouts and renderer; no live Home Assistant',measurements},null,2));
+    fs.writeFileSync(path.join(output,`${engine}-${targetLayout}-beta4-measurements.json`),JSON.stringify({provenance:'Synthetic normalized provider state; production-generated layouts; scale2 is local font-size/line-height stress only; no live Home Assistant or physical device',measurements},null,2));
     await page.setViewportSize({width,height});assert.equal(await page.evaluate(()=>fixture.events.services.length),0);
    },page);
   }

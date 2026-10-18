@@ -33,14 +33,14 @@ def update_cases():
     )
     cases = {}
     for name, state, attributes in [
-        ('reported_update', 'on', {'installed_version': '2.1.1-beta.2', 'latest_version': '2.1.1-beta.3'}),
-        ('no_update_reported', 'off', {'installed_version': '2.1.1-beta.3', 'latest_version': '2.1.0'}),
-        ('skipped', 'off', {'installed_version': '2.1.1-beta.2', 'latest_version': '2.1.1-beta.3', 'skipped_version': '2.1.1-beta.3'}),
-        ('in_progress', 'on', {'installed_version': '2.1.1-beta.2', 'latest_version': '2.1.1-beta.3', 'in_progress': 0}),
+        ('reported_update', 'on', {'installed_version': '2.1.1-beta.3', 'latest_version': '2.1.1-beta.4'}),
+        ('no_update_reported', 'off', {'installed_version': '2.1.1-beta.4', 'latest_version': '2.1.0'}),
+        ('skipped', 'off', {'installed_version': '2.1.1-beta.3', 'latest_version': '2.1.1-beta.4', 'skipped_version': '2.1.1-beta.4'}),
+        ('in_progress', 'on', {'installed_version': '2.1.1-beta.3', 'latest_version': '2.1.1-beta.4', 'in_progress': 0}),
         ('unavailable', 'unavailable', {}),
         ('unknown', 'unknown', {}),
         ('missing', None, {}),
-        ('escaped_version', 'on', {'installed_version': '2.1.1-beta.2', 'latest_version': '<b data-fixture-untrusted="yes">beta</b>'}),
+        ('escaped_version', 'on', {'installed_version': '2.1.1-beta.3', 'latest_version': '<b data-fixture-untrusted="yes">beta</b>'}),
     ]:
         attributes = {'skipped_version': None, 'in_progress': False, **attributes}
         provider = None if state is None else {'entity_id': entity_id, 'state': state, 'attributes': attributes}

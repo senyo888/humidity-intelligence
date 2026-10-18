@@ -53,10 +53,10 @@ def test_rendered_stamp_matches_backend_target_and_is_entry_scoped(monkeypatch):
         stamp = json.loads(raw)
         assert stamp == {
             "schema": 1, "entry": metadata["entry"], "layout": layout,
-            "revision": 12, "generator": 1,
+            "revision": 13, "generator": 1,
         }
         assert metadata["layouts"][layout] == {
-            "revision": 12, "generator": 1, "supersedes": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
+            "revision": 13, "generator": 1, "supersedes": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
         }
         assert STAMP not in cards[layout]
     module = sys.modules[f"{PKG}.ui.revision"]
@@ -103,7 +103,7 @@ def test_unstamped_template_remains_unverified_and_revisions_are_not_configurati
     assert first != second
     assert target == other_target
     target["supersedes"].append(99)
-    assert other_target["supersedes"] == [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
+    assert other_target["supersedes"] == [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
 
 
 def test_diagnostics_publishes_revision_without_changing_primary_state(monkeypatch):

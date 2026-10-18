@@ -5,7 +5,7 @@ for UI and software version details and the next step. The UI label reports the 
 rendered card, compared with the compatible target advertised by its HI backend.
 It is independent of environmental alerts, Stability and control health. Its 4px
 top margin keeps the footer close to Outputs. A single button occupies at least
-44px of real layout height and wraps its two labels on narrow screens; the UI LED
+44px of real layout height and wraps visible labels on narrow screens; the UI LED
 retains its size and revision meaning.
 
 | Indicator | Meaning |
@@ -39,21 +39,31 @@ Every package version update includes the [canonical release revision check](rel
 
 ## Software update observation
 
-From the unpublished v2.1.1-beta.3 candidate, the same footer also displays HACS's
-reported update state for HI. HACS is optional: manual installations and unavailable
-update sources retain the existing UI revision comparison.
+Introduced in beta.3, the optional software observation uses HACS's reported update
+state for HI. The unpublished beta.4 candidate keeps the UI revision status on the
+left and right-aligns any visible software cue. HACS remains optional: manual
+installations and unavailable update sources retain the UI revision comparison.
 
-| Software label | Meaning |
+| Software state | Footer presentation and meaning |
 |---|---|
-| HI update reported | HACS reports an update; a blue arrow distinguishes this from a card replacement. |
-| No update reported | HACS currently reports no update. This does not prove globally latest or loaded code. |
-| Update skipped | The currently offered release was skipped; HI preserves that choice. |
-| HI update in progress | HACS reports a download/update in progress, not proof that new code is running. |
-| Updates unverified | The source is absent, disabled, ambiguous, unavailable, malformed, unsupported or disconnected. |
+| Update available | **↑ Update available** on the right means HACS reports an update; it is separate from a card replacement. |
+| No update reported | No visible software cue or separator. Details retain HACS's no-update report; this does not prove globally latest or loaded code. |
+| Update skipped | Muted **Update skipped** on the right; HI preserves the deliberate skip. |
+| HI update in progress | Visible on the right. HACS reports progress, not proof that new code is running. |
+| Updates unverified | Subdued but visible on the right. Evidence is absent, disabled, ambiguous, unavailable, malformed, unsupported or disconnected. |
 
-Both labels remain visible. For example, **UI current · HI update reported** means
-the rendered card matches its backend while HACS reports a software update.
-**UI update · HI update reported** preserves both separate next steps.
+Only the routine no-update cue is hidden. The UI revision LED and label remain
+visible in every software state: **UI current** with **Update available** means the
+card matches its backend while HACS reports a software update; **UI update** with
+**Update available** preserves both separate next steps. Neither cue overrides the
+other. Loss of provider evidence reveals **Updates unverified** rather than retaining
+a quiet no-update state.
+
+Both ends remain part of one accessible button and open the same details panel.
+The accessible name includes the classified software state even when its visible
+no-update cue is hidden. Text accompanies the update arrow; no color-only or
+hover-only meaning is required. Narrow layouts wrap the right cue into real space
+without covering Outputs or the UI revision warning.
 
 Open the footer for **UI and software versions**. The software section identifies
 HACS and labels its downloaded, available and skipped versions. **View update**
@@ -146,10 +156,10 @@ relative to the seasonal band, and Outputs names come from the mapped entities.
 The seasonal description never prescribes an action in competition with the backend
 reason. Outputs expansion remains shared per entry and retains its existing timer.
 The revision indicator itself leaves Stability and lane selection unchanged.
-The unpublished v2.1.1-beta.3 candidate uses revision 12 in both layouts, superseding
-revisions 1–11, and requires fresh exports and full saved-card replacement.
-Beta.2 remains the earlier revision-11 candidate; its live Lab evidence applies
-only to that package. The update-observation contract is independent of the stamp.
+The unpublished v2.1.1-beta.4 candidate uses revision 13 in both layouts, superseding
+revisions 1–12, and requires fresh exports and full saved-card replacement.
+Beta.3 remains the earlier revision-12 candidate and beta.2 the revision-11 candidate;
+earlier deployment and Lab evidence apply only to their exact packages. The update-observation contract is independent of the stamp.
 Published v2.1.0 retains revision 9 and its compatibility with RC.1 revision-9 cards.
 Stamp schema and generator contract remain 1. See
 [the release compatibility record](release-governance.md#rendered-ui-revision-check-for-every-version-update).

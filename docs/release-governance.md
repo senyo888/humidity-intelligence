@@ -5,7 +5,8 @@ testing and validation branches.
 
 ## Canonical Version Model
 
-- `2.1.1-beta.3`: current unpublished candidate adding optional HACS-reported update status beside the independent UI revision LED. Both layouts advance to revision 12, with stamp schema/generator 1 and a separate update-observation schema 1. Install the complete package, restart, regenerate and replace saved V2 cards; no configuration migration. This source update does not publish a beta, establish HACS availability, or change the beta.2 Lab soak.
+- `2.1.1-beta.4`: current unpublished candidate with a quiet no-update footer and right-aligned **Update available** cue. Both layouts advance to revision 13, superseding 1–12; stamp schema/generator and update-observation schema remain 1. Existing skipped/progress/unverified states stay visible. Install the complete package, restart, regenerate and replace saved cards; no configuration migration. The existing Lab soak is left running and remains non-blocking evidence for its own package.
+- `2.1.1-beta.3`: earlier unpublished candidate adding optional HACS-reported update status beside the independent UI revision LED. Both layouts advance to revision 12, with stamp schema/generator 1 and a separate update-observation schema 1. Install the complete package, restart, regenerate and replace saved V2 cards; no configuration migration. This source update does not publish a beta, establish HACS availability, or change the beta.2 Lab soak.
 - `2.1.1-beta.2`: earlier unpublished candidate correcting single-level V2 exports (#129), with follow-up device-text, calculated-trend and issue-summary hardening. Both layouts use revision 11 with schema/generator 1. [Optional Lab verification](issue-129-verification.md) records four passing single-level cases on the exact beta.2 package and remains non-blocking. That evidence does not validate the changed beta.3 bytes.
 - `2.1.1-beta.1`: earlier unpublished revision-10 candidate. Its single-level Lab results and stopped, incomplete soak remain historical optional evidence for `f6e64c7`, not beta.2.
 - `2.1.0`: current published Stable, released on 2026-10-12 from reviewed RC.1 revision 9. The final version and documentation preserve runtime and generated-card behavior. Both V2 layouts stay revision 9 with schema/generator 1; installed RC.1 cards remain compatible. Publication and final-package registration are separate evidence.
@@ -399,6 +400,40 @@ and post-release observation as separate evidence states.
   approval gates are complete for the exact final head.
 
 ## Rendered UI revision check for every version update
+
+### v2.1.1-beta.4 quiet software-update footer
+
+The unpublished `2.1.1-beta.4` candidate is **UI revision advanced** against exact
+beta.3 source `5eda094d20dc68a838d03a83c99b75a95c55fe5c`. Both V2 layouts advance
+from revision 12 to **13**, with compatible revisions 1–12 in `supersedes`.
+Stamp schema 1, generator contract 1 and the separate update-observation schema 1
+remain compatible: entry binding, layout/revision comparison and backend provider
+classification have not changed.
+
+The footer hides only its routine no-update cue and separator, right-aligns the
+remaining software cues, and labels a positive provider report **Update available**.
+The UI revision LED stays on the left. All states retain their evidence in the
+existing shared details/accessibility text; skipped, progress and unknown evidence
+remain visible. There is one 44px wrapping details button, with the same guarded
+native View update action. No network polling, version ordering, channel policy,
+control behavior or installation action is introduced.
+
+Run `python scripts/check_ui_revision_governance.py --base 5eda094d20dc68a838d03a83c99b75a95c55fe5c`.
+Check generated stamps/Diagnostics targets and all four canonical/gallery copies.
+Browser validation must check computed visibility and right alignment, rather than
+markup strings alone, across UI/provider states and live transitions; include
+narrow/large-text wrapping, native/adaptive Outputs, keyboard/touch/focus, cleanup
+and unchanged exact-source native handoff. Source/browser fixtures are not live
+Home Assistant or physical-device evidence.
+
+An authorized activation requires the complete package and full HA restart to load
+version/revision metadata, then fresh exports and complete saved-card replacement.
+Restart/reload resets in-memory Stability history. No configuration/entity migration
+is required. Rollback restores package and saved cards separately; a revision-13
+card against beta.3's revision-12 backend reports **UI differs**. Earlier operational
+and soak evidence remains tied to its own package and non-blocking. This source
+work leaves the existing Lab soak running; it does not establish beta.4 deployment,
+release publication or completed observation.
 
 ### v2.1.1-beta.3 UI and software version footer
 

@@ -59,8 +59,8 @@ It gives you:
 - services for dashboard export, self-check, diagnostics, pause/resume, and release validation
 
 Current published Stable: **v2.1.0**, [released on 12 October 2026](https://github.com/senyo888/humidity-intelligence/releases/tag/v2.1.0).
-Current development candidate: **v2.1.1-beta.3**, unpublished; see the
-[update indicator and dashboard fixes](#v211-beta3-current-unpublished-candidate).
+Current development candidate: **v2.1.1-beta.4**, unpublished; see the
+[quiet update footer and dashboard fixes](#v211-beta4-current-unpublished-candidate).
 V2.1 is led by **Stability Score**, with clearer badge explanations and history,
 optional output monitoring, reusable monitoring meanings and a simpler status row.
 Check the version offered in HACS and refresh its repository information if an older
@@ -826,22 +826,21 @@ CO emergency pressure. Details are in
 
 ## Release Notes
 
-### v2.1.1-beta.3 (Current unpublished candidate)
+### v2.1.1-beta.4 (Current unpublished candidate)
 
-Adds a separate **HACS update status** beside the existing UI revision LED.
-Green still means **UI current**; the software label reports an update, no update,
-a skipped release, progress or unverified information. Open the footer for both
-version details and **View update** in Home Assistant.
+A quieter footer keeps the UI revision LED on the left and shows **↑ Update
+available** on the right when HACS reports an update. The routine no-update label
+is hidden; skipped, in-progress and unverified states remain visible. Open the
+same footer for the full UI and software details.
 
-- HACS is optional. HI reads its reported state without new network polling or
-  automatic installation; downloaded and running code remain separate claims.
-- Both V2 layouts advance to **revision 12**, superseding 1–11; stamp schema/generator
+- Both V2 layouts advance to **revision 13**, superseding 1–12; stamp schema/generator
   1 remain. Install the complete package, restart, regenerate and replace saved cards.
-- Retains the #129 single-level fix and beta.2 hardening. No configuration migration;
-  restart resets Stability history. Published Stable remains v2.1.0.
-- [Candidate notes](CHANGELOG.md#unreleased--v211-beta3) and the
-  [footer state guide](docs/ui-revision-status.md#software-update-observation) describe
-  the limits. Beta.2's optional Lab evidence does not validate this new package.
+- Keeps HACS optional and preserves provider-state, control and Stability behavior.
+  No configuration migration; restart resets in-memory Stability history.
+- [Candidate notes](CHANGELOG.md#unreleased--v211-beta4) and the
+  [footer guide](docs/ui-revision-status.md#software-update-observation) explain the
+  limits. Published Stable remains v2.1.0; earlier deployment/soak evidence does not
+  validate beta.4.
 
 ### v2.1.0 (Current Published Stable)
 
@@ -880,6 +879,23 @@ Control row. See the [V2.1 overview](#v21--stability-score) and
 under Previous Releases; CHANGELOG.md retains the complete detailed history. -->
 <details>
 <summary>Previous Releases</summary>
+
+### v2.1.1-beta.3 (Earlier unpublished candidate)
+
+Adds a separate **HACS update status** beside the existing UI revision LED.
+Green still means **UI current**; the software label reports an update, no update,
+a skipped release, progress or unverified information. Open the footer for both
+version details and **View update** in Home Assistant.
+
+- HACS is optional. HI reads its reported state without new network polling or
+  automatic installation; downloaded and running code remain separate claims.
+- Both V2 layouts advance to **revision 12**, superseding 1–11; stamp schema/generator
+  1 remain. Install the complete package, restart, regenerate and replace saved cards.
+- Retains the #129 single-level fix and beta.2 hardening. No configuration migration;
+  restart resets Stability history. Published Stable remains v2.1.0.
+- [Candidate notes](CHANGELOG.md#unreleased--v211-beta3) and the
+  [footer state guide](docs/ui-revision-status.md#software-update-observation) describe
+  the limits. Beta.2's optional Lab evidence does not validate this new package.
 
 ### v2.1.1-beta.2 (Earlier unpublished candidate)
 

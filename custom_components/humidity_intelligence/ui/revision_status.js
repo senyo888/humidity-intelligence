@@ -80,7 +80,7 @@ const hiUiRevision = (() => {
   const version = value => typeof value === 'string' && value.length > 0 && value.length <= 128 && value === value.trim() && !/[\p{C}\p{Z}]/u.test(value.replaceAll(' ','')) && !['unknown','unavailable'].includes(value.toLowerCase());
   const updateEntity = value => typeof value === 'string' && value.length <= 255 && /^update\.[a-z0-9_]+$/.test(value);
   const updateLabels = {
-    reported_update:'HI update reported', no_update_reported:'No update reported',
+    reported_update:'Update available', no_update_reported:'No update reported',
     skipped:'Update skipped', in_progress:'HI update in progress', unverified:'Updates unverified',
   };
   function classifyUpdate(observation, live = false) {

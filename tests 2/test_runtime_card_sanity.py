@@ -4299,6 +4299,7 @@ def test_v205_release_check_report_verifies_export_contract_and_ui_visibility():
         "2.1.1-beta.1",
         "2.1.1-beta.2",
         "2.1.1-beta.3",
+        "2.1.1-beta.4",
         "2.1.1-rc.1",
         "2.1.1",
     ):
@@ -5805,7 +5806,7 @@ def test_v205_release_check_service_is_documented_and_registered():
     assert "wiki/Services-Reference" in readme_source
     assert "wiki/Release-Validation-for-Users" in readme_source
     assert "humidity_intelligence_v205_release_check.json" in services_yaml
-    assert manifest["version"] == "2.1.1-beta.3"
+    assert manifest["version"] == "2.1.1-beta.4"
 
 
 def test_owned_ui_path_discovery_and_legacy_cleanup_guidance_is_explicit():

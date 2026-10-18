@@ -161,10 +161,10 @@ function withUpdate(h,observation=observedUpdate()){
 }
 test('software status reports provider evidence without comparing versions or changing UI truth',()=>{
  const cases=[
-  [observedUpdate(),'reported_update','HI update reported'],
+  [observedUpdate(),'reported_update','Update available'],
   [observedUpdate({status:'no_update_reported',provider_state:'off',latest_version:'2.1.0'}),'no_update_reported','No update reported'],
   [observedUpdate({status:'no_update_reported',provider_state:'off',downloaded_version:'2.1.1-beta.3',latest_version:'2.1.0'}),'no_update_reported','No update reported'],
-  [observedUpdate({downloaded_version:'feature-branch',latest_version:'commit-reference'}),'reported_update','HI update reported'],
+  [observedUpdate({downloaded_version:'feature-branch',latest_version:'commit-reference'}),'reported_update','Update available'],
   [observedUpdate({status:'skipped',provider_state:'off',skipped_version:'2.1.1'}),'skipped','Update skipped'],
   [observedUpdate({status:'in_progress'}),'in_progress','HI update in progress'],
   [observedUpdate({status:'unverified'}),'unverified','Updates unverified'],
@@ -189,8 +189,8 @@ test('missing unsupported contradictory or malformed software evidence stays unv
 });
 test('software coverage remains visible and invalidates with disconnected Diagnostics',async()=>{
  const h=harness();withUpdate(h);await Promise.resolve();
- assert.equal(h.button.label.textContent,'UI current');assert.equal(h.button.updateLabel.textContent,'↑ HI update reported');
- assert.match(h.button.attrs['aria-label'],/UI current\. HI update reported/);
+ assert.equal(h.button.label.textContent,'UI current');assert.equal(h.button.updateLabel.textContent,'↑ Update available');
+ assert.match(h.button.attrs['aria-label'],/UI current\. Update available/);
  h.connection.connected=false;h.connection.emit('disconnected');
  assert.equal(h.button.dataset.status,'unknown');assert.equal(h.button.dataset.updateStatus,'unverified');
  h.connection.connected=true;h.connection.emit('ready');assert.equal(h.button.dataset.updateStatus,'unverified');
@@ -198,10 +198,25 @@ test('software coverage remains visible and invalidates with disconnected Diagno
  delete fresh.attributes.update_observation;h.model.render(h.owner,h.hass,{...fresh},stamp);await Promise.resolve();
  assert.equal(h.button.label.textContent,'UI current');assert.equal(h.button.updateLabel.textContent,'Updates unverified');h.model.dispose(h.owner);
 });
+test('quiet no-update state retains accessible evidence and opens source-bound details',async()=>{
+ const h=harness();
+ const state=withUpdate(h,observedUpdate({status:'no_update_reported',provider_state:'off',latest_version:'2.1.0'}));
+ await Promise.resolve();
+ assert.equal(h.button.dataset.updateStatus,'no_update_reported');
+ assert.equal(h.button.attrs['aria-label'],'UI current. No update reported. Open UI and software versions');
+ h.hass.callService=()=>{throw Error('No services permitted');};state.open();const dialog=h.dialogs.at(-1);
+ assert.match(dialog.innerHTML,/<h3>No update reported<\/h3>/);
+ assert.match(dialog.innerHTML,/HACS reports no update/);
+ assert.match(dialog.innerHTML,/does not prove that the latest code is running/);
+ dialog.updateButton.emit('click');assert.equal(dialog.open,false);
+ assert.equal(h.moreInfo.length,1);assert.equal(h.moreInfo[0].detail.entityId,'update.example_hi');
+ h.model.dispose(h.owner);
+});
 test('details escape provider text and View update opens only the exact current source without services',()=>{
  const h=harness(),observation=observedUpdate({latest_version:'<img src=x onerror=alert(1)>'});const state=withUpdate(h,observation);
  h.hass.callService=()=>{throw Error('No services permitted');};state.open();const dialog=h.dialogs.at(-1);
  assert.match(dialog.innerHTML,/&lt;img src=x onerror=alert\(1\)&gt;/);assert.ok(!dialog.innerHTML.includes('<img'));
+ assert.match(dialog.innerHTML,/<h3>Update available<\/h3>/);
  assert.match(dialog.innerHTML,/HACS downloaded version/);assert.match(dialog.innerHTML,/running version are not verified/);
  dialog.updateButton.emit('click');assert.equal(dialog.open,false);assert.equal(h.moreInfo.length,1);
  assert.equal(h.moreInfo[0].type,'hass-more-info');assert.equal(h.moreInfo[0].detail.entityId,'update.example_hi');h.model.dispose(h.owner);

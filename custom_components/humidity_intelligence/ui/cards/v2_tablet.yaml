@@ -5598,7 +5598,7 @@ card:
               const version = value => typeof value === 'string' && value.length > 0 && value.length <= 128 && value === value.trim() && !/[\p{C}\p{Z}]/u.test(value.replaceAll(' ','')) && !['unknown','unavailable'].includes(value.toLowerCase());
               const updateEntity = value => typeof value === 'string' && value.length <= 255 && /^update\.[a-z0-9_]+$/.test(value);
               const updateLabels = {
-                reported_update:'HI update reported', no_update_reported:'No update reported',
+                reported_update:'Update available', no_update_reported:'No update reported',
                 skipped:'Update skipped', in_progress:'HI update in progress', unverified:'Updates unverified',
               };
               function classifyUpdate(observation, live = false) {
@@ -5783,8 +5783,8 @@ card:
           color: #b9c7d6; font: 11px/20px system-ui,sans-serif; cursor: pointer; text-align: left;
         }
         .hi-ui-revision-summary { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
-        .hi-update-label { color: #94a3b8; overflow-wrap: anywhere; }
-        .hi-update-label::before { content: '·'; margin-right: 8px; }
+        .hi-update-label { margin-inline-start: auto; max-width: 100%; color: #94a3b8; text-align: right; overflow-wrap: anywhere; }
+        .hi-ui-revision[data-update-status="no_update_reported"] .hi-update-label { display: none; }
         .hi-ui-revision[data-update-status="reported_update"] .hi-update-label,
         .hi-ui-revision[data-update-status="in_progress"] .hi-update-label { color: #7dd3fc; }
         .hi-ui-revision:focus-visible { outline: 2px solid #38bdf8; outline-offset: 3px; border-radius: 3px; }

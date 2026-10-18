@@ -87,6 +87,11 @@ modal is covered by separate component unit tests, not fabricated browser input.
   UI revision and provider-reported statuses, skipped releases, a manual beta ahead
   of the offered release, in-progress updates, and visible missing/unavailable
   coverage. Synthetic HACS registry states run through the production adapter.
+- All 20 combinations of four UI revision states and five provider states in both
+  variants and engines, with live transitions back to quiet. Computed visibility
+  hides only the no-update cue; its detail and accessible status remain available.
+  The revision LED and label stay left while visible software cues align right,
+  with no separator. The positive cue uses **Update available**.
 - Exact update-entity more-info handoff with no service writes; stale provider
   state/version and changed source identity refuse the captured action. Version
   strings remain escaped text. Disconnect/reconnect requires fresh evidence,
@@ -94,6 +99,9 @@ modal is covered by separate component unit tests, not fabricated browser input.
 - Footer and details fit at 320px, 390px, and the layout's default width, with
   non-overlapping labels and a real 44px minimum touch target. Chromium captures
   are generated for these cases even without `VISUAL_REVIEW=1`.
+- A local 2× font-size and line-height override stresses wrapping at narrow widths,
+  including growth of the owning card. It does not emulate an OS accessibility
+  text-size setting or establish physical-device behavior.
 - Embedded history, range changes, Back and native source handoff.
 - System/Manual valid and unavailable states with service spies; native Outputs
   toggles exactly once; Chromium hold routes do not also toggle on release.
@@ -152,3 +160,16 @@ groups also passed. WebKit arbitrary touch sequences remain explicitly not-run.
 
 This is local synthetic browser evidence. It does not claim a beta.3 deployment,
 physical-device testing, installed HACS verification, or a completed soak.
+
+## v2.1.1-beta.4 browser check
+
+The 2026-10-18 candidate run recorded **136 passed, 2 not-run and zero failures**
+with Chromium **153.0.8010.12**, WebKit **26.6**, Playwright **1.63.0**, and verified
+button-card **7.0.1** bytes. All 56 footer groups passed, including the 20-state
+UI/provider matrix in each layout/variant/engine, quiet-state return transitions,
+computed visibility and alignment, and narrow-width 2× font-size stress. The
+existing interaction and Stability visual groups also passed.
+
+The two unsupported WebKit arbitrary touch groups remain not-run. These results
+are synthetic local browser evidence; they do not establish a beta.4 deployment,
+installed HACS behavior, physical-device accessibility or soak completion.
