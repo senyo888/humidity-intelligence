@@ -61,7 +61,7 @@ Review the complete file before uploading it to a public issue.
 
 ## Diagnostics And Release Check
 
-In v2.1.1-rc.1, `self_check` counts effective telemetry after saved Options replace
+Since v2.1.1-rc.1, including final v2.1.1 source, `self_check` counts effective telemetry after saved Options replace
 or remove sensors. Earlier packages can report the original setup count instead;
 that count alone does not prove a missing or extra runtime entity.
 
