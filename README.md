@@ -59,8 +59,8 @@ It gives you:
 - services for dashboard export, self-check, diagnostics, pause/resume, and release validation
 
 Current published Stable: **v2.1.0**, [released on 12 October 2026](https://github.com/senyo888/humidity-intelligence/releases/tag/v2.1.0).
-Current development candidate: **v2.1.1-rc.1**, unpublished; see the
-[dashboard, trend and support fixes](#v211-rc1-current-unpublished-candidate).
+Stable source in preparation: **v2.1.1**, not yet published; see the
+[dashboard, trend and support fixes](#v211-stable-source-preparation).
 V2.1 is led by **Stability Score**, with clearer badge explanations and history,
 optional output monitoring, reusable monitoring meanings and a simpler status row.
 Check the version offered in HACS and refresh its repository information if an older
@@ -826,30 +826,26 @@ CO emergency pressure. Details are in
 
 ## Release Notes
 
-### v2.1.1-rc.1 (Current unpublished candidate)
+### v2.1.1 (Stable source preparation)
 
-![Humidity Intelligence v2.1.1 release header highlighting single-level V2 cards and clearer update status](assets/release_banner/v2.1.1_release.png)
+![Humidity Intelligence v2.1.1 — single-level cards and clearer update status](assets/release_banner/v2.1.1_release.png)
 
-Fixes single-level V2 exports ([#129](https://github.com/senyo888/humidity-intelligence/issues/129)),
-hardens native Outputs text and percentages, bounds calculated temperature trends,
-and adds optional HACS update information beside the UI revision LED.
+Single-level exports and self-check counts follow saved Options. Configured-unavailable
+inputs and genuine mapping failures remain visible.
 
-- Omits unconfigured levels while keeping configured unavailable readings and
-  missing mappings explicit. Self-check counts now follow saved Options telemetry.
-- Calculated trends keep the latest actual reading per minute for one hour;
-  changed weighting can affect slopes and slope-dependent decisions. Lane priority
-  and CO protection remain unchanged. Decorated issue-summary redaction is hardened.
-- The footer shows **↑ Update available** at the right when HACS reports it, hides
-  routine no-update text, and retains skipped/progress/unverified states. Provider
-  versions do not prove loaded code; opening details does not install anything.
-- Both layouts retain **revision 13**, stamp schema/generator 1. Beta.4 revision-13
-  cards stay compatible; older cards need fresh exports and complete replacement.
-  Install the full package and restart; no configuration/entity migration is needed.
-  Restart/reload resets in-memory Stability history.
+- HACS update evidence stays separate from UI compatibility and loaded-code identity.
+  Outputs text/percentages and issue-summary privacy filtering are hardened.
+- Calculated trends use each minute's latest reading. Weighting can change slope-based
+  decisions; lane priority and CO protection remain.
+- Revision **13**, schema/generator **1** remain compatible with beta.4/RC.1 cards.
+  Older cards need fresh exports and complete replacement. Install the full package
+  and restart; no configuration/entity migration. Restart clears Stability history.
 
-See [candidate notes](CHANGELOG.md#unreleased--v211-rc1) and the
-[upgrade/rollback record](docs/release-governance.md#v211-rc1-package-verification).
-Published Stable remains v2.1.0. RC preparation is not release or deployment approval.
+Final source preserves RC.1 runtime and cards; manifest/guidance give a new package
+identity. [Complete notes](docs/releases/v2.1.1.md) cover
+[#129](https://github.com/senyo888/humidity-intelligence/issues/129), validation and
+[upgrade/rollback](docs/release-governance.md#v211-stable-source-preparation).
+**V2.1.0 remains published Stable.**
 
 ### v2.1.0 (Current Published Stable)
 
@@ -888,6 +884,14 @@ Control row. See the [V2.1 overview](#v21--stability-score) and
 under Previous Releases; CHANGELOG.md retains the complete detailed history. -->
 <details>
 <summary>Previous Releases</summary>
+
+<a id="v211-rc1-current-unpublished-candidate"></a>
+
+### v2.1.1-rc.1 (Earlier unpublished candidate)
+
+Consolidated the dashboard and hardening fixes, then corrected self-check Options
+counts. [PR #132](https://github.com/senyo888/humidity-intelligence/pull/132) merged
+the RC into develop with revision 13 unchanged. See [RC history](CHANGELOG.md#v211-rc1--earlier-unpublished-candidate).
 
 <a id="v211-beta4-current-unpublished-candidate"></a>
 

@@ -290,10 +290,10 @@ Control row:
   expiry alone stays neutral, and a fresh baseline is not a zero-change comparison
 - keep score/classification distinct from current humidity. Formula 4, caps and
   72-hour history remain; a recent gain does not establish healthy current air
-- both V2 layouts in v2.1.1-rc.1 retain beta.4 revision 13, superseding 1–12,
+- both V2 layouts in v2.1.1 retain beta.4/RC.1 revision 13, superseding 1–12,
   with stamp schema/generator 1 and separate update-observation schema 1.
   Published v2.1.0 retains revision 9. Install the complete package and restart;
-  older cards require fresh exports and replacement, while beta.4 revision-13 cards remain compatible;
+  older cards require fresh exports and replacement, while beta.4 and RC.1 revision-13 cards remain compatible;
   restart clears in-memory Stability history and no configuration migration is needed
 - whole-badge tap/click/keyboard activation opens a native modal dialog through the
   button-card action. Details are a labelled snapshot copied from the owning card's
@@ -384,9 +384,9 @@ Only telemetry-configured levels appear in V2 humidity and temperature chip rows
 Core creates both averages for each such level, even when one metric has no inputs.
 Configured unavailable readings remain visible; failed required registry mappings
 remain errors. Removed levels stay absent even if old registry entries remain.
-The v2.1.1-rc.1 candidate retains beta.4 revision 13 for both layouts. After an
+The v2.1.1 Stable source retains beta.4/RC.1 revision 13 for both layouts. After an
 upgrade from an older revision, refresh, export and replace saved V2 cards.
-Existing beta.4 revision-13 cards remain compatible. Stamp schema/generator remain 1.
+Existing beta.4 and RC.1 revision-13 cards remain compatible. Stamp schema/generator remain 1.
 
 Inventory files:
 

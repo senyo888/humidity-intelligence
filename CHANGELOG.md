@@ -6,7 +6,43 @@ All notable changes to Humidity Intelligence will be documented in this file.
 
 This project follows a practical changelog format for Home Assistant and HACS users. Add new entries under a fresh `Unreleased` section before publishing a future release.
 
-## Unreleased — v2.1.1-rc.1
+## Unreleased — v2.1.1 Stable preparation
+
+![Humidity Intelligence v2.1.1 release header highlighting single-level V2 cards and clearer update status](assets/release_banner/v2.1.1_release.png)
+
+Prepares Stable source from the reviewed RC.1 merged in
+[PR #132](https://github.com/senyo888/humidity-intelligence/pull/132). Published
+Stable remains v2.1.0. No v2.1.1 release date, tag, HACS offering or installed
+final package is claimed.
+
+- Fixes single-level V2 exports without a dummy second level, respecting saved
+  Options while retaining configured-unavailable and missing-mapping truth.
+- Separates optional HACS update evidence from UI compatibility. Routine no-update
+  text stays in details; update/skipped/progress/unverified states remain explicit.
+  Opening details never installs or restarts anything.
+- Hardens Outputs text/percentages and issue-summary privacy filtering, bounds
+  calculated trends to each minute's latest actual reading, and corrects self-check
+  telemetry counts after Options changes. Trend weighting can affect slope-based
+  decisions relative to v2.1.0; lane priority and CO protection remain unchanged.
+- Changes only final manifest identity and packaged guidance from RC.1. Runtime,
+  service schemas, translations, renderer/generator and card/gallery YAML retain
+  their reviewed bytes. Both layouts remain **UI unchanged and compatible**:
+  revision 13, stamp schema 1 and generator contract 1.
+
+Install the complete package and fully restart Home Assistant when an upgrade is
+approved. Beta.4 and RC.1 revision-13 cards need no extra export for this version
+bump; older cards need fresh exports and complete replacement. No configuration
+or entity migration is required. Restart/reload resets in-memory Stability history.
+Retain the previous package and compatible saved cards separately for rollback.
+
+Thanks to [@Ak1Sun](https://github.com/Ak1Sun) for reporting
+[#129](https://github.com/senyo888/humidity-intelligence/issues/129).
+See [complete release notes](docs/releases/v2.1.1.md) and the
+[Stable compatibility record](docs/release-governance.md#v211-stable-source-preparation).
+
+<a id="unreleased--v211-rc1"></a>
+
+## v2.1.1-rc.1 — Earlier unpublished candidate
 
 ![Humidity Intelligence v2.1.1 release header highlighting single-level V2 cards and clearer update status](assets/release_banner/v2.1.1_release.png)
 

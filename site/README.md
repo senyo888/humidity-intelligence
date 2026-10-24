@@ -5,8 +5,9 @@ Wiki own setup, compatibility and operational detail. [V2.1.0 is published Stabl
 released on 12 October 2026. The installation path points to HACS; users should check
 the offered version and refresh repository information if an older version is shown.
 
-The candidate note identifies **v2.1.1-rc.1 as in preparation** and links to the
-review branch for its single-level exports, update-status and report changes.
+The preparation note identifies **v2.1.1 Stable source as not yet published** and
+links to release notes for single-level exports, update-status and report changes.
+The final metadata retains the reviewed RC runtime and revision-13 cards.
 V2.1.0 remains the Stable installation target and published release artwork.
 Updating this source on the preparation branch does not deploy the website;
 the existing Pages workflow publishes it when an approved change reaches `main`.

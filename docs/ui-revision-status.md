@@ -94,7 +94,7 @@ scheduler, control input or Stability publication path is added.
 ### Single-level installations
 
 V2.1.0 can leave both layout targets empty when only one level is configured,
-even after a complete fresh export. The v2.1.1 candidates retain the beta.2 fix
+even after a complete fresh export. V2.1.1 retains the beta.2 fix
 by excluding unconfigured-level humidity and temperature chips and references
 during generation.
 Adding a dummy level or clearing the browser cache does not repair that generator defect.
@@ -156,8 +156,8 @@ relative to the seasonal band, and Outputs names come from the mapped entities.
 The seasonal description never prescribes an action in competition with the backend
 reason. Outputs expansion remains shared per entry and retains its existing timer.
 The revision indicator itself leaves Stability and lane selection unchanged.
-The unpublished v2.1.1-rc.1 candidate retains beta.4 revision 13 in both layouts,
-superseding revisions 1–12. Existing beta.4 revision-13 cards stay compatible;
+The prepared v2.1.1 Stable source retains beta.4/RC.1 revision 13 in both layouts,
+superseding revisions 1–12. Existing beta.4 and RC.1 revision-13 cards stay compatible;
 older revisions require fresh exports and full saved-card replacement.
 Beta.3 remains the earlier revision-12 candidate and beta.2 the revision-11 candidate;
 earlier deployment and Lab evidence apply only to their exact packages. The update-observation contract is independent of the stamp.

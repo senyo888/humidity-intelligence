@@ -5,7 +5,8 @@ testing and validation branches.
 
 ## Canonical Version Model
 
-- `2.1.1-rc.1`: current unpublished release candidate, retaining the complete beta.1–beta.4 changes and correcting self-check telemetry counts after Options changes. Both layouts retain beta.4 revision 13 and schema/generator 1; update-observation schema remains 1. Existing revision-13 cards stay compatible. See the [RC package record](#v211-rc1-package-verification).
+- `2.1.1`: current Stable source preparation, not yet published. Runtime and generated-card bytes are unchanged from reviewed RC.1; manifest and packaged guidance establish a new package identity. Both layouts remain revision 13, schema/generator 1. See the [Stable preparation record](#v211-stable-source-preparation).
+- `2.1.1-rc.1`: earlier unpublished release candidate, retaining the complete beta.1–beta.4 changes and correcting self-check telemetry counts after Options changes. Both layouts retain beta.4 revision 13 and schema/generator 1; update-observation schema remains 1. Existing revision-13 cards stay compatible. See the [RC package record](#v211-rc1-package-verification).
 - `2.1.1-beta.4`: earlier unpublished candidate with a quiet no-update footer and right-aligned **Update available** cue. Both layouts advanced to revision 13, superseding 1–12; stamp schema/generator and update-observation schema remained 1. Existing skipped/progress/unverified states stayed visible. Its source preparation did not change the then-running advisory Lab observation.
 - `2.1.1-beta.3`: earlier unpublished candidate adding optional HACS-reported update status beside the independent UI revision LED. Both layouts advance to revision 12, with stamp schema/generator 1 and a separate update-observation schema 1. Install the complete package, restart, regenerate and replace saved V2 cards; no configuration migration. This source update does not publish a beta, establish HACS availability, or change the beta.2 Lab soak.
 - `2.1.1-beta.2`: earlier unpublished candidate correcting single-level V2 exports (#129), with follow-up device-text, calculated-trend and issue-summary hardening. Both layouts use revision 11 with schema/generator 1. [Optional Lab verification](issue-129-verification.md) records four passing single-level cases on the exact beta.2 package and remains non-blocking. That evidence does not validate the changed beta.3 bytes.
@@ -401,6 +402,42 @@ and post-release observation as separate evidence states.
   approval gates are complete for the exact final head.
 
 ## Rendered UI revision check for every version update
+
+### v2.1.1 Stable source preparation
+
+The final `2.1.1` source is **UI unchanged and compatible** against reviewed RC.1
+merged into develop at `76b1ac4c246e06ae8971e03ae7907a9c0d31e5cc`, tree
+`e2895dcacd3df606682cc4c00f16a6d9c203791c`. Both layouts retain revision 13,
+supersedes 1–12, stamp schema 1 and generator contract 1. Update-observation schema 1
+and Stability schema 3/formula 4 remain. Runtime Python, service schemas,
+translations, renderer/generator and card/gallery YAML are unchanged from RC.1.
+Only the manifest version and packaged UI guidance change within the component.
+
+The complete update from published v2.1.0 still includes single-level exports,
+Outputs hardening, minute-bounded calculated trends, issue-summary filtering,
+optional HACS evidence and the RC self-check correction. Calculated-trend weighting
+can affect slope-dependent decisions. Calling the RC-to-Stable step a metadata and
+documentation change must not conceal those cumulative behavior changes.
+
+Run `python scripts/check_ui_revision_governance.py --base 76b1ac4c246e06ae8971e03ae7907a9c0d31e5cc`
+and the comparison with `--base v2.1.0`; validate version policy for patch, develop
+and main. Verify generated stamps/Diagnostics targets, renderer parity, coherent
+Inspector version stamps and the exact 77-file package delta. Build the final package
+from its committed source and record its own hashes. Earlier RC tests remain tied
+to their original source; source equality permits reuse of unchanged-path evidence,
+not a claim that the final package was installed.
+
+Install the complete package and fully restart Home Assistant when authorized.
+Beta.4 and RC.1 revision-13 cards remain compatible without an extra export solely
+for this version bump. From v2.1.0 or older layouts, refresh/export and replace the
+complete saved YAML. No configuration/entity migration is required. Restart/reload
+resets in-memory Stability history; rollback retains the prior complete package and
+compatible saved cards separately. See [complete notes](releases/v2.1.1.md).
+
+Published Stable remains v2.1.0 until a separately authorized v2.1.1 tag and GitHub
+Release exist. Stable metadata on develop or main is source identity, not release,
+HACS availability or loaded-package proof. The main PR requires Stable metadata;
+README/release approval, main merge, publication and deployment remain distinct.
 
 ### v2.1.1-rc.1 package verification
 
