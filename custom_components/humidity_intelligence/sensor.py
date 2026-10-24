@@ -324,6 +324,7 @@ class HIDiagnosticsSensor(SensorEntity):
             # each fresh publication and its precise observation timestamps.
             compact_score["movement"] = dict(previous_movement)
         self._attr_extra_state_attributes = {
+            "update_observation": _sanitize_json(summary.get("update_observation", {})),
             "Stability Score": _readable_stability_score(summary.get("stability_score")),
             "stability_score": _sanitize_json(summary.get("stability_score", {})),
             "diagnostics_summary": _sanitize_json(compact_summary),
@@ -544,6 +545,7 @@ def _compact_diagnostics_summary(summary: dict) -> dict:
         if isinstance(item, dict)
     ]
     return {
+        "update_observation": summary.get("update_observation", {}),
         "runtime_control": summary.get("runtime_control", {}),
         "target_profile": summary.get("target_profile", {}),
         "temperature_comfort": summary.get("temperature_comfort", {}),

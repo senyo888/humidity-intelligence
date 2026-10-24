@@ -16,6 +16,7 @@ from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import config_validation as cv
 
 from .helpers.stability import stability_diagnostics_payload
+from .helpers.update_observation import support_update_observation, update_observation
 from .const import CONF_SHOW_OUTPUT_ENTITY_DETAILS, DEFAULT_SHOW_OUTPUT_ENTITY_DETAILS, DOMAIN
 from .helpers.cleanup import (
     RELEASE_CHECK_CARD_BASE,
@@ -125,7 +126,7 @@ _SAFE_FILENAME_RE = re.compile(r"^[A-Za-z0-9._-]{1,128}$")
 _OWNED_REPORT_FILENAME_PREFIX = "humidity_intelligence_"
 _OWNED_REPORT_FILENAME_SUFFIX = ".json"
 _RELEASE_CHECK_MANIFEST_VERSION_RE = re.compile(
-    r"^2\.(?:0\.(?:5|(?:[6-9]|1[0-2])(?:-(?:beta|rc)\.[1-9]\d*)?)|1\.0(?:-(?:beta|rc)\.[1-9]\d*)?)$"
+    r"^2\.(?:0\.(?:5|(?:[6-9]|1[0-2])(?:-(?:beta|rc)\.[1-9]\d*)?)|1\.[01](?:-(?:beta|rc)\.[1-9]\d*)?)$"
 )
 _SENSITIVE_ATTR_EXACT = {
     "access_token",
@@ -597,7 +598,7 @@ async def async_register_services(hass: HomeAssistant) -> None:
                 "humidity_drift_7d": drift_dependency,
                 "pm25_entity_id_normalization": _pm25_normalization_status(data),
                 "local_version_preservation": local_version_status,
-                "telemetry_count": len(entry.data.get("telemetry", [])),
+                "telemetry_count": len(_effective_entry_config(entry).get("telemetry", [])),
                 "unresolved_placeholders": data.get("unresolved_placeholders", []),
                 "unresolved_placeholders_by_card": data.get("unresolved_placeholders_by_card", {}),
             }
@@ -1135,6 +1136,7 @@ def _support_safe_diagnostics_summary(summary: dict) -> dict:
         else {}
     )
     return {
+        "update_observation": support_update_observation(summary.get("update_observation", {})),
         "runtime_control": {
             "mode": runtime_control.get("mode"),
             "display": runtime_control.get("display"),
@@ -1372,6 +1374,7 @@ def _build_diagnostics_summary(
         warnings.append("One or more humidifier outputs have a conflicting configured output owner.")
 
     summary = {
+        "update_observation": update_observation(hass),
         "runtime_control": runtime_control_summary(runtime_data),
         "target_profile": {
             "mode": effective.get("target_profile", "auto"),
@@ -1664,11 +1667,11 @@ def _release_check_manifest_status(manifest_version: Optional[str]) -> Tuple[str
     if manifest_version and _RELEASE_CHECK_MANIFEST_VERSION_RE.fullmatch(manifest_version):
         return (
             "pass",
-            f"Manifest version is {version}; release-check contract accepts the v2.0.5-v2.0.12 and v2.1.0 lines.",
+            f"Manifest version is {version}; release-check contract accepts the v2.0.5-v2.0.12 and v2.1.0-v2.1.1 lines.",
         )
     return (
         "fail",
-        f"Manifest version is {version}; expected v2.0.5, a v2.0.6-v2.0.12 beta/rc/stable version, or v2.1.0 beta/rc/stable.",
+        f"Manifest version is {version}; expected v2.0.5, a v2.0.6-v2.0.12 beta/rc/stable version, or v2.1.0-v2.1.1 beta/rc/stable.",
     )
 
 

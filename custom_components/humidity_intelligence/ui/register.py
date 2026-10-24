@@ -385,6 +385,8 @@ async def async_register_cards(hass: HomeAssistant, entry_id: str, mapping: Dict
                 keep=show_output_details,
             )
         content = _apply_level_labels(content, level_labels)
+        if name in {"v2_mobile", "v2_tablet"}:
+            content = _apply_configured_level_inventory(content, entry, level_labels)
         # Replace placeholders safely (avoid partial matches like binary_sensor.*)
         for placeholder, entity_id in mapping.items():
             if not entity_id:
@@ -464,6 +466,37 @@ async def async_register_cards(hass: HomeAssistant, entry_id: str, mapping: Dict
     hass.data[DOMAIN][entry_id]["unresolved_placeholders_by_card"] = unresolved_by_card
     hass.data[DOMAIN][entry_id]["ui_revision"] = ui_revision
     return cards
+
+
+def _apply_configured_level_inventory(
+    content: str, entry: Any, labels: Dict[str, str]
+) -> str:
+    """Render only telemetry-indexed levels, independently of registry/state health.
+
+    Core creates both averages for every level present in effective telemetry.
+    Keep configured placeholders until mapping/validation so a missing binding
+    remains an error; stale registry entries cannot resurrect an absent level.
+    """
+    levels = {
+        item.get("level")
+        for item in _entry_section(entry, "telemetry", []) or []
+        if isinstance(item, dict) and item.get("level")
+    }
+    for metric, suffix in (("humidity", "AVG"), ("temperature", "Temp")):
+        inventory = [
+            [f"{labels[level]} {suffix}", f"sensor.air_control_{location}_average_{metric}"]
+            for level, location in (("level2", "upstairs"), ("level1", "downstairs"))
+            if level in levels
+        ]
+        variable = f"level{metric.capitalize()}Sources"
+        marker = f"// HI level {metric} inventory"
+        content = re.sub(
+            rf"^([ \t]*)const {variable} = .*; {re.escape(marker)}[ \t]*$",
+            lambda match: f"{match.group(1)}const {variable} = {json.dumps(inventory)}; {marker}",
+            content,
+            flags=re.MULTILINE,
+        )
+    return content
 
 
 def _apply_marked_yaml_section(content: str, marker: str, *, keep: bool) -> str:

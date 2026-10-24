@@ -39,8 +39,14 @@ def tearDownModule():
     """
     # Registry singleton caches otherwise own stopped instances until module
     # destruction. Clear only the native registries used by this isolated suite.
-    for registry in (area_registry, entity_registry, issue_registry, label_registry):
-        registry.async_get.cache_clear()
+    for registry in (
+        area_registry, device_registry, entity_registry, issue_registry, label_registry,
+    ):
+        # Older supported HA versions also cache the device registry; newer
+        # getters may read hass.data directly and expose no singleton cache.
+        clear_cache = getattr(registry.async_get, 'cache_clear', None)
+        if callable(clear_cache):
+            clear_cache()
     gc.collect()
     if any(reference() is not None for reference in HA_INSTANCES):
         raise AssertionError('Native flow fixture retained a Home Assistant instance')

@@ -40,12 +40,17 @@ Difference:
 
 Feature parity is maintained.
 
-## Compact UI revision footer
+## UI revision and software-update footer
 
 The bottom-left LED compares this rendered card's revision with its backend's
 compatible target. It distinguishes current, update, differing revision and
 unverified evidence. It does not verify downloaded files, browser caches or saved
-dashboard contents. See [revision meanings and replacement steps](../../../docs/ui-revision-status.md).
+dashboard contents. Separate optional HACS evidence appears at the right:
+**↑ Update available**, skipped, progress or unverified. Routine no-update text
+stays in the shared details and accessible name. Provider-reported downloaded and
+available versions do not prove loaded code. The wrapping 44px button opens details;
+its guarded **View update** action opens native HA details without installing or
+restarting anything. See [revision meanings and replacement steps](../../../docs/ui-revision-status.md).
 
 Mobile and tablet retain their existing footprints and actions with restrained
 neutral depth. System/Manual unknown states remain explicit, humidity requires
@@ -269,6 +274,10 @@ Custom profiles retain their existing derivation; a custom 50–60% band gives 6
 high risk. These profile boundaries are not universal safe cutoffs.
 Missing or invalid high-risk bounds leave the affected humidity context neutral.
 
+The native Outputs summary renders names, presets and states as escaped text.
+Percentages appear only for finite numeric values (including zero); malformed
+percentages use the existing preset/on/off fallback. Gallery mirrors share this rule.
+
 Control row:
 
 - preserve the v2.0.7 tap-to-toggle behavior for the System and Manual helper buttons
@@ -281,8 +290,10 @@ Control row:
   expiry alone stays neutral, and a fresh baseline is not a zero-change comparison
 - keep score/classification distinct from current humidity. Formula 4, caps and
   72-hour history remain; a recent gain does not establish healthy current air
-- both V2 layouts use revision 9, superseding 1–8, with stamp schema/generator 1.
-  Install the complete package and restart before exporting/replacing saved cards;
+- both V2 layouts in v2.1.1 retain beta.4/RC.1 revision 13, superseding 1–12,
+  with stamp schema/generator 1 and separate update-observation schema 1.
+  Published v2.1.0 retains revision 9. Install the complete package and restart;
+  older cards require fresh exports and replacement, while beta.4 and RC.1 revision-13 cards remain compatible;
   restart clears in-memory Stability history and no configuration migration is needed
 - whole-badge tap/click/keyboard activation opens a native modal dialog through the
   button-card action. Details are a labelled snapshot copied from the owning card's
@@ -365,9 +376,17 @@ Output details:
 `ui/register.py`:
 
 1. builds placeholder to entity map
-2. substitutes canonical templates
-3. prunes optional rows
-4. reports unresolved non-optional placeholders
+2. builds V2 level-chip inventories from effective telemetry, respecting Options
+3. substitutes canonical templates and prunes optional rows
+4. reports unresolved required placeholders and advertises only successful V2 layouts
+
+Only telemetry-configured levels appear in V2 humidity and temperature chip rows.
+Core creates both averages for each such level, even when one metric has no inputs.
+Configured unavailable readings remain visible; failed required registry mappings
+remain errors. Removed levels stay absent even if old registry entries remain.
+The v2.1.1 Stable source retains beta.4/RC.1 revision 13 for both layouts. After an
+upgrade from an older revision, refresh, export and replace saved V2 cards.
+Existing beta.4 and RC.1 revision-13 cards remain compatible. Stamp schema/generator remain 1.
 
 Inventory files:
 

@@ -6,6 +6,220 @@ All notable changes to Humidity Intelligence will be documented in this file.
 
 This project follows a practical changelog format for Home Assistant and HACS users. Add new entries under a fresh `Unreleased` section before publishing a future release.
 
+## Unreleased — v2.1.1 Stable preparation
+
+![Humidity Intelligence v2.1.1 release header highlighting single-level V2 cards and clearer update status](assets/release_banner/v2.1.1_release.png)
+
+Prepares Stable source from the reviewed RC.1 merged in
+[PR #132](https://github.com/senyo888/humidity-intelligence/pull/132). Published
+Stable remains v2.1.0. No v2.1.1 release date, tag, HACS offering or installed
+final package is claimed.
+
+- Fixes single-level V2 exports without a dummy second level, respecting saved
+  Options while retaining configured-unavailable and missing-mapping truth.
+- Separates optional HACS update evidence from UI compatibility. Routine no-update
+  text stays in details; update/skipped/progress/unverified states remain explicit.
+  Opening details never installs or restarts anything.
+- Hardens Outputs text/percentages and issue-summary privacy filtering, bounds
+  calculated trends to each minute's latest actual reading, and corrects self-check
+  telemetry counts after Options changes. Trend weighting can affect slope-based
+  decisions relative to v2.1.0; lane priority and CO protection remain unchanged.
+- Changes only final manifest identity and packaged guidance from RC.1. Runtime,
+  service schemas, translations, renderer/generator and card/gallery YAML retain
+  their reviewed bytes. Both layouts remain **UI unchanged and compatible**:
+  revision 13, stamp schema 1 and generator contract 1.
+
+Install the complete package and fully restart Home Assistant when an upgrade is
+approved. Beta.4 and RC.1 revision-13 cards need no extra export for this version
+bump; older cards need fresh exports and complete replacement. No configuration
+or entity migration is required. Restart/reload resets in-memory Stability history.
+Retain the previous package and compatible saved cards separately for rollback.
+
+Thanks to [@Ak1Sun](https://github.com/Ak1Sun) for reporting
+[#129](https://github.com/senyo888/humidity-intelligence/issues/129).
+See [complete release notes](docs/releases/v2.1.1.md) and the
+[Stable compatibility record](docs/release-governance.md#v211-stable-source-preparation).
+
+<a id="unreleased--v211-rc1"></a>
+
+## v2.1.1-rc.1 — Earlier unpublished candidate
+
+![Humidity Intelligence v2.1.1 release header highlighting single-level V2 cards and clearer update status](assets/release_banner/v2.1.1_release.png)
+
+Prepares the complete v2.1.1 release candidate for maintainer review. Published
+Stable remains v2.1.0; no RC tag, GitHub Release, HACS offering or installation is
+established by this source preparation.
+
+Thanks to [@Ak1Sun](https://github.com/Ak1Sun) for reporting the single-level V2
+export issue in [#129](https://github.com/senyo888/humidity-intelligence/issues/129).
+
+- Retains the single-level V2 export correction (#129), Options precedence,
+  configured-unavailable visibility and explicit required-mapping failures.
+- Retains native Outputs plain-text escaping and finite percentage handling,
+  bounded calculated trends using each minute's latest actual reading, and robust
+  decorated issue-summary privacy filtering. Trend weighting can affect slopes
+  and slope-dependent decisions; this release is not solely a presentation change.
+- Retains optional HACS-reported update evidence and the quiet revision-13 footer.
+  UI compatibility, provider-reported versions and loaded package identity remain
+  separate. Opening details performs no download, installation or restart.
+- Corrects `self_check` telemetry counts after Options replaces or removes sensors.
+  This changes report accuracy only; configuration, runtime control and service
+  schemas remain unchanged. RC.1 is therefore not a manifest-only beta.4 bridge.
+- Aligns packaged UI and release guidance. Both V2 layouts are **UI unchanged and
+  compatible** with beta.4: revision 13, stamp schema 1, generator contract 1;
+  update-observation schema remains 1. Existing revision-13 cards stay current.
+
+Install the complete package and restart HA to load the report fix and version.
+From v2.1.0 or older candidates, regenerate and replace complete saved V2 cards;
+beta.4 revision-13 cards need no replacement for RC.1 alone. No configuration or
+entity migration is required. Restart/reload resets in-memory Stability history.
+Rollback restores the prior complete package and saved cards separately; older
+backends can report **UI differs** for revision-13 cards. See the
+[RC compatibility record](docs/release-governance.md#v211-rc1-package-verification).
+
+<a id="unreleased--v211-beta4"></a>
+
+## v2.1.1-beta.4 — Earlier unpublished candidate
+
+Makes the V2 software-update footer quieter while retaining its independent UI
+revision indicator. Published Stable remains v2.1.0; this candidate is not a tag,
+GitHub Release or HACS offering.
+
+- Hides the routine **No update reported** label from the footer and removes the
+  separator. Its provider evidence remains available in the existing details and
+  accessible button name; silence does not prove that the latest code is running.
+- Shows **↑ Update available** at the lower right when HACS reports an update.
+  Skipped, in-progress and unverified states remain visible at the right. The UI
+  revision LED/status stays on the left, including replacement and mismatch warnings.
+- Retains one real 44px details button, natural wrapping, keyboard/touch access,
+  focus and dialog cleanup. **View update** keeps its guarded native HA handoff;
+  opening the footer does not install, download, restart or write control outputs.
+- Advances both V2 layouts to **revision 13**, superseding 1–12. Stamp schema and
+  generator contract remain 1, as does the backend update-observation schema.
+  HACS source resolution, state classification, channel/refresh policy, runtime
+  lanes, entity/service contracts and Stability calculation are unchanged.
+
+Install the complete package and restart HA to load the version/revision metadata,
+then regenerate exports and replace the complete saved V2 cards. Restart/reload
+resets in-memory Stability history; no configuration or entity migration is needed.
+Rollback restores the previous complete package and saved card YAML separately:
+revision-13 cards against beta.3 revision-12 metadata report **UI differs**.
+Existing beta.3 deployment/soak evidence remains bound to beta.3 and non-blocking;
+this source change leaves that observation running and makes no beta.4 deployment
+or completed-soak claim. See [footer details](docs/ui-revision-status.md).
+
+<a id="unreleased--v211-beta3"></a>
+
+## v2.1.1-beta.3 — Earlier unpublished candidate
+
+Adds optional, provider-reported software update information to the V2 card footer.
+Published Stable remains v2.1.0; source preparation does not publish a beta or make
+it available through HACS.
+
+- Preserves the UI revision LED's existing current/update/differs/unverified meaning.
+  A separate visible label reports HACS update, no-update, skipped, in-progress or
+  unverified status; one details panel explains both and opens HA's existing update
+  details. Opening the footer never installs, downloads or restarts anything.
+- Resolves the official HI HACS update entity by registry identity, surviving renames.
+  Missing, disabled, ambiguous and malformed sources remain unverified. Existing
+  Diagnostics refreshes read the optional source; no network poller, listener,
+  release-channel selector or version-ordering policy is added.
+- Labels HACS downloaded and available versions explicitly. These do not attest
+  running code or a successful recent Internet check. Native/support exports omit
+  the locally resolved source entity ID; dynamic version text is escaped.
+- Advances both V2 layouts to **revision 12**, superseding 1–11. Stamp schema and
+  generator contract stay 1; separate update-observation schema 1 is additive.
+  The shared footer occupies a real 44px interaction target and wraps on narrow
+  screens while preserving touch, keyboard, focus and dialog cleanup.
+- Retains beta.2's #129 and hardening changes. Lane ordering, CO protection,
+  environmental inputs, output ownership and Stability behavior are unchanged.
+
+Install the complete package and restart HA to load the backend addition, then
+`refresh_ui`, export and replace the complete saved V2 cards. Restart/reload resets
+in-memory Stability history; there is no configuration or entity migration.
+Rollback restores the prior complete package and saved card YAML separately.
+Revision-12 cards against revision-11 metadata report “UI differs”; absent software
+metadata stays unverified. See [footer details](docs/ui-revision-status.md).
+Beta.2 Lab/soak evidence remains optional, non-blocking and bound to that earlier
+package. No beta.3 deployment or completed soak is claimed.
+
+<a id="unreleased--v211-beta2"></a>
+
+## v2.1.1-beta.2 — Earlier unpublished candidate
+
+Development candidate for [#129](https://github.com/senyo888/humidity-intelligence/issues/129),
+with follow-up input-handling and calculated-trend hardening.
+Published Stable remains v2.1.0; this entry does not announce a beta release or HACS availability.
+
+- Fixes V2 Mobile and Tablet exports remaining “UI unverified” in single-level
+  installations. Humidity and temperature chip inventories include only levels
+  present in effective telemetry, including saved Options, and remove their
+  inactive-level JavaScript references.
+- Keeps configured-but-unavailable averages visible and genuine required mapping
+  failures explicit. Stale registry entries cannot reintroduce removed levels.
+- Advances both layouts to **11**, with compatible revisions 1–10
+  explicitly superseded. Stamp schema and generator contract remain 1; entry binding,
+  revision comparison and failure handling retain their meaning.
+- Adds real-entity-creation regression fixtures, generated YAML and JavaScript checks,
+  configuration-transition coverage, and revision-9 upgrade/rollback checks.
+- Extends the existing read-only release-check and controller package version
+  recognition through the v2.1.1 beta/rc/stable line. Service authorization, report
+  ownership, package format and external-controller authority remain unchanged.
+- Renders native Outputs device names, presets and states as text in both V2 layouts
+  and their gallery mirrors. Percentages require a finite numeric attribute;
+  malformed values fall back to the existing preset or on/off display.
+- Bounds calculated temperature trends to the latest actual reading per minute,
+  at most 61 points within one hour. Updates remain immediate and refresh only the
+  affected source. Frequent readings therefore have different weighting; calculated
+  slopes and slope-dependent decisions can change. Five-minute periodic sampling,
+  units, provided slopes and entity IDs retain their existing contracts.
+- Keeps decorated issue-summary privacy filtering responsive for repeated Markdown
+  characters while preserving credential and device-ID redaction.
+- Lane priority, CO protections, gates and the Stability formula are unchanged.
+  No configuration or entity migration is required.
+
+Install the complete candidate package and restart Home Assistant to load the Python
+changes. Restart/reload clears in-memory Stability history. Run `refresh_ui`, export
+with `view_cards` or `dump_cards`, replace the complete saved V2 Manual-card YAML,
+and refresh the client. Rollback restores the previous complete package and its
+saved cards; a revision-11 card against a revision-9 or revision-10 backend reports
+“UI differs”. The optional [Lab record](docs/issue-129-verification.md) records all
+four single-level Mobile/Tablet cases passing on this beta.2 package, with exact
+restoration and explicit coverage limits. This evidence remains non-blocking; the
+live #129 matrix does not exhaustively validate the other follow-up changes.
+Source validation and house-agent review do not establish live installation or release.
+
+<a id="unreleased--v211-beta1"></a>
+
+## v2.1.1-beta.1 — Earlier unpublished candidate
+
+Earlier candidate for [#129](https://github.com/senyo888/humidity-intelligence/issues/129).
+Published Stable remains v2.1.0; this entry does not announce a beta release or HACS availability.
+
+- Fixes V2 Mobile and Tablet exports remaining “UI unverified” in single-level
+  installations. Humidity and temperature chip inventories include only levels
+  present in effective telemetry, including saved Options, and remove their
+  inactive-level JavaScript references.
+- Keeps configured-but-unavailable averages visible and genuine required mapping
+  failures explicit. Stale registry entries cannot reintroduce removed levels.
+- Advances both layouts from revision 9 to **10**, with compatible revisions 1–9
+  explicitly superseded. Stamp schema and generator contract remain 1; entry binding,
+  revision comparison and failure handling retain their meaning.
+- Adds real-entity-creation regression fixtures, generated YAML and JavaScript checks,
+  configuration-transition coverage, and revision-9 upgrade/rollback checks.
+- Extends the existing read-only release-check and controller package version
+  recognition through the v2.1.1 beta/rc/stable line. Service authorization, report
+  ownership, package format and external-controller authority remain unchanged.
+- Control lanes, CO priority, gates, entity creation and Stability calculations are
+  unchanged. No configuration or entity migration is required.
+
+Install the complete candidate package and restart Home Assistant to load the Python
+changes. Restart/reload clears in-memory Stability history. Run `refresh_ui`, export
+with `view_cards` or `dump_cards`, replace the complete saved V2 Manual-card YAML,
+and refresh the client. Rollback restores the previous complete package and its
+saved cards; a revision-10 card against a revision-9 backend reports “UI differs”.
+Source validation and house-agent review do not establish live installation or release.
+
 <a id="unreleased--v210"></a>
 
 ## v2.1.0 — Published Stable (2026-10-12)

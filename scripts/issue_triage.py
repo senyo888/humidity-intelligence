@@ -314,7 +314,9 @@ _AUTHORIZATION_TOKEN_RE = re.compile(
     re.I,
 )
 _JWT_RE = re.compile(r"\beyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\b")
-_SENSITIVE_KEY_DECORATOR = r"(?:\\?[\"']|\*{1,2}|_{1,2}|`)*"
+# Consume each Markdown decorator once; overlapping one/two-character alternatives
+# make short nonmatching contributor text exponentially expensive to redact.
+_SENSITIVE_KEY_DECORATOR = r"(?:\\?[\"']|[*_`])*"
 _ASSIGNMENT_VALUE = (
     r"(?:\\\"(?:[^\"\\]|\\(?!\"))*\\\"|"
     r"\\'(?:[^'\\]|\\(?!'))*\\'|"

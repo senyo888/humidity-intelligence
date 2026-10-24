@@ -20,6 +20,16 @@ schemas, tracked generated-card templates, and release documentation. Ignored lo
 planning notes may inform maintainer review, but they do not override tracked runtime
 truth.
 
+## Calculated temperature trends
+
+Calculated slopes retain the latest actual reading per minute within one hour,
+with at most 61 retained points per configured source. Updates refresh that source
+immediately; the five-minute periodic sampler and startup baseline remain. Actual
+timestamps are preserved and missing minutes are not filled. Frequent readings no
+longer receive event-rate weighting, so slope values and slope-dependent decisions
+can change. Provided slopes, units, entity identity and lane priority remain intact.
+See [source validation and limits](docs/runtime-simulation-validation.md#calculated-temperature-trends).
+
 ## Observational Stability Score
 
 The [accepted Stability contract](docs/stability-score-accepted-baseline.md) defines
@@ -177,6 +187,11 @@ backend comfort truth instead of card-only assumptions.
 
 Generated dashboards are presentation surfaces, not decision engines.
 
+V2 humidity and temperature level-chip inventories follow effective configured
+telemetry with Options precedence, matching core entity creation. Unconfigured levels
+contribute no humidity/temperature chip or reference. Configured averages remain visible when readings are unavailable;
+missing required registry mappings still prevent successful revision advertisement.
+
 They may render:
 
 - selected runtime lane
@@ -322,11 +337,29 @@ V2 generated cards carry an entry- and layout-scoped rendered UI revision, separ
 from the integration manifest. Additive Diagnostics metadata advertises compatible
 targets only for successful generation. The small footer compares declared revisions;
 it does not establish installed dashboard bytes, configuration freshness, arbitrary
-customization, cache state or integration-update availability. Missing/unsupported
+customization or cache state. Missing/unsupported
 or disconnected evidence is unverified; an explicitly superseded revision is an
 update, while a rollback mismatch is a difference. Export success never proves card
 replacement. This observation adds no writer, lane input or frontend runtime
 dependency. See [the rendered UI revision contract](docs/ui-revision-status.md).
+
+The same footer presents an independent, optional HACS update observation. The
+backend resolves the official HI repository through Home Assistant's entity
+registry and reads its update entity during existing Diagnostics publication.
+Missing, disabled, ambiguous or malformed evidence stays unverified. Provider
+states are reported without HI version ordering, release-channel selection, remote
+polling or installation actions. A HACS downloaded version is not loaded-runtime
+proof, and entity availability is not a fresh Internet check. UI revision status,
+Diagnostics' primary state, Stability and deterministic control remain independent.
+The footer keeps UI revision status at the left and software cues at the right.
+A positive provider report is labelled **Update available**; its details retain
+HACS's source and freshness limits. The routine no-update cue is visually hidden,
+while its evidence remains in the shared details/accessibility text. Skipped,
+in-progress and unverified states stay visible; absence is not a software-current
+claim. The shared details button adds no new action.
+The additive `update_observation` payload has its own schema 1; native/support
+exports omit the locally resolved update entity ID. See [UI and software version
+details](docs/ui-revision-status.md#software-update-observation).
 
 ## Home Assistant And HACS Boundaries
 

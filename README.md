@@ -59,6 +59,8 @@ It gives you:
 - services for dashboard export, self-check, diagnostics, pause/resume, and release validation
 
 Current published Stable: **v2.1.0**, [released on 12 October 2026](https://github.com/senyo888/humidity-intelligence/releases/tag/v2.1.0).
+Stable source in preparation: **v2.1.1**, not yet published; see the
+[dashboard, trend and support fixes](#v211-stable-source-preparation).
 V2.1 is led by **Stability Score**, with clearer badge explanations and history,
 optional output monitoring, reusable monitoring meanings and a simpler status row.
 Check the version offered in HACS and refresh its repository information if an older
@@ -519,9 +521,9 @@ must be reviewable from tracked repository files.
 - **Autumn refinement:** the built-in target band is 50–60%, with humidity danger
   still at 64%. Other seasons and custom profile rules retain their existing behavior.
 
-Both V2 layouts use UI revision 9, superseding revisions 1–8. Run `refresh_ui`, export
+Published v2.1.0 uses UI revision 9 in both V2 layouts, superseding revisions 1–8. Run `refresh_ui`, export
 with `view_cards` or `dump_cards`, replace the complete YAML in older saved cards,
-then refresh the frontend. Revision-9 cards from RC.1 remain compatible; the final
+then refresh the frontend. Revision-9 cards from v2.1.0-rc.1 remain compatible; the final
 version bump does not require another card refresh. The V1 Mobile Drift correction
 also requires replacement YAML; that layout has no revision indicator. An authorized package update requires a full Home Assistant restart.
 Restart/reload starts Stability history collection again. See
@@ -759,7 +761,7 @@ Common post-configuration areas:
   includes [reusable meanings and optional guidance](docs/custom-monitoring-meanings.md)
 - UI: run `humidity_intelligence.dump_cards` and replace Manual-card YAML
   after visibility, template, mapping or generated-card option changes.
-  [Revision footer](docs/ui-revision-status.md): rendered revision only
+  [Revision footer](docs/ui-revision-status.md): UI compatibility and separate HACS-reported updates
 
 Detailed manual:
 
@@ -824,6 +826,27 @@ CO emergency pressure. Details are in
 
 ## Release Notes
 
+### v2.1.1 (Stable source preparation)
+
+![Humidity Intelligence v2.1.1 — single-level cards and clearer update status](assets/release_banner/v2.1.1_release.png)
+
+Single-level exports and self-check counts follow saved Options. Configured-unavailable
+inputs and genuine mapping failures remain visible.
+
+- HACS update evidence stays separate from UI compatibility and loaded-code identity.
+  Outputs text/percentages and issue-summary privacy filtering are hardened.
+- Calculated trends use each minute's latest reading. Weighting can change slope-based
+  decisions; lane priority and CO protection remain.
+- Revision **13**, schema/generator **1** remain compatible with beta.4/RC.1 cards.
+  Older cards need fresh exports and complete replacement. Install the full package
+  and restart; no configuration/entity migration. Restart clears Stability history.
+
+Final source preserves RC.1 runtime and cards; manifest/guidance give a new package
+identity. [Complete notes](docs/releases/v2.1.1.md) cover
+[#129](https://github.com/senyo888/humidity-intelligence/issues/129), validation and
+[upgrade/rollback](docs/release-governance.md#v211-stable-source-preparation).
+**V2.1.0 remains published Stable.**
+
 ### v2.1.0 (Current Published Stable)
 
 ![Humidity Intelligence V2.1 Stability Score release header](assets/release_banner/v2.1_release.png)
@@ -850,10 +873,10 @@ Control row. See the [V2.1 overview](#v21--stability-score) and
   restart Home Assistant; restart/reload clears in-memory Stability history. Run
   `refresh_ui`, export with `view_cards` or `dump_cards`, and replace the complete
   YAML in older V2 cards, plus V1 Mobile for its Drift correction. Refresh the client.
-  Existing RC.1 revision-9 cards remain compatible; final version metadata does not
+  Existing v2.1.0-rc.1 revision-9 cards remain compatible; final version metadata does not
   make them stale.
-- Preserves the reviewed runtime and generated-card bytes from RC.1. The final package
-  has its own manifest identity; RC.1 installation evidence is recorded separately
+- Preserves the reviewed runtime and generated-card bytes from v2.1.0-rc.1. The final package
+  has its own manifest identity; v2.1.0-rc.1 installation evidence is recorded separately
   from final-package registration. Publication does not establish that an existing
   Home Assistant installation has loaded the final package.
 
@@ -861,6 +884,64 @@ Control row. See the [V2.1 overview](#v21--stability-score) and
 under Previous Releases; CHANGELOG.md retains the complete detailed history. -->
 <details>
 <summary>Previous Releases</summary>
+
+<a id="v211-rc1-current-unpublished-candidate"></a>
+
+### v2.1.1-rc.1 (Earlier unpublished candidate)
+
+Consolidated the dashboard and hardening fixes, then corrected self-check Options
+counts. [PR #132](https://github.com/senyo888/humidity-intelligence/pull/132) merged
+the RC into develop with revision 13 unchanged. See [RC history](CHANGELOG.md#v211-rc1--earlier-unpublished-candidate).
+
+<a id="v211-beta4-current-unpublished-candidate"></a>
+
+### v2.1.1-beta.4 (Earlier unpublished candidate)
+
+Introduced the quiet no-update footer and right-aligned **↑ Update available** cue,
+retaining skipped, progress and unverified states. Both layouts advanced to revision
+13 with schema/generator 1. Its package and saved-card replacement requirements remain
+in the [historical candidate notes](CHANGELOG.md#unreleased--v211-beta4).
+
+### v2.1.1-beta.3 (Earlier unpublished candidate)
+
+Adds a separate **HACS update status** beside the existing UI revision LED.
+Green still means **UI current**; the software label reports an update, no update,
+a skipped release, progress or unverified information. Open the footer for both
+version details and **View update** in Home Assistant.
+
+- HACS is optional. HI reads its reported state without new network polling or
+  automatic installation; downloaded and running code remain separate claims.
+- Both V2 layouts advance to **revision 12**, superseding 1–11; stamp schema/generator
+  1 remain. Install the complete package, restart, regenerate and replace saved cards.
+- Retains the #129 single-level fix and beta.2 hardening. No configuration migration;
+  restart resets Stability history. Published Stable remains v2.1.0.
+- [Candidate notes](CHANGELOG.md#unreleased--v211-beta3) and the
+  [footer state guide](docs/ui-revision-status.md#software-update-observation) describe
+  the limits. Beta.2's optional Lab evidence does not validate this new package.
+
+### v2.1.1-beta.2 (Earlier unpublished candidate)
+
+Fixes [#129](https://github.com/senyo888/humidity-intelligence/issues/129): freshly
+exported V2 Mobile and Tablet cards can verify their UI revision when only one level
+is configured. Unconfigured-level humidity and temperature chips are omitted; configured sensors retain
+their unavailable state and missing-mapping warnings.
+
+- Both layouts use **revision 11**, superseding 1–10; schema/generator 1 remain.
+  Native Outputs renders device text safely; issue-summary filtering is hardened.
+- Calculated trends keep the latest reading per minute within one hour. Frequent
+  readings can change slope values and slope-dependent decisions; lane priority remains.
+- Restart after installation, then `refresh_ui`, export and replace saved V2 cards.
+  Restart resets Stability history; no configuration migration. Stable remains v2.1.0.
+- [Candidate notes](CHANGELOG.md#unreleased--v211-beta2) include coverage limits;
+  [optional Lab verification](docs/issue-129-verification.md) records four passing
+  single-level cases on beta.2 and remains non-blocking.
+
+### v2.1.1-beta.1 (Earlier unpublished candidate)
+
+Introduced the [#129 single-level export fix](CHANGELOG.md#unreleased--v211-beta1)
+with V2 revision 10. Its [optional Lab verification](docs/issue-129-verification.md)
+retains four passing live cases and a stopped, incomplete soak for beta.1.
+This candidate was not published as a beta or made available through HACS.
 
 Earlier candidate entries retain their original preparation and validation scope.
 References to the published Stable at those checkpoints are historical; v2.1.0 is

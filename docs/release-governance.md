@@ -5,6 +5,12 @@ testing and validation branches.
 
 ## Canonical Version Model
 
+- `2.1.1`: current Stable source preparation, not yet published. Runtime and generated-card bytes are unchanged from reviewed RC.1; manifest and packaged guidance establish a new package identity. Both layouts remain revision 13, schema/generator 1. See the [Stable preparation record](#v211-stable-source-preparation).
+- `2.1.1-rc.1`: earlier unpublished release candidate, retaining the complete beta.1–beta.4 changes and correcting self-check telemetry counts after Options changes. Both layouts retain beta.4 revision 13 and schema/generator 1; update-observation schema remains 1. Existing revision-13 cards stay compatible. See the [RC package record](#v211-rc1-package-verification).
+- `2.1.1-beta.4`: earlier unpublished candidate with a quiet no-update footer and right-aligned **Update available** cue. Both layouts advanced to revision 13, superseding 1–12; stamp schema/generator and update-observation schema remained 1. Existing skipped/progress/unverified states stayed visible. Its source preparation did not change the then-running advisory Lab observation.
+- `2.1.1-beta.3`: earlier unpublished candidate adding optional HACS-reported update status beside the independent UI revision LED. Both layouts advance to revision 12, with stamp schema/generator 1 and a separate update-observation schema 1. Install the complete package, restart, regenerate and replace saved V2 cards; no configuration migration. This source update does not publish a beta, establish HACS availability, or change the beta.2 Lab soak.
+- `2.1.1-beta.2`: earlier unpublished candidate correcting single-level V2 exports (#129), with follow-up device-text, calculated-trend and issue-summary hardening. Both layouts use revision 11 with schema/generator 1. [Optional Lab verification](issue-129-verification.md) records four passing single-level cases on the exact beta.2 package and remains non-blocking. That evidence does not validate the changed beta.3 bytes.
+- `2.1.1-beta.1`: earlier unpublished revision-10 candidate. Its single-level Lab results and stopped, incomplete soak remain historical optional evidence for `f6e64c7`, not beta.2.
 - `2.1.0`: current published Stable, released on 2026-10-12 from reviewed RC.1 revision 9. The final version and documentation preserve runtime and generated-card behavior. Both V2 layouts stay revision 9 with schema/generator 1; installed RC.1 cards remain compatible. Publication and final-package registration are separate evidence.
 - `2.1.0-rc.1`: earlier unpublished release candidate, including the approved public content, adaptive Outputs release-check correction and review fixes for AQ recovery, event-loop Diagnostics publication, monitoring discovery and UI handling. Its exact revision-9 package completed Stable and Lab installation validation; advisory observation remains bound to that package.
 - `2.1.0-beta.12`: earlier unpublished source candidate with autumn targets of 50–60% (high risk 64%) and bounded recent score movement. Both V2 layouts advance from revision 6 to 7; stamp schema/generator 1 and Stability schema 3/formula 4 remain. No configuration migration; an authorized update requires the complete package, restart and replacement card exports. See [Stability contract](stability-score-accepted-baseline.md).
@@ -396,6 +402,188 @@ and post-release observation as separate evidence states.
   approval gates are complete for the exact final head.
 
 ## Rendered UI revision check for every version update
+
+### v2.1.1 Stable source preparation
+
+The final `2.1.1` source is **UI unchanged and compatible** against reviewed RC.1
+merged into develop at `76b1ac4c246e06ae8971e03ae7907a9c0d31e5cc`, tree
+`e2895dcacd3df606682cc4c00f16a6d9c203791c`. Both layouts retain revision 13,
+supersedes 1–12, stamp schema 1 and generator contract 1. Update-observation schema 1
+and Stability schema 3/formula 4 remain. Runtime Python, service schemas,
+translations, renderer/generator and card/gallery YAML are unchanged from RC.1.
+Only the manifest version and packaged UI guidance change within the component.
+
+The complete update from published v2.1.0 still includes single-level exports,
+Outputs hardening, minute-bounded calculated trends, issue-summary filtering,
+optional HACS evidence and the RC self-check correction. Calculated-trend weighting
+can affect slope-dependent decisions. Calling the RC-to-Stable step a metadata and
+documentation change must not conceal those cumulative behavior changes.
+
+Run `python scripts/check_ui_revision_governance.py --base 76b1ac4c246e06ae8971e03ae7907a9c0d31e5cc`
+and the comparison with `--base v2.1.0`; validate version policy for patch, develop
+and main. Verify generated stamps/Diagnostics targets, renderer parity, coherent
+Inspector version stamps and the exact 77-file package delta. Build the final package
+from its committed source and record its own hashes. Earlier RC tests remain tied
+to their original source; source equality permits reuse of unchanged-path evidence,
+not a claim that the final package was installed.
+
+Install the complete package and fully restart Home Assistant when authorized.
+Beta.4 and RC.1 revision-13 cards remain compatible without an extra export solely
+for this version bump. From v2.1.0 or older layouts, refresh/export and replace the
+complete saved YAML. No configuration/entity migration is required. Restart/reload
+resets in-memory Stability history; rollback retains the prior complete package and
+compatible saved cards separately. See [complete notes](releases/v2.1.1.md).
+
+Published Stable remains v2.1.0 until a separately authorized v2.1.1 tag and GitHub
+Release exist. Stable metadata on develop or main is source identity, not release,
+HACS availability or loaded-package proof. The main PR requires Stable metadata;
+README/release approval, main merge, publication and deployment remain distinct.
+
+### v2.1.1-rc.1 package verification
+
+RC.1 is **UI unchanged and compatible** against exact beta.4 source
+`e3c169e1756e7cfd71aeda6eed388ad0d536e147`. Both V2 layouts retain revision 13,
+supersedes 1–12, stamp schema 1 and generator contract 1. The separate software
+update-observation payload remains schema 1. Templates, renderer, generator and
+gallery YAML are unchanged; an RC label alone must not make saved cards stale.
+
+The package retains #129's configuration-aware level inventories, native Outputs
+plain-text/finite-number hardening, calculated-trend bounds and minute weighting,
+issue-summary privacy filtering and the optional quiet HACS footer. Calculated
+trend weighting can change slope-dependent decisions relative to v2.1.0. RC.1 also
+corrects `self_check` telemetry counts to use effective Options, so its service
+bytes differ from beta.4; it is not a metadata-only package. The fix changes no
+service schema, control input, lane priority, entity identity or output ownership.
+
+Run `python scripts/check_ui_revision_governance.py --base e3c169e1756e7cfd71aeda6eed388ad0d536e147`
+and the Stable comparison with `--base v2.1.0`. Validate generated stamps and
+Diagnostics targets, all four canonical/gallery copies, the full source suites,
+native HA compatibility and Options replacement/removal in self-check reports.
+Earlier beta CI and installed-package reports remain bound to their own bytes.
+Record exact source/package identity and the scopes actually tested; distinguish
+disk manifest, loader diagnostics, published release, HACS evidence and saved-card
+revision. A beta installed on the maintainer's Stable instance is not published Stable.
+
+An approved installation requires the complete package and a full HA restart to
+load the fix and version; no configuration/entity migration is required. From
+v2.1.0 or earlier candidates, regenerate and fully replace saved V2 cards. Existing
+beta.4 revision-13 cards stay compatible with RC.1. Refresh frontend clients if
+they retain old resources. Restart/reload resets in-memory Stability history.
+Preserve the prior complete package and saved card YAML independently for rollback.
+Restoring an older backend requires its own restart and compatible saved cards;
+revision-13 cards against older targets can report **UI differs**. Package rollback
+does not recover in-memory history.
+
+Local RC preparation precedes explicit maintainer README/package approval. Later
+source promotion is `senyo888-patch-1` to `develop` with RC or stable metadata;
+`main` accepts stable metadata only. Re-prove ancestry, merge results and package
+equality before authorized promotion. Review completion, merges, tags, GitHub
+publication, HACS observation and deployment are separate states and permissions.
+
+### v2.1.1-beta.4 quiet software-update footer
+
+The unpublished `2.1.1-beta.4` candidate is **UI revision advanced** against exact
+beta.3 source `5eda094d20dc68a838d03a83c99b75a95c55fe5c`. Both V2 layouts advance
+from revision 12 to **13**, with compatible revisions 1–12 in `supersedes`.
+Stamp schema 1, generator contract 1 and the separate update-observation schema 1
+remain compatible: entry binding, layout/revision comparison and backend provider
+classification have not changed.
+
+The footer hides only its routine no-update cue and separator, right-aligns the
+remaining software cues, and labels a positive provider report **Update available**.
+The UI revision LED stays on the left. All states retain their evidence in the
+existing shared details/accessibility text; skipped, progress and unknown evidence
+remain visible. There is one 44px wrapping details button, with the same guarded
+native View update action. No network polling, version ordering, channel policy,
+control behavior or installation action is introduced.
+
+Run `python scripts/check_ui_revision_governance.py --base 5eda094d20dc68a838d03a83c99b75a95c55fe5c`.
+Check generated stamps/Diagnostics targets and all four canonical/gallery copies.
+Browser validation must check computed visibility and right alignment, rather than
+markup strings alone, across UI/provider states and live transitions; include
+narrow/large-text wrapping, native/adaptive Outputs, keyboard/touch/focus, cleanup
+and unchanged exact-source native handoff. Source/browser fixtures are not live
+Home Assistant or physical-device evidence.
+
+An authorized activation requires the complete package and full HA restart to load
+version/revision metadata, then fresh exports and complete saved-card replacement.
+Restart/reload resets in-memory Stability history. No configuration/entity migration
+is required. Rollback restores package and saved cards separately; a revision-13
+card against beta.3's revision-12 backend reports **UI differs**. Earlier operational
+and soak evidence remains tied to its own package and non-blocking. This source
+work leaves the existing Lab soak running; it does not establish beta.4 deployment,
+release publication or completed observation.
+
+### v2.1.1-beta.3 UI and software version footer
+
+The unpublished `2.1.1-beta.3` candidate is **UI revision advanced** against
+beta.2 source `4c9f84ba8335857e952c19dac07932fbe0dba404`. Both V2 layouts use
+revision 12, with compatible revisions 1–11 in `supersedes`. Stamp schema 1 and
+generator contract 1 remain compatible: entry binding, layout identity and revision
+comparison are unchanged. The separate optional `update_observation` payload uses
+schema 1 and does not change the UI stamp's interpretation.
+
+The backend reads the exact HI HACS update entity during existing Diagnostics
+refreshes. It reports HACS evidence without adding network polling, version-ordering
+or channel policy, installation actions, control inputs or Stability behavior.
+Missing HACS does not block HI or exports. The footer preserves both status labels,
+wraps within a real 44px button, and opens UI/software details plus the existing HA
+update details. Downloaded code, running code and fresh release discovery remain
+distinct claims. See [the full state contract](ui-revision-status.md#software-update-observation).
+
+Run `python scripts/check_ui_revision_governance.py --base 4c9f84ba8335857e952c19dac07932fbe0dba404`.
+Validate generated stamps/Diagnostics targets and all four template/gallery embeds;
+cross UI states with provider states, missing/renamed/disabled sources, skipped and
+in-progress updates, manual beta/branch versions, source changes, reconnects, narrow
+layouts, single-level configurations and native/adaptive Outputs. Preserve explicit
+text escaping, keyboard/touch activation, focus, inactivity and removal cleanup.
+
+An authorized installation requires the complete package and a full HA restart,
+then regeneration and complete replacement of saved V2 cards. Restart clears
+in-memory Stability history; there is no configuration or entity migration.
+Rollback restores the prior complete package and saved cards independently. A
+revision-12 card against revision-11 metadata reports **UI differs**; unsupported
+update-observation metadata stays unverified. Beta.2 Lab/soak evidence remains
+bound to beta.2 and non-blocking; no beta.3 Lab deployment is implied.
+
+### v2.1.1-beta.2 single-level exports and follow-up hardening
+
+The unpublished `2.1.1-beta.2` candidate is **UI revision advanced** against
+published `v2.1.0` and the initial revision-10 candidate at `88fe1c3`. Both layouts
+now use revision 11, with compatible revisions 1–10 listed in `supersedes`.
+The shared generator derives humidity and temperature level-chip inventories from
+effective telemetry before mapping and required-placeholder validation. Configured
+missing mappings still prevent advertisement; mapped unavailable readings stay visible.
+
+Native Outputs now escapes the complete device-text label and accepts only finite
+numeric percentages, falling back to preset/on/off text for malformed percentages.
+Both canonical templates and gallery mirrors carry this change. Stamp schema 1 and
+generator contract 1 remain compatible: entry association, layout identity, target
+shape and comparison semantics are unchanged. Revision-9/10 cards receive an update
+indication; revision-11 cards against revision-9/10 metadata report a difference.
+
+Calculated temperature slopes retain at most 61 observations in one hour, replacing
+each minute's point with its latest actual reading and refreshing only that source.
+This changes burst weighting and may change slope-dependent decisions, while lane
+priority, CO protection, provided slopes and entity IDs remain intact. It is a source
+behavior change, not a metadata-only update. Issue-summary redaction also avoids
+ambiguous repeated Markdown decorators without changing its privacy contract.
+
+Run the revision check with `--base 88fe1c3` (and `--base v2.1.0` for the Stable
+comparison). Validate generated stamps, Diagnostics targets, YAML and embedded
+JavaScript for one, two and zero levels, missing mappings, unavailable readings and
+configuration transitions, plus native-label and bounded-trend regressions.
+The [optional Lab record](issue-129-verification.md) separates the historical
+`f6e64c7`/revision-10 evidence from four passing live single-level cases on
+`32e54ba`/revision 11. It records restoration, soak status and coverage limits.
+Neither the live matrix nor a soak provides exhaustive follow-up-hardening coverage
+or release approval; Lab evidence remains non-blocking.
+An authorized installation needs the complete package and a full restart, followed
+by regeneration and full replacement of saved V2 cards. Restart clears in-memory
+Stability history. No configuration/entity migration is required. Publication,
+installation, live validation and rollback execution remain separate actions.
+
+### Published v2.1.0 compatibility record
 
 Published `2.1.0` is **UI unchanged** against the reviewed and installed
 RC.1 revision-9 source `f2282d93b6fd3b61d992d149d0fe56ef62738c57` and its merged

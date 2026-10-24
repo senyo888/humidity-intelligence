@@ -8,6 +8,10 @@ remain separate surfaces.
 HA Lab is an optional advisory surface. Its availability, result, playback coverage,
 or soak state must not be used as a promotion or release blocker.
 
+Record optional live checks separately from simulated tests, including exact package
+identity, scenario coverage, limitations, restoration and soak status. See the
+[issue #129 Lab verification record](issue-129-verification.md) for an example.
+
 ## Scope
 
 The harness in `tests 2/hi_runtime_fixtures.py` creates a fresh fake Home
@@ -68,6 +72,29 @@ pytest:
 
 ```bash
 python3 -m pytest -q "tests 2/test_air_control_mode_simulation.py"
+```
+
+## Calculated temperature trends
+
+`tests 2/test_slope_sanity.py` and `tests 2/test_slope_bounded.py` exercise the real
+tracker and event callbacks with fake Home Assistant states. Calculated trends
+retain the latest actual observation per calendar minute, at most 61 points within
+one hour; timestamps are not rounded and missing minutes are not filled. Source
+updates publish immediately for that source, and five-minute periodic sampling remains.
+The initial five-minute baseline seed remains; a gap over an hour does not create
+a new seed or invent a trend from one retained point.
+
+This intentionally changes the weighting of frequent readings. Slope values and
+slope-dependent decisions can differ; provided-slope mode, units, entity IDs and
+lane priority retain their contracts. Tests cover 10,000-event bursts, hour coverage,
+minute boundaries, constant and linear trends, long gaps, invalid readings, source
+isolation, unit conversion, periodic sampling, Options precedence and unload cleanup.
+These checks bound slope-specific history and calculation work; they do not claim
+to rate-limit all Home Assistant events or prove live flooding behavior.
+
+```bash
+python3 -m pytest -q "tests 2/test_slope_sanity.py" "tests 2/test_slope_bounded.py"
+node --test "tests 2/test_native_output_labels.mjs"
 ```
 
 ## Safety Boundaries
