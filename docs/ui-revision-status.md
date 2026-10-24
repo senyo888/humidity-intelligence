@@ -156,7 +156,7 @@ relative to the seasonal band, and Outputs names come from the mapped entities.
 The seasonal description never prescribes an action in competition with the backend
 reason. Outputs expansion remains shared per entry and retains its existing timer.
 The revision indicator itself leaves Stability and lane selection unchanged.
-The prepared v2.1.1 Stable source retains beta.4/RC.1 revision 13 in both layouts,
+V2.1.1 Stable retains beta.4/RC.1 revision 13 in both layouts,
 superseding revisions 1–12. Existing beta.4 and RC.1 revision-13 cards stay compatible;
 older revisions require fresh exports and full saved-card replacement.
 Beta.3 remains the earlier revision-12 candidate and beta.2 the revision-11 candidate;

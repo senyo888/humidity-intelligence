@@ -5,13 +5,13 @@ testing and validation branches.
 
 ## Canonical Version Model
 
-- `2.1.1`: current Stable source preparation, not yet published. Runtime and generated-card bytes are unchanged from reviewed RC.1; manifest and packaged guidance establish a new package identity. Both layouts remain revision 13, schema/generator 1. See the [Stable preparation record](#v211-stable-source-preparation).
+- `2.1.1`: current Stable, dated 2026-10-24 and merged to main in PR #134. Runtime and generated-card bytes are unchanged from reviewed RC.1; manifest and packaged guidance establish a new package identity. Both layouts remain revision 13, schema/generator 1. See the [Stable compatibility record](#v211-stable-source-preparation).
 - `2.1.1-rc.1`: earlier unpublished release candidate, retaining the complete beta.1–beta.4 changes and correcting self-check telemetry counts after Options changes. Both layouts retain beta.4 revision 13 and schema/generator 1; update-observation schema remains 1. Existing revision-13 cards stay compatible. See the [RC package record](#v211-rc1-package-verification).
 - `2.1.1-beta.4`: earlier unpublished candidate with a quiet no-update footer and right-aligned **Update available** cue. Both layouts advanced to revision 13, superseding 1–12; stamp schema/generator and update-observation schema remained 1. Existing skipped/progress/unverified states stayed visible. Its source preparation did not change the then-running advisory Lab observation.
 - `2.1.1-beta.3`: earlier unpublished candidate adding optional HACS-reported update status beside the independent UI revision LED. Both layouts advance to revision 12, with stamp schema/generator 1 and a separate update-observation schema 1. Install the complete package, restart, regenerate and replace saved V2 cards; no configuration migration. This source update does not publish a beta, establish HACS availability, or change the beta.2 Lab soak.
 - `2.1.1-beta.2`: earlier unpublished candidate correcting single-level V2 exports (#129), with follow-up device-text, calculated-trend and issue-summary hardening. Both layouts use revision 11 with schema/generator 1. [Optional Lab verification](issue-129-verification.md) records four passing single-level cases on the exact beta.2 package and remains non-blocking. That evidence does not validate the changed beta.3 bytes.
 - `2.1.1-beta.1`: earlier unpublished revision-10 candidate. Its single-level Lab results and stopped, incomplete soak remain historical optional evidence for `f6e64c7`, not beta.2.
-- `2.1.0`: current published Stable, released on 2026-10-12 from reviewed RC.1 revision 9. The final version and documentation preserve runtime and generated-card behavior. Both V2 layouts stay revision 9 with schema/generator 1; installed RC.1 cards remain compatible. Publication and final-package registration are separate evidence.
+- `2.1.0`: published on 2026-10-12 from reviewed RC.1 revision 9. The final version and documentation preserve runtime and generated-card behavior. Both V2 layouts stay revision 9 with schema/generator 1; installed RC.1 cards remain compatible. Publication and final-package registration are separate evidence.
 - `2.1.0-rc.1`: earlier unpublished release candidate, including the approved public content, adaptive Outputs release-check correction and review fixes for AQ recovery, event-loop Diagnostics publication, monitoring discovery and UI handling. Its exact revision-9 package completed Stable and Lab installation validation; advisory observation remains bound to that package.
 - `2.1.0-beta.12`: earlier unpublished source candidate with autumn targets of 50–60% (high risk 64%) and bounded recent score movement. Both V2 layouts advance from revision 6 to 7; stamp schema/generator 1 and Stability schema 3/formula 4 remain. No configuration migration; an authorized update requires the complete package, restart and replacement card exports. See [Stability contract](stability-score-accepted-baseline.md).
 - `2.1.0-beta.11`: earlier unpublished candidate polishing score details/history and hold-to-toggle presentation. Both V2 layouts advance from revision 5 to 6; metadata schema/generator 1 and formula 4 remain. Install the complete package, restart, export and replace both saved cards; rollback restores package and cards separately. See [Stability contract](stability-score-accepted-baseline.md).
@@ -39,8 +39,14 @@ must remain aligned with the
 `custom_components/humidity_intelligence/manifest.json` version contained in the
 published GitHub Release/tag.
 
-Published Stable is [v2.1.0](https://github.com/senyo888/humidity-intelligence/releases/tag/v2.1.0),
-released on 2026-10-12 as a non-prerelease GitHub Release. Tag `v2.1.0` identifies
+Current Stable is **v2.1.1**, dated 2026-10-24. The
+[release and compatibility record](#v211-stable-source-preparation) identifies its
+reviewed main source `e9003f3a30c6424a7daf0442e8b6891e2c12a972` and unchanged package.
+See [GitHub Releases](https://github.com/senyo888/humidity-intelligence/releases)
+for the separate publication record.
+
+Historical release: [v2.1.0](https://github.com/senyo888/humidity-intelligence/releases/tag/v2.1.0)
+was released on 2026-10-12 as a non-prerelease GitHub Release. Tag `v2.1.0` identifies
 reviewed `main` commit `6da820967173d3d29910c909a3a2a688965aa3ac`.
 HACS refresh state and final-package installation remain separate from publication;
 verify the offered and loaded versions rather than assuming either from a source merge.
@@ -403,7 +409,9 @@ and post-release observation as separate evidence states.
 
 ## Rendered UI revision check for every version update
 
-### v2.1.1 Stable source preparation
+<a id="v211-stable-source-preparation"></a>
+
+### v2.1.1 Stable compatibility and release record
 
 The final `2.1.1` source is **UI unchanged and compatible** against reviewed RC.1
 merged into develop at `76b1ac4c246e06ae8971e03ae7907a9c0d31e5cc`, tree
@@ -434,10 +442,15 @@ complete saved YAML. No configuration/entity migration is required. Restart/relo
 resets in-memory Stability history; rollback retains the prior complete package and
 compatible saved cards separately. See [complete notes](releases/v2.1.1.md).
 
-Published Stable remains v2.1.0 until a separately authorized v2.1.1 tag and GitHub
-Release exist. Stable metadata on develop or main is source identity, not release,
-HACS availability or loaded-package proof. The main PR requires Stable metadata;
-README/release approval, main merge, publication and deployment remain distinct.
+PR #134 was merged by the maintainer on 2026-10-24 as main
+`e9003f3a30c6424a7daf0442e8b6891e2c12a972`, tree
+`e52c8a67f52c3a630d05bce7b87728f4a5cf3455`, matching the reviewed source.
+All 77 package files retain hash
+`a5acce20723031e843add774f6e6a1268e9fc988225cac1d5bc1bbd91490c815`.
+Final publication documentation does not alter the component package. The maintainer
+authorized tagging and a draft Release, retaining publication control. Check
+[GitHub Releases](https://github.com/senyo888/humidity-intelligence/releases) for the
+publication record; neither main merge nor a tag proves HACS availability or a loaded installation.
 
 ### v2.1.1-rc.1 package verification
 
