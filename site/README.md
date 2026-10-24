@@ -1,16 +1,15 @@
 # Humidity Intelligence website
 
 The landing page mirrors tracked product and release claims; the repository and
-Wiki own setup, compatibility and operational detail. [V2.1.0 is published Stable](https://github.com/senyo888/humidity-intelligence/releases/tag/v2.1.0),
-released on 12 October 2026. The installation path points to HACS; users should check
-the offered version and refresh repository information if an older version is shown.
+Wiki own setup, compatibility and operational detail. V2.1.1 Stable is the featured
+release, with its approved artwork, single-level/dashboard fixes, update-status
+explanation and upgrade guidance. The existing animated V2.1 Stability Score hero
+remains the product overview; its illustration does not represent live telemetry.
 
-The preparation note identifies **v2.1.1 Stable source as not yet published** and
-links to release notes for single-level exports, update-status and report changes.
-The final metadata retains the reviewed RC runtime and revision-13 cards.
-V2.1.0 remains the Stable installation target and published release artwork.
-Updating this source on the preparation branch does not deploy the website;
-the existing Pages workflow publishes it when an approved change reaches `main`.
+The website uses finished v2.1.1 release copy dated 24 October 2026. Release links
+point to the versioned GitHub Release. Users must check the version offered in HACS
+and the loaded Home Assistant identity separately. The main-only Pages workflow
+copies both V2.1 and v2.1.1 artwork into the static artifact.
 
 The page uses static HTML and CSS, system fonts, locally packaged images and
 native disclosures. It requires no JavaScript, third-party widget, analytics or

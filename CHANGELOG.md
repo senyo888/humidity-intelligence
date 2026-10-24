@@ -6,14 +6,18 @@ All notable changes to Humidity Intelligence will be documented in this file.
 
 This project follows a practical changelog format for Home Assistant and HACS users. Add new entries under a fresh `Unreleased` section before publishing a future release.
 
-## Unreleased — v2.1.1 Stable preparation
+<a id="unreleased--v211-stable-preparation"></a>
+
+## v2.1.1 — Stable (2026-10-24)
 
 ![Humidity Intelligence v2.1.1 release header highlighting single-level V2 cards and clearer update status](assets/release_banner/v2.1.1_release.png)
 
-Prepares Stable source from the reviewed RC.1 merged in
-[PR #132](https://github.com/senyo888/humidity-intelligence/pull/132). Published
-Stable remains v2.1.0. No v2.1.1 release date, tag, HACS offering or installed
-final package is claimed.
+The complete update from v2.1.0 retains the reviewed RC.1 behavior from
+[PR #132](https://github.com/senyo888/humidity-intelligence/pull/132), finalized in
+[#133](https://github.com/senyo888/humidity-intelligence/pull/133) and merged to main in
+[#134](https://github.com/senyo888/humidity-intelligence/pull/134).
+[Release and downloads](https://github.com/senyo888/humidity-intelligence/releases/tag/v2.1.1).
+HACS availability and loaded Home Assistant identity remain separate checks.
 
 - Fixes single-level V2 exports without a dummy second level, respecting saved
   Options while retaining configured-unavailable and missing-mapping truth.

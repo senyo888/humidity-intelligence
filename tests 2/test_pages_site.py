@@ -147,22 +147,22 @@ class PagesSiteTests(unittest.TestCase):
 
         self.assertIn("assets/logo.png", parser.images)
         self.assertIn("assets/site/github-pages-hero.png", assets)
-        self.assertIn("assets/release_banner/v2.0.12_release.png", parser.images)
-        self.assertIn("A focused maintenance release.", html)
-        self.assertIn("v2.0.12 · previous Stable release", html)
+        self.assertIn("assets/release_banner/v2.1.1_release.png", parser.images)
+        self.assertIn("Dashboards that follow your home.", html)
+        self.assertIn("v2.1.1 · Stable", html)
         self.assertIn("included in the HACS default integration repository", normalized_html)
-        self.assertIn("V2.0.12 improved Manual-mode handover", normalized_html)
-        # Website publication truth is independent of an unpublished candidate manifest.
-        self.assertIn("V2.1.0 · published Stable", normalized_html)
-        self.assertIn("Released on 12 October 2026", normalized_html)
-        self.assertIn("releases/tag/v2.1.0", html)
+        self.assertIn("Single-level homes need no dummy second level", normalized_html)
+        # Finished release copy preserves separate HACS and loaded-version evidence.
+        self.assertIn("V2.1.1 · Stable", normalized_html)
+        self.assertIn("V2.1.1 · 24 October 2026", normalized_html)
+        self.assertIn("blob/main/docs/releases/v2.1.1.md", html)
         self.assertIn("refresh repository information if an older version is shown", normalized_html)
         self.assertNotIn("awaits publication", normalized_html)
         self.assertNotIn("Install from GitHub", html)
         self.assertIn("Open in HACS", html)
-        self.assertIn("published release</span><span class=\"badge-value\">v2.1.0", html)
+        self.assertIn("Stable version</span><span class=\"badge-value\">v2.1.1", html)
         self.assertIn("replace the complete saved YAML", normalized_html)
-        self.assertIn("Existing v2.1.0-rc.1 revision-9 cards remain compatible", normalized_html)
+        self.assertIn("Existing beta.4 and RC.1 revision-13 cards remain compatible", normalized_html)
 
         for asset in assets:
             with self.subTest(asset=asset):

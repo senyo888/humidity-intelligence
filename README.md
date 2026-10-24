@@ -58,9 +58,9 @@ It gives you:
 - native Home Assistant diagnostics for support and triage
 - services for dashboard export, self-check, diagnostics, pause/resume, and release validation
 
-Current published Stable: **v2.1.0**, [released on 12 October 2026](https://github.com/senyo888/humidity-intelligence/releases/tag/v2.1.0).
-Stable source in preparation: **v2.1.1**, not yet published; see the
-[dashboard, trend and support fixes](#v211-stable-source-preparation).
+**Current Stable: v2.1.1** brings [single-level dashboards, clearer update status and report fixes](#v211-current-stable).
+Check [GitHub Releases](https://github.com/senyo888/humidity-intelligence/releases/latest)
+for the latest published version, then confirm the version offered in HACS.
 V2.1 is led by **Stability Score**, with clearer badge explanations and history,
 optional output monitoring, reusable monitoring meanings and a simpler status row.
 Check the version offered in HACS and refresh its repository information if an older
@@ -826,7 +826,9 @@ CO emergency pressure. Details are in
 
 ## Release Notes
 
-### v2.1.1 (Stable source preparation)
+<a id="v211-stable-source-preparation"></a>
+
+### v2.1.1 (Current Stable)
 
 ![Humidity Intelligence v2.1.1 — single-level cards and clearer update status](assets/release_banner/v2.1.1_release.png)
 
@@ -845,9 +847,17 @@ Final source preserves RC.1 runtime and cards; manifest/guidance give a new pack
 identity. [Complete notes](docs/releases/v2.1.1.md) cover
 [#129](https://github.com/senyo888/humidity-intelligence/issues/129), validation and
 [upgrade/rollback](docs/release-governance.md#v211-stable-source-preparation).
-**V2.1.0 remains published Stable.**
+[Release and downloads](https://github.com/senyo888/humidity-intelligence/releases/tag/v2.1.1) ·
+24 October 2026. HACS refresh and loaded package identity remain separate checks.
 
-### v2.1.0 (Current Published Stable)
+<!-- Current Stable is expanded. Earlier releases and candidates remain
+under Previous Releases; CHANGELOG.md retains the complete detailed history. -->
+<details>
+<summary>Previous Releases</summary>
+
+<a id="v210-current-published-stable"></a>
+
+### v2.1.0 — Stability Score (published 12 October 2026)
 
 ![Humidity Intelligence V2.1 Stability Score release header](assets/release_banner/v2.1_release.png)
 
@@ -879,11 +889,6 @@ Control row. See the [V2.1 overview](#v21--stability-score) and
   has its own manifest identity; v2.1.0-rc.1 installation evidence is recorded separately
   from final-package registration. Publication does not establish that an existing
   Home Assistant installation has loaded the final package.
-
-<!-- Current Published Stable is expanded. Earlier releases and candidates remain
-under Previous Releases; CHANGELOG.md retains the complete detailed history. -->
-<details>
-<summary>Previous Releases</summary>
 
 <a id="v211-rc1-current-unpublished-candidate"></a>
 
@@ -944,8 +949,8 @@ retains four passing live cases and a stopped, incomplete soak for beta.1.
 This candidate was not published as a beta or made available through HACS.
 
 Earlier candidate entries retain their original preparation and validation scope.
-References to the published Stable at those checkpoints are historical; v2.1.0 is
-the current published release.
+References to the published Stable at those checkpoints are historical; see
+[v2.1.1](#v211-current-stable) for the current Stable release.
 
 <a id="v2012-maintenance-candidate-not-published"></a>
 
