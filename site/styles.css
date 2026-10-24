@@ -354,6 +354,17 @@ a:focus-visible,summary:focus-visible {
   color:#d5e3e9;
 }
 
+.candidate-note {
+  max-width:890px;
+  padding-bottom:30px;
+  font-size:.85rem;
+  color:#aebfc9;
+}
+
+.candidate-note a {
+  color:#d5e3e9;
+}
+
 .stability-grid {
   display:grid;
   grid-template-columns:1.12fr 1fr;

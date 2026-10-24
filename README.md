@@ -523,7 +523,7 @@ must be reviewable from tracked repository files.
 
 Published v2.1.0 uses UI revision 9 in both V2 layouts, superseding revisions 1–8. Run `refresh_ui`, export
 with `view_cards` or `dump_cards`, replace the complete YAML in older saved cards,
-then refresh the frontend. Revision-9 cards from RC.1 remain compatible; the final
+then refresh the frontend. Revision-9 cards from v2.1.0-rc.1 remain compatible; the final
 version bump does not require another card refresh. The V1 Mobile Drift correction
 also requires replacement YAML; that layout has no revision indicator. An authorized package update requires a full Home Assistant restart.
 Restart/reload starts Stability history collection again. See
@@ -877,10 +877,10 @@ Control row. See the [V2.1 overview](#v21--stability-score) and
   restart Home Assistant; restart/reload clears in-memory Stability history. Run
   `refresh_ui`, export with `view_cards` or `dump_cards`, and replace the complete
   YAML in older V2 cards, plus V1 Mobile for its Drift correction. Refresh the client.
-  Existing RC.1 revision-9 cards remain compatible; final version metadata does not
+  Existing v2.1.0-rc.1 revision-9 cards remain compatible; final version metadata does not
   make them stale.
-- Preserves the reviewed runtime and generated-card bytes from RC.1. The final package
-  has its own manifest identity; RC.1 installation evidence is recorded separately
+- Preserves the reviewed runtime and generated-card bytes from v2.1.0-rc.1. The final package
+  has its own manifest identity; v2.1.0-rc.1 installation evidence is recorded separately
   from final-package registration. Publication does not establish that an existing
   Home Assistant installation has loaded the final package.
 
