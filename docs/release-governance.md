@@ -39,8 +39,13 @@ must remain aligned with the
 `custom_components/humidity_intelligence/manifest.json` version contained in the
 published GitHub Release/tag.
 
-The latest published Stable is identified by [GitHub Releases](https://github.com/senyo888/humidity-intelligence/releases/latest).
-[V2.1.0](https://github.com/senyo888/humidity-intelligence/releases/tag/v2.1.0)
+Current Stable is **v2.1.1**, dated 2026-10-24. The
+[release and compatibility record](#v211-stable-source-preparation) identifies its
+reviewed main source `e9003f3a30c6424a7daf0442e8b6891e2c12a972` and unchanged package.
+See [GitHub Releases](https://github.com/senyo888/humidity-intelligence/releases)
+for the separate publication record.
+
+Historical release: [v2.1.0](https://github.com/senyo888/humidity-intelligence/releases/tag/v2.1.0)
 was released on 2026-10-12 as a non-prerelease GitHub Release. Tag `v2.1.0` identifies
 reviewed `main` commit `6da820967173d3d29910c909a3a2a688965aa3ac`.
 HACS refresh state and final-package installation remain separate from publication;

@@ -6,8 +6,9 @@ release, with its approved artwork, single-level/dashboard fixes, update-status
 explanation and upgrade guidance. The existing animated V2.1 Stability Score hero
 remains the product overview; its illustration does not represent live telemetry.
 
-The website uses finished v2.1.1 release copy dated 24 October 2026. Release links
-point to the versioned GitHub Release. Users must check the version offered in HACS
+The website uses finished v2.1.1 release copy dated 24 October 2026. Its release-note
+links point to the canonical notes on main, which remain readable while the
+maintainer completes GitHub publication. Users must check the version offered in HACS
 and the loaded Home Assistant identity separately. The main-only Pages workflow
 copies both V2.1 and v2.1.1 artwork into the static artifact.
 
