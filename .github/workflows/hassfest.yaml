@@ -85,4 +85,4 @@ jobs:
           print("Tracked Hassfest layout and metadata are valid.")
           PY
 
-      - uses: home-assistant/actions/hassfest@06749dd8c0b54f350bc69c8752456cee498808a3 # master
+      - uses: home-assistant/actions/hassfest@cd6f3635a740c84d8a14f6121a90068b8ece6bf6 # master
