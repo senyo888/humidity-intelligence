@@ -1257,6 +1257,32 @@ forbidden_actions:
         self.assertIn("https://8.8.8.8/status", summary)
         self.assertIn("https://[2606:4700:4700::1111]/status", summary)
 
+    def test_privacy_redaction_bounds_hostile_decorator_nonmatches(self) -> None:
+        # Isolate the regex so a regression fails within a fixed deadline instead
+        # of hanging this report-only helper's entire test batch.
+        code = r"""
+import importlib.util, pathlib, sys
+path = pathlib.Path(sys.argv[1])
+spec = importlib.util.spec_from_file_location('triage_budget_probe', path)
+mod = importlib.util.module_from_spec(spec)
+sys.modules[spec.name] = mod
+spec.loader.exec_module(mod)
+for decorator in ['*', '_', '`', '"', "'", '\\"', '*_`"']:
+    for suffix in [' ordinary', 'token ordinary', 'device_id ordinary']:
+        body = (decorator * 2560)[:2560 - len(suffix)] + suffix
+        assert len(body) == 2560
+        assert isinstance(mod._body_summary(body), str)
+for key in ['token', 'device_id']:
+    for decorator in ['*', '_', '`', '"', "'", '\\"', '*_`"']:
+        value = mod._body_summary(decorator * 64 + key + decorator * 64 + '=SYNTHETIC_PRIVATE_VALUE')
+        assert 'SYNTHETIC_PRIVATE_VALUE' not in value
+        assert key + '=[redacted]' in value
+print('Hostile nonmatches and legitimate decorated assignments completed.')
+"""
+        result = subprocess.run([sys.executable, '-c', code, str(SCRIPT)],
+                                capture_output=True, text=True, timeout=5, check=False)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
     def test_fetch_open_issues_refuses_non_https_request_before_urlopen(self) -> None:
         request = mock.Mock(full_url="file:///tmp/issues.json")
 

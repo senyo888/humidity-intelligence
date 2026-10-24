@@ -39,7 +39,10 @@ stays in `CHANGELOG.md`, `custom_components/humidity_intelligence/manifest.json`
 Issue-body summaries are privacy-filtered before report escaping. The filter removes
 private Home Assistant URLs and hosts, local network addresses, bearer credentials and
 tokens, device IDs, local user paths, and Home Assistant entity IDs. Public issue links
-remain available for triage.
+remain available for triage. Repeated Markdown decorators around sensitive keys
+use an unambiguous character pattern, preserving redaction without exponential
+backtracking on ordinary nonmatching text. Summary input remains length-bounded;
+this does not claim that every regex operation has linear runtime.
 
 Inspector handoffs are parsed as an exact, bounded `HI-SUPPORT-HANDOFF/1` contract.
 Only fixed fields, bounded counts, and allowlisted warning/privacy categories are

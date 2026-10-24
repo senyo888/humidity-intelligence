@@ -2893,7 +2893,8 @@ async def _run_card_assertions(register_mod) -> None:
         assert card.index("if (mode === 'telemetry_unavailable') return '1px solid rgba(245,158,11") < card.index("if (red) return '1px solid rgba(239,68,68,0.85)'")
         assert "sensor.hi_level2_avg_temperature" in card
         assert "sensor.hi_level1_avg_temperature" in card
-        assert card.index("House AVG") < card.index("Loft AVG") < card.index("Ground Floor AVG")
+        assert card.index("Loft AVG") < card.index("Ground Floor AVG")
+        assert card.index("${chip('House AVG'") < card.index("${levelHumidityChips}")
         assert card.index("House IAQ") < card.index("Loft IAQ") < card.index("Ground Floor IAQ")
 
     assert _contains_v2_border_pill_sync_logic(mobile)
@@ -4295,6 +4296,12 @@ def test_v205_release_check_report_verifies_export_contract_and_ui_visibility():
         "2.1.0-beta.1",
         "2.1.0-rc.1",
         "2.1.0",
+        "2.1.1-beta.1",
+        "2.1.1-beta.2",
+        "2.1.1-beta.3",
+        "2.1.1-beta.4",
+        "2.1.1-rc.1",
+        "2.1.1",
     ):
         future_report = services_mod._build_v205_release_check_entry_report(
             hass,
@@ -5006,9 +5013,12 @@ def test_report_writer_services_use_owned_directory_and_truthful_notification():
         assert f"/config/{release_name}" not in message
 
 
-def test_self_check_uses_fixed_owned_report_and_retains_payload_semantics():
+def _assert_self_check_report(telemetry_options=None, expected_count=None):
     services_mod = _load_services_module()
     entry = SimpleNamespace(entry_id=ENTRY_ID, data=_base_entry_data(), options={})
+    if telemetry_options is not None:
+        entry.options["telemetry"] = copy.deepcopy(telemetry_options)
+    before = copy.deepcopy((entry.data, entry.options))
     hass = _FakeHass(entry, {})
     hass.services = _FlashServiceRegistry(hass.states)
     hass.auth = _FakeAuth({"admin": SimpleNamespace(is_admin=True)})
@@ -5065,9 +5075,12 @@ def test_self_check_uses_fixed_owned_report_and_retains_payload_semantics():
         assert payload[ENTRY_ID]["missing_entities"] == [
             "sensor.missing_runtime_mode"
         ]
-        assert payload[ENTRY_ID]["telemetry_count"] == len(
-            entry.data["telemetry"]
+        assert payload[ENTRY_ID]["telemetry_count"] == (
+            len(entry.data["telemetry"]) if expected_count is None else expected_count
         )
+        assert (entry.data, entry.options) == before
+        assert all(call[0:2] == ("persistent_notification", "create")
+                   for call in hass.services.calls)
         assert payload[ENTRY_ID]["unresolved_placeholders"] == [
             "sensor.unresolved"
         ]
@@ -5082,6 +5095,15 @@ def test_self_check_uses_fixed_owned_report_and_retains_payload_semantics():
             "humidity_intelligence_self_check.json"
         ) in notification[2]["message"]
         assert "local/private" in notification[2]["message"]
+
+
+def test_self_check_uses_fixed_owned_report_and_retains_payload_semantics():
+    _assert_self_check_report()
+
+
+def test_self_check_telemetry_count_respects_options_replacement_and_removal():
+    _assert_self_check_report([], expected_count=0)
+    _assert_self_check_report(_base_entry_data()["telemetry"][:1], expected_count=1)
 
 
 def test_view_cards_notification_reports_exact_owned_ui_path():
@@ -5799,7 +5821,7 @@ def test_v205_release_check_service_is_documented_and_registered():
     assert "wiki/Services-Reference" in readme_source
     assert "wiki/Release-Validation-for-Users" in readme_source
     assert "humidity_intelligence_v205_release_check.json" in services_yaml
-    assert manifest["version"] == "2.1.0"
+    assert manifest["version"] == "2.1.1-rc.1"
 
 
 def test_owned_ui_path_discovery_and_legacy_cleanup_guidance_is_explicit():
@@ -7072,7 +7094,7 @@ def test_generated_v1_cards_escape_dynamic_html_text():
 
 def test_release_check_rejects_unsupported_or_malformed_v21_versions():
     services = _load_services_module()
-    for version in ("2.1.1-beta.1", "2.2.0-beta.1", "2.1.0-beta.0",
+    for version in ("2.1.2-beta.1", "2.2.0-beta.1", "2.1.0-beta.0",
                     "2.1.0-beta.01", "2.1.0-alpha.1", "2.1.0-beta.1extra"):
         status, _ = services._release_check_manifest_status(version)
         assert status == "fail", version

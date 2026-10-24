@@ -11,6 +11,7 @@ from homeassistant.const import __version__ as HA_VERSION
 from homeassistant.core import HomeAssistant
 
 from .helpers.stability import stability_diagnostics_payload
+from .helpers.update_observation import update_observation
 from .const import (
     CONF_ALERT_HANDLING_ENABLED,
     CONF_AUTO_REFRESH_UI_ON_STARTUP,
@@ -454,6 +455,7 @@ def _diagnostics_summary(
         warnings.append("One or more humidifier outputs have a conflicting configured output owner.")
 
     return {
+        "update_observation": update_observation(hass, include_entity_id=False),
         "runtime_control": runtime_control_summary(runtime_data),
         "target_profile": {
             "mode": config.get("target_profile", config.get("target_profile_mode", "auto")),

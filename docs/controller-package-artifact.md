@@ -14,7 +14,7 @@ approval.
 - Retention: seven days
 - Source profile: `public_patch_1`
 - Package contract: `hi-package-public-v20-conventional-1` for V2.0;
-  `hi-package-public-v21-conventional-1` for V2.1.0 beta/rc/stable
+  `hi-package-public-v21-conventional-1` for V2.1.0 and V2.1.1 beta/rc/stable
 - Provenance subject: the strict `artifact-manifest.json` produced from the exact
   workflow commit
 
@@ -82,9 +82,9 @@ looking files under `tools/` still fail closed. The beta.12 component inventory 
 additional packaging file. Derive each later candidate’s inventory from its exact
 commit and artifact manifest rather than reusing this dated count.
 
-## V2.1.0 candidate identity
+## V2.1 candidate identity
 
-The V2.1.0 artifact has an explicit new contract ID; the existing V2.0 identity is
+V2.1.0 introduced the V2.1 contract ID, retained for V2.1.1; the existing V2.0 identity is
 unchanged. Source profile, branch, selected paths, manifest schema, deterministic
 hashing and security checks remain the same. A controller must explicitly recognize
 the V2.1 contract before accepting this candidate. Producing this artifact does not
