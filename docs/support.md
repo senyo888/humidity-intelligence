@@ -61,6 +61,16 @@ Review the complete file before uploading it to a public issue.
 
 ## Diagnostics And Release Check
 
+In v2.1.1-rc.1, `self_check` counts effective telemetry after saved Options replace
+or remove sensors. Earlier packages can report the original setup count instead;
+that count alone does not prove a missing or extra runtime entity.
+
+For report-only verification, call `v205_release_check` with
+`write_test_exports: false` and `require_local_hi_snapshot: false`. It rebuilds the
+in-memory mapping/card cache and writes its owned report and notification, but does
+not replace saved dashboard cards or write control outputs. Preserve existing
+fixed-name reports before collecting another set; report writes replace those files.
+
 The v2.1.0 release source keeps native diagnostics schema `1`, existing
 redaction, aggregate mapped-entity availability, and browser-local Inspector
 compatibility unchanged. After a full restart, confirm loaded identity using Home

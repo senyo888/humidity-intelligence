@@ -6,7 +6,44 @@ All notable changes to Humidity Intelligence will be documented in this file.
 
 This project follows a practical changelog format for Home Assistant and HACS users. Add new entries under a fresh `Unreleased` section before publishing a future release.
 
-## Unreleased — v2.1.1-beta.4
+## Unreleased — v2.1.1-rc.1
+
+![Humidity Intelligence v2.1.1 release header highlighting single-level V2 cards and clearer update status](assets/release_banner/v2.1.1_release.png)
+
+Prepares the complete v2.1.1 release candidate for maintainer review. Published
+Stable remains v2.1.0; no RC tag, GitHub Release, HACS offering or installation is
+established by this source preparation.
+
+Thanks to [@Ak1Sun](https://github.com/Ak1Sun) for reporting the single-level V2
+export issue in [#129](https://github.com/senyo888/humidity-intelligence/issues/129).
+
+- Retains the single-level V2 export correction (#129), Options precedence,
+  configured-unavailable visibility and explicit required-mapping failures.
+- Retains native Outputs plain-text escaping and finite percentage handling,
+  bounded calculated trends using each minute's latest actual reading, and robust
+  decorated issue-summary privacy filtering. Trend weighting can affect slopes
+  and slope-dependent decisions; this release is not solely a presentation change.
+- Retains optional HACS-reported update evidence and the quiet revision-13 footer.
+  UI compatibility, provider-reported versions and loaded package identity remain
+  separate. Opening details performs no download, installation or restart.
+- Corrects `self_check` telemetry counts after Options replaces or removes sensors.
+  This changes report accuracy only; configuration, runtime control and service
+  schemas remain unchanged. RC.1 is therefore not a manifest-only beta.4 bridge.
+- Aligns packaged UI and release guidance. Both V2 layouts are **UI unchanged and
+  compatible** with beta.4: revision 13, stamp schema 1, generator contract 1;
+  update-observation schema remains 1. Existing revision-13 cards stay current.
+
+Install the complete package and restart HA to load the report fix and version.
+From v2.1.0 or older candidates, regenerate and replace complete saved V2 cards;
+beta.4 revision-13 cards need no replacement for RC.1 alone. No configuration or
+entity migration is required. Restart/reload resets in-memory Stability history.
+Rollback restores the prior complete package and saved cards separately; older
+backends can report **UI differs** for revision-13 cards. See the
+[RC compatibility record](docs/release-governance.md#v211-rc1-package-verification).
+
+<a id="unreleased--v211-beta4"></a>
+
+## v2.1.1-beta.4 — Earlier unpublished candidate
 
 Makes the V2 software-update footer quieter while retaining its independent UI
 revision indicator. Published Stable remains v2.1.0; this candidate is not a tag,

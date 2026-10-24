@@ -40,12 +40,17 @@ Difference:
 
 Feature parity is maintained.
 
-## Compact UI revision footer
+## UI revision and software-update footer
 
 The bottom-left LED compares this rendered card's revision with its backend's
 compatible target. It distinguishes current, update, differing revision and
 unverified evidence. It does not verify downloaded files, browser caches or saved
-dashboard contents. See [revision meanings and replacement steps](../../../docs/ui-revision-status.md).
+dashboard contents. Separate optional HACS evidence appears at the right:
+**↑ Update available**, skipped, progress or unverified. Routine no-update text
+stays in the shared details and accessible name. Provider-reported downloaded and
+available versions do not prove loaded code. The wrapping 44px button opens details;
+its guarded **View update** action opens native HA details without installing or
+restarting anything. See [revision meanings and replacement steps](../../../docs/ui-revision-status.md).
 
 Mobile and tablet retain their existing footprints and actions with restrained
 neutral depth. System/Manual unknown states remain explicit, humidity requires
@@ -285,9 +290,10 @@ Control row:
   expiry alone stays neutral, and a fresh baseline is not a zero-change comparison
 - keep score/classification distinct from current humidity. Formula 4, caps and
   72-hour history remain; a recent gain does not establish healthy current air
-- both V2 layouts in the v2.1.1-beta.2 candidate use revision 11, superseding 1–10,
-  with stamp schema/generator 1. Published v2.1.0 retains revision 9.
-  Install the complete package and restart before exporting/replacing saved cards;
+- both V2 layouts in v2.1.1-rc.1 retain beta.4 revision 13, superseding 1–12,
+  with stamp schema/generator 1 and separate update-observation schema 1.
+  Published v2.1.0 retains revision 9. Install the complete package and restart;
+  older cards require fresh exports and replacement, while beta.4 revision-13 cards remain compatible;
   restart clears in-memory Stability history and no configuration migration is needed
 - whole-badge tap/click/keyboard activation opens a native modal dialog through the
   button-card action. Details are a labelled snapshot copied from the owning card's
@@ -378,8 +384,9 @@ Only telemetry-configured levels appear in V2 humidity and temperature chip rows
 Core creates both averages for each such level, even when one metric has no inputs.
 Configured unavailable readings remain visible; failed required registry mappings
 remain errors. Removed levels stay absent even if old registry entries remain.
-The v2.1.1-beta.2 candidate uses revision 11 for both layouts; refresh, export and
-replace saved V2 cards after installation. Stamp schema/generator remain 1.
+The v2.1.1-rc.1 candidate retains beta.4 revision 13 for both layouts. After an
+upgrade from an older revision, refresh, export and replace saved V2 cards.
+Existing beta.4 revision-13 cards remain compatible. Stamp schema/generator remain 1.
 
 Inventory files:
 

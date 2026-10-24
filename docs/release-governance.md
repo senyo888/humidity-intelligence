@@ -5,7 +5,8 @@ testing and validation branches.
 
 ## Canonical Version Model
 
-- `2.1.1-beta.4`: current unpublished candidate with a quiet no-update footer and right-aligned **Update available** cue. Both layouts advance to revision 13, superseding 1–12; stamp schema/generator and update-observation schema remain 1. Existing skipped/progress/unverified states stay visible. Install the complete package, restart, regenerate and replace saved cards; no configuration migration. The existing Lab soak is left running and remains non-blocking evidence for its own package.
+- `2.1.1-rc.1`: current unpublished release candidate, retaining the complete beta.1–beta.4 changes and correcting self-check telemetry counts after Options changes. Both layouts retain beta.4 revision 13 and schema/generator 1; update-observation schema remains 1. Existing revision-13 cards stay compatible. See the [RC package record](#v211-rc1-package-verification).
+- `2.1.1-beta.4`: earlier unpublished candidate with a quiet no-update footer and right-aligned **Update available** cue. Both layouts advanced to revision 13, superseding 1–12; stamp schema/generator and update-observation schema remained 1. Existing skipped/progress/unverified states stayed visible. Its source preparation did not change the then-running advisory Lab observation.
 - `2.1.1-beta.3`: earlier unpublished candidate adding optional HACS-reported update status beside the independent UI revision LED. Both layouts advance to revision 12, with stamp schema/generator 1 and a separate update-observation schema 1. Install the complete package, restart, regenerate and replace saved V2 cards; no configuration migration. This source update does not publish a beta, establish HACS availability, or change the beta.2 Lab soak.
 - `2.1.1-beta.2`: earlier unpublished candidate correcting single-level V2 exports (#129), with follow-up device-text, calculated-trend and issue-summary hardening. Both layouts use revision 11 with schema/generator 1. [Optional Lab verification](issue-129-verification.md) records four passing single-level cases on the exact beta.2 package and remains non-blocking. That evidence does not validate the changed beta.3 bytes.
 - `2.1.1-beta.1`: earlier unpublished revision-10 candidate. Its single-level Lab results and stopped, incomplete soak remain historical optional evidence for `f6e64c7`, not beta.2.
@@ -400,6 +401,47 @@ and post-release observation as separate evidence states.
   approval gates are complete for the exact final head.
 
 ## Rendered UI revision check for every version update
+
+### v2.1.1-rc.1 package verification
+
+RC.1 is **UI unchanged and compatible** against exact beta.4 source
+`e3c169e1756e7cfd71aeda6eed388ad0d536e147`. Both V2 layouts retain revision 13,
+supersedes 1–12, stamp schema 1 and generator contract 1. The separate software
+update-observation payload remains schema 1. Templates, renderer, generator and
+gallery YAML are unchanged; an RC label alone must not make saved cards stale.
+
+The package retains #129's configuration-aware level inventories, native Outputs
+plain-text/finite-number hardening, calculated-trend bounds and minute weighting,
+issue-summary privacy filtering and the optional quiet HACS footer. Calculated
+trend weighting can change slope-dependent decisions relative to v2.1.0. RC.1 also
+corrects `self_check` telemetry counts to use effective Options, so its service
+bytes differ from beta.4; it is not a metadata-only package. The fix changes no
+service schema, control input, lane priority, entity identity or output ownership.
+
+Run `python scripts/check_ui_revision_governance.py --base e3c169e1756e7cfd71aeda6eed388ad0d536e147`
+and the Stable comparison with `--base v2.1.0`. Validate generated stamps and
+Diagnostics targets, all four canonical/gallery copies, the full source suites,
+native HA compatibility and Options replacement/removal in self-check reports.
+Earlier beta CI and installed-package reports remain bound to their own bytes.
+Record exact source/package identity and the scopes actually tested; distinguish
+disk manifest, loader diagnostics, published release, HACS evidence and saved-card
+revision. A beta installed on the maintainer's Stable instance is not published Stable.
+
+An approved installation requires the complete package and a full HA restart to
+load the fix and version; no configuration/entity migration is required. From
+v2.1.0 or earlier candidates, regenerate and fully replace saved V2 cards. Existing
+beta.4 revision-13 cards stay compatible with RC.1. Refresh frontend clients if
+they retain old resources. Restart/reload resets in-memory Stability history.
+Preserve the prior complete package and saved card YAML independently for rollback.
+Restoring an older backend requires its own restart and compatible saved cards;
+revision-13 cards against older targets can report **UI differs**. Package rollback
+does not recover in-memory history.
+
+Local RC preparation precedes explicit maintainer README/package approval. Later
+source promotion is `senyo888-patch-1` to `develop` with RC or stable metadata;
+`main` accepts stable metadata only. Re-prove ancestry, merge results and package
+equality before authorized promotion. Review completion, merges, tags, GitHub
+publication, HACS observation and deployment are separate states and permissions.
 
 ### v2.1.1-beta.4 quiet software-update footer
 

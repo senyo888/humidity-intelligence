@@ -598,7 +598,7 @@ async def async_register_services(hass: HomeAssistant) -> None:
                 "humidity_drift_7d": drift_dependency,
                 "pm25_entity_id_normalization": _pm25_normalization_status(data),
                 "local_version_preservation": local_version_status,
-                "telemetry_count": len(entry.data.get("telemetry", [])),
+                "telemetry_count": len(_effective_entry_config(entry).get("telemetry", [])),
                 "unresolved_placeholders": data.get("unresolved_placeholders", []),
                 "unresolved_placeholders_by_card": data.get("unresolved_placeholders_by_card", {}),
             }

@@ -48,7 +48,9 @@ until Python destroyed its modules.
 
 The fixture now registers shutdown and temporary-directory cleanup immediately,
 runs shutdown even though it never starts HA, releases its thread-local ownership,
-clears the four registry caches it used, and collects cycles at module teardown.
+clears available singleton caches for the registries it used, and collects cycles
+at module teardown. This includes the device-registry cache on older supported HA
+versions; getters without a cache need no cleanup.
 A weak-reference assertion fails if any fixture Home Assistant instance survives.
 Persistence remains real; no storage, serializer or finish-handler substitution is
 used. The registry cleanup is scoped to this separately run native test module.

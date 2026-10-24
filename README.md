@@ -59,8 +59,8 @@ It gives you:
 - services for dashboard export, self-check, diagnostics, pause/resume, and release validation
 
 Current published Stable: **v2.1.0**, [released on 12 October 2026](https://github.com/senyo888/humidity-intelligence/releases/tag/v2.1.0).
-Current development candidate: **v2.1.1-beta.4**, unpublished; see the
-[quiet update footer and dashboard fixes](#v211-beta4-current-unpublished-candidate).
+Current development candidate: **v2.1.1-rc.1**, unpublished; see the
+[dashboard, trend and support fixes](#v211-rc1-current-unpublished-candidate).
 V2.1 is led by **Stability Score**, with clearer badge explanations and history,
 optional output monitoring, reusable monitoring meanings and a simpler status row.
 Check the version offered in HACS and refresh its repository information if an older
@@ -761,7 +761,7 @@ Common post-configuration areas:
   includes [reusable meanings and optional guidance](docs/custom-monitoring-meanings.md)
 - UI: run `humidity_intelligence.dump_cards` and replace Manual-card YAML
   after visibility, template, mapping or generated-card option changes.
-  [Revision footer](docs/ui-revision-status.md): rendered revision only
+  [Revision footer](docs/ui-revision-status.md): UI compatibility and separate HACS-reported updates
 
 Detailed manual:
 
@@ -826,21 +826,30 @@ CO emergency pressure. Details are in
 
 ## Release Notes
 
-### v2.1.1-beta.4 (Current unpublished candidate)
+### v2.1.1-rc.1 (Current unpublished candidate)
 
-A quieter footer keeps the UI revision LED on the left and shows **↑ Update
-available** on the right when HACS reports an update. The routine no-update label
-is hidden; skipped, in-progress and unverified states remain visible. Open the
-same footer for the full UI and software details.
+![Humidity Intelligence v2.1.1 release header highlighting single-level V2 cards and clearer update status](assets/release_banner/v2.1.1_release.png)
 
-- Both V2 layouts advance to **revision 13**, superseding 1–12; stamp schema/generator
-  1 remain. Install the complete package, restart, regenerate and replace saved cards.
-- Keeps HACS optional and preserves provider-state, control and Stability behavior.
-  No configuration migration; restart resets in-memory Stability history.
-- [Candidate notes](CHANGELOG.md#unreleased--v211-beta4) and the
-  [footer guide](docs/ui-revision-status.md#software-update-observation) explain the
-  limits. Published Stable remains v2.1.0; earlier deployment/soak evidence does not
-  validate beta.4.
+Fixes single-level V2 exports ([#129](https://github.com/senyo888/humidity-intelligence/issues/129)),
+hardens native Outputs text and percentages, bounds calculated temperature trends,
+and adds optional HACS update information beside the UI revision LED.
+
+- Omits unconfigured levels while keeping configured unavailable readings and
+  missing mappings explicit. Self-check counts now follow saved Options telemetry.
+- Calculated trends keep the latest actual reading per minute for one hour;
+  changed weighting can affect slopes and slope-dependent decisions. Lane priority
+  and CO protection remain unchanged. Decorated issue-summary redaction is hardened.
+- The footer shows **↑ Update available** at the right when HACS reports it, hides
+  routine no-update text, and retains skipped/progress/unverified states. Provider
+  versions do not prove loaded code; opening details does not install anything.
+- Both layouts retain **revision 13**, stamp schema/generator 1. Beta.4 revision-13
+  cards stay compatible; older cards need fresh exports and complete replacement.
+  Install the full package and restart; no configuration/entity migration is needed.
+  Restart/reload resets in-memory Stability history.
+
+See [candidate notes](CHANGELOG.md#unreleased--v211-rc1) and the
+[upgrade/rollback record](docs/release-governance.md#v211-rc1-package-verification).
+Published Stable remains v2.1.0. RC preparation is not release or deployment approval.
 
 ### v2.1.0 (Current Published Stable)
 
@@ -879,6 +888,15 @@ Control row. See the [V2.1 overview](#v21--stability-score) and
 under Previous Releases; CHANGELOG.md retains the complete detailed history. -->
 <details>
 <summary>Previous Releases</summary>
+
+<a id="v211-beta4-current-unpublished-candidate"></a>
+
+### v2.1.1-beta.4 (Earlier unpublished candidate)
+
+Introduced the quiet no-update footer and right-aligned **↑ Update available** cue,
+retaining skipped, progress and unverified states. Both layouts advanced to revision
+13 with schema/generator 1. Its package and saved-card replacement requirements remain
+in the [historical candidate notes](CHANGELOG.md#unreleased--v211-beta4).
 
 ### v2.1.1-beta.3 (Earlier unpublished candidate)
 

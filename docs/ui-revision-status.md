@@ -40,7 +40,7 @@ Every package version update includes the [canonical release revision check](rel
 ## Software update observation
 
 Introduced in beta.3, the optional software observation uses HACS's reported update
-state for HI. The unpublished beta.4 candidate keeps the UI revision status on the
+state for HI. Since beta.4, the footer keeps the UI revision status on the
 left and right-aligns any visible software cue. HACS remains optional: manual
 installations and unavailable update sources retain the UI revision comparison.
 
@@ -156,8 +156,9 @@ relative to the seasonal band, and Outputs names come from the mapped entities.
 The seasonal description never prescribes an action in competition with the backend
 reason. Outputs expansion remains shared per entry and retains its existing timer.
 The revision indicator itself leaves Stability and lane selection unchanged.
-The unpublished v2.1.1-beta.4 candidate uses revision 13 in both layouts, superseding
-revisions 1–12, and requires fresh exports and full saved-card replacement.
+The unpublished v2.1.1-rc.1 candidate retains beta.4 revision 13 in both layouts,
+superseding revisions 1–12. Existing beta.4 revision-13 cards stay compatible;
+older revisions require fresh exports and full saved-card replacement.
 Beta.3 remains the earlier revision-12 candidate and beta.2 the revision-11 candidate;
 earlier deployment and Lab evidence apply only to their exact packages. The update-observation contract is independent of the stamp.
 Published v2.1.0 retains revision 9 and its compatibility with RC.1 revision-9 cards.
