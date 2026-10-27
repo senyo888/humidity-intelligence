@@ -22,6 +22,14 @@ Before opening a PR:
   you could not run.
 - Update documentation when behavior, setup steps, services, or UI examples change.
 
+## CI validation environment
+
+The `validate` job in `.github/workflows/validate.yml` uses Python 3.14 for its
+repository checks and security scanners. Keep this minor version explicit so a
+new Python minor release cannot change the scanner environment automatically.
+Review Python minor-version upgrades separately and require the full validation
+job to pass, including Semgrep.
+
 ## HACS custom integration context
 
 Humidity Intelligence is a structured Home Assistant custom integration. Its tracked
