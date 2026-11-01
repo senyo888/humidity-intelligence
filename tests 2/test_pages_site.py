@@ -162,7 +162,7 @@ class PagesSiteTests(unittest.TestCase):
         self.assertIn("Open in HACS", html)
         self.assertIn("Stable version</span><span class=\"badge-value\">v2.1.1", html)
         self.assertIn("replace the complete saved YAML", normalized_html)
-        self.assertIn("Existing beta.4 and RC.1 revision-13 cards remain compatible", normalized_html)
+        self.assertIn("Existing v2.1.1-beta.4 and v2.1.1-rc.1 revision-13 cards remain compatible", normalized_html)
 
         for asset in assets:
             with self.subTest(asset=asset):

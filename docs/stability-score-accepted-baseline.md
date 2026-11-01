@@ -1,11 +1,11 @@
 # Accepted Stability Score baseline
 
 Status: accepted functional and presentation contract in
-[published Stable v2.1.0](https://github.com/senyo888/humidity-intelligence/releases/tag/v2.1.0),
-released on 12 October 2026 after the reviewed RC.1 revision-9 candidate. Formula 4
-and additive schema-3 diagnostics are retained. Publication does not establish
-final-package installation; check the version offered by HACS and loaded by Home Assistant.
-Historical beta and RC release notes retain their original scope.
+[published Stable v2.1.1](https://github.com/senyo888/humidity-intelligence/releases/tag/v2.1.1),
+released on 24 October 2026. Both V2 layouts use revision 13, with Stability schema 3
+and formula 4 retained. Publication does not establish installation; check the version
+offered by HACS and loaded by Home Assistant. Historical validation records below
+retain their original package identities.
 
 Stability is integrated alongside the current control engine. Existing Manual handover,
 CO precedence, independent humidifier authority and reason presentation remain intact.
@@ -376,27 +376,28 @@ Diagnostics polling publishes on Home Assistant’s event loop, sharing ownershi
 scheduled updates. Preference reads that fail show **Display preference unavailable**;
 **Save unconfirmed** is reserved for a write that was attempted.
 
-These RC.1 corrections changed component and UI bytes. The corrected revision-9
+Historical v2.1.0 evidence: these RC.1 corrections changed component and UI bytes. The corrected revision-9
 package completed Stable and Lab installation validation; earlier acceptance remains
 bound to each original package. Final v2.1.0 retains those runtime and UI bytes, with
 its own manifest and package identity. RC.1 validation is not final-package registration.
 
 ## Installation, compatibility and rollback
 
-The final v2.1.0 source retains RC.1 V2 UI revision 9 for both layouts, superseding
-revisions 1–8, with stamp schema/generator 1 and Stability schema 3/formula 4 retained.
-No configuration, entity-registry or stored-data migration is required. The Diagnostics
-readable attribute is additive; existing entity IDs and native states are unchanged.
-After installing changed Python, perform a full Home Assistant restart. Restart and
-entry reload discard in-memory history and movement and restart baseline collection.
+V2.1.1 uses V2 UI revision **13** for both layouts, superseding revisions 1–12,
+with stamp schema/generator 1 and Stability schema 3/formula 4 retained.
+No configuration, entity-registry or stored-data migration is required. Existing
+entity IDs and native states are unchanged. Install the complete package and perform
+a full Home Assistant restart. Restart and entry reload discard in-memory history
+and movement and restart baseline collection.
 
-When upgrading older V2 cards, run `humidity_intelligence.refresh_ui`, then obtain
+From v2.1.0 or older V2 layouts, run `humidity_intelligence.refresh_ui`, then obtain
 fresh supported `dump_cards` or `view_cards` exports. Replace the complete pasted
 Manual-card YAML and refresh the browser/app frontend; clear its cache if it retains
-an older renderer. Existing RC.1 revision-9 cards remain compatible with final
-v2.1.0 and need no extra export for the version bump. V1 Mobile also needs replacement
-YAML for the RC.1 Drift correction. Pasted cards do not update themselves; validate
-Mobile, Tablet and the cards actually in use.
+an older renderer. Existing v2.1.1-beta.4 and v2.1.1-rc.1 revision-13 cards remain
+compatible with final v2.1.1 and need no extra export solely for that version bump.
+V1 Mobile has no revision indicator; older copies missing the v2.1.0 RC Drift fix
+still need replacement YAML. Pasted cards do not update themselves. Validate Mobile,
+Tablet and the cards actually in use; see [current upgrade guidance](releases/v2.1.1.md#updating-and-rollback).
 
 Verify dialog open/dismiss/reopen on the actual phone and tablet clients, including
 after telemetry refresh. Clients without native modal support must open Diagnostics

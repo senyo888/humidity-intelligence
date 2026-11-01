@@ -1,10 +1,10 @@
 # V2 touch and keyboard interactions
 
-The v2.1.0 release source retains the beta.9 native-button activation
-repair and beta.11 hold-to-toggle behavior. Both canonical layouts use V2 UI revision
-9 with generator contract 1. Interaction ownership and custom monitoring meanings
-are unchanged; [beta.12 changes](../CHANGELOG.md#v210-beta12--earlier-unpublished-candidate) separately
-cover autumn targets and recent score movement.
+V2.1.1 retains native-button activation and the Stability hold-to-toggle behavior.
+Both canonical V2 layouts use UI revision **13**, stamp schema 1 and generator
+contract 1. The footer presents UI compatibility and optional HACS update evidence
+separately. [Current release notes](releases/v2.1.1.md) describe the complete update;
+[earlier interaction changes](../CHANGELOG.md) retain their historical scope.
 
 ## Interaction ownership
 
@@ -15,7 +15,7 @@ cover autumn targets and recent score movement.
 | Current Air Control | Open explanation and recorded history | Hold opens native more-info; chips and reason remain scrollable |
 | Ready, Zone 1, Zone 2, AQ | Open explanatory details and history | These displays do not select a control lane |
 | Stability | Open snapshot details, including while Disabled | Hold the badge or hold Space while focused to toggle its saved display preference |
-| UI revision footer | Open rendered-revision details | Enter and Space activate its native button |
+| UI revision footer | Open card-revision and optional HACS update details | Enter and Space activate its native button; View update opens Home Assistant update details |
 | System and Manual | Toggle once when the input state is valid | Hold opens more-info; unknown/unavailable input cannot toggle |
 | Native Outputs header | Toggle the shared expansion helper once | Its native entity rows keep Home Assistant control behavior |
 | Adaptive Outputs header | Expand or collapse locally | Evidence, monitoring and controls buttons open their named details |
@@ -111,16 +111,17 @@ keeps its shared backend timer measured from opening, and Home Assistant owns it
 native dialogs. Existing source-change dismissal remains in effect where supported.
 
 Renderer changes require synchronized mobile/tablet and gallery embeds, generated
-YAML validation and UI revision checks. The current V2 target is UI revision 9;
-package version alone does not update a pasted card.
-Install the complete package, restart Home Assistant, then export and
-replace the full saved mobile and tablet Manual-card YAML. Refresh clients as
-needed to load the updated optional adaptive resource and rendered configuration.
-Restart resets existing in-memory Stability history. No configuration or entity
-migration is introduced by the touch repair.
+YAML validation and UI revision checks. V2.1.1 targets UI revision **13**;
+package version alone does not update a pasted card. Install the complete package
+and fully restart Home Assistant. For older V2 revisions, refresh/export and replace
+the full saved Mobile and Tablet Manual-card YAML, then refresh clients as needed.
+Existing v2.1.1-beta.4 and v2.1.1-rc.1 revision-13 cards remain compatible.
+Restart resets in-memory Stability history; no configuration or entity migration
+is required. See [the current upgrade sequence](releases/v2.1.1.md#updating-and-rollback).
 
-Keep the previous complete package and saved card YAML for rollback. Reverting both
-restores the earlier interaction behavior, including its known touch limitation.
-If rolling further back across beta.8 custom meanings, follow its
+Keep the previous complete package and saved card YAML for rollback. Restore both
+together so card expectations match the selected backend. Versions before the
+v2.1.0-beta.9 interaction repair retain their historical touch limitation.
+If rolling back across v2.1.0-beta.8 custom meanings, follow the
 [settings and custody rollback requirements](custom-monitoring-meanings.md#activation-and-rollback).
 Source validation, target activation and public release remain separate claims.
