@@ -1,7 +1,7 @@
 # Stability Score testing
 
-Status: formula 4 with UI revision 9 in [published Stable v2.1.0](https://github.com/senyo888/humidity-intelligence/releases/tag/v2.1.0),
-released on 12 October 2026. This guide describes validation of
+Status: formula 4 with V2 UI revision 13 in [published Stable v2.1.1](https://github.com/senyo888/humidity-intelligence/releases/tag/v2.1.1),
+released on 24 October 2026. This guide describes validation of
 [the canonical contract](stability-score-accepted-baseline.md); it does not establish
 an individual deployment or live-observation result.
 
@@ -103,7 +103,9 @@ iOS Safari. See the [browser harness](../tests%202/browser_touch/README.md) for 
 and limitations; the final source-bound report owns aggregate package and release
 validation.
 
-## Beta.12 candidate checks
+<a id="beta12-candidate-checks"></a>
+
+## Historical beta.12 candidate checks
 
 The offline run on 2026-10-07 also recorded **72 passed, 2 not-run and zero failures**
 across the generated Mobile/Tablet layouts. The changed movement cases exercise a
@@ -131,14 +133,17 @@ After an authorized install, restart Home Assistant, verify loaded identity and
 sampling diagnostics, and confirm the expected runtime fields and generated renderer.
 On-disk manifest version and file hashes alone do not prove the loaded module identity.
 If loaded behavior disagrees, inspect duplicate-domain discovery before repeating a
-restart. Regenerate via `refresh_ui` and `dump_cards`/`view_cards`,
-replace complete pasted cards, then refresh the frontend/cache. No configuration,
+restart. When upgrading earlier card revisions or changing UI-affecting Options,
+regenerate via `refresh_ui` and `dump_cards`/`view_cards`, replace complete pasted
+cards, then refresh the frontend/cache. Existing v2.1.1-beta.4 and v2.1.1-rc.1
+revision-13 cards remain compatible without replacement solely for the final
+version bump. No configuration,
 stored-data or entity migration is required. Restart or entry reload resets history:
 303 new valid observations are needed, about 50h20m after the first sample without gaps.
 Score history has no durable persistence, Recorder recovery or startup backfill.
 The saved badge display preference is separate from that history.
 
-For UI revision 9, review the recent reference, actual comparison interval, headline,
+For v2.1.1 UI revision 13, review the recent reference, actual comparison interval, headline,
 deduction table and existing history expander at narrow phone, wider phone and tablet widths. Check that labels remain readable,
 content does not overflow, and Close remains reachable when the history is expanded.
 Keep offline fixture screenshots labelled as synthetic; supplied state captures that

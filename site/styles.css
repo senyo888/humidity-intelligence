@@ -901,9 +901,60 @@ a:focus-visible,summary:focus-visible {
   color:#a8bbc7;
 }
 
-.footer-inner>a {
-  white-space:nowrap;
-  color:var(--cyan);
+.repository-link {
+  flex-shrink:0;
+  min-height:82px;
+  font-size:.9rem;
+  font-weight:650;
+}
+
+
+.footer-projects {
+  margin-top:28px;
+}
+
+.footer-card {
+  display:flex;
+  align-items:center;
+  gap:16px;
+  width:fit-content;
+  max-width:100%;
+  padding:16px 20px;
+  border:1px solid #345060;
+  border-radius:12px;
+  background:#102633;
+  color:#d1e0e9;
+  text-decoration:none;
+}
+
+.footer-card:hover {
+  border-color:var(--cyan);
+}
+
+.footer-card img {
+  flex:none;
+  width:48px;
+  height:48px;
+  object-fit:contain;
+}
+
+.footer-card>span {
+  min-width:0;
+}
+
+.companion-project small,.companion-project strong {
+  display:block;
+  line-height:1.45;
+}
+
+.companion-project small {
+  margin-bottom:3px;
+  color:#a8bbc7;
+  font-size:.75rem;
+}
+
+.companion-project strong {
+  font-size:.95rem;
 }
 
 @media(min-width:1600px) {

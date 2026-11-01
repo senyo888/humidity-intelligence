@@ -1,5 +1,10 @@
 # Rendered UI revision
 
+Current v2.1.1 Stable uses revision **13** in both V2 layouts, with stamp schema
+**1** and generator contract **1**. Revisions 1–12 require fresh exports and full
+saved-card replacement; existing v2.1.1-beta.4 and v2.1.1-rc.1 revision-13 cards
+remain compatible.
+
 The V2 mobile and tablet cards include a small bottom-left UI indicator. Open it
 for UI and software version details and the next step. The UI label reports the revision declared by this
 rendered card, compared with the compatible target advertised by its HI backend.
@@ -39,8 +44,8 @@ Every package version update includes the [canonical release revision check](rel
 
 ## Software update observation
 
-Introduced in beta.3, the optional software observation uses HACS's reported update
-state for HI. Since beta.4, the footer keeps the UI revision status on the
+Introduced in v2.1.1-beta.3, the optional software observation uses HACS's reported update
+state for HI. Since v2.1.1-beta.4, the footer keeps the UI revision status on the
 left and right-aligns any visible software cue. HACS remains optional: manual
 installations and unavailable update sources retain the UI revision comparison.
 
@@ -156,12 +161,13 @@ relative to the seasonal band, and Outputs names come from the mapped entities.
 The seasonal description never prescribes an action in competition with the backend
 reason. Outputs expansion remains shared per entry and retains its existing timer.
 The revision indicator itself leaves Stability and lane selection unchanged.
-The prepared v2.1.1 Stable source retains beta.4/RC.1 revision 13 in both layouts,
+V2.1.1 Stable retains beta.4/RC.1 revision 13 in both layouts,
 superseding revisions 1–12. Existing beta.4 and RC.1 revision-13 cards stay compatible;
 older revisions require fresh exports and full saved-card replacement.
 Beta.3 remains the earlier revision-12 candidate and beta.2 the revision-11 candidate;
 earlier deployment and Lab evidence apply only to their exact packages. The update-observation contract is independent of the stamp.
-Published v2.1.0 retains revision 9 and its compatibility with RC.1 revision-9 cards.
+Historical v2.1.0 used revision 9 and stayed compatible with its own RC.1 revision-9 cards;
+that exception does not apply when upgrading those cards to v2.1.1.
 Stamp schema and generator contract remain 1. See
 [the release compatibility record](release-governance.md#rendered-ui-revision-check-for-every-version-update).
 

@@ -1,10 +1,10 @@
 # Optional output monitoring
 
-This guide describes output monitoring in [published Stable v2.1.0](https://github.com/senyo888/humidity-intelligence/releases/tag/v2.1.0),
-released on 12 October 2026. Introduced in beta.4, monitoring remains opt-in and was
-not included in v2.0.12. Existing installations default to monitoring disabled and native Outputs
-presentation. Installing the complete package requires a Home Assistant restart to
-load its Python modules.
+This guide describes output monitoring in [published Stable v2.1.1](https://github.com/senyo888/humidity-intelligence/releases/tag/v2.1.1),
+released on 24 October 2026. Monitoring is opt-in and defaults to disabled, with
+native Outputs presentation. Installing the complete package requires a full
+Home Assistant restart. After changing the dashboard view, refresh/export and
+replace saved cards as described in [current upgrade guidance](releases/v2.1.1.md#updating-and-rollback).
 
 ## What it observes
 

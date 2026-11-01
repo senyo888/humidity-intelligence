@@ -1,7 +1,7 @@
 # Reusable monitoring meanings
 
-This feature is included in [published Stable v2.1.0](https://github.com/senyo888/humidity-intelligence/releases/tag/v2.1.0),
-released on 12 October 2026. It extends optional output monitoring.
+This guide covers reusable meanings in [published Stable v2.1.1](https://github.com/senyo888/humidity-intelligence/releases/tag/v2.1.1),
+released on 24 October 2026. They extend optional output monitoring.
 
 A custom meaning gives a monitoring condition a reusable name, an existing HI
 classification and optional **What to do** guidance. The library belongs to one HI
