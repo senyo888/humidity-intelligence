@@ -1411,3 +1411,32 @@ a:focus-visible,summary:focus-visible {
     display:none;
   }
 }
+
+/* Discovery guides share the landing page's typography, navigation and footer. */
+.guide-index { border-top:1px solid var(--line); }
+.guide-cards { grid-template-columns:repeat(3,minmax(0,1fr)); }
+.guide-hero { padding:48px 0 56px; background:var(--night); color:var(--white); }
+.guide-breadcrumb { margin-bottom:36px; font-size:.85rem; color:var(--cyan); }
+.guide-hero .eyebrow { color:var(--gold); }
+.guide-hero h1 { max-width:1050px; margin:18px 0 24px; font-size:clamp(2.3rem,4.6vw,4.5rem); }
+.guide-hero .section-lede { max-width:780px; color:#c1d3da; }
+.guide-layout { display:grid; grid-template-columns:minmax(0,2.2fr) minmax(240px,1fr); gap:64px; padding-top:64px; padding-bottom:72px; align-items:start; }
+.guide-copy { min-width:0; }
+.guide-copy section+section { margin-top:42px; }
+.guide-copy h2 { margin-bottom:20px; font-size:clamp(1.6rem,2.2vw,2.1rem); }
+.guide-copy p { max-width:72ch; }
+.guide-aside { padding:28px; border:1px solid var(--line); border-radius:var(--radius); background:var(--white); }
+.guide-aside h2 { font-size:1.3rem; }
+.guide-aside ul { padding-left:20px; margin:20px 0 26px; }
+.guide-aside li+li { margin-top:16px; }
+.guide-aside p { margin:20px 0; font-size:.85rem; color:var(--muted); }
+.guide-aside .button { white-space:normal; }
+@media(max-width:900px) {
+  .guide-layout { gap:32px; grid-template-columns:minmax(0,1fr); }
+  .guide-cards { grid-template-columns:minmax(0,1fr); }
+}
+@media(max-width:600px) {
+  .guide-hero { padding:30px 0 38px; }
+  .guide-breadcrumb { margin-bottom:28px; }
+  .guide-layout { padding-top:38px; padding-bottom:48px; }
+}

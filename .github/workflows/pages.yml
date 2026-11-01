@@ -45,6 +45,7 @@ jobs:
           rm -rf _site
           mkdir -p _site/assets/release_banner _site/assets/site _site/assets/ui/v2.1
           cp site/index.html site/styles.css site/robots.txt site/sitemap.xml _site/
+          cp -R site/guides _site/guides
           python3 scripts/build_hi_inspector.py _site/inspector
           cp assets/logo.png _site/assets/logo.png
           cp assets/header.png _site/assets/header.png

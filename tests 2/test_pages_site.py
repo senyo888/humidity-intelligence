@@ -6,8 +6,11 @@ from html.parser import HTMLParser
 import json
 import pathlib
 import re
+import shlex
+import subprocess
+import tempfile
 import unittest
-from urllib.parse import urljoin
+from urllib.parse import unquote, urljoin, urlsplit
 import xml.etree.ElementTree as ET
 
 
@@ -27,11 +30,17 @@ class PageParser(HTMLParser):
         self.canonical: str | None = None
         self.structured_data: list[str] = []
         self.title_parts: list[str] = []
+        self.resources: list[str] = []
+        self.ids: list[str] = []
         self._in_json_ld = False
         self._in_title = False
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
         values = dict(attrs)
+        if values.get("id"):
+            self.ids.append(values["id"])
+        if tag == "link" and values.get("rel") in {"stylesheet", "icon"}:
+            self.resources.append(values["href"])
         if tag == "a" and values.get("href"):
             self.links.append(values["href"] or "")
         if tag == "img" and values.get("src"):
@@ -95,7 +104,7 @@ class PagesSiteTests(unittest.TestCase):
 
         self.assertEqual(
             parser.title,
-            "Humidity Intelligence - Home Assistant Environmental Stabilisation Engine",
+            "Humidity Intelligence | Humidity and Air Quality Control for Home Assistant",
         )
         self.assertEqual(parser.canonical, PAGES_URL)
         self.assertEqual(parser.meta.get("robots"), "index,follow")
@@ -284,8 +293,84 @@ class PagesSiteTests(unittest.TestCase):
 
         self.assertIn("Allow: /", robots)
         self.assertIn(f"Sitemap: {PAGES_URL}sitemap.xml", robots)
-        self.assertEqual(locs, [PAGES_URL])
+        guide_urls = {
+            urljoin(PAGES_URL, path.parent.relative_to(SITE).as_posix() + "/")
+            for path in (SITE / "guides").glob("*/index.html")
+        }
+        self.assertEqual(len(guide_urls), 3)
+        self.assertEqual(set(locs), {PAGES_URL} | guide_urls)
+        self.assertEqual(len(locs), len(set(locs)))
         self.assertNotIn(INSPECTOR_URL, locs)
+
+    def test_guides_have_unique_metadata_and_crawlable_home_links(self) -> None:
+        _html, home = parse_index()
+        titles = {home.title}
+        descriptions = {home.meta["description"]}
+        for path in sorted((SITE / "guides").glob("*/index.html")):
+            with self.subTest(page=path.parent.name):
+                html = path.read_text(encoding="utf-8")
+                parser = PageParser()
+                parser.feed(html)
+                route = path.parent.relative_to(SITE).as_posix() + "/"
+                canonical = urljoin(PAGES_URL, route)
+                self.assertIn(route, home.links)
+                self.assertEqual(parser.canonical, canonical)
+                self.assertEqual(parser.meta["og:url"], canonical)
+                self.assertEqual(parser.meta["robots"], "index,follow")
+                self.assertEqual(parser.meta["og:title"], parser.title)
+                self.assertEqual(parser.meta["twitter:title"], parser.title)
+                self.assertEqual(parser.meta["og:description"], parser.meta["description"])
+                self.assertEqual(parser.meta["twitter:description"], parser.meta["description"])
+                self.assertNotIn(parser.title, titles)
+                self.assertNotIn(parser.meta["description"], descriptions)
+                titles.add(parser.title)
+                descriptions.add(parser.meta["description"])
+                data = json.loads("".join(parser.structured_data))
+                self.assertEqual(data["@type"], "WebPage")
+                self.assertEqual(data["url"], canonical)
+                self.assertEqual(data["isPartOf"]["url"], PAGES_URL)
+                self.assertEqual(len(re.findall(r"<h1(?:\s|>)", html)), 1)
+                self.assertEqual(len(parser.ids), len(set(parser.ids)))
+                self.assertIn("../../#start", parser.links)
+                self.assertTrue(any("/wiki/" in link for link in parser.links))
+                # Discovery pages have no executable script or remote widget.
+                self.assertEqual(html.count("<script"), 1)
+
+    def test_built_guides_resolve_links_fragments_and_shared_assets(self) -> None:
+        workflow = (ROOT / ".github/workflows/pages.yml").read_text(encoding="utf-8")
+        with tempfile.TemporaryDirectory() as temp:
+            artifact = (pathlib.Path(temp) / "_site").resolve()
+            artifact.mkdir()
+            # Exercise the workflow's real static-copy commands, including recursive
+            # guide copying, with a temporary destination outside the checkout.
+            for line in workflow.splitlines():
+                command = line.strip()
+                if not command.startswith("cp "):
+                    continue
+                args = shlex.split(command)
+                destination = pathlib.Path(temp) / args[-1]
+                destination.parent.mkdir(parents=True, exist_ok=True)
+                args[-1] = str(destination) + ("/" if command.endswith("/") else "")
+                subprocess.run(args, cwd=ROOT, check=True, capture_output=True)
+            pages = sorted((artifact / "guides").glob("*/index.html"))
+            self.assertEqual(len(pages), 3)
+            for path in pages:
+                parser = PageParser()
+                parser.feed(path.read_text(encoding="utf-8"))
+                for target in parser.links + parser.images + parser.resources:
+                    url = urlsplit(target)
+                    if url.scheme or url.netloc:
+                        continue
+                    with self.subTest(page=path.parent.name, target=target):
+                        resolved = (path.parent / unquote(url.path)).resolve()
+                        self.assertTrue(resolved.is_relative_to(artifact))
+                        if resolved.is_dir():
+                            resolved /= "index.html"
+                        self.assertTrue(resolved.is_file(), f"Broken built link: {target}")
+                        if url.fragment:
+                            linked = PageParser()
+                            linked.feed(resolved.read_text(encoding="utf-8"))
+                            self.assertIn(unquote(url.fragment), linked.ids)
 
     def test_public_support_docs_record_gate3_status_and_route(self) -> None:
         readme = (ROOT / "README.md").read_text(encoding="utf-8")
