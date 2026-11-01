@@ -34,3 +34,24 @@ and the three animation phases. The maintainer selected the V2.1 artwork on
 advisory, belongs to each previously tested package. Current v2.1.1 source and
 publication records do not establish an individual Home Assistant installation or
 a completed soak; earlier beta/RC evidence keeps its original package identity.
+
+
+## Discovery guides
+
+The homepage uses the positioning “Humidity and Air Quality Control for Home
+Assistant”. Page titles, descriptions and social previews describe the same scope;
+the approved visual headline and release presentation remain intact.
+
+Three static guides under `site/guides/` explain coordinated control, condensation
+and mould-risk context, and Stability Score. They are introductory explanations
+of tracked product behaviour, with descriptive links to the detailed Wiki and
+repository contracts. Keep those sources authoritative when updating a guide.
+Each guide has its own canonical URL and metadata, shares the site's navigation,
+styles and footer, and appears in `sitemap.xml`. The existing Pages workflow copies
+that directory without a new build dependency. Inspector remains excluded from
+indexing and the sitemap.
+
+Validate the built artifact, including nested guide links, fragments, shared assets,
+unique metadata and sitemap coverage. Check all guide routes at phone, tablet and
+desktop widths and follow their navigation with a keyboard. No analytics, search
+ranking promise, external widget or version bump accompanies these pages.
