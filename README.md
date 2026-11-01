@@ -1341,7 +1341,7 @@ Release details for v2.0.1 through v2.0.8, including legacy migration notes, are
 <p align="center">
   <sub>Explore our other projects</sub><br>
   <a href="https://senyo888.github.io/thermal-intelligence/">
-    <img src="assets/site/thermal-intelligence-logo.png" alt="" width="48" height="48"><br>
+    <img src="assets/site/thermal-intelligence-logo-96.png" alt="" width="48" height="48"><br>
     <strong>Thermal Intelligence →</strong>
   </a>
 </p>
