@@ -1,8 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <url>
-    <loc>https://senyo888.github.io/humidity-intelligence/</loc>
-    <changefreq>weekly</changefreq>
-    <priority>1.0</priority>
-  </url>
+  <url><loc>https://senyo888.github.io/humidity-intelligence/</loc></url>
+  <url><loc>https://senyo888.github.io/humidity-intelligence/guides/humidity-air-quality-control/</loc></url>
+  <url><loc>https://senyo888.github.io/humidity-intelligence/guides/condensation-mould-risk/</loc></url>
+  <url><loc>https://senyo888.github.io/humidity-intelligence/guides/stability-score/</loc></url>
 </urlset>
