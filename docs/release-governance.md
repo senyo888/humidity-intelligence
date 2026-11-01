@@ -25,7 +25,7 @@ testing and validation branches.
 - `2.1.0-beta.3`: earlier unpublished candidate with V2 summaries, recorded histories and source-room colours.
 - `2.1.0-beta.2`: earlier unpublished candidate, introduced at `76285b0`, with seven-day drift progress/details.
 - `2.1.0-beta.1`: earlier committed/pushed, unpublished Stability candidate.
-- `2.0.12`: preceding published Stable, released on 2026-09-09.
+- `2.0.12`: earlier published Stable, released on 2026-09-09.
 - `2.0.11`: earlier published Stable, released on 2026-08-11.
 
 The historical v2.0.12 beta.1–beta.4 and rc.1 sequence below retains its original
@@ -39,11 +39,11 @@ must remain aligned with the
 `custom_components/humidity_intelligence/manifest.json` version contained in the
 published GitHub Release/tag.
 
-Current Stable is **v2.1.1**, dated 2026-10-24. The
-[release and compatibility record](#v211-stable-source-preparation) identifies its
-reviewed main source `e9003f3a30c6424a7daf0442e8b6891e2c12a972` and unchanged package.
-See [GitHub Releases](https://github.com/senyo888/humidity-intelligence/releases)
-for the separate publication record.
+Current Stable is **[v2.1.1](https://github.com/senyo888/humidity-intelligence/releases/tag/v2.1.1)**,
+published on 24 October 2026. Its immutable tag resolves to
+`f544d4bda82f71bb03ea5405472093f826d6351a`. The
+[release and compatibility record](#v211-stable-source-preparation) preserves the
+reviewed preparation merge, final publication identity and unchanged package.
 
 Historical release: [v2.1.0](https://github.com/senyo888/humidity-intelligence/releases/tag/v2.1.0)
 was released on 2026-10-12 as a non-prerelease GitHub Release. Tag `v2.1.0` identifies
@@ -447,10 +447,11 @@ PR #134 was merged by the maintainer on 2026-10-24 as main
 `e52c8a67f52c3a630d05bce7b87728f4a5cf3455`, matching the reviewed source.
 All 77 package files retain hash
 `a5acce20723031e843add774f6e6a1268e9fc988225cac1d5bc1bbd91490c815`.
-Final publication documentation does not alter the component package. The maintainer
-authorized tagging and a draft Release, retaining publication control. Check
-[GitHub Releases](https://github.com/senyo888/humidity-intelligence/releases) for the
-publication record; neither main merge nor a tag proves HACS availability or a loaded installation.
+Final publication documentation did not alter the component package. The maintainer
+published [v2.1.1](https://github.com/senyo888/humidity-intelligence/releases/tag/v2.1.1)
+on 24 October 2026 at 11:47:06 UTC as a non-prerelease GitHub Release. The immutable
+tag resolves to `f544d4bda82f71bb03ea5405472093f826d6351a`, retaining the same 77-file
+component package. Publication does not establish HACS availability or a loaded installation.
 
 ### v2.1.1-rc.1 package verification
 

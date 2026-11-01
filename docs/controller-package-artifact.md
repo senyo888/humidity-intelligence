@@ -82,14 +82,16 @@ looking files under `tools/` still fail closed. The beta.12 component inventory 
 additional packaging file. Derive each later candidate’s inventory from its exact
 commit and artifact manifest rather than reusing this dated count.
 
-## V2.1 candidate identity
+<a id="v21-candidate-identity"></a>
+
+## V2.1.1 package identity
 
 V2.1.0 introduced the V2.1 contract ID, retained for V2.1.1; the existing V2.0 identity is
 unchanged. Source profile, branch, selected paths, manifest schema, deterministic
 hashing and security checks remain the same. A controller must explicitly recognize
-the V2.1 contract before accepting this candidate. Producing this artifact does not
+the V2.1 contract before accepting a v2.1.1 package. Producing this artifact does not
 assert downstream controller compatibility or authorize controller changes/deployment.
 
-Beta.4 also packages the optional `adaptive_output/` subsystem and its JavaScript
+V2.1.1 packages the optional `adaptive_output/` subsystem and its JavaScript
 resource. Completeness checks compare every tracked component file, so this directory
 cannot be silently omitted from controller artifacts.

@@ -50,8 +50,8 @@ See [complete release notes](docs/releases/v2.1.1.md) and the
 
 ![Humidity Intelligence v2.1.1 release header highlighting single-level V2 cards and clearer update status](assets/release_banner/v2.1.1_release.png)
 
-Prepares the complete v2.1.1 release candidate for maintainer review. Published
-Stable remains v2.1.0; no RC tag, GitHub Release, HACS offering or installation is
+Prepared the complete v2.1.1 release candidate for maintainer review. At that checkpoint,
+published Stable was v2.1.0; no RC tag, GitHub Release, HACS offering or installation is
 established by this source preparation.
 
 Thanks to [@Ak1Sun](https://github.com/Ak1Sun) for reporting the single-level V2
@@ -86,7 +86,7 @@ backends can report **UI differs** for revision-13 cards. See the
 ## v2.1.1-beta.4 — Earlier unpublished candidate
 
 Makes the V2 software-update footer quieter while retaining its independent UI
-revision indicator. Published Stable remains v2.1.0; this candidate is not a tag,
+revision indicator. At that checkpoint, published Stable was v2.1.0; this candidate is not a tag,
 GitHub Release or HACS offering.
 
 - Hides the routine **No update reported** label from the footer and removes the
@@ -117,7 +117,7 @@ or completed-soak claim. See [footer details](docs/ui-revision-status.md).
 ## v2.1.1-beta.3 — Earlier unpublished candidate
 
 Adds optional, provider-reported software update information to the V2 card footer.
-Published Stable remains v2.1.0; source preparation does not publish a beta or make
+At that checkpoint, published Stable was v2.1.0; source preparation does not publish a beta or make
 it available through HACS.
 
 - Preserves the UI revision LED's existing current/update/differs/unverified meaning.
@@ -153,7 +153,7 @@ package. No beta.3 deployment or completed soak is claimed.
 
 Development candidate for [#129](https://github.com/senyo888/humidity-intelligence/issues/129),
 with follow-up input-handling and calculated-trend hardening.
-Published Stable remains v2.1.0; this entry does not announce a beta release or HACS availability.
+At that checkpoint, published Stable was v2.1.0; this entry does not announce a beta release or HACS availability.
 
 - Fixes V2 Mobile and Tablet exports remaining “UI unverified” in single-level
   installations. Humidity and temperature chip inventories include only levels
@@ -198,7 +198,7 @@ Source validation and house-agent review do not establish live installation or r
 ## v2.1.1-beta.1 — Earlier unpublished candidate
 
 Earlier candidate for [#129](https://github.com/senyo888/humidity-intelligence/issues/129).
-Published Stable remains v2.1.0; this entry does not announce a beta release or HACS availability.
+At that checkpoint, published Stable was v2.1.0; this entry does not announce a beta release or HACS availability.
 
 - Fixes V2 Mobile and Tablet exports remaining “UI unverified” in single-level
   installations. Humidity and temperature chip inventories include only levels

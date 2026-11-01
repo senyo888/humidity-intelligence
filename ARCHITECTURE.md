@@ -38,8 +38,8 @@ classification and presentation. Formula 4 selects individual AQ conditions per 
 with configured IAQ fallback only when no individual conditions are configured.
 Routine AQ uses an additional 12-point adjustment recovering over six observed-clear
 hours; missing evidence pauses recovery. CO protections and engine trigger evaluation
-remain independent. It is included in [published Stable v2.1.0](https://github.com/senyo888/humidity-intelligence/releases/tag/v2.1.0),
-released on 12 October 2026. Deployment to an instance does not
+remain independent. This contract applies to [published Stable v2.1.1](https://github.com/senyo888/humidity-intelligence/releases/tag/v2.1.1),
+released on 24 October 2026. Deployment to an instance does not
 change published release identity. Stability cannot select
 lanes, change gates or
 write outputs. Existing control entities/native states remain unchanged; Diagnostics
@@ -330,7 +330,7 @@ dashboard documents and must not be written to `<config>/dashboards/`; dashboard
 creation, registration, editing, and deletion stay within Home Assistant's UI.
 
 Dynamic state or attribute text rendered through generated-card HTML must be escaped
-at the HTML sink. The V1 Mobile presentation remains available but deprecated in v2.1.0;
+at the HTML sink. The V1 Mobile presentation remains available but deprecated;
 any removal requires a separately approved migration contract.
 
 V2 generated cards carry an entry- and layout-scoped rendered UI revision, separate
