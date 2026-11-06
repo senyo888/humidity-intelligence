@@ -14,7 +14,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.helpers.event import async_track_state_change_event, async_track_time_interval
 from homeassistant.util import dt as dt_util
 
-from ..helpers.air_quality import capture_configured_aq_evidence
+from ..helpers.air_quality import AQ_CANONICAL_UNITS, capture_configured_aq_evidence, parse_aq_value
 from ..const import (
     ALERT_THRESHOLD_BOUNDS,
     ALERT_TRIGGER_DEFS,
@@ -165,7 +165,8 @@ class HIAutomationEngine:
         self._last_alert: Dict[int, datetime] = {}
         self._active_alert_identity: Optional[Tuple[str, str, str]] = None
         self._co_emergency_active = False
-        self._co_below_since: Optional[datetime] = None
+        self._co_below_since: Optional[float] = None
+        self._co_clear_generation = 0
         self._evaluate_lock: Optional[asyncio.Lock] = None
         self._evaluate_pending = False
         self._stopped = False
@@ -235,6 +236,18 @@ class HIAutomationEngine:
         self._notify_other_humidifier_engines()
 
     async def _handle_change(self, event) -> None:
+        # Observe every CO interruption, even while evaluation requests coalesce.
+        event_data = getattr(event, "data", {}) or {}
+        if any(item.get("sensor_type") == "co" and item.get("entity_id") == event_data.get("entity_id")
+               for item in self.telemetry):
+            state = event_data.get("new_state")
+            value, _reason = parse_aq_value(
+                "co", getattr(state, "state", None),
+                getattr(state, "attributes", {}).get("unit_of_measurement"),
+            )
+            _, clear_threshold, _ = self._co_emergency_settings()
+            if value is None or value >= clear_threshold:
+                self._reset_co_clear_hold()
         if self._is_pause_timer_countdown_update(event):
             return
         await self.async_request_evaluate()
@@ -672,34 +685,45 @@ class HIAutomationEngine:
 
     def _co_clear_ready(self) -> bool:
         _, clear_threshold, _ = self._co_emergency_settings()
-        co_values = self._collect_values("co")
-        if not co_values:
-            self._cancel_co_clear_recheck()
+        sources = {item.get("entity_id") for item in self.telemetry if item.get("sensor_type") == "co"}
+        co_values = [_get_float(self.hass, entity_id, sensor_type="co") for entity_id in sources]
+        if not co_values or any(value is None for value in co_values):
+            self._reset_co_clear_hold()
             return False
-        now = datetime.now()
+        now = time.monotonic()
         if all(val < clear_threshold for val in co_values):
-            if not self._co_below_since:
+            if self._co_below_since is None:
                 self._co_below_since = now
-            ready = now - self._co_below_since >= CO_EMERGENCY_CLEAR_HOLD
+            ready = now - self._co_below_since >= CO_EMERGENCY_CLEAR_HOLD.total_seconds()
             if not ready:
                 self._schedule_co_clear_recheck(now)
             return ready
-        self._co_below_since = None
-        self._cancel_co_clear_recheck()
+        self._reset_co_clear_hold()
         return False
 
-    def _schedule_co_clear_recheck(self, now: datetime) -> None:
+    def _reset_co_clear_hold(self) -> None:
+        self._co_below_since = None
+        self._co_clear_generation += 1
+        self._cancel_co_clear_recheck()
+
+    def _schedule_co_clear_recheck(self, now: float) -> None:
         if self._co_clear_recheck_task and not self._co_clear_recheck_task.done():
             return
         if self._co_below_since is None:
             return
-        remaining = CO_EMERGENCY_CLEAR_HOLD - (now - self._co_below_since)
-        delay = max(0.0, remaining.total_seconds())
+        remaining = CO_EMERGENCY_CLEAR_HOLD.total_seconds() - (now - self._co_below_since)
+        delay = max(0.0, remaining)
+        generation = self._co_clear_generation
 
         async def _co_clear_recheck() -> None:
             task = asyncio.current_task()
             try:
                 await asyncio.sleep(delay)
+                if generation != self._co_clear_generation:
+                    return
+                # This is now an evaluation, no longer a cancellable deadline.
+                if self._co_clear_recheck_task is task:
+                    self._co_clear_recheck_task = None
                 await self.async_request_evaluate()
             except asyncio.CancelledError:
                 return
@@ -1356,7 +1380,7 @@ class HIAutomationEngine:
                 if val is not None and threshold_val is not None and val >= threshold_val:
                     details.append(f"VOC {val:.1f} >= threshold {threshold_val:g}")
                     facts.append(
-                        _TriggerFact("voc_bad", val, threshold_val, "index", "at_or_above")
+                        _TriggerFact("voc_bad", val, threshold_val, "ppb", "at_or_above")
                     )
             if trig == "co2_high":
                 val = self._level_avg("co2", level)
@@ -3536,8 +3560,8 @@ class HIAutomationEngine:
             )
         else:
             text = (
-                f"VOC is {fact.measured:g}, at or above the "
-                f"response point of {fact.threshold:g}."
+                f"VOC is {fact.measured:g} ppb, at or above the "
+                f"response point of {fact.threshold:g} ppb."
             )
         return ReasonLine(
             "why",
@@ -4626,7 +4650,8 @@ class HIAutomationEngine:
                 vals.append(val)
         if not vals:
             return None
-        return round(sum(vals) / len(vals), 1)
+        mean = sum(vals) / len(vals)
+        return mean if sensor_type in AQ_CANONICAL_UNITS else round(mean, 1)
 
     def _rooms_avg(self, sensor_type: str, rooms: List[str]) -> Optional[float]:
         if not rooms:
@@ -4644,7 +4669,8 @@ class HIAutomationEngine:
                 vals.append(val)
         if not vals:
             return None
-        return round(sum(vals) / len(vals), 1)
+        mean = sum(vals) / len(vals)
+        return mean if sensor_type in AQ_CANONICAL_UNITS else round(mean, 1)
 
     def _worst_spread(self) -> Optional[float]:
         spreads: List[float] = []
@@ -4707,6 +4733,9 @@ def _get_float(
             hass_temperature_unit(hass),
         )
         return value_c
+    if sensor_type in AQ_CANONICAL_UNITS:
+        value, _reason = parse_aq_value(sensor_type, state.state, state.attributes.get("unit_of_measurement"))
+        return value
     return parse_numeric(raw_state)
 
 

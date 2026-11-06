@@ -210,7 +210,8 @@ async def _async_install_selected_ui(
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry."""
-    await hass.config_entries.async_unload_platforms(entry, ["sensor", "binary_sensor", "switch"])
+    if not await hass.config_entries.async_unload_platforms(entry, ["sensor", "binary_sensor", "switch"]):
+        return False
     await async_unload_automations(hass, entry)
     data = hass.data.get(DOMAIN, {}).get(entry.entry_id, {})
     observer = data.pop("output_observer", None)

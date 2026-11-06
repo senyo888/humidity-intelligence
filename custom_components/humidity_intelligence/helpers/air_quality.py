@@ -13,13 +13,64 @@ AQ_TRIGGER_SPECS = {
     "co2_high": {"sensor_type": "co2", "direction": "high"},
     "co_warning": {"sensor_type": "co", "direction": "high"},
 }
-AQ_EXPECTED_UNITS = {
-    "iaq": {"", "iaq", "index"},
-    "pm25": {"ug/m3"},
-    "voc": {"ppb"},
-    "co2": {"ppm"},
-    "co": {"ppm"},
+AQ_CANONICAL_UNITS = {
+    "iaq": "index", "pm25": "µg/m³", "voc": "ppb", "co2": "ppm", "co": "ppm",
 }
+_AQ_UNIT_FACTORS = {
+    "iaq": {"": 1.0, "iaq": 1.0, "index": 1.0},
+    "pm25": {"ug/m3": 1.0, "mg/m3": 1000.0},
+    "voc": {"ppb": 1.0, "ppm": 1000.0},
+    "co2": {"ppm": 1.0, "ppb": 0.001},
+    "co": {"ppm": 1.0, "ppb": 0.001},
+}
+
+
+def _aq_unit_factor(sensor_type: str, unit: Any) -> float | None:
+    normalized = str(unit or "").strip().lower().replace(" ", "")
+    normalized = normalized.replace("³", "3").replace("^3", "3")
+    normalized = normalized.replace("μ", "u").replace("µ", "u")
+    return _AQ_UNIT_FACTORS.get(sensor_type, {}).get(normalized)
+
+
+def parse_aq_value(sensor_type: str, value: Any, unit: Any) -> tuple[float | None, str | None]:
+    """Normalize measured AQ values; never infer units, concentration or healthy data."""
+    factor = _aq_unit_factor(sensor_type, unit)
+    if factor is None:
+        return None, "unit_unsupported"
+    numeric = _finite_float(value)
+    if numeric is None or numeric < 0:
+        return None, "value_invalid"
+    normalized = numeric * factor
+    if not isfinite(normalized):
+        return None, "value_invalid"
+    return normalized, None
+
+
+def aq_source_summary(hass: Any, config: dict[str, Any]) -> dict[str, Any]:
+    """Bounded, identity-free input quality for live and exported Diagnostics."""
+    result = {}
+    seen = set()
+    for item in config.get("telemetry", []) or []:
+        if not isinstance(item, dict) or item.get("sensor_type") not in AQ_CANONICAL_UNITS:
+            continue
+        kind, entity_id = item["sensor_type"], item.get("entity_id")
+        key = (kind, str(entity_id or ""))
+        if key in seen:
+            continue
+        seen.add(key)
+        counts = result.setdefault(kind, {
+            "unit": AQ_CANONICAL_UNITS[kind], "configured": 0, "available": 0,
+            "unit_unsupported": 0, "value_invalid": 0, "missing": 0,
+        })
+        counts["configured"] += 1
+        state = hass.states.get(entity_id) if isinstance(entity_id, str) and entity_id else None
+        if state is None:
+            counts["missing"] += 1
+            continue
+        _value, reason = parse_aq_value(kind, state.state, state.attributes.get("unit_of_measurement"))
+        counts[reason or "available"] += 1
+    return {"complete": bool(result) and all(row["configured"] == row["available"] for row in result.values()),
+            "by_type": result}
 
 
 def evaluate_configured_aq_triggers(
@@ -160,7 +211,7 @@ def capture_configured_aq_evidence(
                 if not aq_unit_supported(sensor_type, unit):
                     invalid_units += 1
                     continue
-                value = _finite_float(getattr(state, "state", None))
+                value, _reason = parse_aq_value(sensor_type, getattr(state, "state", None), unit)
                 if value is not None:
                     values.append(value)
             available_source_count += len(values)
@@ -241,17 +292,15 @@ def capture_configured_aq_evidence(
 
 
 def aq_unit_supported(sensor_type: str, unit: Any) -> bool:
-    """Return whether a source unit matches the configured AQ threshold scale."""
-    normalized = str(unit or "").strip().lower().replace(" ", "")
-    normalized = normalized.replace("³", "3")
-    normalized = normalized.replace("μ", "u").replace("µ", "u")
-    normalized = normalized.replace("ug/m^3", "ug/m3")
-    return normalized in AQ_EXPECTED_UNITS.get(sensor_type, set())
+    """Return whether a source can be converted to the configured threshold unit."""
+    return _aq_unit_factor(sensor_type, unit) is not None
 
 
 def _finite_float(value: Any) -> Optional[float]:
+    if isinstance(value, bool):
+        return None
     try:
         numeric = float(value)
-    except (TypeError, ValueError):
+    except (TypeError, ValueError, OverflowError):
         return None
     return numeric if isfinite(numeric) else None

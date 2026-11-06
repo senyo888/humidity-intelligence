@@ -60,9 +60,9 @@ It gives you:
 
 **Current Stable: v2.1.1** brings [single-level dashboards, clearer update status and report fixes](#v211-current-stable).
 Check [GitHub Releases](https://github.com/senyo888/humidity-intelligence/releases/latest)
-for the latest published version, then confirm the version offered in HACS.
+for the latest published version, then confirm the version offered in Marketplace or HACS.
 Stability Score, badge explanations and optional output monitoring provide context
-alongside current control decisions. If HACS shows an older version, refresh its
+alongside current control decisions. If the package manager shows an older version, refresh its
 repository information. See [Current Release Highlights](#current-release-highlights)
 for v2.1.1 changes and the required card-refresh steps.
 
@@ -73,7 +73,7 @@ remain the release authority.
 
 For publication status, installed packages, and release tags, use
 [GitHub Releases](https://github.com/senyo888/Humidity-Intelligence/releases) and
-HACS as the user-facing record.
+Marketplace or HACS as the user-facing record.
 
 
 ---
@@ -536,27 +536,22 @@ for installation, card refresh and rollback guidance.
 
 ## Installation
 
-### Option A - HACS (Recommended)
+### Option A - Marketplace or HACS (Recommended)
 
 Requires Home Assistant **2026.5.1** or newer.
 
-[![Open your Home Assistant instance and open Humidity Intelligence inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=senyo888&repository=humidity-intelligence&category=integration)
+On **2026.11+**, open **Settings → Marketplace**, find **Humidity Intelligence**,
+and select **Install**. A fresh installation can open its setup flow directly.
+On earlier supported versions, open **HACS → Integrations**, download HI, restart,
+and add it through **Settings → Devices & services**. Updates require a full restart.
 
-The button opens Humidity Intelligence in HACS; it does not install automatically.
-Select **Download** in HACS, then continue with the restart and integration setup
-steps below.
+[![Open Humidity Intelligence in Marketplace or HACS.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=senyo888&repository=humidity-intelligence&category=integration)
 
-The repository uses the conventional HACS integration layout under
-`custom_components/humidity_intelligence/`. HACS installs that package directory only;
-repository documentation, tests, scripts, site files, legacy material, and UI Gallery
-examples are not included in the Home Assistant integration payload.
-
-1. Open HACS in Home Assistant.
-2. Search for **Humidity Intelligence**, filtering by **Integration** if needed.
-3. Open the repository entry and select **Download**.
-4. Restart Home Assistant.
-5. Go to **Settings -> Devices & services -> Add integration**.
-6. Search for **Humidity Intelligence** and complete setup.
+The button opens the repository page; it does not install automatically. Published
+**v2.1.1 exceeds Marketplace's archive limit** and can fail to download. Until the
+small-ZIP candidate is published, use the [exact-tag manual recovery](docs/release-packaging.md#earlier-versions-and-current-evidence-limits)
+if affected. Stable remains v2.1.1; the v2.1.2 candidate is unpublished. See
+[2026.11 compatibility](docs/home-assistant-2026.11.md), including corrected AQ units.
 
 ### Option B - Manual package upgrade
 
@@ -588,7 +583,7 @@ You can complete setup without them, but if you want the **full visual system (b
 
 ### Core Recommendation
 
-Install via HACS before anything else.
+Use Marketplace on HA 2026.11+, or HACS on earlier supported versions.
 
 ### Optional frontend cards
 
@@ -605,7 +600,7 @@ The following projects power the visual layer of Humidity Intelligence:
 
 ### Installation Notes
 
-- All frontend dependencies can be installed via HACS (**Frontend** section).
+- Install frontend cards through Marketplace or the legacy HACS **Frontend** section.
 - After installing, hard refresh your browser or use a new session to avoid caching issues.
 - If you skip these, the system still runs, but UI elements may not render correctly.
 
@@ -623,7 +618,7 @@ These tools are foundational to the Home Assistant ecosystem and give the dashbo
 
 If you are unsure:
 
-1. Install HACS
+1. Open Marketplace or HACS
 2. Install the frontend dependencies above
 3. Continue with the configuration flow
 
@@ -763,7 +758,7 @@ Common post-configuration areas:
   includes [reusable meanings and optional guidance](docs/custom-monitoring-meanings.md)
 - UI: run `humidity_intelligence.dump_cards` and replace Manual-card YAML
   after visibility, template, mapping or generated-card option changes.
-  [Revision footer](docs/ui-revision-status.md): UI compatibility and separate HACS-reported updates
+  [Revision footer](docs/ui-revision-status.md): UI compatibility and separate Marketplace/HACS update reports
 
 Detailed manual:
 
@@ -827,6 +822,15 @@ CO emergency pressure. Details are in
 ---
 
 ## Release Notes
+
+### v2.1.2-beta.1 (Unpublished compatibility candidate)
+
+Adds the component ZIP for [#145](https://github.com/senyo888/humidity-intelligence/issues/145),
+Marketplace update observation, canonical AQ units and complete-evidence CO clearance.
+Gate forms preserve hidden settings; supplied slopes retain saved identity bindings.
+Both V2 layouts advance to revision **14**; export and replace saved cards.
+See [compatibility and migration](docs/home-assistant-2026.11.md) and
+[packaging](docs/release-packaging.md). Publication and installation remain separate.
 
 <a id="v211-stable-source-preparation"></a>
 

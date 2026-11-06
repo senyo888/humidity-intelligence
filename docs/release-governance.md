@@ -5,6 +5,7 @@ testing and validation branches.
 
 ## Canonical Version Model
 
+- `2.1.2-beta.1`: current unpublished HA 2026.11 compatibility candidate. Includes the #145 ZIP, exact dual-provider observation, canonical AQ units, complete-evidence CO clearance, conditional gates and saved slope identities. Both V2 layouts advance to revision 14, superseding 1–13; stamp schema/generator remain 1. Update-observation schema 1 adds Marketplace/null provider values. See [compatibility, validation and rollback](home-assistant-2026.11.md) and [packaging](release-packaging.md).
 - `2.1.1`: current Stable, dated 2026-10-24 and merged to main in PR #134. Runtime and generated-card bytes are unchanged from reviewed RC.1; manifest and packaged guidance establish a new package identity. Both layouts remain revision 13, schema/generator 1. See the [Stable compatibility record](#v211-stable-source-preparation).
 - `2.1.1-rc.1`: earlier unpublished release candidate, retaining the complete beta.1–beta.4 changes and correcting self-check telemetry counts after Options changes. Both layouts retain beta.4 revision 13 and schema/generator 1; update-observation schema remains 1. Existing revision-13 cards stay compatible. See the [RC package record](#v211-rc1-package-verification).
 - `2.1.1-beta.4`: earlier unpublished candidate with a quiet no-update footer and right-aligned **Update available** cue. Both layouts advanced to revision 13, superseding 1–12; stamp schema/generator and update-observation schema remained 1. Existing skipped/progress/unverified states stayed visible. Its source preparation did not change the then-running advisory Lab observation.
@@ -322,6 +323,11 @@ README container may keep concise displaced summaries and must retain a direct l
 that tracked history.
 
 ## Hard Release Gates
+
+For the v2.1.2 ZIP-delivery candidate and later ZIP releases, follow the
+[exact-commit package and draft-release asset checks](release-packaging.md#publication-and-rollback).
+The named asset must be attached, downloaded and verified before publishing the
+draft. Review artifacts and the external controller package are not release assets.
 
 No Humidity Intelligence version release, GitHub release, or release tag may be created
 until all of these gates are satisfied:

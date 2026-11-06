@@ -5,6 +5,11 @@ Current v2.1.1 Stable uses revision **13** in both V2 layouts, with stamp schema
 saved-card replacement; existing v2.1.1-beta.4 and v2.1.1-rc.1 revision-13 cards
 remain compatible.
 
+The unpublished 2.1.2-beta.1 candidate advances both layouts to **14**, superseding
+1–13, for Marketplace/HACS observation. Stamp schema/generator remain 1. Replace
+saved cards for the new footer; revision-13 cards safely report Marketplace updates
+as unverified. See [2026.11 compatibility](home-assistant-2026.11.md).
+
 The V2 mobile and tablet cards include a small bottom-left UI indicator. Open it
 for UI and software version details and the next step. The UI label reports the revision declared by this
 rendered card, compared with the compatible target advertised by its HI backend.
@@ -44,22 +49,22 @@ Every package version update includes the [canonical release revision check](rel
 
 ## Software update observation
 
-Introduced in v2.1.1-beta.3, the optional software observation uses HACS's reported update
+Introduced in v2.1.1-beta.3, the optional software observation uses the package provider's reported update
 state for HI. Since v2.1.1-beta.4, the footer keeps the UI revision status on the
-left and right-aligns any visible software cue. HACS remains optional: manual
+left and right-aligns any visible software cue. The package provider remains optional: manual
 installations and unavailable update sources retain the UI revision comparison.
 
 | Software state | Footer presentation and meaning |
 |---|---|
-| Update available | **↑ Update available** on the right means HACS reports an update; it is separate from a card replacement. |
-| No update reported | No visible software cue or separator. Details retain HACS's no-update report; this does not prove globally latest or loaded code. |
+| Update available | **↑ Update available** on the right means the provider reports an update; it is separate from a card replacement. |
+| No update reported | No visible software cue or separator. Details retain the provider's no-update report; this does not prove globally latest or loaded code. |
 | Update skipped | Muted **Update skipped** on the right; HI preserves the deliberate skip. |
-| HI update in progress | Visible on the right. HACS reports progress, not proof that new code is running. |
+| HI update in progress | Visible on the right. The provider reports progress, not proof that new code is running. |
 | Updates unverified | Subdued but visible on the right. Evidence is absent, disabled, ambiguous, unavailable, malformed, unsupported or disconnected. |
 
 Only the routine no-update cue is hidden. The UI revision LED and label remain
 visible in every software state: **UI current** with **Update available** means the
-card matches its backend while HACS reports a software update; **UI update** with
+card matches its backend while the provider reports a software update; **UI update** with
 **Update available** preserves both separate next steps. Neither cue overrides the
 other. Loss of provider evidence reveals **Updates unverified** rather than retaining
 a quiet no-update state.
@@ -71,30 +76,36 @@ hover-only meaning is required. Narrow layouts wrap the right cue into real spac
 without covering Outputs or the UI revision warning.
 
 Open the footer for **UI and software versions**. The software section identifies
-HACS and labels its downloaded, available and skipped versions. **View update**
+Marketplace or HACS and labels its downloaded, available and skipped versions. **View update**
 opens the exact existing HA update entity's native details only while its current
 state and versions still match the observed source. Changed or missing evidence
 requires reopening the details. The footer does not call an install action,
 download anything, restart HA or replace dashboard YAML.
 
-HACS owns update discovery, release-channel preference and refresh timing. HI
+The provider owns update discovery, release-channel preference and refresh timing. HI
 introduces no GitHub checker or beta selector. HA's `off` can include a skipped
 release or a downloaded version ahead of the offered version; `on` can include
 incomparable version identifiers. These are provider reports, not HI's independent
-version comparison. HACS's downloaded version may differ from manually installed
+version comparison. The provider's downloaded version may differ from manually installed
 or loaded code. Cached provider information and HA entity timestamps do not prove
 a recent successful Internet check. See [HA update states](https://www.home-assistant.io/integrations/update/),
 [HACS updates](https://www.hacs.xyz/docs/use/entities/update/) and
 [HACS prerelease selection](https://www.hacs.xyz/docs/use/entities/switch/).
 
-The backend matches the official HI repository's stable HACS unique ID in HA's
+The backend matches the official HI repository's stable repository ID on the `hacs` or `marketplace` platform in HA's
 entity registry, rather than its editable entity ID or display name. It re-resolves
 that identity during existing Diagnostics refreshes, including after renames or
-late HACS startup. `update_observation` is a separate schema-1 attribute and compact
+late provider startup. `update_observation` is a separate schema-1 attribute and compact
 Diagnostics summary. It contains fixed status/reason values and bounded version
 text; no provider HTML, release URLs, credentials or claimed check timestamps.
 Native/support exports omit the locally resolved source entity ID. No new listener,
 scheduler, control input or Stability publication path is added.
+
+In the 2.1.2 candidate, `provider` is `hacs` or `marketplace` only after an exact
+unique registry match; unresolved/ambiguous providers use null. Duplicate matches
+remain ambiguous even if one entry is disabled. Update-observation schema 1 remains
+independent of UI stamp schema 1. No package-manager directory is required by the
+optional frontend dependency check.
 
 ### Single-level installations
 

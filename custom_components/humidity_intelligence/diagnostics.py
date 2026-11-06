@@ -11,6 +11,7 @@ from homeassistant.const import __version__ as HA_VERSION
 from homeassistant.core import HomeAssistant
 
 from .helpers.stability import stability_diagnostics_payload
+from .helpers.air_quality import aq_source_summary
 from .helpers.update_observation import update_observation
 from .const import (
     CONF_ALERT_HANDLING_ENABLED,
@@ -420,7 +421,10 @@ def _diagnostics_summary(
     drift_dependency = humidity_drift_dependency_status(hass)
     drift_dependency_warning = humidity_drift_warning(drift_dependency)
     setup_assist = diagnostics_setup_assist_summary(hass, telemetry)
+    aq_inputs = aq_source_summary(hass, config)
     warnings = []
+    if aq_inputs["by_type"] and not aq_inputs["complete"]:
+        warnings.append("AQ input evidence is incomplete: check source units, availability and numeric readings. Invalid CO evidence cannot clear an active emergency.")
     if duplicate_summary:
         warnings.append(duplicate_summary)
     if unavailable:
@@ -431,6 +435,11 @@ def _diagnostics_summary(
     pm25_normalization = _pm25_normalization_status(runtime_data)
     if pm25_normalization.get("blocked_count"):
         warnings.append("PM25 aggregate entity ID normalization is blocked by an existing target entity.")
+    slope = config.get("slope", {})
+    if isinstance(slope, dict) and slope.get("mode") == "user_provided":
+        sources = slope.get("source_entities") or [item.get("entity_id") for item in telemetry if item.get("sensor_type") == "temperature"]
+        if len(runtime_data.get("slope_map") or {}) < len(set(sources)):
+            warnings.append("Some provided slope sources have no unambiguous pairing. Review slope Options; names or list order must not silently reassign a source.")
     if not telemetry:
         warnings.append("No telemetry sensors are configured.")
     if not zones and not config.get("alert_only_mode"):
@@ -455,6 +464,7 @@ def _diagnostics_summary(
         warnings.append("One or more humidifier outputs have a conflicting configured output owner.")
 
     return {
+        "aq_inputs": aq_inputs,
         "update_observation": update_observation(hass, include_entity_id=False),
         "runtime_control": runtime_control_summary(runtime_data),
         "target_profile": {

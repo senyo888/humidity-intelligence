@@ -217,7 +217,7 @@ test('details escape provider text and View update opens only the exact current 
  h.hass.callService=()=>{throw Error('No services permitted');};state.open();const dialog=h.dialogs.at(-1);
  assert.match(dialog.innerHTML,/&lt;img src=x onerror=alert\(1\)&gt;/);assert.ok(!dialog.innerHTML.includes('<img'));
  assert.match(dialog.innerHTML,/<h3>Update available<\/h3>/);
- assert.match(dialog.innerHTML,/HACS downloaded version/);assert.match(dialog.innerHTML,/running version are not verified/);
+ assert.match(dialog.innerHTML,/Downloaded version/);assert.match(dialog.innerHTML,/running version are not verified/);
  dialog.updateButton.emit('click');assert.equal(dialog.open,false);assert.equal(h.moreInfo.length,1);
  assert.equal(h.moreInfo[0].type,'hass-more-info');assert.equal(h.moreInfo[0].detail.entityId,'update.example_hi');h.model.dispose(h.owner);
 });
@@ -231,4 +231,23 @@ test('View update refuses changed provider data, missing entities and a retarget
   if(change==='disconnect')h.connection.connected=false;
   dialog.updateButton.emit('click');assert.equal(h.moreInfo.length,0,change);assert.match(dialog.actionStatus.textContent,/changed or is unavailable/);h.model.dispose(h.owner);
  }
+});
+
+test('Marketplace reports retain provider identity in details and native handoff',async()=>{
+ const h=harness();const observation=observedUpdate({provider:'marketplace'});
+ const result=ui.classifyUpdate(observation,true);
+ assert.equal(result.kind,'reported_update');assert.match(result.reason,/Marketplace reports/);
+ withUpdate(h,observation);await Promise.resolve();h.button.emit('click',{stopPropagation(){}});
+ const dialog=h.dialogs[0];assert.match(dialog.innerHTML,/Source: Marketplace/);
+ assert.doesNotMatch(dialog.innerHTML,/HACS/);
+ dialog.updateButton.emit('click',{});assert.equal(h.moreInfo[0].detail.entityId,observation.entity_id);
+ h.model.dispose(h.owner);
+});
+test('revision14 advertises explicit revision13 replacement and older backend differs',()=>{
+ const newer={...metadata,layouts:{v2_mobile:{revision:14,generator:1,supersedes:[13]}}};
+ const older={...metadata,layouts:{v2_mobile:{revision:13,generator:1,supersedes:[12]}}};
+ assert.equal(ui.classify({...stamp,revision:13},newer,true).kind,'update');
+ assert.equal(ui.classify({...stamp,revision:14},older,true).kind,'different');
+ assert.equal(ui.classifyUpdate(observedUpdate(),true).kind,'reported_update');
+ assert.equal(ui.classifyUpdate(observedUpdate({provider:null,status:'unverified'}),true).kind,'unverified');
 });

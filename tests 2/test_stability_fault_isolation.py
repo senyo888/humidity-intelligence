@@ -49,7 +49,7 @@ def test_aq_capture_failure_preserves_co_preemption_and_marks_evidence_unavailab
         "sensor.hall_t": _FakeState(22),
         "sensor.bed_t": _FakeState(21),
         "sensor.l1_iaq": _FakeState(90),
-        "sensor.co_val": _FakeState(16),
+        "sensor.co_val": _FakeState(16, {"unit_of_measurement": "ppm"}),
     })
     engine = engine_mod.HIAutomationEngine(hass, entry)
 

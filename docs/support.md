@@ -2,6 +2,25 @@
 
 Use Home Assistant's native diagnostics download when reporting a Humidity Intelligence issue. This is the preferred GitHub support bundle for v2.0.5 and later.
 
+## Home Assistant 2026.11
+
+For an installation failure, collect the relevant Marketplace logs: HI diagnostics
+cannot exist before HI is installed. Include HA version, attempted HI version,
+install/update route and the first error, with private details redacted. See
+[packaging recovery](release-packaging.md).
+
+For a configured integration, use its filtered logs from **Settings → Devices &
+services → Humidity Intelligence**. Enable debug logging only for the reproduction
+and stop it afterward. Action history and script traces can explain requests; they
+do not prove physical operation. Repeating an action is not a read-only diagnostic.
+
+The candidate's `aq_inputs` Diagnostics counts identify unsupported units, invalid
+readings and missing sources. Check the actual entity unit before changing a
+threshold. An active CO emergency remains latched when complete safe clearance is
+unproved. See [canonical units, clearance and migration](home-assistant-2026.11.md).
+Optional frontend-card status comes from resource inspection, independently of
+Marketplace/HACS presence; old `/hacsfiles/` paths need no automatic replacement.
+
 ## Download Diagnostics
 
 1. Open **Settings -> Devices & services**.
@@ -82,7 +101,7 @@ and does not independently prove which version is loaded. See
 for the separate package, restart, and registration checks.
 
 The historical `v205_release_check` service name is unchanged. Its accepted manifest
-range and result wording cover v2.0.5-v2.0.12 plus v2.1.0-v2.1.1 beta/rc/stable. The service remains
+range and result wording cover v2.0.5-v2.0.12 plus v2.1.0-v2.1.2 beta/rc/stable. The service remains
 admin-only and runtime/device read-only, writes under
 `<config>/humidity_intelligence/exports/`, and cannot prove physical moisture output.
 Treat its entity-bearing report as local/private until reviewed or sanitized.
