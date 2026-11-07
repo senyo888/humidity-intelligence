@@ -118,7 +118,8 @@ See the [dated validation record](releases/v2.1.2-beta.1.md#validation-and-limit
 An earlier stable candidate (`2e2792ad`, revision 14) passed a manual Stable-instance upgrade on
 Home Assistant 2026.11.0, with package parity, loaded identity and preserved
 configuration verified after one restart. The subsequent revision-16 generator
-correction changes the package and requires refreshed native-instance validation.
+correction changes the package. Its exact bytes passed fresh minimal-instance
+validation; final Stable acceptance remains blocked at post-restart instance checks.
 Neither result establishes public Marketplace selection of a final stable release.
 The [route-by-route validation record](releases/v2.1.2.md#validation-and-publication-status)
 keeps final-tag/draft-asset verification, post-publication Marketplace acceptance
@@ -126,7 +127,7 @@ and legacy HACS results distinct. HACS 2.0.5 on HA 2026.10.1 subsequently instal
 the published beta from a fresh package state and replaced a manually loaded
 v2.1.1 package through a real HACS re-download. Both matched the beta asset;
 configuration and entity identities were preserved. A subsequent manual bridge
-loaded the exact stable ZIP. This does not prove published stable HACS delivery,
+loaded the earlier revision-14 candidate ZIP. This does not prove published stable HACS delivery,
 managed-baseline update notification or the older-version cached-metadata edge.
 The minimal fixture exposed an optional-reference generated-card defect, corrected
 in the revision-16 source. Its new package validation remains distinct from these

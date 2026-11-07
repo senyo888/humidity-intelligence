@@ -12,8 +12,9 @@ is not live telemetry; the Stability Score explanation remains in its own sectio
 the #145 reporters without implying they tested the fix.
 
 The main-only Pages workflow includes the V2.1, v2.1.1 and v2.1.2 artwork.
-The release block distinguishes the earlier Stable-instance test from refreshed
-validation of the revision-16 package, retaining v2.1.1 as Published Stable.
+The release block keeps v2.1.1 as Published Stable and points to the current
+validation record. Exact revision-16 minimal-instance validation passed; final
+Stable acceptance remains blocked at post-restart instance checks.
 Installer coverage stays in the release notes.
 Prepared-release links point to the canonical `senyo888-patch-1` records so review
 links resolve before promotion. At publication, switch preparation status and links
