@@ -833,6 +833,9 @@ Both V2 layouts advance to revision **14**; export and replace saved cards.
 See [compatibility and migration](docs/home-assistant-2026.11.md) and
 [release notes](docs/releases/v2.1.2-beta.1.md).
 This is an opt-in prerelease; v2.1.1 remains Current Stable.
+Marketplace fresh installation and upgrade from a manually installed v2.1.1
+baseline passed on HA 2026.11.0 on 7 November 2026. See the
+[test scope and limits](docs/releases/v2.1.2-beta.1.md#validation-and-limits).
 
 <a id="v211-stable-source-preparation"></a>
 

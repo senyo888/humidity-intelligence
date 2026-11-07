@@ -106,5 +106,11 @@ Backfilling old release assets or changing upstream installers is separate work.
 
 The initial investigation checked archive bytes, download-size rejection and the
 fallback destination using isolated upstream methods. It did not install HI on a
-reporter's system. Full install/upgrade validation and release availability must
-be recorded separately for the final artifact.
+reporter's system.
+
+The published `v2.1.2-beta.1` asset subsequently passed native Marketplace fresh
+installation and upgrade from a manually installed v2.1.1 baseline on HA 2026.11.0.
+Both installed packages matched all 78 released files; loaded-code identity and
+configuration restoration were verified. This does not establish a legacy HACS
+install or automatic update notification from a Marketplace-managed baseline.
+See the [dated validation record](releases/v2.1.2-beta.1.md#validation-and-limits).
