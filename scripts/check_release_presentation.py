@@ -53,11 +53,21 @@ def check_sources(root: Path, wiki_root: Path | None = None) -> list[str]:
     if header is None or any(item not in header.group(0) for item in header_contract):
         errors.append("Website must retain its established product header and navigation.")
     hero = re.search(r'<section class="hero".*?</section>', site, re.S)
-    required = ('A clearer picture.<br><em>A steadier home.</em>',
-                'src="assets/release_banner/v2.1_release.png"',
-                'class="led-layer"', 'class="pause-motion"')
+    required = ('<h1 id="hero-title">Humidity Intelligence</h1>',
+                'class="hero-logo" src="assets/logo.png"', 'class="hero-copy"')
     if hero is None or any(item not in hero.group(0) for item in required):
-        errors.append("Website must retain its established hero, artwork and controls.")
+        errors.append("Website must retain its original product hero and logo.")
+    elif "release_banner/" in hero.group(0):
+        errors.append("Release artwork belongs below the original product hero.")
+    stability = re.search(r'<section class="stability-section section".*?</section>', site, re.S)
+    artwork = ('02 / The bigger picture', 'src="assets/release_banner/v2.1_release.png"',
+               'class="led-layer"', 'class="pause-motion"')
+    if stability is None or any(item not in stability.group(0) for item in artwork):
+        errors.append("Section 02 must retain the V2.1 artwork, LEDs and pause control.")
+    styles = (root / "site/styles.css").read_text()
+    hero_background = re.search(r"\.hero::before\s*\{([^}]+)\}", styles)
+    if hero_background is None or "assets/site/github-pages-hero.png" not in hero_background.group(1):
+        errors.append("The product hero must use the original website artwork.")
     template = (root / ".github/pull_request_template.md").read_text()
     if NOTES not in template or RESERVED not in template:
         errors.append("PR template lost the reserved Maintainer notes contract.")

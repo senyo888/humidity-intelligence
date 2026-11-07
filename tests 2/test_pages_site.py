@@ -115,13 +115,17 @@ class PagesSiteTests(unittest.TestCase):
     def test_release_copy_preserves_established_product_hero(self) -> None:
         html, _parser = parse_index()
         hero = html.split('<section class="hero"', 1)[1].split("</section>", 1)[0]
-        self.assertIn('A clearer picture.<br><em>A steadier home.</em>', hero)
-        self.assertIn('src="assets/release_banner/v2.1_release.png"', hero)
-        self.assertNotIn('v2.1.2_release.png', hero)
-        self.assertIn('class="led-layer"', hero)
-        self.assertIn('class="pause-motion"', hero)
+        stability = html.split('id="stability"', 1)[1].split("</section>", 1)[0]
+        self.assertIn('<h1 id="hero-title">Humidity Intelligence</h1>', hero)
+        self.assertIn('class="hero-logo" src="assets/logo.png"', hero)
+        self.assertNotIn('release_banner/', hero)
+        self.assertIn('02 / The bigger picture', stability)
+        self.assertIn('src="assets/release_banner/v2.1_release.png"', stability)
+        self.assertIn('class="led-layer"', stability)
+        self.assertIn('class="pause-motion"', stability)
         self.assertEqual(html.count('class="led-layer"'), 1)
         self.assertLess(html.index('<section class="hero"'), html.index('id="harmonization"'))
+        self.assertLess(html.index('id="harmonization"'), html.index('id="stability"'))
 
     def test_pages_site_has_search_discovery_structured_data(self) -> None:
         _html, parser = parse_index()

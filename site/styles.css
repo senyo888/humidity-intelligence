@@ -243,63 +243,89 @@ a:focus-visible,summary:focus-visible {
 }
 
 .hero {
-  background:var(--night);
+  position:relative;
+  overflow:hidden;
+  min-height:74vh;
+  padding:56px 0 0;
   color:#eff6f7;
-  padding:28px 0 0;
+  background:#163243;
 }
 
-.hero-intro {
-  display:grid;
-  grid-template-columns:1.05fr .8fr;
-  gap:70px;
-  align-items:end;
-  margin-bottom:22px;
+.hero::before {
+  position:absolute;
+  inset:0;
+  content:"";
+  background:url('assets/site/github-pages-hero.png') center/cover no-repeat;
+  opacity:.72;
+}
+
+.hero::after {
+  position:absolute;
+  inset:0;
+  content:"";
+  background:rgba(12,33,47,.24);
+  pointer-events:none;
+}
+
+.hero .wrap {
+  position:relative;
+  z-index:1;
+}
+
+.hero-copy {
+  position:relative;
+  padding:40px 150px 36px 0;
+}
+
+.hero-logo {
+  position:absolute;
+  top:40px;
+  right:0;
+  width:clamp(76px,10vw,112px);
+  height:auto;
+  filter:drop-shadow(0 16px 26px #0005);
 }
 
 .hero .eyebrow {
   color:var(--cyan);
   margin-bottom:14px;
-  letter-spacing:.12em;
-}
-
-.status-dot {
-  display:inline-block;
-  width:7px;
-  height:7px;
-  border:1px solid var(--cyan);
-  border-radius:100%;
-  margin-right:6px;
-  vertical-align:1px;
 }
 
 .hero h1 {
-  font-size:clamp(2.55rem,4.7vw,4.5rem);
-  font-weight:640;
+  max-width:840px;
+  font-size:clamp(3.1rem,8vw,6.9rem);
   line-height:1.03;
 }
 
-.hero h1 em {
-  font-style:normal;
-  color:var(--cyan);
+.hero .lede {
+  max-width:740px;
+  margin-top:24px;
+  color:#e6edf1;
+  font-size:clamp(1.12rem,2vw,1.48rem);
 }
 
-.hero-lede p {
-  font-size:.97rem;
-  color:#c0d0da;
-  max-width:450px;
-  line-height:1.65;
+.hero-actions {
+  display:flex;
+  flex-wrap:wrap;
+  gap:12px;
+  margin-top:32px;
 }
 
-.hero-lede .button {
-  margin-top:16px;
+.hero .button.secondary {
+  color:white;
+  border-color:#ffffff94;
+  background:#ffffff1f;
 }
 
-.hero-install {
-  display:block;
-  width:fit-content;
-  font-size:.75rem;
-  margin-top:15px;
-  color:#bdcfd9;
+.authority-note {
+  max-width:720px;
+  margin-top:28px;
+  color:#c7d2d9;
+  font-size:.95rem;
+}
+
+.stability-section .release-art {
+  margin:0 0 36px;
 }
 
 .release-art {
@@ -958,9 +984,6 @@ a:focus-visible,summary:focus-visible {
 }
 
 @media(min-width:1600px) {
-  .hero-intro {
-    margin-bottom:26px;
-  }
   .hero {
     padding-top:32px;
   }
@@ -973,14 +996,8 @@ a:focus-visible,summary:focus-visible {
   .section {
     padding-block:76px;
   }
-  .hero-intro {
-    gap:35px;
-  }
   .hero h1 {
     font-size:3.5rem;
-  }
-  .hero-lede p {
-    font-size:.9rem;
   }
   .stability-grid {
     gap:36px;
@@ -1061,11 +1078,6 @@ a:focus-visible,summary:focus-visible {
   .hero {
     padding-top:22px;
   }
-  .hero-intro {
-    grid-template-columns:1fr;
-    gap:16px;
-    margin-bottom:18px;
-  }
   .hero h1 {
     font-size:clamp(2.7rem,8.5vw,3.8rem);
   }
@@ -1073,16 +1085,6 @@ a:focus-visible,summary:focus-visible {
     font-size:.65rem;
     letter-spacing:.08em;
     margin-bottom:14px;
-  }
-  .hero-lede p {
-    font-size:.93rem;
-    max-width:530px;
-  }
-  .hero-lede .button {
-    margin-top:16px;
-  }
-  .hero-install {
-    font-size:.72rem;
   }
   .release-art {
     border-radius:10px;
@@ -1444,3 +1446,9 @@ a:focus-visible,summary:focus-visible {
 /* Release details sit below the established product hero. */
 .harmonization-points ul { list-style:none; margin:24px 0 0; padding:0; }
 .harmonization-points li { padding:14px 0; border-top:1px solid var(--line); font-size:.88rem; line-height:1.65; }
+
+/* Keep the restored product hero readable beside the original logo on phones. */
+@media(max-width:700px) {
+  .hero-copy { padding:12px 0 28px; }
+  .hero-logo { position:static; width:76px; margin-bottom:22px; }
+}
