@@ -454,7 +454,7 @@ def test_unsupported_voc_unit_is_incomplete_not_bad():
     mod = _load_stability_module()
     state = types.SimpleNamespace(
         state="0.6",
-        attributes={"unit_of_measurement": "ppm"},
+        attributes={"unit_of_measurement": "µg/m³"},
     )
     hass = types.SimpleNamespace(
         states=types.SimpleNamespace(get=lambda _entity_id: state)

@@ -42,10 +42,22 @@ Feature parity is maintained.
 
 ## UI revision and software-update footer
 
+V2.1.2 advances both V2 layouts to **revision 16**, superseding 1–15;
+stamp schema/generator remain 1. The generator removes unconfigured optional
+sources before entity substitution, including JavaScript lookups, so unrelated
+legacy-named entities cannot affect the display. Configured missing or unavailable
+sources remain visible to validation.
+
+Install the complete package, restart, refresh/export and replace the complete
+saved V2 Manual-card YAML, including beta.1 revision-14 cards. Existing cards are
+not rewritten automatically. Revision-13 cards treat Marketplace evidence as
+unverified; revision 14 introduced dual Marketplace/HACS observation. GitHub
+Releases records publication separately from package identity.
+
 The bottom-left LED compares this rendered card's revision with its backend's
 compatible target. It distinguishes current, update, differing revision and
 unverified evidence. It does not verify downloaded files, browser caches or saved
-dashboard contents. Separate optional HACS evidence appears at the right:
+dashboard contents. Separate optional Marketplace/HACS evidence appears at the right:
 **↑ Update available**, skipped, progress or unverified. Routine no-update text
 stays in the shared details and accessible name. Provider-reported downloaded and
 available versions do not prove loaded code. The wrapping 44px button opens details;

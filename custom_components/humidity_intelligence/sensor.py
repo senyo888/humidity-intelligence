@@ -545,6 +545,7 @@ def _compact_diagnostics_summary(summary: dict) -> dict:
         if isinstance(item, dict)
     ]
     return {
+        "aq_inputs": summary.get("aq_inputs", {}),
         "update_observation": summary.get("update_observation", {}),
         "runtime_control": summary.get("runtime_control", {}),
         "target_profile": summary.get("target_profile", {}),

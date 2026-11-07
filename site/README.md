@@ -1,21 +1,31 @@
 # Humidity Intelligence website
 
 The landing page mirrors tracked product and release claims; the repository and
-Wiki own setup, compatibility and operational detail. V2.1.1 Stable is the featured
-release, with its approved artwork, single-level/dashboard fixes, update-status
-explanation and upgrade guidance. The existing animated V2.1 Stability Score hero
-remains the product overview; its illustration does not represent live telemetry.
+Wiki own setup, compatibility and operational detail. V2.1.2 has a text section directly below the established hero, **Home Assistant 2026.11 Harmonization**, with Marketplace delivery,
+air-quality units, update status and revision-16 card upgrade guidance. Published
+Stable remains v2.1.1 during preparation; update that status only after publication.
 
-The website presents v2.1.1, published on 24 October 2026. Its release-note
-links point to the canonical notes on main and the published GitHub Release. Users must check the version offered in HACS
-and the loaded Home Assistant identity separately. The main-only Pages workflow
-copies both V2.1 and v2.1.1 artwork into the static artifact.
+The established V2.1 hero title, artwork, LED overlay and pause control are
+preserved. Release emphasis does not authorize replacing the hero. Its illustration
+is not live telemetry; the Stability Score explanation remains in its own section. A compact linked history connects 2.1.0, 2.1.1 and
+2.1.2 without repeating their detailed notes. Credits in the release block thank
+the #145 reporters without implying they tested the fix.
+
+The main-only Pages workflow includes the V2.1, v2.1.1 and v2.1.2 artwork.
+The release block keeps v2.1.1 as Published Stable and points to the current
+validation record. Exact revision-16 minimal-instance validation passed; final
+Stable acceptance remains blocked at post-restart instance checks.
+Installer coverage stays in the release notes.
+Prepared-release links point to the canonical `senyo888-patch-1` records so review
+links resolve before promotion. At publication, switch preparation status and links
+to the verified immutable release. Users check the offered Marketplace/HACS version
+and loaded Home Assistant identity separately.
 
 The page uses static HTML and CSS, system fonts, locally packaged images and
 native disclosures. It requires no JavaScript, third-party widget, analytics or
 new plugin. The separate Inspector is built through its existing validated script.
 
-The selected V2.1 header uses a CSS/SVG decorative light sequence: top, right,
+The retained V2.1 illustration uses a CSS/SVG decorative light sequence: top, right,
 left; one step every three seconds. It reads no Home Assistant data. The pause
 checkbox shows the still artwork, and `prefers-reduced-motion: reduce` disables
 the sequence and hides the unnecessary pause control. All essential content and
@@ -31,7 +41,7 @@ Inspector and every referenced asset with `.github/workflows/pages.yml`; check
 390/820/1440px layouts, keyboard disclosures/pause, reduced motion, local links
 and the three animation phases. The maintainer selected the V2.1 artwork on
 10 October 2026. Earlier HI Stable acceptance, including the seven-day drift history
-advisory, belongs to each previously tested package. Current v2.1.1 source and
+advisory, belongs to each previously tested package. Current release source and
 publication records do not establish an individual Home Assistant installation or
 a completed soak; earlier beta/RC evidence keeps its original package identity.
 

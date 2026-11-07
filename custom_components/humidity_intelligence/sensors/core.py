@@ -25,6 +25,7 @@ from homeassistant.components.binary_sensor import BinarySensorEntity
 from homeassistant.util import slugify
 
 from ..const import DOMAIN
+from ..helpers.air_quality import AQ_CANONICAL_UNITS, parse_aq_value
 from ..helpers.drift import (
     HOUSE_HUMIDITY_MEAN_7D_ENTITY,
     house_drift_unavailable_attributes,
@@ -274,18 +275,21 @@ class _CoreComputations:
             "HI House PM25 Average",
             "house_pm25_average",
             self._compute_house_pm25_avg,
+            unit=AQ_CANONICAL_UNITS["pm25"],
             icon="mdi:chart-bubble",
         ))
         sensors.append(make(
             "HI House VOC Average",
             "house_voc_average",
             self._compute_house_voc_avg,
+            unit=AQ_CANONICAL_UNITS["voc"],
             icon="mdi:chemical-weapon",
         ))
         sensors.append(make(
             "HI House CO Average",
             "house_co_average",
             self._compute_house_co_avg,
+            unit=AQ_CANONICAL_UNITS["co"],
             icon="mdi:molecule-co",
         ))
         sensors.append(make(
@@ -415,6 +419,7 @@ class _CoreComputations:
                     f"HI {level.capitalize()} PM25 Average",
                     f"{level}_pm25_average",
                     lambda lvl=level: self._compute_level_pm25_avg(lvl),
+                    unit=AQ_CANONICAL_UNITS["pm25"],
                     icon="mdi:chart-bubble",
                 ))
             if self.levels.get(level, {}).get("voc"):
@@ -422,6 +427,7 @@ class _CoreComputations:
                     f"HI {level.capitalize()} VOC Average",
                     f"{level}_voc_average",
                     lambda lvl=level: self._compute_level_voc_avg(lvl),
+                    unit=AQ_CANONICAL_UNITS["voc"],
                     icon="mdi:chemical-weapon",
                 ))
             if self.levels.get(level, {}).get("co"):
@@ -429,6 +435,7 @@ class _CoreComputations:
                     f"HI {level.capitalize()} CO Average",
                     f"{level}_co_average",
                     lambda lvl=level: self._compute_level_co_avg(lvl),
+                    unit=AQ_CANONICAL_UNITS["co"],
                     icon="mdi:molecule-co",
                 ))
 
@@ -876,6 +883,14 @@ class _CoreComputations:
                 values.append(temp_c)
                 continue
 
+            if sensor_type in AQ_CANONICAL_UNITS:
+                val, reason = parse_aq_value(sensor_type, state.state, state.attributes.get("unit_of_measurement"))
+                if val is None:
+                    exclusions.append((entity_id, reason or "non_numeric"))
+                else:
+                    values.append(val)
+                continue
+
             val = parse_numeric(state.state)
             if val is None:
                 exclusions.append((entity_id, "non_numeric"))
@@ -934,8 +949,10 @@ class _CoreComputations:
         data = self.hass.data.get(DOMAIN, {}).get(self.entry.entry_id, {})
         slope_map: Dict[str, str] = data.get("slope_map", {})
         temp_entity = self._find_room_entity_id(room_hint, "temperature")
-        if temp_entity and slope_map.get(temp_entity):
-            return slope_map[temp_entity]
+        if temp_entity:
+            return slope_map.get(temp_entity)
+        if (self._effective_config().get("slope") or {}).get("mode") == "user_provided":
+            return None
 
         room_hint_lower = room_hint.lower()
         for source_entity, slope_entity in slope_map.items():

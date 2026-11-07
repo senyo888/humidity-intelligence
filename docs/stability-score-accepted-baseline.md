@@ -94,9 +94,11 @@ selection and ventilation decisions are unchanged: an IAQ-driven control action 
 coexist with individual-measurement Stability scoring.
 
 AQ is based on configured conditions, not merely visible sensor chips. IAQ crosses
-at or below threshold; PM2.5/VOC/CO2/CO at or above. Accepted units: IAQ unitless/index,
-PM2.5 micrograms/m3 (supported normalized spellings), VOC ppb, CO2/CO ppm. Unsupported
-units and invalid thresholds are missing evidence, not clear air or a crossing.
+at or below threshold; PM2.5/VOC/CO2/CO at or above. Version 2.1.2 normalizes supported source units before comparison: IAQ
+unitless/index, PM2.5 µg/m³ or mg/m³ to µg/m³, VOC ppm/ppb to ppb, and CO2/CO
+ppm/ppb to ppm. Unsupported units and invalid thresholds are missing evidence,
+not clear air or a crossing. This extends accepted input units; score formula,
+weights, history and control authority remain unchanged. See [unit rules](home-assistant-2026.11.md#air-quality-units-and-co-clearance).
 Configured readings of a type are averaged within their level. No AQ hardware,
 unmapped conditions, insufficient historical coverage and current unavailable evidence
 must remain distinguishable in diagnostics.

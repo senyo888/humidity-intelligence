@@ -1440,3 +1440,7 @@ a:focus-visible,summary:focus-visible {
   .guide-breadcrumb { margin-bottom:28px; }
   .guide-layout { padding-top:38px; padding-bottom:48px; }
 }
+
+/* Release details sit below the established product hero. */
+.harmonization-points ul { list-style:none; margin:24px 0 0; padding:0; }
+.harmonization-points li { padding:14px 0; border-top:1px solid var(--line); font-size:.88rem; line-height:1.65; }

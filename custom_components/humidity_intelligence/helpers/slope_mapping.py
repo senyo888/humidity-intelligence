@@ -1,0 +1,48 @@
+"""Deterministic identity pairing for user-provided slope observations."""
+
+from collections import Counter
+import re
+from typing import Any
+
+
+def _key(value: Any) -> str:
+    return re.sub(r"[^a-z0-9]+", "_", str(value or "").lower()).strip("_")
+
+
+def match_provided_slopes(hass, sources, sensors, room_map, bindings=None):
+    """Keep saved identities, or resolve only globally unambiguous legacy pairs."""
+    sources = list(dict.fromkeys(value for value in sources if isinstance(value, str) and value))
+    sensors = list(dict.fromkeys(value for value in sensors if isinstance(value, str) and value))
+    if bindings is not None:
+        if not isinstance(bindings, dict):
+            return {}
+        candidates = {source: sensor for source, sensor in bindings.items()
+                      if source in sources and isinstance(sensor, str) and sensor in sensors}
+        counts = Counter(candidates.values())
+        return {source: sensor for source, sensor in candidates.items() if counts[sensor] == 1}
+    if len(sources) == len(sensors) == 1:
+        return {sources[0]: sensors[0]}
+    candidates = {}
+    for source in sources:
+        room = _key(room_map.get(source, source))
+        candidates[source] = []
+        if not room:
+            continue
+        for sensor in sensors:
+            state = hass.states.get(sensor)
+            name = state.attributes.get("friendly_name", "") if state else ""
+            if any(f"_{room}_" in f"_{_key(label)}_" for label in (sensor, name)):
+                candidates[source].append(sensor)
+    counts = Counter(sensor for matches in candidates.values() for sensor in matches)
+    return {source: matches[0] for source, matches in candidates.items()
+            if len(matches) == 1 and counts[matches[0]] == 1}
+
+
+def bindings_for_save(hass, sources, sensors, telemetry, previous=None):
+    """Capture pairs only during an explicit setup/Options save, never at startup."""
+    room_map = {item.get("entity_id"): item.get("room") or item.get("friendly_name") or item.get("entity_id")
+                for item in telemetry if item.get("sensor_type") == "temperature"}
+    saved = match_provided_slopes(hass, sources, sensors, room_map, previous or {})
+    remaining_sources = [source for source in sources if source not in saved]
+    remaining_sensors = [sensor for sensor in sensors if sensor not in saved.values()]
+    return saved | match_provided_slopes(hass, remaining_sources, remaining_sensors, room_map)

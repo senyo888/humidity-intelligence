@@ -3,8 +3,37 @@
 Humidity Intelligence uses semantic versioning with explicit prerelease markers for
 testing and validation branches.
 
+## Preserve presentation and maintainer ownership
+
+Release emphasis does not authorize redesign. Preserve the canonical README
+`assets/header.png`, the established website header/hero and its controls, and the
+Wiki `assets/hi-wiki-banner.png` unless the maintainer explicitly approves replacing
+that surface. Compare the original and proposed structure during review. Keep release
+write-ups below established content; README release artwork belongs in `Release Notes`.
+Do not change test baselines merely to make an unapproved redesign pass.
+
+Use `.github/pull_request_template.md` when preparing or updating a PR. Preserve its
+`Maintainer notes` section and any existing human-authored content verbatim. That
+reserved section is distinct from the agent's `Maintainer summary` and maintenance
+companion evidence. The maintainer's personal release notes belong in the established
+`A note from Senyo` section at the bottom of the release notes. Preserve that section
+when preparing each release; a PR field or technical report is not a substitute.
+Keep it reserved for the maintainer's text; prepare personal copy only when requested,
+and do not invent approval or overwrite Senyo's own text. Record each surface in the release handoff, including a deliberately
+blank reserved section. Run `scripts/check_release_presentation.py` with the prepared
+PR body and, when present, the explicit Wiki checkout before publication preparation.
+For an existing PR update, also pass the freshly retrieved prior body with
+`--previous-pr-body`; the new draft alone cannot prove preservation of manual notes.
+
+A defect explicitly designated by the maintainer as a release blocker must be fixed
+and validated. Disclosure, prior existence or optional Lab status does not waive it.
+House review must assess these authority boundaries as well as internal consistency.
+
 ## Canonical Version Model
 
+- `2.1.2`: stable source preparation for Home Assistant 2026.11 Harmonization. Retains beta.1 control behavior and adds the required optional-reference generator correction. Both V2 layouts advance to revision 16, superseding 1–15; stamp schema/generator remain 1. Regenerate and replace beta.1 revision-14 cards as well as earlier cards. This is no longer a metadata-only stable transition: earlier package evidence remains historical. The exact changed package passed fresh minimal-instance checks; final Stable acceptance is blocked at post-restart instance checks. Maintainer README approval, final house/source review and promotion remain separate from tag/asset verification and publication. Current Published Stable remains v2.1.1. See [stable package and upgrade record](releases/v2.1.2.md).
+
+- `2.1.2-beta.1`: HA 2026.11 compatibility prerelease from `senyo888-patch-1`. Includes the #145 ZIP, exact dual-provider observation, canonical AQ units, complete-evidence CO clearance, conditional gates and saved slope identities. Both V2 layouts advance to revision 14, superseding 1–13; stamp schema/generator remain 1. Update-observation schema 1 adds Marketplace/null provider values. Current Stable remains v2.1.1. See [release notes](releases/v2.1.2-beta.1.md), [compatibility and rollback](home-assistant-2026.11.md), and [packaging](release-packaging.md).
 - `2.1.1`: current Stable, dated 2026-10-24 and merged to main in PR #134. Runtime and generated-card bytes are unchanged from reviewed RC.1; manifest and packaged guidance establish a new package identity. Both layouts remain revision 13, schema/generator 1. See the [Stable compatibility record](#v211-stable-source-preparation).
 - `2.1.1-rc.1`: earlier unpublished release candidate, retaining the complete beta.1–beta.4 changes and correcting self-check telemetry counts after Options changes. Both layouts retain beta.4 revision 13 and schema/generator 1; update-observation schema remains 1. Existing revision-13 cards stay compatible. See the [RC package record](#v211-rc1-package-verification).
 - `2.1.1-beta.4`: earlier unpublished candidate with a quiet no-update footer and right-aligned **Update available** cue. Both layouts advanced to revision 13, superseding 1–12; stamp schema/generator and update-observation schema remained 1. Existing skipped/progress/unverified states stayed visible. Its source preparation did not change the then-running advisory Lab observation.
@@ -306,7 +335,12 @@ record:
 3. Promotion to `main` uses stable `MAJOR.MINOR.PATCH` version metadata only.
 4. Exact `vMAJOR.MINOR.PATCH` branches may be used for stable release-verification CI,
    but they do not replace the `main` release/tag gate.
-5. A GitHub release is created only from a stable version on `main`.
+5. Stable GitHub releases are created only from stable versions on `main`.
+   The explicitly maintainer-approved `v2.1.2-beta.1` prerelease may be tagged and
+   published from its exact reviewed `senyo888-patch-1` commit, with prerelease
+   status enabled and `make_latest: false`. It must not be merged to `main` or
+   replace Current Stable. This approval does not authorize automatic future
+   beta publication; the hard release gates still apply.
 
 ## README Release-Note Structure
 
@@ -322,6 +356,11 @@ README container may keep concise displaced summaries and must retain a direct l
 that tracked history.
 
 ## Hard Release Gates
+
+For the v2.1.2 ZIP-delivery candidate and later ZIP releases, follow the
+[exact-commit package and draft-release asset checks](release-packaging.md#publication-and-rollback).
+The named asset must be attached, downloaded and verified before publishing the
+draft. Review artifacts and the external controller package are not release assets.
 
 No Humidity Intelligence version release, GitHub release, or release tag may be created
 until all of these gates are satisfied:
