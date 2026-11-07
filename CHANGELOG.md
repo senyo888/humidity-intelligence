@@ -6,7 +6,10 @@ All notable changes to Humidity Intelligence will be documented in this file.
 
 This project follows a practical changelog format for Home Assistant and HACS users. Add new entries under a fresh `Unreleased` section before publishing a future release.
 
-## Unreleased — v2.1.2-beta.1 compatibility candidate
+## v2.1.2-beta.1 — Beta prerelease (2026-11-07)
+
+Opt-in prerelease from `senyo888-patch-1`; `main` and Current Stable v2.1.1 are unchanged.
+[Release and downloads](https://github.com/senyo888/humidity-intelligence/releases/tag/v2.1.2-beta.1).
 
 - Deliver the component through a named release ZIP, avoiding the full source
   archive that exceeds Marketplace's 100 MiB limit in [#145](https://github.com/senyo888/humidity-intelligence/issues/145).

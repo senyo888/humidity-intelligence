@@ -42,11 +42,11 @@ Feature parity is maintained.
 
 ## UI revision and software-update footer
 
-The unpublished v2.1.2-beta.1 candidate advances both V2 layouts to revision 14,
+The v2.1.2-beta.1 prerelease advances both V2 layouts to revision 14,
 superseding 1–13; stamp schema/generator remain 1. Export and replace complete saved
 Manual-card YAML for Marketplace observation. Revision-13 cards treat Marketplace
 updates as unverified; revision-14 cards also support legacy HACS. Package updates
-require a full restart. Published Stable remains v2.1.1 until publication.
+require a full restart. Published Stable remains v2.1.1; this is a prerelease.
 
 The bottom-left LED compares this rendered card's revision with its backend's
 compatible target. It distinguishes current, update, differing revision and

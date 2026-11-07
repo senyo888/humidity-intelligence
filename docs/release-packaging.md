@@ -1,9 +1,9 @@
 # Release ZIP packaging
 
-The unpublished `2.1.2-beta.1` candidate changes release delivery to the named
+The `2.1.2-beta.1` prerelease changes release delivery to the named
 `humidity_intelligence.zip` asset. Published Stable remains `v2.1.1` until a new
-release is approved and published. Source preparation and CI artifacts do not make
-an installable release available.
+Stable release is approved and published. Select the beta explicitly for testing;
+source preparation and CI artifacts do not make an installable release available.
 
 ## Why the delivery changes
 

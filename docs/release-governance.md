@@ -5,7 +5,7 @@ testing and validation branches.
 
 ## Canonical Version Model
 
-- `2.1.2-beta.1`: current unpublished HA 2026.11 compatibility candidate. Includes the #145 ZIP, exact dual-provider observation, canonical AQ units, complete-evidence CO clearance, conditional gates and saved slope identities. Both V2 layouts advance to revision 14, superseding 1–13; stamp schema/generator remain 1. Update-observation schema 1 adds Marketplace/null provider values. See [compatibility, validation and rollback](home-assistant-2026.11.md) and [packaging](release-packaging.md).
+- `2.1.2-beta.1`: HA 2026.11 compatibility prerelease from `senyo888-patch-1`. Includes the #145 ZIP, exact dual-provider observation, canonical AQ units, complete-evidence CO clearance, conditional gates and saved slope identities. Both V2 layouts advance to revision 14, superseding 1–13; stamp schema/generator remain 1. Update-observation schema 1 adds Marketplace/null provider values. Current Stable remains v2.1.1. See [release notes](releases/v2.1.2-beta.1.md), [compatibility and rollback](home-assistant-2026.11.md), and [packaging](release-packaging.md).
 - `2.1.1`: current Stable, dated 2026-10-24 and merged to main in PR #134. Runtime and generated-card bytes are unchanged from reviewed RC.1; manifest and packaged guidance establish a new package identity. Both layouts remain revision 13, schema/generator 1. See the [Stable compatibility record](#v211-stable-source-preparation).
 - `2.1.1-rc.1`: earlier unpublished release candidate, retaining the complete beta.1–beta.4 changes and correcting self-check telemetry counts after Options changes. Both layouts retain beta.4 revision 13 and schema/generator 1; update-observation schema remains 1. Existing revision-13 cards stay compatible. See the [RC package record](#v211-rc1-package-verification).
 - `2.1.1-beta.4`: earlier unpublished candidate with a quiet no-update footer and right-aligned **Update available** cue. Both layouts advanced to revision 13, superseding 1–12; stamp schema/generator and update-observation schema remained 1. Existing skipped/progress/unverified states stayed visible. Its source preparation did not change the then-running advisory Lab observation.
@@ -307,7 +307,12 @@ record:
 3. Promotion to `main` uses stable `MAJOR.MINOR.PATCH` version metadata only.
 4. Exact `vMAJOR.MINOR.PATCH` branches may be used for stable release-verification CI,
    but they do not replace the `main` release/tag gate.
-5. A GitHub release is created only from a stable version on `main`.
+5. Stable GitHub releases are created only from stable versions on `main`.
+   The explicitly maintainer-approved `v2.1.2-beta.1` prerelease may be tagged and
+   published from its exact reviewed `senyo888-patch-1` commit, with prerelease
+   status enabled and `make_latest: false`. It must not be merged to `main` or
+   replace Current Stable. This approval does not authorize automatic future
+   beta publication; the hard release gates still apply.
 
 ## README Release-Note Structure
 

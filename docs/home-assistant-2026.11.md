@@ -1,6 +1,6 @@
 # Home Assistant 2026.11 compatibility
 
-The unpublished `2.1.2-beta.1` candidate includes Marketplace support, canonical
+The `2.1.2-beta.1` prerelease includes Marketplace support, canonical
 air-quality units, complete-evidence CO clearance and bounded setup improvements.
 Published Stable remains `v2.1.1`. Source tests, publication, installed files and
 loaded runtime behavior are separate evidence.
@@ -11,8 +11,9 @@ On Home Assistant 2026.11+, use **Settings → Marketplace**. On supported earli
 versions, use HACS. The declared minimum remains 2026.5.1. The named component ZIP
 and older-release recovery limits are documented in [release packaging](release-packaging.md).
 Published **v2.1.1 exceeds Marketplace's archive limit** and can fail to download.
-Until the small-ZIP candidate is published, affected installs need
-[exact-tag manual recovery](release-packaging.md#earlier-versions-and-current-evidence-limits).
+The beta provides a smaller install ZIP and must be selected explicitly for testing.
+For Stable v2.1.1, use
+[exact-tag manual recovery](release-packaging.md#earlier-versions-and-current-evidence-limits) if affected.
 Marketplace can open a fresh installation's setup flow directly; updates and manual
 package replacement require a full Home Assistant restart. A restart discards HI's
 in-memory Stability sampling history.

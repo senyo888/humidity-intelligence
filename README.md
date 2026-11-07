@@ -548,9 +548,10 @@ and add it through **Settings → Devices & services**. Updates require a full r
 [![Open Humidity Intelligence in Marketplace or HACS.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=senyo888&repository=humidity-intelligence&category=integration)
 
 The button opens the repository page; it does not install automatically. Published
-**v2.1.1 exceeds Marketplace's archive limit** and can fail to download. Until the
-small-ZIP candidate is published, use the [exact-tag manual recovery](docs/release-packaging.md#earlier-versions-and-current-evidence-limits)
-if affected. Stable remains v2.1.1; the v2.1.2 candidate is unpublished. See
+**v2.1.1 exceeds Marketplace's archive limit** and can fail to download. The
+[v2.1.2-beta.1 prerelease](https://github.com/senyo888/humidity-intelligence/releases/tag/v2.1.2-beta.1)
+provides a smaller install ZIP; select the beta explicitly for testing. Stable remains
+v2.1.1, with [exact-tag manual recovery](docs/release-packaging.md#earlier-versions-and-current-evidence-limits) available. See
 [2026.11 compatibility](docs/home-assistant-2026.11.md), including corrected AQ units.
 
 ### Option B - Manual package upgrade
@@ -823,14 +824,15 @@ CO emergency pressure. Details are in
 
 ## Release Notes
 
-### v2.1.2-beta.1 (Unpublished compatibility candidate)
+### v2.1.2-beta.1 (Beta prerelease)
 
 Adds the component ZIP for [#145](https://github.com/senyo888/humidity-intelligence/issues/145),
 Marketplace update observation, canonical AQ units and complete-evidence CO clearance.
 Gate forms preserve hidden settings; supplied slopes retain saved identity bindings.
 Both V2 layouts advance to revision **14**; export and replace saved cards.
 See [compatibility and migration](docs/home-assistant-2026.11.md) and
-[packaging](docs/release-packaging.md). Publication and installation remain separate.
+[release notes](docs/releases/v2.1.2-beta.1.md).
+This is an opt-in prerelease; v2.1.1 remains Current Stable.
 
 <a id="v211-stable-source-preparation"></a>
 

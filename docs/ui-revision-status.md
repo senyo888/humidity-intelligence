@@ -5,7 +5,7 @@ Current v2.1.1 Stable uses revision **13** in both V2 layouts, with stamp schema
 saved-card replacement; existing v2.1.1-beta.4 and v2.1.1-rc.1 revision-13 cards
 remain compatible.
 
-The unpublished 2.1.2-beta.1 candidate advances both layouts to **14**, superseding
+The 2.1.2-beta.1 prerelease advances both layouts to **14**, superseding
 1–13, for Marketplace/HACS observation. Stamp schema/generator remain 1. Replace
 saved cards for the new footer; revision-13 cards safely report Marketplace updates
 as unverified. See [2026.11 compatibility](home-assistant-2026.11.md).
