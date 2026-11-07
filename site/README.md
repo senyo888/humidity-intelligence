@@ -18,6 +18,8 @@ The main-only Pages workflow includes the V2.1, v2.1.1 and v2.1.2 artwork.
 The release block keeps v2.1.1 as Published Stable and points to the current
 validation record. Exact revision-16 minimal-instance validation passed; final
 Stable acceptance remains blocked at post-restart instance checks.
+The maintainer approved the corrected website, and final source/content house
+reviews are complete. Approval of this preview does not claim Pages deployment.
 Installer coverage stays in the release notes.
 Prepared-release links point to the canonical `senyo888-patch-1` records so review
 links resolve before promotion. At publication, switch preparation status and links
