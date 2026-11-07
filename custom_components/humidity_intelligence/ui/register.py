@@ -368,9 +368,13 @@ async def async_register_cards(hass: HomeAssistant, entry_id: str, mapping: Dict
         getattr(entry, "options", None) or {},
     )
     cards: Dict[str, str] = {}
-    unresolved = list(
-        (hass.data.get(DOMAIN, {}).get(entry_id, {}) or {}).get("unresolved_placeholders", [])
-    )
+    # The caller may have resolved or overridden a binding after building the
+    # mapping. Current mappings take precedence over the cached unresolved list.
+    unresolved = [
+        placeholder
+        for placeholder in data.get("unresolved_placeholders", [])
+        if not mapping.get(placeholder)
+    ]
     unresolved_by_card: Dict[str, List[str]] = {}
     for name, path in card_files.items():
         try:

@@ -113,11 +113,12 @@ keeps its shared backend timer measured from opening, and Home Assistant owns it
 native dialogs. Existing source-change dismissal remains in effect where supported.
 
 Renderer changes require synchronized mobile/tablet and gallery embeds, generated
-YAML validation and UI revision checks. Version 2.1.2 uses revision **14**;
+YAML validation and UI revision checks. Version 2.1.2 uses revision **15**;
 package version alone does not update a pasted card. Install the complete package
 and fully restart Home Assistant. For older V2 revisions, refresh/export and replace
 the full saved Mobile and Tablet Manual-card YAML, then refresh clients as needed.
-Revision-13 cards need replacement for Marketplace update observation.
+Revision-14 beta cards need replacement for the optional-source correction;
+revision-13 cards also need the Marketplace update observation footer.
 Restart resets in-memory Stability history; no configuration or entity migration
 is required. See [the upgrade sequence](home-assistant-2026.11.md).
 

@@ -14,10 +14,12 @@ Do not change test baselines merely to make an unapproved redesign pass.
 
 Use `.github/pull_request_template.md` when preparing or updating a PR. Preserve its
 `Maintainer notes` section and any existing human-authored content verbatim. That
-reserved section is distinct from the agent's `Maintainer summary`, maintenance
-companion evidence and the personal `A note from Senyo` at the bottom of release
-notes. Prepare personal release copy for review; do not invent approval or overwrite
-Senyo's own text. Record each surface in the release handoff, including a deliberately
+reserved section is distinct from the agent's `Maintainer summary` and maintenance
+companion evidence. The maintainer's personal release notes belong in the established
+`A note from Senyo` section at the bottom of the release notes. Preserve that section
+when preparing each release; a PR field or technical report is not a substitute.
+Keep it reserved for the maintainer's text; prepare personal copy only when requested,
+and do not invent approval or overwrite Senyo's own text. Record each surface in the release handoff, including a deliberately
 blank reserved section. Run `scripts/check_release_presentation.py` with the prepared
 PR body and, when present, the explicit Wiki checkout before publication preparation.
 For an existing PR update, also pass the freshly retrieved prior body with

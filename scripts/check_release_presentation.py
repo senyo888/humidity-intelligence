@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 from pathlib import Path
 import re
 
@@ -60,6 +61,11 @@ def check_sources(root: Path, wiki_root: Path | None = None) -> list[str]:
     template = (root / ".github/pull_request_template.md").read_text()
     if NOTES not in template or RESERVED not in template:
         errors.append("PR template lost the reserved Maintainer notes contract.")
+    version = json.loads((root / "custom_components/humidity_intelligence/manifest.json").read_text())["version"]
+    if "-" not in version:
+        release = root / "docs/releases" / f"v{version}.md"
+        if not release.is_file() or "## A note from Senyo" not in release.read_text():
+            errors.append("Stable release notes must retain the maintainer's personal notes section.")
     if wiki_root is not None:
         home = (wiki_root / "Home.md").read_text()
         if not home.startswith("![Humidity Intelligence Wiki](assets/hi-wiki-banner.png)"):
