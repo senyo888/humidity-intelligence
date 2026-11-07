@@ -19,6 +19,8 @@ preserved gate settings and saved slope identities.
 - Advance both V2 layouts to revision **16**, superseding 1–15; stamp schema and
   generator contract remain **1**. Refresh/export and replace complete saved V2
   cards, including beta.1 revision-14 cards, after a complete update and restart.
+- Name Marketplace in setup and Dashboard add-ons guidance on Home Assistant
+  2026.11 or later, retaining HACS guidance for earlier supported versions.
 - Warn through Home Assistant Repairs when configured CO sources lack supported
   units, without inferring units or changing control behavior.
 - Restore unambiguous calculated kitchen slopes from separately configured sources;

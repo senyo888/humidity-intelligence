@@ -108,7 +108,7 @@ v205_release_check:
           unit_of_measurement: min
 create_local_backup:
   name: Create Local HI Snapshot
-  description: Admin-only action from an authenticated UI/API session; background calls without a user ID are rejected. Create a local HI-only snapshot of /config/custom_components/humidity_intelligence. This is not a Home Assistant backup, does not intercept HACS updates, and does not change running code until Home Assistant is restarted.
+  description: Admin-only action from an authenticated UI/API session; background calls without a user ID are rejected. Create a local HI-only snapshot of /config/custom_components/humidity_intelligence. This is not a Home Assistant backup, does not intercept Marketplace or HACS updates, and does not change running code until Home Assistant is restarted.
   fields:
     retain_count:
       name: Snapshots to retain
