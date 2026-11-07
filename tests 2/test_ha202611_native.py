@@ -139,6 +139,51 @@ class NativeAlignmentTests(unittest.IsolatedAsyncioTestCase):
         self.assertIsNotNone(registry.async_get_issue("humidity_intelligence", "co_unit_unsupported_example_b"))
         cleanups[1]()
 
+    async def test_co_repairs_skip_unavailable_source_and_report_later_invalid_source(self):
+        await issue_registry.async_load(self.hass)
+        registry = issue_registry.async_get(self.hass)
+        unavailable_source = "sensor.example_co_a"
+        invalid_source = "sensor.example_co_b"
+        cleanups = []
+        entry = SimpleNamespace(entry_id="example_mixed", async_on_unload=cleanups.append)
+        self.hass.states.async_set(
+            unavailable_source, "unavailable", {"unit_of_measurement": "mg/m³"}
+        )
+        self.hass.states.async_set(invalid_source, "30")
+        co_repairs.async_setup_co_unit_repair(self.hass, entry, {
+            "telemetry": [
+                {"entity_id": source, "sensor_type": "co"}
+                for source in (invalid_source, unavailable_source)
+            ],
+        })
+        issue = registry.async_get_issue(
+            "humidity_intelligence", "co_unit_unsupported_example_mixed"
+        )
+        self.assertIsNotNone(issue)
+        self.assertEqual(issue.translation_placeholders, {"entities": invalid_source})
+        cleanups.pop()()
+
+    async def test_co_repairs_clear_existing_warning_for_unavailable_states_and_retained_units(self):
+        await issue_registry.async_load(self.hass)
+        registry = issue_registry.async_get(self.hass)
+        source = "sensor.example_co_retained"
+        cleanups = []
+        entry = SimpleNamespace(entry_id="example_retained", async_on_unload=cleanups.append)
+        issue_id = "co_unit_unsupported_example_retained"
+        co_repairs.async_setup_co_unit_repair(self.hass, entry, {
+            "telemetry": [{"entity_id": source, "sensor_type": "co"}],
+        })
+        for state in ("unknown", "unavailable"):
+            for attributes in ({}, {"unit_of_measurement": "ppm"}, {"unit_of_measurement": "mg/m³"}):
+                with self.subTest(state=state, attributes=attributes):
+                    self.hass.states.async_set(source, "30", {"unit_of_measurement": "mg/m³"})
+                    await self.hass.async_block_till_done()
+                    self.assertIsNotNone(registry.async_get_issue("humidity_intelligence", issue_id))
+                    self.hass.states.async_set(source, state, attributes)
+                    await self.hass.async_block_till_done()
+                    self.assertIsNone(registry.async_get_issue("humidity_intelligence", issue_id))
+        cleanups.pop()()
+
     async def test_co_repair_uses_effective_options_without_writing_devices(self):
         from unittest.mock import AsyncMock, patch
 
