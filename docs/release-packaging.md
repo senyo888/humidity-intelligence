@@ -121,6 +121,13 @@ configuration verified after one restart. This closes the Stable-instance test;
 it does not establish public Marketplace selection of a final stable release.
 The [route-by-route validation record](releases/v2.1.2.md#validation-and-publication-status)
 keeps final-tag/draft-asset verification, post-publication Marketplace acceptance
-and untested legacy HACS installation distinct. Retain the actual-installer
-validation requirement above; metadata checks and source harnesses cannot fill
-an untested route.
+and legacy HACS results distinct. HACS 2.0.5 on HA 2026.10.1 subsequently installed
+the published beta from a fresh package state and replaced a manually loaded
+v2.1.1 package through a real HACS re-download. Both matched the beta asset;
+configuration and entity identities were preserved. A subsequent manual bridge
+loaded the exact stable ZIP. This does not prove published stable HACS delivery,
+managed-baseline update notification or the older-version cached-metadata edge.
+The minimal fixture also exposed a pre-existing generated-card availability
+failure, recorded separately from the installer passes in the validation record.
+Retain the actual-installer requirement above; metadata checks and source
+harnesses cannot fill an untested route.

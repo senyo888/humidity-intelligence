@@ -27,6 +27,11 @@ Thanks to [@Slaybcn](https://github.com/Slaybcn) for reporting the Marketplace
 installation failure and sharing logs in [#145](https://github.com/senyo888/humidity-intelligence/issues/145),
 and to [@Thorsten1982](https://github.com/Thorsten1982) for confirming the same issue.
 
+Legacy HACS 2.0.5 beta fresh installation and package replacement over a manual
+v2.1.1 baseline passed; a manual exact-stable bridge also loaded successfully.
+The minimal fixture exposed a pre-existing optional-reference generated-card
+availability failure. See the [validation and known-issue record](docs/releases/v2.1.2.md#known-generated-card-issue-found-during-validation).
+
 ## v2.1.2-beta.1 — Beta prerelease (2026-11-07)
 
 Opt-in prerelease from `senyo888-patch-1`; `main` and Current Stable v2.1.1 are unchanged.

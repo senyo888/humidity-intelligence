@@ -1,27 +1,29 @@
 # Humidity Intelligence website
 
 The landing page mirrors tracked product and release claims; the repository and
-Wiki own setup, compatibility and operational detail. V2.1.2 has its own featured
-release block, **Home Assistant 2026.11 Harmonization**, with Marketplace delivery,
+Wiki own setup, compatibility and operational detail. V2.1.2 leads the hero and
+opening release section, **Home Assistant 2026.11 Harmonization**, with Marketplace delivery,
 air-quality units, update status and two-path card upgrade guidance. Published
 Stable remains v2.1.1 during preparation; update that status only after publication.
 
-The V2.1 Stability Score hero remains the product overview; its illustration does
-not represent live telemetry. A compact linked history connects 2.1.0, 2.1.1 and
+The static v2.1.2 artwork leads. The V2.1 Stability Score illustration and badge
+remain in the lower Stability section; the illustration is not live telemetry. A compact linked history connects 2.1.0, 2.1.1 and
 2.1.2 without repeating their detailed notes. Credits in the release block thank
 the #145 reporters without implying they tested the fix.
 
 The main-only Pages workflow includes the V2.1, v2.1.1 and v2.1.2 artwork.
 The release block records the completed Stable-instance candidate test while
 retaining v2.1.1 as Published Stable. Installer coverage stays in the release notes.
-Release-note links point to canonical records on main. Users check the offered
-Marketplace/HACS version and loaded Home Assistant identity separately.
+Prepared-release links point to the canonical `senyo888-patch-1` records so review
+links resolve before promotion. At publication, switch preparation status and links
+to the verified immutable release. Users check the offered Marketplace/HACS version
+and loaded Home Assistant identity separately.
 
 The page uses static HTML and CSS, system fonts, locally packaged images and
 native disclosures. It requires no JavaScript, third-party widget, analytics or
 new plugin. The separate Inspector is built through its existing validated script.
 
-The selected V2.1 header uses a CSS/SVG decorative light sequence: top, right,
+The retained V2.1 illustration uses a CSS/SVG decorative light sequence: top, right,
 left; one step every three seconds. It reads no Home Assistant data. The pause
 checkbox shows the still artwork, and `prefers-reduced-motion: reduce` disables
 the sequence and hides the unnecessary pause control. All essential content and
