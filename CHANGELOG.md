@@ -16,7 +16,7 @@ preserved gate settings and saved slope identities.
   entities when those sources were not configured. Remove absent source bindings
   before mapping, preserving explicitly mapped entities even when their names look
   like legacy placeholders. Keep missing/unavailable configured-input checks intact.
-- Advance both V2 layouts to revision **15**, superseding 1–14; stamp schema and
+- Advance both V2 layouts to revision **16**, superseding 1–15; stamp schema and
   generator contract remain **1**. Refresh/export and replace complete saved V2
   cards, including beta.1 revision-14 cards, after a complete update and restart.
 - Preserve canonical README, website and Wiki headers; place the release write-up

@@ -42,7 +42,7 @@ Feature parity is maintained.
 
 ## UI revision and software-update footer
 
-V2.1.2 advances both V2 layouts to **revision 15**, superseding 1–14;
+V2.1.2 advances both V2 layouts to **revision 16**, superseding 1–15;
 stamp schema/generator remain 1. The generator removes unconfigured optional
 sources before entity substitution, including JavaScript lookups, so unrelated
 legacy-named entities cannot affect the display. Configured missing or unavailable

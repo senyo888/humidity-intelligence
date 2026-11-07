@@ -30,7 +30,7 @@ code loaded by Home Assistant. Provider choice does not establish frontend-card
 availability. Setup inspects optional card resources independently; both the new
 `/local/community/` and retained `/hacsfiles/` routes are recognized.
 
-Both V2 layouts now use **revision 15**, superseding revisions 1–14. Stamp schema
+Both V2 layouts now use **revision 16**, superseding revisions 1–15. Stamp schema
 and generator contract remain 1. The final v2.1.2 source corrects optional entity
 references in generated JavaScript: unconfigured sources remain absent even when
 unrelated legacy entities have matching names. Configured missing/unavailable
@@ -40,7 +40,7 @@ After the full package update and restart, refresh/export and replace the comple
 saved Manual-card YAML, **including beta.1 revision-14 cards**. Revision-13 cards
 remain a replacement cue and treat Marketplace evidence as unverified; revision-14
 cards introduced Marketplace/HACS support but do not contain this generator fix.
-Against an older backend, revision-15 cards show **UI differs** rather than implying
+Against an older backend, revision-16 cards show **UI differs** rather than implying
 a newer installed release. Restore the previous complete package and matching
 saved cards together when rolling back.
 

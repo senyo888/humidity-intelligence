@@ -1,7 +1,7 @@
 # V2 touch and keyboard interactions
 
 V2.1.1 retains native-button activation and the Stability hold-to-toggle behavior.
-Version 2.1.2 advances both V2 layouts to revision **15**, superseding 1–14, with stamp schema 1 and generator
+Version 2.1.2 advances both V2 layouts to revision **16**, superseding 1–15, with stamp schema 1 and generator
 contract 1 unchanged. Re-export and replace saved cards, including beta.1 revision-14 cards,
 for the optional-source generator correction. The footer presents UI compatibility and optional Marketplace/HACS update evidence
 separately. See the [compatibility guide](home-assistant-2026.11.md) for these changes.
@@ -113,7 +113,7 @@ keeps its shared backend timer measured from opening, and Home Assistant owns it
 native dialogs. Existing source-change dismissal remains in effect where supported.
 
 Renderer changes require synchronized mobile/tablet and gallery embeds, generated
-YAML validation and UI revision checks. Version 2.1.2 uses revision **15**;
+YAML validation and UI revision checks. Version 2.1.2 uses revision **16**;
 package version alone does not update a pasted card. Install the complete package
 and fully restart Home Assistant. For older V2 revisions, refresh/export and replace
 the full saved Mobile and Tablet Manual-card YAML, then refresh clients as needed.

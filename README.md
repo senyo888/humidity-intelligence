@@ -511,7 +511,7 @@ current release preparation. It combines component-only Marketplace/HACS deliver
 canonical air-quality units, complete-evidence CO clearance, preserved gate/slope
 settings and clearer update observations.
 
-Both V2 layouts use **revision 15**, superseding 1–14, with schema **1** and generator
+Both V2 layouts use **revision 16**, superseding 1–15, with schema **1** and generator
 contract **1**. From beta.1 revision-14 cards or earlier, run `refresh_ui`, export
 with `view_cards` or `dump_cards`, and replace the complete saved Manual-card YAML
 after installing the full package and restarting.
@@ -823,7 +823,7 @@ CO emergency pressure. Details are in
 **Home Assistant 2026.11 Harmonization** brings smaller Marketplace downloads,
 consistent air-quality units, complete-evidence CO clearance and clearer update
 status. It also corrects optional generated-card references so unconfigured sources
-cannot bind unrelated legacy entities. Both V2 layouts advance to **revision 15**;
+cannot bind unrelated legacy entities. Both V2 layouts advance to **revision 16**;
 refresh/export and replace complete saved cards, including beta.1 revision-14 cards.
 [Validation and upgrade details](docs/releases/v2.1.2.md) distinguish the changed
 package from earlier installer and Stable-instance evidence. Published Stable
