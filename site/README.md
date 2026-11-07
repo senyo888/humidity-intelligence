@@ -16,8 +16,9 @@ the #145 reporters without implying they tested the fix.
 
 The main-only Pages workflow includes the V2.1, v2.1.1 and v2.1.2 artwork.
 The release block keeps v2.1.1 as Published Stable and points to the current
-validation record. Exact revision-16 minimal-instance validation passed; final
-Stable acceptance remains blocked at post-restart instance checks.
+validation record. Exact revision-16 minimal-instance validation and final Stable
+acceptance passed. The Stable release check recorded 13 passes, 3 explained warnings
+and no failures; final published Marketplace delivery remains separate.
 The maintainer approved the corrected website, and final source/content house
 reviews are complete. Approval of this preview does not claim Pages deployment.
 Installer coverage stays in the release notes.

@@ -119,7 +119,9 @@ An earlier stable candidate (`2e2792ad`, revision 14) passed a manual Stable-ins
 Home Assistant 2026.11.0, with package parity, loaded identity and preserved
 configuration verified after one restart. The subsequent revision-16 generator
 correction changes the package. Its exact bytes passed fresh minimal-instance
-validation; final Stable acceptance remains blocked at post-restart instance checks.
+validation and final Stable acceptance on HA 2026.11.0, with 13 passes, 3 explained
+warnings and no failures. All 78 files matched; five exports and live revision 16
+were verified, with configuration, registry and saved-dashboard preservation.
 Neither result establishes public Marketplace selection of a final stable release.
 The [route-by-route validation record](releases/v2.1.2.md#validation-and-publication-status)
 keeps final-tag/draft-asset verification, post-publication Marketplace acceptance
