@@ -68,7 +68,7 @@
           <img src="assets/logo.png" width="40" height="40" alt=""><span>Humidity<br>Intelligence</span>
         </a>
         <div class="nav-links">
-          <a href="#harmonization">What’s new</a><a href="#stability">Stability Score</a><a href="#start">Get started</a>
+          <a href="#stability">Stability Score</a><a href="#inside">In your home</a><a href="#start">Get started</a>
           <a class="nav-guide" href="https://github.com/senyo888/Humidity-Intelligence/wiki">The manual <span aria-hidden="true">↗</span></a>
         </div>
       </nav>
@@ -77,30 +77,41 @@
       <section class="hero" aria-labelledby="hero-title">
         <div class="wrap">
           <div class="hero-intro">
-            <div><p class="eyebrow"><span class="status-dot" aria-hidden="true"></span> Humidity Intelligence · v2.1.2 · In preparation</p>
-              <h1 id="hero-title">Home Assistant<br>2026.11<br><em>Harmonization.</em></h1></div>
+            <div><p class="eyebrow"><span class="status-dot" aria-hidden="true"></span> Humidity Intelligence · V2.1</p>
+              <h1 id="hero-title">A clearer picture.<br><em>A steadier home.</em></h1></div>
             <div class="hero-lede">
-              <p>Smaller Marketplace downloads. Consistent air-quality units. Clearer update status. V2.1.2 brings HI’s humidity and air-quality control into step with Home Assistant 2026.11.</p>
-              <a class="button primary" href="#harmonization">Explore v2.1.2 <span aria-hidden="true">↓</span></a>
-              <a class="hero-install" href="#start">Installation and upgrade guidance <span aria-hidden="true">↗</span></a>
+              <p>Humidity Intelligence coordinates humidity and air quality control for Home Assistant and explains each response. The V2.1 series brings Stability Score’s longer view of conditions, dashboards that follow your home and clearer update status.</p>
+              <a class="button primary" href="#stability">Explore Stability Score <span aria-hidden="true">↓</span></a>
+              <a class="hero-install" href="#start">Install the current Stable release <span aria-hidden="true">↗</span></a>
             </div>
           </div>
-          <figure class="release-art harmonization-art">
-            <a href="assets/release_banner/v2.1.2_release.png" aria-label="View the v2.1.2 Harmonization release artwork"><img src="assets/release_banner/v2.1.2_release.png" width="1672" height="941" fetchpriority="high" alt="Humidity Intelligence v2.1.2 — Home Assistant 2026.11 Harmonization."></a>
-            <figcaption><span>v2.1.2 · Home Assistant 2026.11 Harmonization</span><span>Release preparation</span></figcaption>
+          <figure class="release-art">
+            <div class="art-stage"><a href="assets/release_banner/v2.1_release.png" aria-label="View the full V2.1 Stability Score release artwork">
+              <img src="assets/release_banner/v2.1_release.png" width="1672" height="941" fetchpriority="high" alt="Humidity Intelligence V2.1 Stability Score release artwork: a dimensional black-glass dial showing an illustrative score of 92, cyan light and a gold accent.">
+            </a>
+              <svg class="led-layer" viewBox="0 0 1672 941" aria-hidden="true" focusable="false">
+                <defs><radialGradient id="led-socket"><stop offset="0" stop-color="#07111b"/><stop offset=".6" stop-color="#101c29"/><stop offset="1" stop-color="#183445" stop-opacity="0"/></radialGradient></defs>
+                <circle class="led-cover" cx="1135" cy="202" r="18"/><circle class="led-cover" cx="1265" cy="550" r="21"/><circle class="led-cover" cx="920" cy="550" r="21"/>
+                <circle class="led led-top" cx="1135" cy="202" r="8"/>
+                <circle class="led led-right" cx="1265" cy="550" r="8"/>
+                <circle class="led led-left" cx="920" cy="550" r="8"/>
+              </svg>
+            </div>
+            <figcaption><span>V2.1 · Stability Score</span><span>Release artwork · illustration with a clockwise light sequence.</span></figcaption>
+            <label class="motion-control"><input type="checkbox" class="pause-motion"> Pause header animation</label>
           </figure>
           <div class="release-status">
-            <p><strong>v2.1.2 · In preparation</strong><br>New installation packaging, normalized readings and clearer package-manager evidence.</p>
-            <a href="https://github.com/senyo888/humidity-intelligence/blob/senyo888-patch-1/docs/releases/v2.1.2.md">Read the v2.1.2 release notes <span aria-hidden="true">↗</span></a>
+            <p><strong>V2.1.1 · Stable</strong><br>Single-level dashboards, clearer update status and more reliable readings and reports.</p>
+            <a href="https://github.com/senyo888/humidity-intelligence/blob/main/docs/releases/v2.1.1.md">Read the release notes <span aria-hidden="true">↗</span></a>
           </div>
-          <p class="candidate-note">The current published Stable is v2.1.1. V2.1.2 awaits promotion and publication; check the version offered before installing.</p>
+          <p class="candidate-note">V2.1.1 · 24 October 2026. Check the version offered in Marketplace or HACS before updating. <a href="https://github.com/senyo888/humidity-intelligence/blob/main/docs/releases/v2.1.1.md">Read the v2.1.1 release notes</a>.</p>
         </div>
       </section>
 
       <section class="stable-section section" id="harmonization" aria-labelledby="release-title"><div class="wrap stable-grid">
         <div class="harmonization-points">
-          <p class="eyebrow">What changes in v2.1.2</p>
-          <h2 id="release-title">A smaller download.<br>A clearer picture.</h2>
+          <p class="eyebrow">v2.1.2 · In preparation</p>
+          <h2 id="release-title">Home Assistant 2026.11 Harmonization</h2>
           <ul><li><strong>Marketplace packaging</strong><br>A component-only ZIP addresses the oversized archive failure.</li><li><strong>Consistent readings</strong><br>Supported air-quality units are normalized before evaluation.</li><li><strong>Update clarity</strong><br>Package-manager reports, loaded code and saved-card compatibility stay distinct.</li></ul>
         </div>
         <div><p class="eyebrow">Updating your home</p>
@@ -128,21 +139,6 @@
         <div class="wrap">
           <div class="section-heading"><p class="eyebrow">02 / The bigger picture</p><h2 id="stability-title">One reading is a moment.<br>Stability tells you more.</h2>
             <p class="section-lede">A comfortable reading can hide recurring humidity imbalance, moisture risk or slow recovery. Stability Score puts that reading in context by showing how conditions have varied over time.</p></div>
-          <figure class="release-art stability-art">
-            <div class="art-stage"><a href="assets/release_banner/v2.1_release.png" aria-label="View the full V2.1 Stability Score release artwork">
-              <img src="assets/release_banner/v2.1_release.png" width="1672" height="941" loading="lazy" alt="Humidity Intelligence V2.1 Stability Score release artwork: a dimensional black-glass dial showing an illustrative score of 92, cyan light and a gold accent.">
-            </a>
-              <svg class="led-layer" viewBox="0 0 1672 941" aria-hidden="true" focusable="false">
-                <defs><radialGradient id="led-socket"><stop offset="0" stop-color="#07111b"/><stop offset=".6" stop-color="#101c29"/><stop offset="1" stop-color="#183445" stop-opacity="0"/></radialGradient></defs>
-                <circle class="led-cover" cx="1135" cy="202" r="18"/><circle class="led-cover" cx="1265" cy="550" r="21"/><circle class="led-cover" cx="920" cy="550" r="21"/>
-                <circle class="led led-top" cx="1135" cy="202" r="8"/>
-                <circle class="led led-right" cx="1265" cy="550" r="8"/>
-                <circle class="led led-left" cx="920" cy="550" r="8"/>
-              </svg>
-            </div>
-            <figcaption><span>V2.1 · Stability Score</span><span>Release artwork · illustration with a clockwise light sequence.</span></figcaption>
-            <label class="motion-control"><input type="checkbox" class="pause-motion"> Pause illustration animation</label>
-          </figure>
           <div class="stability-grid">
             <figure class="product-capture">
               <a href="assets/ui/v2.1/stability-score-92.png" aria-label="Open the genuine Stability Score dashboard capture"><img src="assets/ui/v2.1/stability-score-92.png" width="1020" height="696" loading="lazy" alt="Actual dashboard: Stability Score 92 Excellent, System Armed, Manual Auto, and Outputs 1/4 on with Monitoring incomplete."></a>

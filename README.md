@@ -1,3 +1,7 @@
+<!-- Logo and Banner -->
+
+![Humidity Intelligence banner](assets/header.png)
+
 # Humidity Intelligence
 
 ## Domestic Environmental Stabilisation Engine for Home Assistant
@@ -10,31 +14,8 @@
 [![Sponsor](https://img.shields.io/badge/Sponsor-GitHub%20Sponsors-ea4aaa?logo=githubsponsors&logoColor=white)](https://github.com/sponsors/senyo888)
 [![Star Humidity Intelligence](https://img.shields.io/badge/Star%20%2F%20Support-Humidity%20Intelligence-2ea44f?logo=github&logoColor=white)](https://github.com/senyo888/humidity-intelligence)
 
-## v2.1.2 — Home Assistant 2026.11 Harmonization
-
-![Humidity Intelligence v2.1.2 — Home Assistant 2026.11 Harmonization](assets/release_banner/v2.1.2_release.png)
-
-**Smaller Marketplace downloads. Consistent air-quality units. Clearer update status.**
-V2.1.2 prepares HI for Home Assistant 2026.11 while retaining deterministic control,
-seasonal targets and Stability Score.
-
-- **Installation:** a component-only release ZIP addresses the oversized Marketplace
-  download reported in [#145](https://github.com/senyo888/humidity-intelligence/issues/145).
-- **Readings:** supported air-quality measurements use consistent units; invalid or
-  unsupported readings remain visibly incomplete.
-- **Updates:** Marketplace and legacy HACS observations stay separate from the
-  version actually loaded and the compatibility of saved dashboard cards.
-
-[Changes, upgrade steps and validation](docs/releases/v2.1.2.md) ·
-[Installation](#installation) · [Continuing Stability Score features](#stability-score)
-
-*V2.1.2 is in release preparation. The latest published Stable remains
-[v2.1.1](https://github.com/senyo888/humidity-intelligence/releases/tag/v2.1.1)
-until promotion and publication are complete.*
-
 ## Contents
 
-- [v2.1.2 Harmonization](#v212--home-assistant-202611-harmonization)
 - [TL;DR](#tldr)
 - [Stability Score](#stability-score)
 - [Project Site and Search Discovery](#project-site-and-search-discovery)
@@ -126,6 +107,14 @@ records the exact rules.
 
 V2.1.1 includes opt-in [output observation](docs/output-observation.md), adding read-only diagnostic context and an optional adaptive Outputs view.
 The adaptive Outputs panel uses an HVAC icon and a compact attention summary; full evidence and existing native controls are available on demand.
+
+**V2.1.2 — Home Assistant 2026.11 Harmonization** builds on these features with
+smaller Marketplace downloads, consistent air-quality units and clearer update
+status. The component-only ZIP addresses the installation failure reported in
+[#145](https://github.com/senyo888/humidity-intelligence/issues/145); Marketplace
+and legacy HACS observations remain separate from loaded code and card compatibility.
+See the [release notes and upgrade guide](docs/releases/v2.1.2.md). V2.1.2 remains
+in preparation; the published Stable is v2.1.1.
 
 ---
 

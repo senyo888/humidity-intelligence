@@ -1,13 +1,13 @@
 # Humidity Intelligence website
 
 The landing page mirrors tracked product and release claims; the repository and
-Wiki own setup, compatibility and operational detail. V2.1.2 leads the hero and
-opening release section, **Home Assistant 2026.11 Harmonization**, with Marketplace delivery,
+Wiki own setup, compatibility and operational detail. V2.1.2 has a text section directly below the established hero, **Home Assistant 2026.11 Harmonization**, with Marketplace delivery,
 air-quality units, update status and two-path card upgrade guidance. Published
 Stable remains v2.1.1 during preparation; update that status only after publication.
 
-The static v2.1.2 artwork leads. The V2.1 Stability Score illustration and badge
-remain in the lower Stability section; the illustration is not live telemetry. A compact linked history connects 2.1.0, 2.1.1 and
+The established V2.1 hero title, artwork, LED overlay and pause control are
+preserved. Release emphasis does not authorize replacing the hero. Its illustration
+is not live telemetry; the Stability Score explanation remains in its own section. A compact linked history connects 2.1.0, 2.1.1 and
 2.1.2 without repeating their detailed notes. Credits in the release block thank
 the #145 reporters without implying they tested the fix.
 

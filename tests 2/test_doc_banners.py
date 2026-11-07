@@ -60,6 +60,16 @@ class DocumentationBannerTests(unittest.TestCase):
 
                 self.assertEqual(first_line, banner_line)
 
+    def test_readme_keeps_product_header_and_release_art_in_release_notes(self) -> None:
+        readme = (ROOT / "README.md").read_text(encoding="utf-8")
+        first_image = readme.split("![", 1)[1].split(")", 1)[0]
+        self.assertTrue(first_image.endswith("(assets/header.png"))
+        self.assertLess(readme.index("assets/header.png"), readme.index("# Humidity Intelligence"))
+        release_notes = readme.index("## Release Notes")
+        for line in readme[:release_notes].splitlines():
+            self.assertNotIn("assets/release_banner/", line)
+        self.assertIn("assets/release_banner/v2.1.2_release.png", readme[release_notes:])
+
     def test_canonical_banner_assets_exist_as_pngs(self) -> None:
         for doc_name, banner_line in CANONICAL_DOC_BANNERS.items():
             with self.subTest(doc=doc_name):

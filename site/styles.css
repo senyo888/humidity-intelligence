@@ -1441,7 +1441,6 @@ a:focus-visible,summary:focus-visible {
   .guide-layout { padding-top:38px; padding-bottom:48px; }
 }
 
-/* Harmonization leads the release story; retain the V2.1 badge artwork below it. */
-.stability-art { max-width:900px; margin:0 auto 44px; }
+/* Release details sit below the established product hero. */
 .harmonization-points ul { list-style:none; margin:24px 0 0; padding:0; }
 .harmonization-points li { padding:14px 0; border-top:1px solid var(--line); font-size:.88rem; line-height:1.65; }
