@@ -77,10 +77,10 @@
       <section class="hero" aria-labelledby="hero-title">
         <div class="wrap">
           <div class="hero-intro">
-            <div><p class="eyebrow"><span class="status-dot" aria-hidden="true"></span> Humidity Intelligence · V2.1.1</p>
+            <div><p class="eyebrow"><span class="status-dot" aria-hidden="true"></span> Humidity Intelligence · V2.1</p>
               <h1 id="hero-title">A clearer picture.<br><em>A steadier home.</em></h1></div>
             <div class="hero-lede">
-              <p>Humidity Intelligence coordinates humidity and air quality control for Home Assistant and explains each response. V2.1.1 brings single-level dashboards and clearer update status, alongside Stability Score’s longer view of conditions.</p>
+              <p>Humidity Intelligence coordinates humidity and air quality control for Home Assistant and explains each response. The V2.1 series brings Stability Score’s longer view of conditions, dashboards that follow your home and clearer update status.</p>
               <a class="button primary" href="#stability">Explore Stability Score <span aria-hidden="true">↓</span></a>
               <a class="hero-install" href="#start">Install the current Stable release <span aria-hidden="true">↗</span></a>
             </div>
@@ -104,7 +104,7 @@
             <p><strong>V2.1.1 · Stable</strong><br>Single-level dashboards, clearer update status and more reliable readings and reports.</p>
             <a href="https://github.com/senyo888/humidity-intelligence/blob/main/docs/releases/v2.1.1.md">Read the release notes <span aria-hidden="true">↗</span></a>
           </div>
-          <p class="candidate-note">V2.1.1 · 24 October 2026. Check the version offered in HACS before updating. <a href="https://github.com/senyo888/humidity-intelligence/blob/main/docs/releases/v2.1.1.md">Read the v2.1.1 release notes</a>.</p>
+          <p class="candidate-note">V2.1.1 · 24 October 2026. Check the version offered in Marketplace or HACS before updating. <a href="https://github.com/senyo888/humidity-intelligence/blob/main/docs/releases/v2.1.1.md">Read the v2.1.1 release notes</a>.</p>
         </div>
       </section>
 
@@ -184,9 +184,9 @@
             <article class="start-card existing">
               <div class="hi-brand"><img src="assets/logo.png" width="54" height="54" loading="lazy" alt=""><span>Humidity Intelligence<small>Home Assistant integration</small></span></div>
               <p class="eyebrow">Already using Home Assistant?</p><h3>Install Humidity<br>Intelligence.</h3>
-              <p>HI is included in the HACS default integration repository. Install the published Stable package, then follow the setup guide to map room sensors, configure outputs and add the dashboard.</p>
-              <a class="button primary" href="https://my.home-assistant.io/redirect/hacs_repository/?owner=senyo888&amp;repository=humidity-intelligence&amp;category=integration">Open in HACS <span aria-hidden="true">↗</span></a>
-              <p class="card-footnote">The button opens HI's repository page in HACS. Check the published version in GitHub Releases and refresh repository information if an older version is shown.</p>
+              <p>On Home Assistant 2026.11+, use Settings → Marketplace. Earlier supported versions use HACS, where HI is included in the default integration repository. Install the published Stable package, then map room sensors, configure outputs and add the dashboard using the setup guide.</p>
+              <a class="button primary" href="https://my.home-assistant.io/redirect/hacs_repository/?owner=senyo888&amp;repository=humidity-intelligence&amp;category=integration">Open legacy HACS <span aria-hidden="true">↗</span></a>
+              <p class="card-footnote">This button is for legacy HACS. On Home Assistant 2026.11+, v2.1.1 has a known Marketplace archive-download failure; use the <a href="https://github.com/senyo888/humidity-intelligence/blob/main/docs/release-packaging.md#earlier-versions-and-current-evidence-limits">exact-tag manual recovery guide</a> while v2.1.2 is being prepared.</p>
               <a class="text-link" href="https://github.com/senyo888/Humidity-Intelligence#installation">Read the complete installation guide <span aria-hidden="true">↗</span></a>
             </article>
           </div>
@@ -201,12 +201,16 @@
       </section>
 
       <section class="stable-section section" aria-labelledby="release-title"><div class="wrap stable-grid">
-        <img class="release-banner" src="assets/release_banner/v2.1.1_release.png" width="1672" height="941" loading="lazy" alt="Humidity Intelligence v2.1.1 release artwork highlighting single-level dashboards and clearer update status.">
-        <div><p class="eyebrow">v2.1.1 · Stable</p><h2 id="release-title">Dashboards that follow your home.</h2>
-          <p>Single-level homes need no dummy second level. Saved Options drive the exported cards, configured unavailable sensors stay visible, and HACS update evidence stays separate from card compatibility. Calculated trends use the last actual reading in each minute; this can affect slope-based decisions.</p>
-          <p class="context-note">Install the complete package and restart Home Assistant. From v2.1.0 or older cards, run refresh_ui, export with view_cards or dump_cards, replace the complete saved YAML and refresh the client. Existing v2.1.1-beta.4 and v2.1.1-rc.1 revision-13 cards remain compatible. No configuration or entity migration is required; restarting clears Stability history.</p>
-          <a class="text-link" href="https://github.com/senyo888/Humidity-Intelligence#release-notes">Read the release notes <span aria-hidden="true">↗</span></a>
+        <img class="release-banner" src="assets/release_banner/v2.1.2_release.png" width="1672" height="941" loading="lazy" alt="Humidity Intelligence v2.1.2 — Home Assistant 2026.11 Harmonization.">
+        <div><p class="eyebrow">v2.1.2 · In preparation</p><h2 id="release-title">Home Assistant 2026.11 Harmonization</h2>
+          <p>Smaller Marketplace downloads. Consistent air-quality units. Clearer update status. V2.1.2 brings these changes together while preserving deterministic control and the continuing Stability Score experience.</p>
+          <p class="context-note">Install the complete package and restart Home Assistant. Existing v2.1.2-beta.1 revision-14 cards stay compatible. From v2.1.1 or older cards, refresh and export the V2 layouts, replace the complete saved Manual-card YAML and refresh the client. No configuration-entry or entity-ID migration is required; restarting clears Stability history. Review sensor units and mappings in the upgrade guide.</p>
+          <p class="context-note">Published Stable remains v2.1.1 while final validation and publication are completed.</p>
+          <a class="text-link" href="https://github.com/senyo888/humidity-intelligence/blob/main/docs/releases/v2.1.2.md">Release notes and upgrade guide <span aria-hidden="true">↗</span></a>
+          <p class="context-note">Thanks to <a href="https://github.com/Slaybcn">@Slaybcn</a> for the report and logs, and <a href="https://github.com/Thorsten1982">@Thorsten1982</a> for confirming the Marketplace installation problem in <a href="https://github.com/senyo888/humidity-intelligence/issues/145">#145</a>.</p>
         </div>
+      </div><div class="wrap">
+        <p class="context-note"><strong>The V2.1 story:</strong> <a href="https://github.com/senyo888/humidity-intelligence/releases/tag/v2.1.0">2.1.0 — Stability Score</a> · <a href="https://github.com/senyo888/humidity-intelligence/releases/tag/v2.1.1">2.1.1 — single-level dashboards and update clarity</a> · <a href="https://github.com/senyo888/humidity-intelligence/blob/main/docs/releases/v2.1.2.md">2.1.2 — Home Assistant 2026.11 Harmonization</a>. The <a href="https://github.com/senyo888/humidity-intelligence/blob/main/CHANGELOG.md">changelog</a> preserves the complete history.</p>
       </div></section>
 
       <section class="resources section guide-index" id="guides" aria-labelledby="guides-title"><div class="wrap">

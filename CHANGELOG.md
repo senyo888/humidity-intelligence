@@ -6,6 +6,24 @@ All notable changes to Humidity Intelligence will be documented in this file.
 
 This project follows a practical changelog format for Home Assistant and HACS users. Add new entries under a fresh `Unreleased` section before publishing a future release.
 
+## v2.1.2 — Stable source preparation
+
+**Home Assistant 2026.11 Harmonization.** Retains the complete reviewed beta.1
+implementation: component ZIP delivery, Marketplace/HACS observation, canonical
+AQ units, complete-evidence CO clearance, preserved gate settings and saved slope
+identities. Manifest identity and packaged guidance change; runtime and generated
+cards remain unchanged. Both V2 layouts retain revision 14/schema 1/generator 1.
+
+Existing beta.1 revision-14 cards need no replacement solely for this version
+change. From v2.1.1, refresh/export and replace saved cards after the complete
+package update and restart. Restart resets in-memory Stability history.
+[Stable validation and upgrade record](docs/releases/v2.1.2.md).
+Published Stable remains v2.1.1 until publication; beta test history follows.
+
+Thanks to [@Slaybcn](https://github.com/Slaybcn) for reporting the Marketplace
+installation failure and sharing logs in [#145](https://github.com/senyo888/humidity-intelligence/issues/145),
+and to [@Thorsten1982](https://github.com/Thorsten1982) for confirming the same issue.
+
 ## v2.1.2-beta.1 — Beta prerelease (2026-11-07)
 
 Opt-in prerelease from `senyo888-patch-1`; `main` and Current Stable v2.1.1 are unchanged.

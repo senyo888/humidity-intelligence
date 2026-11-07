@@ -824,18 +824,20 @@ CO emergency pressure. Details are in
 
 ## Release Notes
 
-### v2.1.2-beta.1 (Beta prerelease)
+### v2.1.2 (Stable source preparation)
 
-Adds the component ZIP for [#145](https://github.com/senyo888/humidity-intelligence/issues/145),
-Marketplace update observation, canonical AQ units and complete-evidence CO clearance.
-Gate forms preserve hidden settings; supplied slopes retain saved identity bindings.
-Both V2 layouts advance to revision **14**; export and replace saved cards.
-See [compatibility and migration](docs/home-assistant-2026.11.md) and
-[release notes](docs/releases/v2.1.2-beta.1.md).
-This is an opt-in prerelease; v2.1.1 remains Current Stable.
-Marketplace fresh installation and upgrade from a manually installed v2.1.1
-baseline passed on HA 2026.11.0 on 7 November 2026. See the
-[test scope and limits](docs/releases/v2.1.2-beta.1.md#validation-and-limits).
+![Humidity Intelligence v2.1.2 — Home Assistant 2026.11 Harmonization](assets/release_banner/v2.1.2_release.png)
+
+**Home Assistant 2026.11 Harmonization** brings smaller Marketplace downloads,
+consistent air-quality units, complete-evidence CO clearance and clearer update
+status. This stable source retains the reviewed beta runtime and revision-14 cards.
+Existing beta.1 cards stay compatible; from v2.1.1, export and replace saved cards.
+[Release and upgrade details](docs/releases/v2.1.2.md). Published Stable remains
+v2.1.1 until final validation, promotion and publication complete.
+
+Thanks to [@Slaybcn](https://github.com/Slaybcn) for the report and logs, and
+[@Thorsten1982](https://github.com/Thorsten1982) for confirming the Marketplace
+installation problem in [#145](https://github.com/senyo888/humidity-intelligence/issues/145).
 
 <a id="v211-stable-source-preparation"></a>
 
@@ -865,6 +867,14 @@ identity. [Complete notes](docs/releases/v2.1.1.md) cover
 under Previous Releases; CHANGELOG.md retains the complete detailed history. -->
 <details>
 <summary>Previous Releases</summary>
+
+### v2.1.2-beta.1 (Beta prerelease)
+
+Published 7 November 2026 as an opt-in prerelease: Marketplace ZIP delivery,
+canonical AQ units, complete-evidence CO clearance and revision-14 cards.
+[Release notes](docs/releases/v2.1.2-beta.1.md) retain the native Marketplace fresh
+install and manually seeded v2.1.1 upgrade results, exact beta identity and
+[validation limits](docs/releases/v2.1.2-beta.1.md#validation-and-limits).
 
 <a id="v210-current-published-stable"></a>
 

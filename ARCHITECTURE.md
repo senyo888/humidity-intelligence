@@ -361,7 +361,7 @@ The additive `update_observation` payload has its own schema 1; native/support
 exports omit the locally resolved update entity ID. See [UI and software version
 details](docs/ui-revision-status.md#software-update-observation).
 
-In the 2.1.2 candidate, schema-1 provider identity is `hacs`, `marketplace`, or null
+In 2.1.2, schema-1 provider identity is `hacs`, `marketplace`, or null
 when unresolved. Both V2 layouts advance to revision 14. Old revision-13 cards
 conservatively reject Marketplace evidence; schema/generator 1 remains supported.
 
@@ -417,7 +417,7 @@ rollback, or transfer HI runtime and release authority to the external controlle
 The public repository, manifest, tag, GitHub Release, HACS package, and explicit
 maintainer gates retain their existing roles.
 
-The v2.1.2 packaging candidate delivers a named component-only release ZIP through
+The v2.1.2 package delivers a named component-only release ZIP through
 the supported `zip_release`/`filename` metadata. Its manifest sits at the ZIP root;
 the source repository retains its conventional component directory and full source
 archives. The default-branch download choice is explicitly hidden because branches

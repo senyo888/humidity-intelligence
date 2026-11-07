@@ -1,6 +1,6 @@
 # Release ZIP packaging
 
-The `2.1.2-beta.1` prerelease changes release delivery to the named
+The `2.1.2` stable source retains the release delivery introduced in beta.1: the named
 `humidity_intelligence.zip` asset. Published Stable remains `v2.1.1` until a new
 Stable release is approved and published. Select the beta explicitly for testing;
 source preparation and CI artifacts do not make an installable release available.

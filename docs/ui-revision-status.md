@@ -8,7 +8,9 @@ remain compatible.
 The 2.1.2-beta.1 prerelease advances both layouts to **14**, superseding
 1–13, for Marketplace/HACS observation. Stamp schema/generator remain 1. Replace
 saved cards for the new footer; revision-13 cards safely report Marketplace updates
-as unverified. See [2026.11 compatibility](home-assistant-2026.11.md).
+as unverified. Stable `2.1.2` retains revision 14/schema 1/generator 1 unchanged;
+existing beta.1 cards need no replacement solely for the version change.
+See [2026.11 compatibility](home-assistant-2026.11.md).
 
 The V2 mobile and tablet cards include a small bottom-left UI indicator. Open it
 for UI and software version details and the next step. The UI label reports the revision declared by this

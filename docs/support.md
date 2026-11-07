@@ -14,7 +14,7 @@ services → Humidity Intelligence**. Enable debug logging only for the reproduc
 and stop it afterward. Action history and script traces can explain requests; they
 do not prove physical operation. Repeating an action is not a read-only diagnostic.
 
-The candidate's `aq_inputs` Diagnostics counts identify unsupported units, invalid
+The 2.1.2 `aq_inputs` Diagnostics counts identify unsupported units, invalid
 readings and missing sources. Check the actual entity unit before changing a
 threshold. An active CO emergency remains latched when complete safe clearance is
 unproved. See [canonical units, clearance and migration](home-assistant-2026.11.md).

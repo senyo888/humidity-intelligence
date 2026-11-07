@@ -94,7 +94,7 @@ selection and ventilation decisions are unchanged: an IAQ-driven control action 
 coexist with individual-measurement Stability scoring.
 
 AQ is based on configured conditions, not merely visible sensor chips. IAQ crosses
-at or below threshold; PM2.5/VOC/CO2/CO at or above. The 2.1.2 candidate normalizes supported source units before comparison: IAQ
+at or below threshold; PM2.5/VOC/CO2/CO at or above. Version 2.1.2 normalizes supported source units before comparison: IAQ
 unitless/index, PM2.5 µg/m³ or mg/m³ to µg/m³, VOC ppm/ppb to ppb, and CO2/CO
 ppm/ppb to ppm. Unsupported units and invalid thresholds are missing evidence,
 not clear air or a crossing. This extends accepted input units; score formula,

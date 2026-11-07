@@ -1,8 +1,8 @@
 # Home Assistant 2026.11 compatibility
 
-The `2.1.2-beta.1` prerelease includes Marketplace support, canonical
+The `2.1.2` stable source preserves beta.1 Marketplace support, canonical
 air-quality units, complete-evidence CO clearance and bounded setup improvements.
-Published Stable remains `v2.1.1`. Source tests, publication, installed files and
+Published Stable remains `v2.1.1` while final stable validation is completed. Source tests, publication, installed files and
 loaded runtime behavior are separate evidence.
 
 ## Installation and update observations
@@ -30,7 +30,9 @@ code loaded by Home Assistant. Provider choice does not establish frontend-card
 availability. Setup inspects optional card resources independently; both the new
 `/local/community/` and retained `/hacsfiles/` routes are recognized.
 
-Both V2 layouts advance to **revision 14**, superseding revisions 1–13. UI stamp
+Both V2 layouts retain beta.1 **revision 14**, superseding revisions 1–13.
+Existing beta.1 revision-14 cards remain compatible with stable `2.1.2`; a version
+change alone does not require replacing them. UI stamp
 schema and generator contract remain 1. Export and replace the complete saved
 Manual-card YAML to get the new footer. Revision-13 cards still show their UI
 replacement cue, but treat Marketplace update evidence as unverified. Revision-14

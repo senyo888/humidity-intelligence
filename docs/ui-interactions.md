@@ -1,9 +1,9 @@
 # V2 touch and keyboard interactions
 
 V2.1.1 retains native-button activation and the Stability hold-to-toggle behavior.
-The 2.1.2-beta.1 prerelease uses UI revision **14** in both V2 layouts, stamp schema 1 and generator
+Version 2.1.2 retains the beta.1 UI revision **14** in both V2 layouts, stamp schema 1 and generator
 contract 1. The footer presents UI compatibility and optional Marketplace/HACS update evidence
-separately. See the [candidate compatibility guide](home-assistant-2026.11.md) for these changes.
+separately. See the [compatibility guide](home-assistant-2026.11.md) for these changes.
 [Stable v2.1.1 notes](releases/v2.1.1.md) describe the published release;
 [earlier interaction changes](../CHANGELOG.md) retain their historical scope.
 
@@ -112,13 +112,13 @@ keeps its shared backend timer measured from opening, and Home Assistant owns it
 native dialogs. Existing source-change dismissal remains in effect where supported.
 
 Renderer changes require synchronized mobile/tablet and gallery embeds, generated
-YAML validation and UI revision checks. The 2.1.2 candidate targets revision **14**;
+YAML validation and UI revision checks. Version 2.1.2 uses revision **14**;
 package version alone does not update a pasted card. Install the complete package
 and fully restart Home Assistant. For older V2 revisions, refresh/export and replace
 the full saved Mobile and Tablet Manual-card YAML, then refresh clients as needed.
 Revision-13 cards need replacement for Marketplace update observation.
 Restart resets in-memory Stability history; no configuration or entity migration
-is required. See [the candidate upgrade sequence](home-assistant-2026.11.md).
+is required. See [the upgrade sequence](home-assistant-2026.11.md).
 
 Keep the previous complete package and saved card YAML for rollback. Restore both
 together so card expectations match the selected backend. Versions before the
