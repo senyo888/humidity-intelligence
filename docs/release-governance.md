@@ -3,9 +3,33 @@
 Humidity Intelligence uses semantic versioning with explicit prerelease markers for
 testing and validation branches.
 
+## Preserve presentation and maintainer ownership
+
+Release emphasis does not authorize redesign. Preserve the canonical README
+`assets/header.png`, the established website header/hero and its controls, and the
+Wiki `assets/hi-wiki-banner.png` unless the maintainer explicitly approves replacing
+that surface. Compare the original and proposed structure during review. Keep release
+write-ups below established content; README release artwork belongs in `Release Notes`.
+Do not change test baselines merely to make an unapproved redesign pass.
+
+Use `.github/pull_request_template.md` when preparing or updating a PR. Preserve its
+`Maintainer notes` section and any existing human-authored content verbatim. That
+reserved section is distinct from the agent's `Maintainer summary`, maintenance
+companion evidence and the personal `A note from Senyo` at the bottom of release
+notes. Prepare personal release copy for review; do not invent approval or overwrite
+Senyo's own text. Record each surface in the release handoff, including a deliberately
+blank reserved section. Run `scripts/check_release_presentation.py` with the prepared
+PR body and, when present, the explicit Wiki checkout before publication preparation.
+For an existing PR update, also pass the freshly retrieved prior body with
+`--previous-pr-body`; the new draft alone cannot prove preservation of manual notes.
+
+A defect explicitly designated by the maintainer as a release blocker must be fixed
+and validated. Disclosure, prior existence or optional Lab status does not waive it.
+House review must assess these authority boundaries as well as internal consistency.
+
 ## Canonical Version Model
 
-- `2.1.2`: stable source preparation for Home Assistant 2026.11 Harmonization. Preserves beta.1 runtime and revision-14 cards, with stamp schema/generator 1. Manifest and packaged guidance give it a distinct package identity. The exact candidate passed a manual Stable-instance upgrade with explained input/history warnings. The prior README snapshot received maintainer approval; the requested v2.1.2-first presentation is a new review snapshot. Legacy HACS beta installation/replacement passed; a pre-existing optional-reference generated-card failure remains open. Final-source review and promotion remain separate from tag/asset verification and publication. Current Published Stable remains v2.1.1. See [stable package and upgrade record](releases/v2.1.2.md).
+- `2.1.2`: stable source preparation for Home Assistant 2026.11 Harmonization. Retains beta.1 control behavior and adds the required optional-reference generator correction. Both V2 layouts advance to revision 15, superseding 1–14; stamp schema/generator remain 1. Regenerate and replace beta.1 revision-14 cards as well as earlier cards. This is no longer a metadata-only stable transition: earlier package evidence remains historical and the changed package needs refreshed validation. Maintainer README approval, final house/source review and promotion remain separate from tag/asset verification and publication. Current Published Stable remains v2.1.1. See [stable package and upgrade record](releases/v2.1.2.md).
 
 - `2.1.2-beta.1`: HA 2026.11 compatibility prerelease from `senyo888-patch-1`. Includes the #145 ZIP, exact dual-provider observation, canonical AQ units, complete-evidence CO clearance, conditional gates and saved slope identities. Both V2 layouts advance to revision 14, superseding 1–13; stamp schema/generator remain 1. Update-observation schema 1 adds Marketplace/null provider values. Current Stable remains v2.1.1. See [release notes](releases/v2.1.2-beta.1.md), [compatibility and rollback](home-assistant-2026.11.md), and [packaging](release-packaging.md).
 - `2.1.1`: current Stable, dated 2026-10-24 and merged to main in PR #134. Runtime and generated-card bytes are unchanged from reviewed RC.1; manifest and packaged guidance establish a new package identity. Both layouts remain revision 13, schema/generator 1. See the [Stable compatibility record](#v211-stable-source-preparation).

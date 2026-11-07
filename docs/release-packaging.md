@@ -82,7 +82,7 @@ Download/corrupt-asset failures must remain visible and preserve an existing
 installation; retain the previous complete package for rollback.
 
 ZIP delivery alone needs no configuration migration. The broader candidate also
-changes unit handling and advances V2 cards to revision 14; follow the
+changes unit handling and advances V2 cards to revision 15; follow the
 [compatibility and saved-card instructions](home-assistant-2026.11.md). A package update requires a full Home Assistant restart
 when installed; restart resets in-memory Stability history. Preserve rollback
 copies outside `custom_components`, retain compatible saved cards, and verify the
@@ -115,10 +115,11 @@ configuration restoration were verified. This does not establish a legacy HACS
 install or automatic update notification from a Marketplace-managed baseline.
 See the [dated validation record](releases/v2.1.2-beta.1.md#validation-and-limits).
 
-The exact stable candidate also passed a manual Stable-instance upgrade on
+An earlier stable candidate (`2e2792ad`, revision 14) passed a manual Stable-instance upgrade on
 Home Assistant 2026.11.0, with package parity, loaded identity and preserved
-configuration verified after one restart. This closes the Stable-instance test;
-it does not establish public Marketplace selection of a final stable release.
+configuration verified after one restart. The subsequent revision-15 generator
+correction changes the package and requires refreshed native-instance validation.
+Neither result establishes public Marketplace selection of a final stable release.
 The [route-by-route validation record](releases/v2.1.2.md#validation-and-publication-status)
 keeps final-tag/draft-asset verification, post-publication Marketplace acceptance
 and legacy HACS results distinct. HACS 2.0.5 on HA 2026.10.1 subsequently installed
@@ -127,7 +128,8 @@ v2.1.1 package through a real HACS re-download. Both matched the beta asset;
 configuration and entity identities were preserved. A subsequent manual bridge
 loaded the exact stable ZIP. This does not prove published stable HACS delivery,
 managed-baseline update notification or the older-version cached-metadata edge.
-The minimal fixture also exposed a pre-existing generated-card availability
-failure, recorded separately from the installer passes in the validation record.
+The minimal fixture exposed an optional-reference generated-card defect, corrected
+in the revision-15 source. Its new package validation remains distinct from these
+earlier installer passes.
 Retain the actual-installer requirement above; metadata checks and source
 harnesses cannot fill an untested route.

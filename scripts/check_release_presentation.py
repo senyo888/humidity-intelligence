@@ -1,0 +1,91 @@
+#!/usr/bin/env python3
+"""Read-only release presentation and maintainer-note custody checks."""
+from __future__ import annotations
+
+import argparse
+from pathlib import Path
+import re
+
+ROOT = Path(__file__).resolve().parents[1]
+NOTES = "## Maintainer notes"
+RESERVED = "<!-- Reserved for the maintainer's manual notes. -->"
+
+
+def notes_block(body: str) -> str | None:
+    match = re.search(r"(?m)^## Maintainer notes[ \t]*\r?\n", body)
+    if not match:
+        return None
+    rest = body[match.end():]
+    end = re.search(r"(?m)^## ", rest)
+    return rest[:end.start()] if end else rest
+
+
+def check_pr_notes(body: str, previous: str | None = None) -> list[str]:
+    if len(re.findall(r"(?m)^## Maintainer notes[ \t]*\r?$", body)) != 1:
+        return ["PR body must contain exactly one reserved Maintainer notes section."]
+    block = notes_block(body)
+    if block is None:
+        return ["PR body omits the reserved Maintainer notes section."]
+    if not block.strip():
+        return ["Blank Maintainer notes must retain the reserved template marker."]
+    old = notes_block(previous) if previous is not None else None
+    # Preserve the owned section exactly, including existing manual prose.
+    if old is not None and old.strip() and block != old:
+        return ["Existing Maintainer notes changed; preserve the owned block verbatim."]
+    return []
+
+
+def check_sources(root: Path, wiki_root: Path | None = None) -> list[str]:
+    errors = []
+    readme = (root / "README.md").read_text()
+    first_image = re.search(r"!\[[^\]]*\]\(([^)]+)\)", readme)
+    if first_image is None or first_image.group(1) != "assets/header.png":
+        errors.append("README must retain its canonical opening product banner.")
+    if "## Release Notes" not in readme:
+        errors.append("README Release Notes section is missing.")
+    elif "assets/release_banner/" in readme.split("## Release Notes", 1)[0]:
+        errors.append("README release artwork must stay in Release Notes.")
+    site = (root / "site/index.html").read_text()
+    header = re.search(r'<header class="site-header".*?</header>', site, re.S)
+    header_contract = ('src="assets/logo.png"', 'Humidity Intelligence',
+                       'href="#inside"', 'In your home', 'href="#stability"', 'Stability Score')
+    if header is None or any(item not in header.group(0) for item in header_contract):
+        errors.append("Website must retain its established product header and navigation.")
+    hero = re.search(r'<section class="hero".*?</section>', site, re.S)
+    required = ('A clearer picture.<br><em>A steadier home.</em>',
+                'src="assets/release_banner/v2.1_release.png"',
+                'class="led-layer"', 'class="pause-motion"')
+    if hero is None or any(item not in hero.group(0) for item in required):
+        errors.append("Website must retain its established hero, artwork and controls.")
+    template = (root / ".github/pull_request_template.md").read_text()
+    if NOTES not in template or RESERVED not in template:
+        errors.append("PR template lost the reserved Maintainer notes contract.")
+    if wiki_root is not None:
+        home = (wiki_root / "Home.md").read_text()
+        if not home.startswith("![Humidity Intelligence Wiki](assets/hi-wiki-banner.png)"):
+            errors.append("Wiki Home must retain its canonical opening banner.")
+        if "release_banner/" in home:
+            errors.append("Wiki Home release emphasis must preserve the product header.")
+    return errors
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--wiki-root", type=Path)
+    parser.add_argument("--pr-body", type=Path)
+    parser.add_argument("--previous-pr-body", type=Path)
+    args = parser.parse_args()
+    errors = check_sources(ROOT, args.wiki_root)
+    if args.previous_pr_body and not args.pr_body:
+        parser.error("--previous-pr-body requires --pr-body")
+    if args.pr_body:
+        errors += check_pr_notes(args.pr_body.read_text(), args.previous_pr_body.read_text() if args.previous_pr_body else None)
+    if errors:
+        print("\n".join(errors))
+        return 1
+    print("Release presentation and selected maintainer-note custody checks passed.")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

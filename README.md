@@ -60,7 +60,7 @@ It gives you:
 
 Install the complete package and restart Home Assistant. From v2.1.1 or older
 cards, refresh/export the V2 layouts and replace the complete saved Manual-card
-YAML. Existing v2.1.2-beta.1 revision-14 cards stay compatible. Restarting clears
+YAML. Beta.1 revision-14 cards also need replacement. Restarting clears
 in-memory Stability history. See the [upgrade guide](docs/releases/v2.1.2.md#updating-and-rollback).
 
 Check [GitHub Releases](https://github.com/senyo888/humidity-intelligence/releases/latest)
@@ -511,15 +511,16 @@ current release preparation. It combines component-only Marketplace/HACS deliver
 canonical air-quality units, complete-evidence CO clearance, preserved gate/slope
 settings and clearer update observations.
 
-Both V2 layouts use **revision 14**, schema **1** and generator contract **1**.
-Beta.1 cards remain compatible. From v2.1.1 or earlier, refresh/export and replace
-the complete saved Manual-card YAML after installing the full package and restarting.
+Both V2 layouts use **revision 15**, superseding 1–14, with schema **1** and generator
+contract **1**. From beta.1 revision-14 cards or earlier, run `refresh_ui`, export
+with `view_cards` or `dump_cards`, and replace the complete saved Manual-card YAML
+after installing the full package and restarting.
 No configuration-entry or entity-ID migration is required; restarting clears
 in-memory Stability history.
 
 The [release record](docs/releases/v2.1.2.md#validation-and-publication-status)
-separates successful installer and Stable-instance checks from the open
-optional-reference generated-card defect. Published Stable remains
+records exact package validation and the required optional-reference generator
+correction. Published Stable remains
 [v2.1.1](#v211-current-stable). Its single-level dashboards, explained updates and
 reporting improvements continue in v2.1.2, alongside Stability Score.
 
@@ -821,12 +822,12 @@ CO emergency pressure. Details are in
 
 **Home Assistant 2026.11 Harmonization** brings smaller Marketplace downloads,
 consistent air-quality units, complete-evidence CO clearance and clearer update
-status. The stable candidate passed a Stable-instance upgrade with the reviewed
-beta runtime and revision-14 cards. Keep beta.1 cards; replace v2.1.1 cards with
-fresh exports. Legacy HACS beta installation and replacement also passed; the
-minimal fixture exposed a pre-existing optional-reference card defect that remains
-open. [Validation, known issue and upgrade details](docs/releases/v2.1.2.md).
-Published Stable remains v2.1.1 pending promotion and publication.
+status. It also corrects optional generated-card references so unconfigured sources
+cannot bind unrelated legacy entities. Both V2 layouts advance to **revision 15**;
+refresh/export and replace complete saved cards, including beta.1 revision-14 cards.
+[Validation and upgrade details](docs/releases/v2.1.2.md) distinguish the changed
+package from earlier installer and Stable-instance evidence. Published Stable
+remains v2.1.1 pending promotion and publication.
 
 Thanks to [@Slaybcn](https://github.com/Slaybcn) for the report and logs, and
 [@Thorsten1982](https://github.com/Thorsten1982) for confirming the Marketplace
@@ -835,6 +836,8 @@ installation problem in [#145](https://github.com/senyo888/humidity-intelligence
 <a id="v211-stable-source-preparation"></a>
 
 ### v2.1.1 (Current Stable)
+
+**Current Stable: v2.1.1** — published 24 October 2026.
 
 ![Humidity Intelligence v2.1.1 — single-level cards and clearer update status](assets/release_banner/v2.1.1_release.png)
 

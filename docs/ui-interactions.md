@@ -1,8 +1,9 @@
 # V2 touch and keyboard interactions
 
 V2.1.1 retains native-button activation and the Stability hold-to-toggle behavior.
-Version 2.1.2 retains the beta.1 UI revision **14** in both V2 layouts, stamp schema 1 and generator
-contract 1. The footer presents UI compatibility and optional Marketplace/HACS update evidence
+Version 2.1.2 advances both V2 layouts to revision **15**, superseding 1–14, with stamp schema 1 and generator
+contract 1 unchanged. Re-export and replace saved cards, including beta.1 revision-14 cards,
+for the optional-source generator correction. The footer presents UI compatibility and optional Marketplace/HACS update evidence
 separately. See the [compatibility guide](home-assistant-2026.11.md) for these changes.
 [Stable v2.1.1 notes](releases/v2.1.1.md) describe the published release;
 [earlier interaction changes](../CHANGELOG.md) retain their historical scope.

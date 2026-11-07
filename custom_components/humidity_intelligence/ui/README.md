@@ -42,13 +42,17 @@ Feature parity is maintained.
 
 ## UI revision and software-update footer
 
-V2.1.2 retains both V2 layouts at revision 14 from v2.1.2-beta.1,
-superseding 1–13; stamp schema/generator remain 1. Existing beta.1 revision-14
-cards remain compatible: the stable version change alone requires no replacement.
-From revision 13 or earlier, export and replace complete saved Manual-card YAML
-for Marketplace observation. Revision-13 cards treat Marketplace updates as
-unverified; revision-14 cards also support legacy HACS. Package updates require
-a full restart. GitHub Releases records publication separately from package identity.
+V2.1.2 advances both V2 layouts to **revision 15**, superseding 1–14;
+stamp schema/generator remain 1. The generator removes unconfigured optional
+sources before entity substitution, including JavaScript lookups, so unrelated
+legacy-named entities cannot affect the display. Configured missing or unavailable
+sources remain visible to validation.
+
+Install the complete package, restart, refresh/export and replace the complete
+saved V2 Manual-card YAML, including beta.1 revision-14 cards. Existing cards are
+not rewritten automatically. Revision-13 cards treat Marketplace evidence as
+unverified; revision 14 introduced dual Marketplace/HACS observation. GitHub
+Releases records publication separately from package identity.
 
 The bottom-left LED compares this rendered card's revision with its backend's
 compatible target. It distinguishes current, update, differing revision and

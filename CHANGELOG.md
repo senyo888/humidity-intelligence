@@ -8,29 +8,28 @@ This project follows a practical changelog format for Home Assistant and HACS us
 
 ## v2.1.2 — Stable source preparation
 
-**Home Assistant 2026.11 Harmonization.** Retains the complete reviewed beta.1
-implementation: component ZIP delivery, Marketplace/HACS observation, canonical
-AQ units, complete-evidence CO clearance, preserved gate settings and saved slope
-identities. Manifest identity and packaged guidance change; runtime and generated
-cards remain unchanged. Both V2 layouts retain revision 14/schema 1/generator 1.
+**Home Assistant 2026.11 Harmonization.** Includes component ZIP delivery,
+Marketplace/HACS observation, canonical AQ units, complete-evidence CO clearance,
+preserved gate settings and saved slope identities.
 
-Existing beta.1 revision-14 cards need no replacement solely for this version
-change. From v2.1.1, refresh/export and replace saved cards after the complete
-package update and restart. Restart resets in-memory Stability history.
-The exact stable candidate passed a manual Stable-instance upgrade on Home
-Assistant 2026.11.0 after one restart. Runtime checks passed with explained input
-and history warnings; configuration and entity identities were preserved.
-[Validation and upgrade record](docs/releases/v2.1.2.md). Published Stable remains
-v2.1.1; final published Marketplace delivery is separate from this test.
+- Fix generated optional JavaScript references that could bind unrelated legacy
+  entities when those sources were not configured. Remove absent source bindings
+  before mapping, preserving explicitly mapped entities even when their names look
+  like legacy placeholders. Keep missing/unavailable configured-input checks intact.
+- Advance both V2 layouts to revision **15**, superseding 1–14; stamp schema and
+  generator contract remain **1**. Refresh/export and replace complete saved V2
+  cards, including beta.1 revision-14 cards, after a complete update and restart.
+- Preserve canonical README, website and Wiki headers; place the release write-up
+  below established content and retain the maintainer-owned notes workflow.
+
+This changes the generator package beyond the previously tested revision-14
+candidate. Earlier Marketplace/HACS installer and manual Stable-instance results
+remain bound to their exact packages. See the [validation and upgrade record](docs/releases/v2.1.2.md).
+Published Stable remains v2.1.1; final published delivery is still separate.
 
 Thanks to [@Slaybcn](https://github.com/Slaybcn) for reporting the Marketplace
 installation failure and sharing logs in [#145](https://github.com/senyo888/humidity-intelligence/issues/145),
 and to [@Thorsten1982](https://github.com/Thorsten1982) for confirming the same issue.
-
-Legacy HACS 2.0.5 beta fresh installation and package replacement over a manual
-v2.1.1 baseline passed; a manual exact-stable bridge also loaded successfully.
-The minimal fixture exposed a pre-existing optional-reference generated-card
-availability failure. See the [validation and known-issue record](docs/releases/v2.1.2.md#known-generated-card-issue-found-during-validation).
 
 ## v2.1.2-beta.1 — Beta prerelease (2026-11-07)
 

@@ -387,6 +387,10 @@ async def async_register_cards(hass: HomeAssistant, entry_id: str, mapping: Dict
         content = _apply_level_labels(content, level_labels)
         if name in {"v2_mobile", "v2_tablet"}:
             content = _apply_configured_level_inventory(content, entry, level_labels)
+        # Remove absent optional source placeholders before substituting mappings.
+        # A configured entity may legitimately use a different placeholder's name.
+        content = _prune_unresolved_entity_items(content, unresolved)
+        content = _neutralize_unresolved_optional_js(content, unresolved)
         # Replace placeholders safely (avoid partial matches like binary_sensor.*)
         for placeholder, entity_id in mapping.items():
             if not entity_id:
@@ -408,7 +412,6 @@ async def async_register_cards(hass: HomeAssistant, entry_id: str, mapping: Dict
             content,
         )
 
-        content = _prune_unresolved_entity_items(content, unresolved)
         content = _prune_empty_card_lists(content)
         content = _prune_invalid_conditional_cards(content)
         content = _prune_empty_card_lists(content)
@@ -561,6 +564,29 @@ def _is_optional_placeholder(placeholder: str) -> bool:
             "input_boolean.toggle",
         )
     )
+
+
+def _neutralize_unresolved_optional_js(content: str, unresolved: List[str]) -> str:
+    """Keep unconfigured optional sources absent even if legacy IDs exist in HA.
+
+    Work on source literals inside button-card JavaScript only, before mapping.
+    Resolved entities remain referenced regardless of current state availability.
+    ``null`` is an absence value, not a fabricated Home Assistant entity.
+    """
+    absent = {item for item in unresolved if _is_optional_placeholder(item)}
+    if not absent:
+        return content
+    # Canonical templates use exact quoted entity IDs. Match those literals
+    # directly: HTML template strings contain quotes that are not JS tokens.
+    quoted = re.compile(
+        r"(?<!\\)(['\"])(?:" + "|".join(re.escape(item) for item in sorted(absent)) + r")\1"
+    )
+
+    def replace_block(block: re.Match[str]) -> str:
+        body = quoted.sub("null", block.group(1))
+        return "[[[" + body + "]]]"
+
+    return re.sub(r"\[\[\[(.*?)\]\]\]", replace_block, content, flags=re.DOTALL)
 
 
 def _should_prune_unresolved_entity_line(placeholder: str) -> bool:

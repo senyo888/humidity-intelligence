@@ -362,8 +362,13 @@ exports omit the locally resolved update entity ID. See [UI and software version
 details](docs/ui-revision-status.md#software-update-observation).
 
 In 2.1.2, schema-1 provider identity is `hacs`, `marketplace`, or null
-when unresolved. Both V2 layouts advance to revision 14. Old revision-13 cards
-conservatively reject Marketplace evidence; schema/generator 1 remains supported.
+when unresolved. Both V2 layouts use revision 15, superseding revisions 1–14.
+Revision 14 introduced Marketplace observation; revision 15 removes unconfigured
+optional-source literals from generated JavaScript before applying configured
+entity mappings. Mapped missing/unknown/unavailable sources remain visible to
+validation. Re-export and replace older saved cards, including beta.1 revision 14.
+Old revision-13 cards conservatively reject Marketplace evidence; schema/generator 1
+remains supported.
 
 ## Canonical AQ Inputs And Complete CO Clearance
 

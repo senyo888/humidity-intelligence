@@ -2,7 +2,7 @@
 
 The landing page mirrors tracked product and release claims; the repository and
 Wiki own setup, compatibility and operational detail. V2.1.2 has a text section directly below the established hero, **Home Assistant 2026.11 Harmonization**, with Marketplace delivery,
-air-quality units, update status and two-path card upgrade guidance. Published
+air-quality units, update status and revision-15 card upgrade guidance. Published
 Stable remains v2.1.1 during preparation; update that status only after publication.
 
 The established V2.1 hero title, artwork, LED overlay and pause control are
@@ -12,8 +12,9 @@ is not live telemetry; the Stability Score explanation remains in its own sectio
 the #145 reporters without implying they tested the fix.
 
 The main-only Pages workflow includes the V2.1, v2.1.1 and v2.1.2 artwork.
-The release block records the completed Stable-instance candidate test while
-retaining v2.1.1 as Published Stable. Installer coverage stays in the release notes.
+The release block distinguishes the earlier Stable-instance test from refreshed
+validation of the revision-15 package, retaining v2.1.1 as Published Stable.
+Installer coverage stays in the release notes.
 Prepared-release links point to the canonical `senyo888-patch-1` records so review
 links resolve before promotion. At publication, switch preparation status and links
 to the verified immutable release. Users check the offered Marketplace/HACS version
