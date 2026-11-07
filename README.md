@@ -830,10 +830,10 @@ CO emergency pressure. Details are in
 
 **Home Assistant 2026.11 Harmonization** brings smaller Marketplace downloads,
 consistent air-quality units, complete-evidence CO clearance and clearer update
-status. This stable source retains the reviewed beta runtime and revision-14 cards.
-Existing beta.1 cards stay compatible; from v2.1.1, export and replace saved cards.
-[Release and upgrade details](docs/releases/v2.1.2.md). Published Stable remains
-v2.1.1 until final validation, promotion and publication complete.
+status. The stable candidate passed a Stable-instance upgrade with the reviewed
+beta runtime and revision-14 cards. Keep beta.1 cards; replace v2.1.1 cards with
+fresh exports. [Validation and upgrade details](docs/releases/v2.1.2.md).
+Published Stable remains v2.1.1 pending promotion and publication.
 
 Thanks to [@Slaybcn](https://github.com/Slaybcn) for the report and logs, and
 [@Thorsten1982](https://github.com/Thorsten1982) for confirming the Marketplace

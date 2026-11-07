@@ -114,3 +114,13 @@ Both installed packages matched all 78 released files; loaded-code identity and
 configuration restoration were verified. This does not establish a legacy HACS
 install or automatic update notification from a Marketplace-managed baseline.
 See the [dated validation record](releases/v2.1.2-beta.1.md#validation-and-limits).
+
+The exact stable candidate also passed a manual Stable-instance upgrade on
+Home Assistant 2026.11.0, with package parity, loaded identity and preserved
+configuration verified after one restart. This closes the Stable-instance test;
+it does not establish public Marketplace selection of a final stable release.
+The [route-by-route validation record](releases/v2.1.2.md#validation-and-publication-status)
+keeps final-tag/draft-asset verification, post-publication Marketplace acceptance
+and untested legacy HACS installation distinct. Retain the actual-installer
+validation requirement above; metadata checks and source harnesses cannot fill
+an untested route.

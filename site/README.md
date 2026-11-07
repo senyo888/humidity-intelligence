@@ -12,6 +12,8 @@ not represent live telemetry. A compact linked history connects 2.1.0, 2.1.1 and
 the #145 reporters without implying they tested the fix.
 
 The main-only Pages workflow includes the V2.1, v2.1.1 and v2.1.2 artwork.
+The release block records the completed Stable-instance candidate test while
+retaining v2.1.1 as Published Stable. Installer coverage stays in the release notes.
 Release-note links point to canonical records on main. Users check the offered
 Marketplace/HACS version and loaded Home Assistant identity separately.
 

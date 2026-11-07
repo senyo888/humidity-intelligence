@@ -17,8 +17,11 @@ cards remain unchanged. Both V2 layouts retain revision 14/schema 1/generator 1.
 Existing beta.1 revision-14 cards need no replacement solely for this version
 change. From v2.1.1, refresh/export and replace saved cards after the complete
 package update and restart. Restart resets in-memory Stability history.
-[Stable validation and upgrade record](docs/releases/v2.1.2.md).
-Published Stable remains v2.1.1 until publication; beta test history follows.
+The exact stable candidate passed a manual Stable-instance upgrade on Home
+Assistant 2026.11.0 after one restart. Runtime checks passed with explained input
+and history warnings; configuration and entity identities were preserved.
+[Validation and upgrade record](docs/releases/v2.1.2.md). Published Stable remains
+v2.1.1; final published Marketplace delivery is separate from this test.
 
 Thanks to [@Slaybcn](https://github.com/Slaybcn) for reporting the Marketplace
 installation failure and sharing logs in [#145](https://github.com/senyo888/humidity-intelligence/issues/145),
