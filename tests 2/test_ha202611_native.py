@@ -161,6 +161,23 @@ class NativeAlignmentTests(unittest.IsolatedAsyncioTestCase):
         )
         self.assertIsNotNone(issue)
         self.assertEqual(issue.translation_placeholders, {"entities": invalid_source})
+        self.hass.states.async_set(unavailable_source, "30")
+        await self.hass.async_block_till_done()
+        issue = registry.async_get_issue(
+            "humidity_intelligence", "co_unit_unsupported_example_mixed"
+        )
+        self.assertIsNotNone(issue)
+        self.assertEqual(
+            issue.translation_placeholders,
+            {"entities": f"{unavailable_source}, {invalid_source}"},
+        )
+        self.hass.states.async_set(unavailable_source, "unavailable")
+        await self.hass.async_block_till_done()
+        issue = registry.async_get_issue(
+            "humidity_intelligence", "co_unit_unsupported_example_mixed"
+        )
+        self.assertIsNotNone(issue)
+        self.assertEqual(issue.translation_placeholders, {"entities": invalid_source})
         cleanups.pop()()
 
     async def test_co_repairs_clear_existing_warning_for_unavailable_states_and_retained_units(self):
