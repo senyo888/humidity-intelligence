@@ -19,8 +19,10 @@ The release block keeps v2.1.1 as Published Stable and points to the current
 validation record. The earlier `0d99f598` revision-16 package passed minimal-instance
 and Stable acceptance, with 13 passes, 3 explained warnings and no failures on
 Stable. The later CO-unit Repairs and calculated-slope correction changes package
-bytes; its installed acceptance is pending. Final published Marketplace delivery
-remains separate. The maintainer approved the corrected website; this follow-up
+bytes. The final `cc709769` package completed its own Stable acceptance with
+13 passes, 3 explained warnings and no failures; both saved V2 cards were verified
+at revision 16 in browser checks. Final published Marketplace delivery remains
+separate. The maintainer approved the corrected website; this follow-up
 leaves its rendered source unchanged. Approval does not claim Pages deployment.
 Installer coverage stays in the release notes.
 Prepared-release links point to the canonical `senyo888-patch-1` records so review

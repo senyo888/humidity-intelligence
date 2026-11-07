@@ -123,9 +123,11 @@ validation and Stable acceptance on HA 2026.11.0, with 13 passes, 3 explained
 warnings and no failures. All 78 files matched; five exports and live revision 16
 were verified, with configuration, registry and saved-dashboard preservation.
 The subsequent CO-unit Repairs and calculated-slope follow-up changes component
-bytes without changing UI revision 16. Its installed acceptance remains pending;
-the earlier installed results cannot establish the revised package. Neither result
-establishes public Marketplace selection of a final stable release.
+bytes without changing UI revision 16. The final `cc709769` package, including
+Marketplace setup guidance, passed its own Stable acceptance: all 79 files matched,
+13 checks passed with 3 explained warnings and no failures, and both saved V2 cards
+were verified at revision 16 in browser checks. These results do not establish
+public Marketplace selection of a final stable release.
 The [route-by-route validation record](releases/v2.1.2.md#validation-and-publication-status)
 keeps final-tag/draft-asset verification, post-publication Marketplace acceptance
 and legacy HACS results distinct. HACS 2.0.5 on HA 2026.10.1 subsequently installed
