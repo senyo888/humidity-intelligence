@@ -5,12 +5,12 @@ Wiki own setup, compatibility and operational detail. V2.1.2 has a text section 
 air-quality units, update status and revision-16 card upgrade guidance. Published
 Stable remains v2.1.1 during preparation; update that status only after publication.
 
-The original product hero uses the Humidity Intelligence name and logo over the
-house artwork (`assets/site/github-pages-hero.png`). The maintainer approved its
-restoration on 7 November 2026 and moved the V2.1 release artwork, LED overlay and
-pause control into section 02 alongside Stability Score. The illustration is not
-live telemetry. Future release emphasis does not authorize replacing the product
-hero. A compact linked history connects 2.1.0, 2.1.1 and
+The product hero uses the same image as the issue welcome message:
+`assets/first-interaction-welcome.png`, behind the Humidity Intelligence wording.
+The V2.1 release artwork, LED overlay and pause control
+belong in section 02 alongside Stability Score. The illustration is not live
+telemetry. Release emphasis does not authorize replacing the product hero.
+A compact linked history connects 2.1.0, 2.1.1 and
 2.1.2 without repeating their detailed notes. Credits in the release block thank
 the #145 reporters without implying they tested the fix.
 

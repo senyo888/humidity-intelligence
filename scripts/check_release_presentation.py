@@ -66,8 +66,15 @@ def check_sources(root: Path, wiki_root: Path | None = None) -> list[str]:
         errors.append("Section 02 must retain the V2.1 artwork, LEDs and pause control.")
     styles = (root / "site/styles.css").read_text()
     hero_background = re.search(r"\.hero::before\s*\{([^}]+)\}", styles)
-    if hero_background is None or "assets/site/github-pages-hero.png" not in hero_background.group(1):
-        errors.append("The product hero must use the original website artwork.")
+    welcome_workflow = (root / ".github/workflows/first-interaction.yml").read_text()
+    welcome_image = re.search(
+        r"issue_message:\s*\|\s*!\[[^\]]*\]\([^)]*/(assets/[^)]+)\)",
+        welcome_workflow,
+    )
+    if welcome_image is None:
+        errors.append("The issue welcome image reference could not be verified.")
+    elif hero_background is None or welcome_image.group(1) not in hero_background.group(1):
+        errors.append("The website hero must use the same image as the issue welcome.")
     template = (root / ".github/pull_request_template.md").read_text()
     if NOTES not in template or RESERVED not in template:
         errors.append("PR template lost the reserved Maintainer notes contract.")

@@ -11,8 +11,9 @@ Wiki `assets/hi-wiki-banner.png` unless the maintainer explicitly approves repla
 that surface. Compare the original and proposed structure during review. Keep release
 write-ups below established content; README release artwork belongs in `Release Notes`.
 Do not change test baselines merely to make an unapproved redesign pass. The approved website
-placement retains the original HI logo/name hero over `assets/site/github-pages-hero.png`;
-the V2.1 artwork, LEDs and pause control belong in section 02 (Stability Score).
+placement retains the HI logo/name hero over `assets/first-interaction-welcome.png`,
+the same image used by the issue welcome message.
+The V2.1 artwork, LEDs and pause control belong in section 02 (Stability Score).
 
 Use `.github/pull_request_template.md` when preparing or updating a PR. Preserve its
 `Maintainer notes` section and any existing human-authored content verbatim. That

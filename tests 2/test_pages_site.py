@@ -171,6 +171,7 @@ class PagesSiteTests(unittest.TestCase):
 
         self.assertIn("assets/logo.png", parser.images)
         self.assertIn("assets/site/github-pages-hero.png", assets)
+        self.assertIn("assets/first-interaction-welcome.png", assets)
         self.assertIn("assets/release_banner/v2.1_release.png", parser.images)
         self.assertIn("Home Assistant 2026.11 Harmonization", html)
         self.assertIn("v2.1.2 · In preparation", html)

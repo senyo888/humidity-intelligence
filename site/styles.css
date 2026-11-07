@@ -255,7 +255,7 @@ a:focus-visible,summary:focus-visible {
   position:absolute;
   inset:0;
   content:"";
-  background:url('assets/site/github-pages-hero.png') center/cover no-repeat;
+  background:url('assets/first-interaction-welcome.png') center/cover no-repeat;
   opacity:.72;
 }
 
