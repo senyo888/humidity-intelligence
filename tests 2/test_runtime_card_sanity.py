@@ -3995,7 +3995,7 @@ def test_v21_publication_preserves_stable_and_candidate_history():
     assert "export" in notes.lower()
     highlights = readme.split("## Current Release Highlights", 1)[1].split("## Installation", 1)[0]
     assert "`refresh_ui`" in highlights and "`view_cards`" in highlights and "`dump_cards`" in highlights
-    assert "revision 15" in highlights and "superseding 1–14" in highlights
+    assert "revision 16" in highlights and "superseding 1–15" in highlights
     assert "beta.1 revision-14 cards or earlier" in highlights
     stable_notes = notes.split("### v2.1.1 (Current Stable)", 1)[1]
     assert "Revision **13**" in stable_notes and "compatible with beta.4/RC.1" in stable_notes
