@@ -532,19 +532,24 @@ reporting improvements continue in v2.1.2, alongside Stability Score.
 
 Requires Home Assistant **2026.5.1** or newer.
 
+Until **v2.1.2 Stable is published**, the default release is v2.1.1, whose archive
+exceeds Marketplace's download limit. For Stable, use the complete component from
+the [v2.1.1 tag](https://github.com/senyo888/humidity-intelligence/tree/v2.1.1/custom_components/humidity_intelligence)
+and follow [Option B](#option-b---manual-package-upgrade). For testing, explicitly
+select [v2.1.2-beta.1](https://github.com/senyo888/humidity-intelligence/releases/tag/v2.1.2-beta.1)
+before installing; it provides the smaller install ZIP.
+
 On **2026.11+**, open **Settings → Marketplace**, find **Humidity Intelligence**,
-and select **Install**. A fresh installation can open its setup flow directly.
-On earlier supported versions, open **HACS → Integrations**, download HI, restart,
-and add it through **Settings → Devices & services**. Updates require a full restart.
+select the intended available version, then **Install**. A fresh installation can
+open its setup flow directly. On earlier supported versions, open **HACS →
+Integrations**, select the intended version, download HI, restart, and add it through
+**Settings → Devices & services**. Updates require a full restart.
 
 [![Open Humidity Intelligence in Marketplace or HACS.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=senyo888&repository=humidity-intelligence&category=integration)
 
-The button opens the repository page; it does not install automatically. Published
-**v2.1.1 exceeds Marketplace's archive limit** and can fail to download. The
-[v2.1.2-beta.1 prerelease](https://github.com/senyo888/humidity-intelligence/releases/tag/v2.1.2-beta.1)
-provides a smaller install ZIP; select the beta explicitly for testing. Stable remains
-v2.1.1, with [exact-tag manual recovery](docs/release-packaging.md#earlier-versions-and-current-evidence-limits) available. See
-[2026.11 compatibility](docs/home-assistant-2026.11.md), including corrected AQ units.
+The button opens the repository page; it does not install automatically. See the
+[older-version installation limits](docs/release-packaging.md#earlier-versions-and-current-evidence-limits)
+and [2026.11 compatibility](docs/home-assistant-2026.11.md), including corrected AQ units.
 
 ### Option B - Manual package upgrade
 

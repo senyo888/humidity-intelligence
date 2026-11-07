@@ -12,17 +12,40 @@ NOTES = "## Maintainer notes"
 RESERVED = "<!-- Reserved for the maintainer's manual notes. -->"
 
 
+def _section_headings(body: str) -> list[tuple[str, int, int]]:
+    """Locate level-two ATX headings outside fenced Markdown examples."""
+    headings = []
+    fence = ""
+    offset = 0
+    for line in body.splitlines(keepends=True):
+        text = line.rstrip("\r\n")
+        if fence:
+            if re.fullmatch(r" {0,3}" + re.escape(fence[0]) + r"{" + str(len(fence)) + r",}[ \t]*", text):
+                fence = ""
+        else:
+            opening = re.match(r" {0,3}(`{3,}|~{3,})(.*)$", text)
+            if opening and not (opening[1][0] == "`" and "`" in opening[2]):
+                fence = opening[1]
+            else:
+                heading = re.fullmatch(r" {0,3}##(?:[ \t]+(.*))?", text)
+                if heading:
+                    title = re.sub(r"[ \t]+#+[ \t]*$", "", heading[1] or "").strip()
+                    headings.append((title, offset, offset + len(line)))
+        offset += len(line)
+    return headings
+
+
 def notes_block(body: str) -> str | None:
-    match = re.search(r"(?m)^## Maintainer notes[ \t]*\r?\n", body)
-    if not match:
-        return None
-    rest = body[match.end():]
-    end = re.search(r"(?m)^## ", rest)
-    return rest[:end.start()] if end else rest
+    headings = _section_headings(body)
+    for index, (title, _start, end) in enumerate(headings):
+        if title == "Maintainer notes":
+            stop = headings[index + 1][1] if index + 1 < len(headings) else len(body)
+            return body[end:stop]
+    return None
 
 
 def check_pr_notes(body: str, previous: str | None = None) -> list[str]:
-    if len(re.findall(r"(?m)^## Maintainer notes[ \t]*\r?$", body)) != 1:
+    if sum(title == "Maintainer notes" for title, _, _ in _section_headings(body)) != 1:
         return ["PR body must contain exactly one reserved Maintainer notes section."]
     block = notes_block(body)
     if block is None:
@@ -38,7 +61,7 @@ def check_pr_notes(body: str, previous: str | None = None) -> list[str]:
 
 def check_sources(root: Path, wiki_root: Path | None = None) -> list[str]:
     errors = []
-    readme = (root / "README.md").read_text()
+    readme = (root / "README.md").read_text(encoding="utf-8")
     first_image = re.search(r"!\[[^\]]*\]\(([^)]+)\)", readme)
     if first_image is None or first_image.group(1) != "assets/header.png":
         errors.append("README must retain its canonical opening product banner.")
@@ -46,7 +69,7 @@ def check_sources(root: Path, wiki_root: Path | None = None) -> list[str]:
         errors.append("README Release Notes section is missing.")
     elif "assets/release_banner/" in readme.split("## Release Notes", 1)[0]:
         errors.append("README release artwork must stay in Release Notes.")
-    site = (root / "site/index.html").read_text()
+    site = (root / "site/index.html").read_text(encoding="utf-8")
     header = re.search(r'<header class="site-header".*?</header>', site, re.S)
     header_contract = ('src="assets/logo.png"', 'Humidity Intelligence',
                        'href="#inside"', 'In your home', 'href="#stability"', 'Stability Score')
@@ -64,9 +87,9 @@ def check_sources(root: Path, wiki_root: Path | None = None) -> list[str]:
                'class="led-layer"', 'class="pause-motion"')
     if stability is None or any(item not in stability.group(0) for item in artwork):
         errors.append("Section 02 must retain the V2.1 artwork, LEDs and pause control.")
-    styles = (root / "site/styles.css").read_text()
+    styles = (root / "site/styles.css").read_text(encoding="utf-8")
     hero_background = re.search(r"\.hero::before\s*\{([^}]+)\}", styles)
-    welcome_workflow = (root / ".github/workflows/first-interaction.yml").read_text()
+    welcome_workflow = (root / ".github/workflows/first-interaction.yml").read_text(encoding="utf-8")
     welcome_image = re.search(
         r"issue_message:\s*\|\s*!\[[^\]]*\]\([^)]*/(assets/[^)]+)\)",
         welcome_workflow,
@@ -75,16 +98,16 @@ def check_sources(root: Path, wiki_root: Path | None = None) -> list[str]:
         errors.append("The issue welcome image reference could not be verified.")
     elif hero_background is None or welcome_image.group(1) not in hero_background.group(1):
         errors.append("The website hero must use the same image as the issue welcome.")
-    template = (root / ".github/pull_request_template.md").read_text()
+    template = (root / ".github/pull_request_template.md").read_text(encoding="utf-8")
     if NOTES not in template or RESERVED not in template:
         errors.append("PR template lost the reserved Maintainer notes contract.")
-    version = json.loads((root / "custom_components/humidity_intelligence/manifest.json").read_text())["version"]
+    version = json.loads((root / "custom_components/humidity_intelligence/manifest.json").read_text(encoding="utf-8"))["version"]
     if "-" not in version:
         release = root / "docs/releases" / f"v{version}.md"
-        if not release.is_file() or "## A note from Senyo" not in release.read_text():
+        if not release.is_file() or "## A note from Senyo" not in release.read_text(encoding="utf-8"):
             errors.append("Stable release notes must retain the maintainer's personal notes section.")
     if wiki_root is not None:
-        home = (wiki_root / "Home.md").read_text()
+        home = (wiki_root / "Home.md").read_text(encoding="utf-8")
         if not home.startswith("![Humidity Intelligence Wiki](assets/hi-wiki-banner.png)"):
             errors.append("Wiki Home must retain its canonical opening banner.")
         if "release_banner/" in home:
@@ -102,7 +125,7 @@ def main() -> int:
     if args.previous_pr_body and not args.pr_body:
         parser.error("--previous-pr-body requires --pr-body")
     if args.pr_body:
-        errors += check_pr_notes(args.pr_body.read_text(), args.previous_pr_body.read_text() if args.previous_pr_body else None)
+        errors += check_pr_notes(args.pr_body.read_text(encoding="utf-8"), args.previous_pr_body.read_text(encoding="utf-8") if args.previous_pr_body else None)
     if errors:
         print("\n".join(errors))
         return 1

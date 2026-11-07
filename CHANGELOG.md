@@ -19,6 +19,12 @@ preserved gate settings and saved slope identities.
 - Advance both V2 layouts to revision **16**, superseding 1–15; stamp schema and
   generator contract remain **1**. Refresh/export and replace complete saved V2
   cards, including beta.1 revision-14 cards, after a complete update and restart.
+- Warn through Home Assistant Repairs when configured CO sources lack supported
+  units, without inferring units or changing control behavior.
+- Restore unambiguous calculated kitchen slopes from separately configured sources;
+  preserve supplied-slope identity and reject other-room or ambiguous fallbacks.
+- Harden maintainer-note checks against fenced examples and locale-dependent
+  decoding; show working installation choices before the Install instruction.
 - Preserve canonical README, website and Wiki headers; place the release write-up
   below established content and retain the maintainer-owned notes workflow.
 

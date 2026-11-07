@@ -949,25 +949,24 @@ class _CoreComputations:
         data = self.hass.data.get(DOMAIN, {}).get(self.entry.entry_id, {})
         slope_map: Dict[str, str] = data.get("slope_map", {})
         temp_entity = self._find_room_entity_id(room_hint, "temperature")
-        if temp_entity:
+        if temp_entity and temp_entity in slope_map:
             return slope_map.get(temp_entity)
-        if (self._effective_config().get("slope") or {}).get("mode") == "user_provided":
+        if (self._effective_config().get("slope") or {}).get("mode") != "hi_calculates":
             return None
 
         room_hint_lower = room_hint.lower()
+        candidates = []
         for source_entity, slope_entity in slope_map.items():
-            source_room = ""
-            for room, sensors in self.rooms.items():
-                if sensors.get("temperature") == source_entity:
-                    source_room = room
-                    break
-            if source_room and room_hint_lower in source_room.lower():
-                return slope_entity
-            if room_hint_lower in source_entity.lower():
-                return slope_entity
-            if room_hint_lower in slope_entity.lower():
-                return slope_entity
-        return None
+            source_rooms = [str(item["room"]) for item in self.telemetry
+                            if item.get("sensor_type") == "temperature"
+                            and item.get("entity_id") == source_entity and item.get("room")]
+            if source_rooms:
+                # An explicit room association takes precedence over entity names.
+                if all(room_hint_lower in room.lower() for room in source_rooms):
+                    candidates.append(slope_entity)
+            elif room_hint_lower in source_entity.lower() or room_hint_lower in slope_entity.lower():
+                candidates.append(slope_entity)
+        return candidates[0] if len(candidates) == 1 else None
 
     def _find_room_entity_id(self, room_hint: str, sensor_type: str) -> Optional[str]:
         room_hint = room_hint.lower()

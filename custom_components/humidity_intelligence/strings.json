@@ -916,6 +916,10 @@
     "house_humidity_mean_7d_missing": {
       "title": "House humidity drift needs a Statistics helper",
       "description": "Humidity Intelligence cannot calculate 7-day house humidity drift until `{dependency_entity}` exists. Create a Home Assistant Statistics helper named House Humidity Mean 7d using `{source_entity}` as the source, state characteristic `mean`, and max age 7 days. The helper entity ID must be exactly `sensor.house_humidity_mean_7d`; rename the entity ID manually if Home Assistant creates a different one. Drift will stay unavailable until Home Assistant reports sufficient recorder/statistics coverage. Do not fabricate history."
+    },
+    "co_unit_unsupported": {
+      "title": "CO source units need attention",
+      "description": "These configured carbon monoxide sources have no supported concentration unit: {entities}. HI cannot use their readings to activate CO emergency ventilation. Check the source integration or template and supply its actual unit explicitly as ppm or ppb. Do not infer a unit or relabel a different measurement. This notice clears when the units are supported; missing or invalid readings still remain unavailable. HI does not change your sensors, thresholds or outputs."
     }
   },
   "selector": {

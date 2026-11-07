@@ -24,6 +24,7 @@ sys.modules[PACKAGE] = package
 flow_module = importlib.import_module(PACKAGE + ".config_flow")
 observer = importlib.import_module(PACKAGE + ".helpers.update_observation")
 aq = importlib.import_module(PACKAGE + ".helpers.air_quality")
+co_repairs = importlib.import_module(PACKAGE + ".helpers.co_repairs")
 HA_INSTANCES = []
 
 
@@ -75,6 +76,83 @@ class NativeAlignmentTests(unittest.IsolatedAsyncioTestCase):
         flow = flow_module.HumidityIntelligenceOptionsFlow(entry)
         flow.hass = self.hass
         return flow, entry
+
+    async def test_co_unit_repair_uses_native_events_and_entry_cleanup(self):
+        await issue_registry.async_load(self.hass)
+        registry = issue_registry.async_get(self.hass)
+        source = "sensor.example_co"
+        cleanup = []
+        entry = SimpleNamespace(entry_id="example_co_entry", async_on_unload=cleanup.append)
+        config = {"telemetry": [{"entity_id": source, "sensor_type": "co"}] * 2,
+                  "aq": {"level1": {"enabled": False}}}
+        issue_id = "co_unit_unsupported_example_co_entry"
+        self.hass.states.async_set(source, "30")
+        co_repairs.async_setup_co_unit_repair(self.hass, entry, config)
+        issue = registry.async_get_issue("humidity_intelligence", issue_id)
+        self.assertIsNotNone(issue)
+        self.assertEqual(issue.translation_placeholders, {"entities": source})
+        self.assertEqual(issue.severity, issue_registry.IssueSeverity.WARNING)
+        for unit in ("ppm", "ppb"):
+            self.hass.states.async_set(source, "30", {"unit_of_measurement": unit})
+            await self.hass.async_block_till_done()
+            self.assertIsNone(registry.async_get_issue("humidity_intelligence", issue_id))
+            self.hass.states.async_set(source, "30", {"unit_of_measurement": "mg/m³"})
+            await self.hass.async_block_till_done()
+            self.assertIsNotNone(registry.async_get_issue("humidity_intelligence", issue_id))
+        self.assertEqual(len(cleanup), 1)
+        cleanup.pop()()
+        self.assertIsNone(registry.async_get_issue("humidity_intelligence", issue_id))
+        self.hass.states.async_set(source, "31")
+        await self.hass.async_block_till_done()
+        self.assertIsNone(registry.async_get_issue("humidity_intelligence", issue_id))
+        co_repairs.async_setup_co_unit_repair(self.hass, entry, config)
+        self.assertIsNotNone(registry.async_get_issue("humidity_intelligence", issue_id))
+        cleanup.pop()()
+
+    async def test_co_repairs_are_entry_scoped_and_do_not_infer_availability(self):
+        await issue_registry.async_load(self.hass)
+        registry = issue_registry.async_get(self.hass)
+        cleanups = []
+        for suffix in ("a", "b"):
+            entry = SimpleNamespace(entry_id="example_" + suffix, async_on_unload=cleanups.append)
+            source = "sensor.example_co_" + suffix
+            co_repairs.async_setup_co_unit_repair(self.hass, entry, {
+                "telemetry": [{"entity_id": source, "sensor_type": "co"}],
+            })
+            self.assertIsNone(registry.async_get_issue("humidity_intelligence", "co_unit_unsupported_example_" + suffix))
+            self.hass.states.async_set(source, "unavailable", {"unit_of_measurement": "ppm"})
+            await self.hass.async_block_till_done()
+            self.assertIsNone(registry.async_get_issue("humidity_intelligence", "co_unit_unsupported_example_" + suffix))
+            self.hass.states.async_set(source, "30")
+        await self.hass.async_block_till_done()
+        cleanups[0]()
+        self.assertIsNone(registry.async_get_issue("humidity_intelligence", "co_unit_unsupported_example_a"))
+        self.assertIsNotNone(registry.async_get_issue("humidity_intelligence", "co_unit_unsupported_example_b"))
+        cleanups[1]()
+
+    async def test_co_repair_uses_effective_options_without_writing_devices(self):
+        from unittest.mock import AsyncMock, patch
+
+        integration = importlib.import_module(PACKAGE + ".__init__")
+        await issue_registry.async_load(self.hass)
+        registry = issue_registry.async_get(self.hass)
+        cleanup = []
+        entry = SimpleNamespace(
+            entry_id="example_options", async_on_unload=cleanup.append,
+            data={"telemetry": [{"entity_id": "sensor.example_old_co", "sensor_type": "co"}]},
+            options={"telemetry": [{"entity_id": "sensor.example_saved_co", "sensor_type": "co"}]},
+        )
+        self.hass.states.async_set("sensor.example_old_co", "30")
+        self.hass.states.async_set("sensor.example_saved_co", "30", {"unit_of_measurement": "ppm"})
+        with patch.object(type(self.hass.services), "async_call", new_callable=AsyncMock) as service_call:
+            co_repairs.async_setup_co_unit_repair(self.hass, entry, integration._effective_entry_config(entry))
+            self.assertIsNone(registry.async_get_issue("humidity_intelligence", "co_unit_unsupported_example_options"))
+            self.hass.states.async_set("sensor.example_saved_co", "30")
+            await self.hass.async_block_till_done()
+            issue = registry.async_get_issue("humidity_intelligence", "co_unit_unsupported_example_options")
+            self.assertEqual(issue.translation_placeholders, {"entities": "sensor.example_saved_co"})
+            cleanup.pop()()
+            service_call.assert_not_called()
 
     async def test_visibility_uses_real_ha_schema_and_hidden_input_processing(self):
         for setup in (False, True):

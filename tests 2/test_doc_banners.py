@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import pathlib
+import re
 import struct
 import unittest
 
@@ -62,8 +63,9 @@ class DocumentationBannerTests(unittest.TestCase):
 
     def test_readme_keeps_product_header_and_release_art_in_release_notes(self) -> None:
         readme = (ROOT / "README.md").read_text(encoding="utf-8")
-        first_image = readme.split("![", 1)[1].split(")", 1)[0]
-        self.assertTrue(first_image.endswith("(assets/header.png"))
+        first_image = re.search(r"!\[[^\]]*\]\(([^)]+)\)", readme)
+        self.assertIsNotNone(first_image)
+        self.assertEqual(first_image.group(1), "assets/header.png")
         self.assertLess(readme.index("assets/header.png"), readme.index("# Humidity Intelligence"))
         release_notes = readme.index("## Release Notes")
         for line in readme[:release_notes].splitlines():

@@ -67,6 +67,12 @@ stays the same. Verify the source's actual unit and retain thresholds in the HI
 units above. HI does not rewrite thresholds, source entities or historical records.
 Existing aggregate history is not retroactively normalized.
 
+A configured CO source with a missing or unsupported unit now raises a Home
+Assistant Repairs warning, including after upgrade. Correct the actual source unit
+to ppm or ppb in its integration or template; do not guess or relabel a different
+measurement. The warning clears when the units are supported. Missing or invalid
+readings still remain unavailable, and the warning never changes control outputs.
+
 Any valid configured CO source at or above the existing start threshold can still
 activate the highest-priority emergency, including when another source is invalid.
 An active emergency clears only when **every configured CO source** has valid,
@@ -87,6 +93,12 @@ invalid value and missing source. These counts contain no entity IDs or readings
 An empty configuration is not complete evidence. Incomplete configured inputs also produce a
 warning. An emergency retained because clearance is unproved is not a claim that
 a new high reading was observed.
+
+The review follow-up restores calculated kitchen-slope lookup when its configured
+source differs from the kitchen telemetry sensor. It requires one unambiguous
+source and excludes sources explicitly assigned to another room. Supplied slopes
+continue to use their saved source identity. This correction and the Repairs
+warning leave V2 layout revision 16/schema 1/generator 1 compatible and unchanged.
 
 ## Forms, naming and reloads
 

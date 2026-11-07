@@ -118,11 +118,14 @@ See the [dated validation record](releases/v2.1.2-beta.1.md#validation-and-limit
 An earlier stable candidate (`2e2792ad`, revision 14) passed a manual Stable-instance upgrade on
 Home Assistant 2026.11.0, with package parity, loaded identity and preserved
 configuration verified after one restart. The subsequent revision-16 generator
-correction changes the package. Its exact bytes passed fresh minimal-instance
-validation and final Stable acceptance on HA 2026.11.0, with 13 passes, 3 explained
+correction changes the package. The `0d99f598` bytes passed fresh minimal-instance
+validation and Stable acceptance on HA 2026.11.0, with 13 passes, 3 explained
 warnings and no failures. All 78 files matched; five exports and live revision 16
 were verified, with configuration, registry and saved-dashboard preservation.
-Neither result establishes public Marketplace selection of a final stable release.
+The subsequent CO-unit Repairs and calculated-slope follow-up changes component
+bytes without changing UI revision 16. Its installed acceptance remains pending;
+the earlier installed results cannot establish the revised package. Neither result
+establishes public Marketplace selection of a final stable release.
 The [route-by-route validation record](releases/v2.1.2.md#validation-and-publication-status)
 keeps final-tag/draft-asset verification, post-publication Marketplace acceptance
 and legacy HACS results distinct. HACS 2.0.5 on HA 2026.10.1 subsequently installed

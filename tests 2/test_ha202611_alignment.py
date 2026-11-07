@@ -238,6 +238,57 @@ def test_unmapped_source_cannot_borrow_another_rooms_slope():
     assert computations._slope_entity_for_room('room_a') is None
 
 
+@pytest.mark.parametrize('mode,expected', [('hi_calculates', 0.8), ('user_provided', None)])
+def test_independent_calculated_kitchen_source_keeps_numeric_delta(mode, expected):
+    _mod, _engine, hass, entry = environment([
+        ('sensor.example_kitchen_temperature', 'temperature', 20, '°C'),
+    ])
+    entry.data['telemetry'][0]['room'] = 'Kitchen'
+    entry.data['slope'] = {'mode': mode, 'source_entities': ['sensor.example_kitchen_probe']}
+    hass.data['humidity_intelligence'][ENTRY_ID]['slope_map'] = {
+        'sensor.example_kitchen_probe': 'sensor.example_kitchen_slope',
+    }
+    hass.states._values['sensor.example_kitchen_slope'] = _FakeState(0.8)
+    computations = _load_core_module()._CoreComputations(hass, entry, entry.data['telemetry'])
+    assert computations._compute_kitchen_slope_delta()[0] == expected
+
+
+def test_calculated_kitchen_fallback_rejects_ambiguity_and_direct_binding_wins():
+    _mod, _engine, hass, entry = environment([
+        ('sensor.example_kitchen_temperature', 'temperature', 20, '°C'),
+    ])
+    entry.data['telemetry'][0]['room'] = 'Kitchen'
+    entry.data['slope'] = {'mode': 'hi_calculates'}
+    slope_map = {
+        'sensor.example_kitchen_probe_a': 'sensor.example_slope_a',
+        'sensor.example_kitchen_probe_b': 'sensor.example_slope_b',
+    }
+    hass.data['humidity_intelligence'][ENTRY_ID]['slope_map'] = slope_map
+    computations = _load_core_module()._CoreComputations(hass, entry, entry.data['telemetry'])
+    assert computations._slope_entity_for_room('kitchen') is None
+    slope_map['sensor.example_kitchen_temperature'] = 'sensor.example_direct_slope'
+    assert computations._slope_entity_for_room('kitchen') == 'sensor.example_direct_slope'
+
+
+def test_full_telemetry_prevents_fallback_from_borrowing_an_overwritten_room_source():
+    _mod, _engine, hass, entry = environment([
+        ('sensor.example_kitchen', 'temperature', 20, '°C'),
+        ('sensor.example_other', 'temperature', 21, '°C'),
+        ('sensor.example_kitchen_probe', 'temperature', 22, '°C'),
+    ])
+    for item, room in zip(entry.data['telemetry'], ['Kitchen', 'Other', 'Other']):
+        item['room'] = room
+    # Reverse duplicate room rows to ensure neither indexed winner can hide ownership.
+    entry.data['slope'] = {'mode': 'hi_calculates'}
+    hass.data['humidity_intelligence'][ENTRY_ID]['slope_map'] = {
+        'sensor.example_kitchen_probe': 'sensor.example_kitchen_slope',
+    }
+    core = _load_core_module()
+    for rows in (entry.data['telemetry'], list(reversed(entry.data['telemetry']))):
+        computations = core._CoreComputations(hass, entry, rows)
+        assert computations._slope_entity_for_room('kitchen') is None
+
+
 @pytest.mark.parametrize('route', ['/local/community/', '/hacsfiles/'])
 def test_frontend_resources_do_not_require_package_manager_files(route):
     environment([])
