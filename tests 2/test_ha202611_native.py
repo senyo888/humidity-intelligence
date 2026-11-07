@@ -99,6 +99,13 @@ class NativeAlignmentTests(unittest.IsolatedAsyncioTestCase):
             self.hass.states.async_set(source, "30", {"unit_of_measurement": "mg/m³"})
             await self.hass.async_block_till_done()
             self.assertIsNotNone(registry.async_get_issue("humidity_intelligence", issue_id))
+        for state in ("unknown", "unavailable"):
+            self.hass.states.async_set(source, state)
+            await self.hass.async_block_till_done()
+            self.assertIsNone(registry.async_get_issue("humidity_intelligence", issue_id))
+            self.hass.states.async_set(source, "30")
+            await self.hass.async_block_till_done()
+            self.assertIsNotNone(registry.async_get_issue("humidity_intelligence", issue_id))
         self.assertEqual(len(cleanup), 1)
         cleanup.pop()()
         self.assertIsNone(registry.async_get_issue("humidity_intelligence", issue_id))
@@ -120,9 +127,11 @@ class NativeAlignmentTests(unittest.IsolatedAsyncioTestCase):
                 "telemetry": [{"entity_id": source, "sensor_type": "co"}],
             })
             self.assertIsNone(registry.async_get_issue("humidity_intelligence", "co_unit_unsupported_example_" + suffix))
-            self.hass.states.async_set(source, "unavailable", {"unit_of_measurement": "ppm"})
-            await self.hass.async_block_till_done()
-            self.assertIsNone(registry.async_get_issue("humidity_intelligence", "co_unit_unsupported_example_" + suffix))
+            for state in ("unknown", "unavailable"):
+                for attributes in ({}, {"unit_of_measurement": "ppm"}):
+                    self.hass.states.async_set(source, state, attributes)
+                    await self.hass.async_block_till_done()
+                    self.assertIsNone(registry.async_get_issue("humidity_intelligence", "co_unit_unsupported_example_" + suffix))
             self.hass.states.async_set(source, "30")
         await self.hass.async_block_till_done()
         cleanups[0]()

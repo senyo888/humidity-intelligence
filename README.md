@@ -568,6 +568,8 @@ release or candidate and replace the complete existing directory at:
 
 Follow the [manual package update guide](https://github.com/senyo888/humidity-intelligence/wiki/HACS-and-Updates#manual-package-update)
 for backup, full-restart and rollback steps.
+For a fresh installation, after restarting open **Settings → Devices & services →
+Add integration**, select **Humidity Intelligence**, and complete its setup.
 
 ---
 

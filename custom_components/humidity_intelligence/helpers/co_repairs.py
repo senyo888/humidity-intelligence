@@ -28,7 +28,9 @@ def async_setup_co_unit_repair(hass: Any, entry: Any, config: dict[str, Any]) ->
         invalid = []
         for entity_id in sources:
             state = hass.states.get(entity_id)
-            if state is not None and not aq_unit_supported(
+            if state is None or state.state in ("unknown", "unavailable"):
+                continue
+            if not aq_unit_supported(
                 "co", state.attributes.get("unit_of_measurement")
             ):
                 invalid.append(entity_id)
