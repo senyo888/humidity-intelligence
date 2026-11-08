@@ -1151,6 +1151,7 @@ class HIAutomationEngine:
                         color=flash_payload["color"],
                         duration=flash_payload["duration"],
                         flash_count=flash_payload["flash_count"],
+                        should_abort_restore=self._manual_override_active,
                     )
                 except Exception:
                     _LOGGER.exception(

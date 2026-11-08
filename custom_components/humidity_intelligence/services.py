@@ -8,7 +8,7 @@ import logging
 import os
 import re
 from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
 import voluptuous as vol
 from homeassistant.core import HomeAssistant, ServiceCall
@@ -356,6 +356,7 @@ async def async_flash_lights_for_alert(
     color: Optional[List[int]] = None,
     duration: int = 10,
     flash_count: Optional[int] = None,
+    should_abort_restore: Optional[Callable[[], bool]] = None,
 ) -> None:
     """Run one trusted HI visual-alert flash without using the public service."""
     if power_entity:
@@ -382,36 +383,38 @@ async def async_flash_lights_for_alert(
 
         initial_states = _capture_light_states(hass, lights)
 
-        if power_entity:
-            domain = power_entity.split(".")[0]
-            if hass.services.has_service(domain, "turn_on"):
-                try:
-                    await hass.services.async_call(
-                        domain,
-                        "turn_on",
-                        {"entity_id": power_entity},
-                        blocking=True,
-                    )
-                    await asyncio.sleep(0.5)
-                except Exception:
-                    _LOGGER.exception(
-                        "Failed to turn on alert power entity %s",
-                        power_entity,
-                    )
+        try:
+            if power_entity:
+                domain = power_entity.split(".")[0]
+                if hass.services.has_service(domain, "turn_on"):
+                    try:
+                        await hass.services.async_call(
+                            domain,
+                            "turn_on",
+                            {"entity_id": power_entity},
+                            blocking=True,
+                        )
+                        await asyncio.sleep(0.5)
+                    except Exception:
+                        _LOGGER.exception(
+                            "Failed to turn on alert power entity %s",
+                            power_entity,
+                        )
 
-        supports_color = {
-            light: _supports_color(hass.states.get(light))
-            for light in lights
-        }
-        await _flash_lights(
-            hass,
-            lights,
-            rgb_color,
-            duration,
-            flash_count,
-            supports_color,
-        )
-        await _restore_lights(hass, initial_states)
+            supports_color = {
+                light: _supports_color(hass.states.get(light))
+                for light in lights
+            }
+            await _flash_lights(
+                hass,
+                lights,
+                rgb_color,
+                duration,
+                flash_count,
+                supports_color,
+            )
+        finally:
+            await _restore_lights_before_unlock(hass, initial_states, should_abort_restore)
     finally:
         for lock in reversed(acquired_locks):
             try:
@@ -2193,8 +2196,48 @@ async def _flash_lights(
         await asyncio.sleep(interval)
 
 
-async def _restore_lights(hass: HomeAssistant, states: Dict[str, Dict[str, Any]]) -> None:
+_FLASH_RESTORE_TIMEOUT_SECONDS = 10.0
+
+
+async def _restore_lights_before_unlock(
+    hass: HomeAssistant,
+    states: Dict[str, Dict[str, Any]],
+    should_abort: Optional[Callable[[], bool]],
+) -> None:
+    """Drain one bounded restoration while retaining light-lock custody."""
+    async def restore() -> None:
+        try:
+            # The deadline belongs to the cleanup itself, not its shielded waiter.
+            async with asyncio.timeout(_FLASH_RESTORE_TIMEOUT_SECONDS):
+                await _restore_lights(hass, states, should_abort)
+        except TimeoutError:
+            _LOGGER.warning(
+                "Visual alert light restoration timed out; original state is not confirmed"
+            )
+
+    restoration = asyncio.create_task(restore(), name="hi-flash-restore")
+    cancelled = False
+    while not restoration.done():
+        try:
+            await asyncio.shield(restoration)
+        except asyncio.CancelledError:
+            # Repeated caller cancellation must not release locks ahead of cleanup.
+            cancelled = True
+    # Retrieve exceptions, including cancellation of the cleanup task itself.
+    restoration.result()
+    if cancelled:
+        raise asyncio.CancelledError
+
+
+async def _restore_lights(
+    hass: HomeAssistant,
+    states: Dict[str, Dict[str, Any]],
+    should_abort: Optional[Callable[[], bool]] = None,
+) -> None:
     for entity_id, snapshot in states.items():
+        # Manual handover can occur while a previous light's service is awaited.
+        if should_abort is not None and should_abort():
+            return
         initial_state = snapshot.get("state")
         if initial_state is None:
             continue

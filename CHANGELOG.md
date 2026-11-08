@@ -14,6 +14,9 @@ preserved gate settings and saved slope identities.
 
 - Drain active evaluations and owned background tasks before successful unload;
   discard queued follow-up evaluations after stop.
+- Restore captured alert-light state when a flash is interrupted, retaining locks
+  until bounded cleanup completes. Respect Manual handover, propagate cancellation
+  and log failed or timed-out restoration without claiming a physical result.
 - Distinguish a current high CO reading from incomplete clearance evidence,
   clearance hold and readings that have not yet fallen below the clear threshold.
 - Retain staged gate values when returning to setup, and reject unmatched leftover
@@ -41,6 +44,8 @@ candidate. Earlier Marketplace/HACS installer and manual Stable-instance results
 remain bound to their exact packages. See the [validation and upgrade record](docs/releases/v2.1.2.md).
 The PR #147 corrections also change component bytes beyond the accepted
 `cc709769` package; its Stable acceptance remains historical evidence.
+The PR #148 flash-restoration correction changes the package again; the earlier
+`d6174038` Lab and Stable results retain their original package and test scope.
 Published Stable remains v2.1.1; final published delivery is still separate.
 
 Thanks to [@Slaybcn](https://github.com/Slaybcn) for reporting the Marketplace

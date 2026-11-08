@@ -291,6 +291,15 @@ the deterministic engine has selected an alert lane. The public `flash_lights`
 service is admin-gated and is not the engine's control path; it cannot create,
 reorder, or override a lane decision.
 
+Visual flashing captures the configured lights only after acquiring their shared
+locks. Normal completion, alert cancellation and unload attempt to restore that
+snapshot before releasing the locks. Restoration stays owned and drained through
+repeated cancellation, with a ten-second cleanup deadline; service failures or a
+timeout leave physical restoration unconfirmed and are logged. Engine-owned cleanup
+checks Manual handover before each restore submission and stops remaining writes
+once Manual is observed. The public service schema and optional power-entity policy
+remain unchanged; cleanup does not restore the power entity.
+
 Generated-artifact purge must validate its full fixed file target set before mutation,
 show the exact existing files in a completed blocking notification before deletion,
 reject paths outside the direct owned basename set and non-regular filesystem objects,

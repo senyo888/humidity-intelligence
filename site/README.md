@@ -30,6 +30,8 @@ acceptance on 8 November: 13 passes, 3 explained warnings and no failures on Sta
 with both existing revision-16 cards verified in the browser. Earlier results retain
 their own package scope. The approved hero and release summary remain unchanged.
 Installer coverage stays in the release notes.
+The later PR #148 flash-restoration correction changes the package again; its
+offline cancellation tests do not extend the earlier live acceptance to those bytes.
 Prepared-release links point to the canonical `senyo888-patch-1` records so review
 links resolve before promotion. At publication, switch preparation status and links
 to the verified immutable release. Users check the offered Marketplace/HACS version

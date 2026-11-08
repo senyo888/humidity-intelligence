@@ -217,7 +217,7 @@ jobs:
       - name: Validate generated UI revision metadata
         run: |
           python -m pip install "pytest==9.1.1" "PyYAML==6.0.3"
-          python -m pytest -q "tests 2/test_ui_revision_contract.py" "tests 2/test_optional_card_bindings.py" "tests 2/test_single_level_ui.py" "tests 2/test_ha202611_alignment.py" "tests 2/test_update_observation.py" "tests 2/test_slope_sanity.py"
+          python -m pytest -q "tests 2/test_ui_revision_contract.py" "tests 2/test_optional_card_bindings.py" "tests 2/test_single_level_ui.py" "tests 2/test_ha202611_alignment.py" "tests 2/test_flash_cancellation.py" "tests 2/test_update_observation.py" "tests 2/test_slope_sanity.py"
 
       - name: Validate YAML if PyYAML is available
         shell: bash

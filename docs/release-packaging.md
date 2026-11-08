@@ -133,6 +133,9 @@ package has its own immutable ZIP identity and completed Lab and Stable-instance
 acceptance on 8 November 2026. All 79 files matched; Stable recorded 13 passes,
 3 explained warnings and no failures. The Lab route was isolated native setup,
 not Marketplace delivery. `cc709769` results retain their earlier package scope.
+The subsequent PR #148 flash-restoration correction changes component bytes again;
+its package needs its own identity and appropriate acceptance. The `d6174038` live
+results do not cover the newer package or interrupted-flash restoration.
 The [route-by-route validation record](releases/v2.1.2.md#validation-and-publication-status)
 keeps final-tag/draft-asset verification, post-publication Marketplace acceptance
 and legacy HACS results distinct. HACS 2.0.5 on HA 2026.10.1 subsequently installed

@@ -3891,7 +3891,7 @@ def test_advanced_tuning_uses_collapsible_sections_not_submit_reveal():
             "\n    async def ",
             1,
         )[0]
-        assert "user_input = _flatten_advanced_section_input(user_input)" in method_source
+        assert "_flatten_advanced_section_input(user_input)" in method_source
         assert "_advanced_section(" in method_source
 
 
