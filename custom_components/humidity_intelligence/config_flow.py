@@ -127,10 +127,10 @@ def _dependency_schema(default_skip: bool = False) -> vol.Schema:
     })
 
 
-def _presence_states_schema(options: List[str]) -> vol.Schema:
+def _presence_states_schema(options: List[str], values: Optional[Dict[str, Any]] = None) -> vol.Schema:
     select_options = [SelectOptionDict(value=o, label=o) for o in options] if options else []
     return vol.Schema({
-        vol.Required("present_states", default=options or ["home"]): selector.SelectSelector(
+        vol.Required("present_states", default=_form_input_default(values, "present_states", options or ["home"])): selector.SelectSelector(
             selector.SelectSelectorConfig(
                 options=select_options,
                 multiple=True,
@@ -138,7 +138,7 @@ def _presence_states_schema(options: List[str]) -> vol.Schema:
                 mode=selector.SelectSelectorMode.DROPDOWN,
             )
         ),
-        vol.Optional("away_states", default=[]): selector.SelectSelector(
+        vol.Optional("away_states", default=_form_input_default(values, "away_states", [])): selector.SelectSelector(
             selector.SelectSelectorConfig(
                 options=select_options,
                 multiple=True,
@@ -281,7 +281,17 @@ class HumidityIntelligenceConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     async def async_step_gates(self, user_input: Optional[Dict[str, Any]] = None):
         """Collect global time and presence gate settings."""
         if user_input is not None:
-            user_input = _flatten_advanced_section_input(user_input)
+            user_input = dict(_flatten_advanced_section_input(user_input))
+
+            # A collapsed Advanced section can be absent from a native submission.
+            # Keep previously staged values while allowing explicit replacements.
+            for field in (
+                "engine_interval_minutes", CONF_AUTO_REFRESH_UI_ON_STARTUP,
+                CONF_SHOW_OUTPUT_ENTITY_DETAILS, "custom_target_low", "custom_target_high",
+                "temperature_comfort_custom_low", "temperature_comfort_custom_high",
+            ):
+                if field not in user_input and field in self._data:
+                    user_input[field] = self._data[field]
 
             target_profile = _normalize_target_profile(user_input.get("target_profile", "auto"))
             custom_low = _bounded_float(
@@ -345,21 +355,22 @@ class HumidityIntelligenceConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             previous_presence = self._data.get("presence_gate", {})
             entities = user_input.get("presence_entities", previous_presence.get("entities", []))
             self._data["presence_gate"] = {
+                **previous_presence,
                 "enabled": presence_enabled,
                 "entities": entities,
-                "present_states": previous_presence.get("present_states", []),
-                "away_states": previous_presence.get("away_states", []),
             }
             if presence_enabled and entities:
                 return await self.async_step_presence_states()
             return await self.async_step_telemetry()
 
+        time_gate = self._data.get("time_gate", {})
+        presence_gate = self._data.get("presence_gate", {})
         gates_default = lambda field, default: _form_input_default(user_input, field, default)
         schema_fields: Dict[Any, Any] = {
-            vol.Optional("enable_time_gate", default=gates_default("enable_time_gate", False)): selector.BooleanSelector(),
-            _gate_optional("start_time", default=gates_default("start_time", DEFAULT_TIME_START)): selector.TimeSelector(),
-            _gate_optional("end_time", default=gates_default("end_time", DEFAULT_TIME_END)): selector.TimeSelector(),
-            _gate_optional("outside_action", default=gates_default("outside_action", OUTSIDE_WINDOW_ACTIONS[0]["value"])): selector.SelectSelector(
+            vol.Optional("enable_time_gate", default=gates_default("enable_time_gate", time_gate.get("enabled", False))): selector.BooleanSelector(),
+            _gate_optional("start_time", default=gates_default("start_time", time_gate.get("start", DEFAULT_TIME_START))): selector.TimeSelector(),
+            _gate_optional("end_time", default=gates_default("end_time", time_gate.get("end", DEFAULT_TIME_END))): selector.TimeSelector(),
+            _gate_optional("outside_action", default=gates_default("outside_action", time_gate.get("outside_action", OUTSIDE_WINDOW_ACTIONS[0]["value"]))): selector.SelectSelector(
                 selector.SelectSelectorConfig(
                     options=_value_label_options(OUTSIDE_WINDOW_ACTIONS),
                     mode=selector.SelectSelectorMode.DROPDOWN,
@@ -384,13 +395,13 @@ class HumidityIntelligenceConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     mode=selector.SelectSelectorMode.DROPDOWN,
                 )
             ),
-            vol.Optional("enable_presence_gate", default=gates_default("enable_presence_gate", False)): selector.BooleanSelector(),
-            _gate_optional("presence_entities", default=gates_default("presence_entities", [])): selector.EntitySelector(
+            vol.Optional("enable_presence_gate", default=gates_default("enable_presence_gate", presence_gate.get("enabled", False))): selector.BooleanSelector(),
+            _gate_optional("presence_entities", default=gates_default("presence_entities", presence_gate.get("entities", []))): selector.EntitySelector(
                 selector.EntitySelectorConfig(multiple=True)
             ),
         }
         schema_fields[vol.Optional(ADVANCED_OPTIONS_FIELD)] = _advanced_section({
-            vol.Optional("engine_interval_minutes", default=ENGINE_INTERVAL_MINUTES_DEFAULT): selector.NumberSelector(
+            vol.Optional("engine_interval_minutes", default=self._data.get("engine_interval_minutes", ENGINE_INTERVAL_MINUTES_DEFAULT)): selector.NumberSelector(
                 selector.NumberSelectorConfig(
                     min=ENGINE_INTERVAL_MIN,
                     max=ENGINE_INTERVAL_MAX,
@@ -473,14 +484,14 @@ class HumidityIntelligenceConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             if overlap:
                 return self.async_show_form(
                     step_id="presence_states",
-                    data_schema=_presence_states_schema(options),
+                    data_schema=_presence_states_schema(options, user_input),
                     errors={"away_states": "overlap"},
                 )
             self._data.setdefault("presence_gate", {})["present_states"] = states
             self._data.setdefault("presence_gate", {})["away_states"] = away_states
             return await self.async_step_telemetry()
 
-        schema = _presence_states_schema(options)
+        schema = _presence_states_schema(options, self._data.get("presence_gate", {}))
         return self.async_show_form(step_id="presence_states", data_schema=schema)
 
     async def async_step_telemetry(self, user_input: Optional[Dict[str, Any]] = None):

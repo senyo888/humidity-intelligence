@@ -168,6 +168,7 @@ class HIAutomationEngine:
         self._co_below_since: Optional[float] = None
         self._co_clear_generation = 0
         self._evaluate_lock: Optional[asyncio.Lock] = None
+        self._evaluate_task: Optional[asyncio.Task] = None
         self._evaluate_pending = False
         self._stopped = False
         self._humidifier_lane_demand: Dict[str, bool] = {}
@@ -216,20 +217,30 @@ class HIAutomationEngine:
 
     async def async_stop(self) -> None:
         self._stopped = True
+        self._evaluate_pending = False
         if self._unsub:
             self._unsub()
+            self._unsub = None
         if self._periodic:
             self._periodic()
-        if self._startup_recheck_task and not self._startup_recheck_task.done():
-            self._startup_recheck_task.cancel()
+            self._periodic = None
+        # A deadline relinquishes its timer handle before evaluating. Keep the
+        # active evaluation separately owned until cancellation has completed.
+        current = asyncio.current_task()
+        tasks = {
+            task for task in (
+                self._evaluate_task, self._startup_recheck_task,
+                self._co_clear_recheck_task, *self._aq_tasks.values(),
+                *self._visual_alert_tasks.values(), *self._humidifier_retry_tasks.values(),
+            ) if task is not None and task is not current
+        }
+        for task in tasks:
+            task.cancel()
+        if tasks:
+            await asyncio.gather(*tasks, return_exceptions=True)
         self._startup_recheck_task = None
-        self._cancel_co_clear_recheck()
-        for task in self._aq_tasks.values():
-            task.cancel()
-        for task in self._visual_alert_tasks.values():
-            task.cancel()
-        for task in self._humidifier_retry_tasks.values():
-            task.cancel()
+        self._co_clear_recheck_task = None
+        self._aq_tasks.clear()
         self._humidifier_retry_tasks.clear()
         self._visual_alert_tasks.clear()
         self._visual_alert_active.clear()
@@ -285,11 +296,16 @@ class HIAutomationEngine:
             )
             return
         async with evaluate_lock:
-            while True:
+            self._evaluate_task = asyncio.current_task()
+            try:
+                while not self._stopped:
+                    self._evaluate_pending = False
+                    await self._evaluate()
+                    if not self._evaluate_pending:
+                        break
+            finally:
+                self._evaluate_task = None
                 self._evaluate_pending = False
-                await self._evaluate()
-                if not self._evaluate_pending:
-                    break
 
     def _get_evaluate_lock(self) -> asyncio.Lock:
         if self._evaluate_lock is None:
@@ -3003,10 +3019,14 @@ class HIAutomationEngine:
 
     def _co_display_facts(self) -> ReasonFacts:
         start_threshold, clear_threshold, outputs = self._co_emergency_settings()
-        co_values = self._collect_values("co")
+        sources = {item.get("entity_id") for item in self.telemetry
+                   if item.get("sensor_type") == "co"}
+        readings = [_get_float(self.hass, source, sensor_type="co") for source in sources]
+        co_values = [value for value in readings if value is not None]
+        maximum = max(co_values) if co_values else None
         lines: List[ReasonLine] = []
-        if co_values:
-            maximum = max(co_values)
+        if maximum is not None and maximum >= start_threshold:
+            variant = "threshold_active"
             lines.append(
                 ReasonLine(
                     "why",
@@ -3024,6 +3044,29 @@ class HIAutomationEngine:
                     },
                 )
             )
+        elif not readings or len(co_values) != len(readings):
+            variant = "clearance_unavailable"
+            lines.append(ReasonLine(
+                "why", "safety", "co.clearance_unavailable", "unavailable",
+                "The CO emergency remains active because valid readings from every "
+                "configured CO source are needed to prove clearance.",
+            ))
+        elif maximum < clear_threshold:
+            variant = "clearance_hold"
+            lines.append(ReasonLine(
+                "why", "safety", "co.clearance_hold", "observed",
+                f"All configured CO readings are below {clear_threshold:g} ppm. "
+                "The emergency remains active until the continuous clearance hold is confirmed.",
+                {"measured": maximum, "clear_threshold": clear_threshold, "unit": "ppm"},
+            ))
+        else:
+            variant = "clearance_threshold_not_met"
+            lines.append(ReasonLine(
+                "why", "safety", "co.clearance_threshold_not_met", "observed",
+                f"The highest configured CO reading is {maximum:g} ppm. The emergency "
+                f"remains active because every reading must fall below {clear_threshold:g} ppm.",
+                {"measured": maximum, "clear_threshold": clear_threshold, "unit": "ppm"},
+            ))
         output_summary = self._presentation_output_summary(
             outputs,
             generic="configured emergency ventilation output",
@@ -3079,7 +3122,7 @@ class HIAutomationEngine:
         lines.extend(self._isolation_display_lines(include_fan=False))
         return self._make_reason_facts(
             "co_emergency",
-            "threshold_active",
+            variant,
             "critical",
             "Carbon monoxide emergency lane selected",
             lines,

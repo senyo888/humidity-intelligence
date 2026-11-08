@@ -177,6 +177,143 @@ def test_failed_platform_unload_keeps_runtime_custody():
     asyncio.run(run())
 
 
+@pytest.mark.parametrize("deadline", [False, True])
+def test_unload_drains_suspended_evaluation_and_discards_follow_up(deadline):
+    async def run():
+        _mod, engine, hass, entry = environment([("sensor.example_co", "co", 30, "ppm")])
+        _load_services_module()
+        integration = _load_integration_init_module()
+        hass.data["humidity_intelligence"][ENTRY_ID]["automation_engine"] = engine
+        entered, release = asyncio.Event(), asyncio.Event()
+        evaluations = []
+
+        async def suspend_visual_sync(_details):
+            evaluations.append(True)
+            entered.set()
+            await release.wait()
+
+        async def unload_platforms(*_args):
+            return True
+
+        async def unregister(*_args):
+            pass
+
+        engine._sync_visual_alert_tasks = suspend_visual_sync
+        hass.config_entries.async_unload_platforms = unload_platforms
+        integration.async_unregister_services = unregister
+        if deadline:
+            engine._co_below_since = time.monotonic() - 180
+            engine._schedule_co_clear_recheck(time.monotonic())
+            evaluation = engine._co_clear_recheck_task
+        else:
+            evaluation = asyncio.create_task(engine.async_request_evaluate())
+        await asyncio.wait_for(entered.wait(), 1)
+        await engine.async_request_evaluate()
+        assert engine._evaluate_pending
+        assert await asyncio.wait_for(integration.async_unload_entry(hass, entry), 1)
+        assert evaluation.done()
+        assert ENTRY_ID not in hass.data["humidity_intelligence"]
+        calls_at_unload = list(hass.services.calls)
+        release.set()
+        await asyncio.gather(evaluation, return_exceptions=True)
+        await engine.async_request_evaluate()
+        await engine.async_stop()  # Repeated cleanup remains safe.
+        assert evaluations == [True]
+        assert hass.services.calls == calls_at_unload == []
+        assert ENTRY_ID not in hass.data["humidity_intelligence"]
+        assert not engine._evaluate_pending
+    asyncio.run(run())
+
+
+def test_stop_waits_for_owned_task_cleanup_and_propagates_its_own_cancellation():
+    async def run():
+        _mod, engine, _hass, _entry = environment([])
+        started, cleaning, finish = asyncio.Event(), asyncio.Event(), asyncio.Event()
+        cleaned = []
+
+        async def worker():
+            try:
+                started.set()
+                await asyncio.Event().wait()
+            finally:
+                cleaning.set()
+                await finish.wait()
+                cleaned.append(True)
+
+        task = asyncio.create_task(worker())
+        engine._aq_tasks["level1"] = task
+        await started.wait()
+        stopping = asyncio.create_task(engine.async_stop())
+        await cleaning.wait()
+        assert not stopping.done()
+        finish.set()
+        await stopping
+        assert cleaned == [True] and task.done()
+        assert not engine._aq_tasks
+
+        started.clear()
+        cleaning.clear()
+        finish.clear()
+        engine._aq_tasks["level1"] = asyncio.create_task(worker())
+        await started.wait()
+        stopping = asyncio.create_task(engine.async_stop())
+        await cleaning.wait()
+        stopping.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await stopping
+        assert engine._stopped
+        await engine.async_stop()
+    asyncio.run(run())
+
+
+@pytest.mark.parametrize("readings,variant", [
+    ([15, "unavailable"], "threshold_active"),
+    ([0, "unavailable"], "clearance_unavailable"),
+    (["unavailable", "unknown"], "clearance_unavailable"),
+    ([], "clearance_unavailable"),
+    ([0, 9], "clearance_hold"),
+    ([0, 10], "clearance_threshold_not_met"),
+    ([14, 9], "clearance_threshold_not_met"),
+])
+def test_latched_co_reason_matches_clearance_evidence_without_mutating_hold(readings, variant):
+    _mod, engine, _hass, _entry = environment([
+        (f"sensor.example_co_{index}", "co", value, "ppm")
+        for index, value in enumerate(readings)
+    ])
+    engine._co_emergency_active = True
+    engine._co_below_since = 123.0
+    before = (engine._co_below_since, engine._co_clear_generation, engine._co_clear_recheck_task)
+    facts = engine._co_display_facts()
+    assert facts.variant == variant
+    assert facts.attention == "critical"
+    assert facts.lines[0].code == ("co.reading_above_threshold" if variant == "threshold_active" else "co." + variant)
+    assert ("at or above" in facts.lines[0].text) == (variant == "threshold_active")
+    assert (engine._co_below_since, engine._co_clear_generation, engine._co_clear_recheck_task) == before
+    assert engine._co_emergency_active
+    presentation = importlib.import_module(f"{PKG}.helpers.reason_presentation")
+    presentation.validate_display_reason(presentation.build_display_reason(facts))
+
+
+def test_residual_slope_pair_requires_room_evidence_but_true_singleton_remains_supported():
+    _mod, _engine, hass, entry = environment([
+        ("sensor.example_temp_a", "temperature", 20, "°C"),
+        ("sensor.example_temp_b", "temperature", 21, "°C"),
+    ])
+    mapping = importlib.import_module(f"{PKG}.helpers.slope_mapping")
+    sources = [item["entity_id"] for item in entry.data["telemetry"]]
+    for item, room in zip(entry.data["telemetry"], ("Room A", "Room B")):
+        item["room"] = room
+    sensors = ["sensor.example_trend_x", "sensor.example_trend_z"]
+    previous = {sources[0]: sensors[0]}
+    for name in ("Room A slope", "Unrelated slope"):
+        hass.states._values[sensors[1]] = _FakeState(1, {"friendly_name": name})
+        assert mapping.bindings_for_save(hass, sources, sensors, entry.data["telemetry"], previous) == previous
+    hass.states._values[sensors[1]] = _FakeState(1, {"friendly_name": "Room B slope"})
+    assert mapping.bindings_for_save(hass, sources, sensors, entry.data["telemetry"], previous) == dict(zip(sources, sensors))
+    hass.states._values[sensors[1]] = _FakeState("unavailable", {"friendly_name": "Renamed"})
+    assert mapping.bindings_for_save(hass, sources[1:] * 2, sensors[1:] * 2, entry.data["telemetry"]) == {sources[1]: sensors[1]}
+
+
 def test_co_hold_uses_continuous_monotonic_boundary(monkeypatch):
     async def run():
         mod, engine, _hass, _entry = environment([('sensor.example_co', 'co', 9, 'ppm')])

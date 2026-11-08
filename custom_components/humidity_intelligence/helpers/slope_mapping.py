@@ -9,7 +9,7 @@ def _key(value: Any) -> str:
     return re.sub(r"[^a-z0-9]+", "_", str(value or "").lower()).strip("_")
 
 
-def match_provided_slopes(hass, sources, sensors, room_map, bindings=None):
+def match_provided_slopes(hass, sources, sensors, room_map, bindings=None, *, allow_singleton=True):
     """Keep saved identities, or resolve only globally unambiguous legacy pairs."""
     sources = list(dict.fromkeys(value for value in sources if isinstance(value, str) and value))
     sensors = list(dict.fromkeys(value for value in sensors if isinstance(value, str) and value))
@@ -20,7 +20,7 @@ def match_provided_slopes(hass, sources, sensors, room_map, bindings=None):
                       if source in sources and isinstance(sensor, str) and sensor in sensors}
         counts = Counter(candidates.values())
         return {source: sensor for source, sensor in candidates.items() if counts[sensor] == 1}
-    if len(sources) == len(sensors) == 1:
+    if allow_singleton and len(sources) == len(sensors) == 1:
         return {sources[0]: sensors[0]}
     candidates = {}
     for source in sources:
@@ -45,4 +45,7 @@ def bindings_for_save(hass, sources, sensors, telemetry, previous=None):
     saved = match_provided_slopes(hass, sources, sensors, room_map, previous or {})
     remaining_sources = [source for source in sources if source not in saved]
     remaining_sensors = [sensor for sensor in sensors if sensor not in saved.values()]
-    return saved | match_provided_slopes(hass, remaining_sources, remaining_sensors, room_map)
+    return saved | match_provided_slopes(
+        hass, remaining_sources, remaining_sensors, room_map,
+        allow_singleton=len(set(sources)) == len(set(sensors)) == 1,
+    )

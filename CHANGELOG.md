@@ -12,6 +12,12 @@ This project follows a practical changelog format for Home Assistant and HACS us
 Marketplace/HACS observation, canonical AQ units, complete-evidence CO clearance,
 preserved gate settings and saved slope identities.
 
+- Drain active evaluations and owned background tasks before successful unload;
+  discard queued follow-up evaluations after stop.
+- Distinguish a current high CO reading from incomplete clearance evidence,
+  clearance hold and readings that have not yet fallen below the clear threshold.
+- Retain staged gate values when returning to setup, and reject unmatched leftover
+  supplied-slope pairs in multi-source configurations.
 - Fix generated optional JavaScript references that could bind unrelated legacy
   entities when those sources were not configured. Remove absent source bindings
   before mapping, preserving explicitly mapped entities even when their names look
@@ -33,6 +39,8 @@ preserved gate settings and saved slope identities.
 This changes the generator package beyond the previously tested revision-14
 candidate. Earlier Marketplace/HACS installer and manual Stable-instance results
 remain bound to their exact packages. See the [validation and upgrade record](docs/releases/v2.1.2.md).
+The PR #147 corrections also change component bytes beyond the accepted
+`cc709769` package; its Stable acceptance remains historical evidence.
 Published Stable remains v2.1.1; final published delivery is still separate.
 
 Thanks to [@Slaybcn](https://github.com/Slaybcn) for reporting the Marketplace

@@ -387,11 +387,19 @@ for a fresh continuous two-minute monotonic hold. Invalid/missing evidence reset
 the hold even during coalesced evaluations. Waiting deadlines never own or cancel
 a running evaluation. This corrects clearance behavior without changing thresholds,
 priority, Manual exception, outputs or humidifier independence.
+The engine separately owns the active evaluation. Successful stop closes admission,
+discards queued follow-ups and cancels/drains evaluation and background tasks before
+unload removes entry data. A failed platform unload retains runtime custody.
+CO explanations distinguish current above-start readings, incomplete clearance
+evidence, the continuous hold and readings that have not met the clear threshold.
+Building those explanations does not start or reset the clearance timer.
 
 Provided-slope associations are captured by entity ID only on explicit setup/Options
 save. Saved pairs survive display-name changes; legacy ambiguous name matches and
 multi-source positional guesses remain unmapped. Calculated-slope identities and
 sampling are unchanged. See [compatibility and rollback](docs/home-assistant-2026.11.md).
+The sole-source/slope convenience applies only to the complete configuration;
+removing saved pairs must not turn an unmatched remainder into an inferred pair.
 
 ## Home Assistant And HACS Boundaries
 
