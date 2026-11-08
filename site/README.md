@@ -25,8 +25,10 @@ at revision 16 in browser checks. Final published Marketplace delivery remains
 separate. The maintainer approved the corrected website; this follow-up
 leaves its rendered source unchanged. Approval does not claim Pages deployment.
 The four PR #147 runtime/configuration corrections change the package again;
-their Stable-instance acceptance remains pending and the earlier result does not
-transfer to them. The approved hero and release summary remain unchanged.
+the corrected `d6174038` package completed isolated Lab setup and its own Stable
+acceptance on 8 November: 13 passes, 3 explained warnings and no failures on Stable,
+with both existing revision-16 cards verified in the browser. Earlier results retain
+their own package scope. The approved hero and release summary remain unchanged.
 Installer coverage stays in the release notes.
 Prepared-release links point to the canonical `senyo888-patch-1` records so review
 links resolve before promotion. At publication, switch preparation status and links

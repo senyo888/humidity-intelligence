@@ -128,9 +128,11 @@ Marketplace setup guidance, passed its own Stable acceptance: all 79 files match
 13 checks passed with 3 explained warnings and no failures, and both saved V2 cards
 were verified at revision 16 in browser checks. These results do not establish
 public Marketplace selection of a final stable release.
-The four PR #147 corrections change that package again. The corrected package
-requires a new immutable ZIP identity and its own Stable-instance acceptance;
-`cc709769` results do not validate these newer bytes.
+The four PR #147 corrections change that package again. The corrected `d6174038`
+package has its own immutable ZIP identity and completed Lab and Stable-instance
+acceptance on 8 November 2026. All 79 files matched; Stable recorded 13 passes,
+3 explained warnings and no failures. The Lab route was isolated native setup,
+not Marketplace delivery. `cc709769` results retain their earlier package scope.
 The [route-by-route validation record](releases/v2.1.2.md#validation-and-publication-status)
 keeps final-tag/draft-asset verification, post-publication Marketplace acceptance
 and legacy HACS results distinct. HACS 2.0.5 on HA 2026.10.1 subsequently installed
