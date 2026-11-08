@@ -296,14 +296,25 @@ locks. Normal completion, alert cancellation and unload attempt to restore that
 snapshot before releasing the locks. Retiring visual workers remain owned by the
 engine without blocking control evaluation, including CO emergency ventilation.
 Unload drains active and retiring workers. Accepted flash and restoration service
-calls remain owned through cancellation because executor-backed device work cannot
+calls remain owned through HI-managed caller cancellation because executor-backed device work cannot
 be recalled. The ten-second restoration deadline stops further submissions; draining
 an accepted call can extend cleanup and unload beyond that deadline. Service failures
 or timeout leave physical restoration unconfirmed and are logged. Engine-owned flash,
 power and restoration calls check Manual at service admission and stop remaining writes
-once Manual is observed. Commands already accepted by a device integration cannot
+once Manual is observed. A worker's handover revocation is permanent: observing
+Manual ON invalidates existing workers even if Manual turns OFF before they drain.
+Fresh workers created after Manual turns OFF receive new ownership. Commands already accepted by a device integration cannot
 be revoked, and external manual commands do not use HI's locks. The public service schema and optional power-entity policy
 remain unchanged; cleanup does not restore the power entity.
+
+This ownership guarantee does not extend to direct cancellation of a protected
+service task or Home Assistant's global shutdown. An accepted handler that never
+returns keeps its locks and can prevent unload from completing; the restoration
+timeout is reported after that call drains, not as a hard shutdown bound. Public
+admin `flash_lights` invocations are domain-scoped caller operations, not engine
+workers; service unregistration does not drain an already accepted public call.
+Changing those public-service and failed-unload lifetimes requires a separate
+ownership policy rather than abandoning accepted device work.
 
 Generated-artifact purge must validate its full fixed file target set before mutation,
 show the exact existing files in a completed blocking notification before deletion,

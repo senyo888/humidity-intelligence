@@ -160,6 +160,7 @@ class HIAutomationEngine:
         self._aq_trigger_active: Dict[str, bool] = {}
         self._visual_alert_tasks: Dict[Tuple[str, str, str], asyncio.Task] = {}
         self._visual_alert_retiring: set[asyncio.Task] = set()
+        self._visual_alert_manual_epoch = 0
         self._visual_alert_active: set[Tuple[str, str, str]] = set()
         self._startup_recheck_task: Optional[asyncio.Task] = None
         self._co_clear_recheck_task: Optional[asyncio.Task] = None
@@ -252,6 +253,14 @@ class HIAutomationEngine:
     async def _handle_change(self, event) -> None:
         # Observe every CO interruption, even while evaluation requests coalesce.
         event_data = getattr(event, "data", {}) or {}
+        manual = self.hass.data.get(DOMAIN, {}).get(self.entry.entry_id, {}).get(
+            "hi_input_booleans", {}
+        ).get("air_control_manual_override")
+        manual_id = getattr(manual, "entity_id", None)
+        if (manual_id and event_data.get("entity_id") == manual_id
+                and getattr(event_data.get("new_state"), "state", None) == "on"):
+            # Remember even a brief handover while another evaluation is busy.
+            self._visual_alert_manual_epoch += 1
         if any(item.get("sensor_type") == "co" and item.get("entity_id") == event_data.get("entity_id")
                for item in self.telemetry):
             state = event_data.get("new_state")
@@ -372,6 +381,8 @@ class HIAutomationEngine:
 
             # Absolute top-priority lane: CO emergency must bypass gates,
             # pause, manual override, and normal control locks.
+            if self._manual_override_active():
+                self._visual_alert_manual_epoch += 1
             if self._co_emergency_active and self._co_clear_ready():
                 self._co_emergency_active = False
                 self._co_below_since = None
@@ -1114,7 +1125,9 @@ class HIAutomationEngine:
             existing = self._visual_alert_tasks.get(identity)
             if existing and not existing.done():
                 continue
-            task = asyncio.create_task(self._visual_alert_loop(identity, dict(detail)))
+            task = asyncio.create_task(self._visual_alert_loop(
+                identity, dict(detail), manual_epoch=self._visual_alert_manual_epoch,
+            ))
             self._visual_alert_tasks[identity] = task
             await asyncio.sleep(0)
 
@@ -1134,10 +1147,22 @@ class HIAutomationEngine:
         self,
         identity: Tuple[str, str, str],
         detail: Dict[str, Any],
+        *,
+        manual_epoch: Optional[int] = None,
     ) -> None:
+        if manual_epoch is None:
+            manual_epoch = self._visual_alert_manual_epoch
+        revoked = False
+
+        def should_abort() -> bool:
+            nonlocal revoked
+            revoked = (revoked or manual_epoch != self._visual_alert_manual_epoch
+                       or self._manual_override_active())
+            return revoked
+
         try:
             while identity in self._visual_alert_active:
-                if self._manual_override_active():
+                if should_abort():
                     return
                 visual = detail.get("visual_alert") or {}
                 lights = list(visual.get("lights") or [])
@@ -1152,7 +1177,7 @@ class HIAutomationEngine:
                 power_entity = visual.get("power_entity")
                 if power_entity:
                     flash_payload["power_entity"] = power_entity
-                if self._manual_override_active():
+                if should_abort():
                     return
                 try:
                     await async_flash_lights_for_alert(
@@ -1162,7 +1187,7 @@ class HIAutomationEngine:
                         color=flash_payload["color"],
                         duration=flash_payload["duration"],
                         flash_count=flash_payload["flash_count"],
-                        should_abort=self._manual_override_active,
+                        should_abort=should_abort,
                     )
                 except Exception:
                     _LOGGER.exception(

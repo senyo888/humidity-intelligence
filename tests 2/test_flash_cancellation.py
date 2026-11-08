@@ -475,3 +475,106 @@ def test_retiring_worker_cannot_remove_its_replacement_or_release_its_locks_earl
         assert not engine._visual_alert_tasks and not engine._visual_alert_retiring
         assert_released(services, hass)
     asyncio.run(run())
+
+
+@pytest.mark.parametrize("co_emergency", [False, True])
+@pytest.mark.parametrize("coalesced_events", [False, True])
+def test_manual_pulse_permanently_revokes_retiring_snapshot_but_allows_fresh_worker(monkeypatch, co_emergency, coalesced_events):
+    async def run():
+        services, engine, hass, _ = environment(lights=(LIGHT, OTHER))
+        paused, _ = suspend_phase(monkeypatch, 1)
+        restoring, release, fresh_restored = asyncio.Event(), asyncio.Event(), asyncio.Event()
+        original_call = hass.services.async_call
+        manual = hass.data[services.DOMAIN][ENTRY_ID]["hi_input_booleans"]["air_control_manual_override"]
+        manual.entity_id = "switch.example_manual"
+
+        async def call(domain, service, data=None, blocking=False):
+            if (data or {}).get("brightness") == 77 and data.get("entity_id") == LIGHT:
+                restoring.set()
+                await release.wait()
+            await original_call(domain, service, data, blocking)
+            if (data or {}).get("brightness") == 99 and data.get("entity_id") == OTHER:
+                fresh_restored.set()
+
+        hass.services.async_call = call
+        task = worker(engine, (LIGHT, OTHER))
+        try:
+            await asyncio.wait_for(paused.wait(), 1)
+            if co_emergency:
+                hass.states._values["sensor.co_val"] = _FakeState(16, {"unit_of_measurement": "ppm"})
+            await engine.async_request_evaluate()
+            await asyncio.wait_for(restoring.wait(), 1)
+            assert task in engine._visual_alert_retiring
+            manual.is_on = True
+            hass.states._values[OTHER] = _FakeState("on", {**ATTRS, "brightness": 99})
+            if coalesced_events:
+                lock = engine._get_evaluate_lock()
+                await lock.acquire()
+                try:
+                    # Live state is already OFF when its queued ON event arrives.
+                    manual.is_on = False
+                    for state in ("on", "off"):
+                        await engine._handle_change(SimpleNamespace(data={
+                            "entity_id": manual.entity_id, "new_state": _FakeState(state),
+                        }))
+                finally:
+                    lock.release()
+            else:
+                await engine.async_request_evaluate()
+                assert hass.data[services.DOMAIN][ENTRY_ID]["runtime_mode"] == (
+                    "co_emergency" if co_emergency else "manual_override"
+                )
+                manual.is_on = False
+            await engine.async_request_evaluate()
+            release.set()
+            await asyncio.wait_for(task, 1)
+            assert hass.states.get(OTHER).attributes["brightness"] == 99
+            assert not any(c[2].get("entity_id") == OTHER and c[2].get("brightness") == 77
+                           for c in hass.services.calls)
+            # A fresh worker gets a new snapshot and normal authority after OFF.
+            detail = {"trigger_type": IDENTITY[0], "sensor": IDENTITY[1], "room": IDENTITY[2],
+                      "visual_alert": {"lights": [OTHER]}}
+            await engine._sync_visual_alert_tasks([detail])
+            await asyncio.wait_for(fresh_restored.wait(), 1)
+        finally:
+            release.set()
+            await engine.async_stop()
+        assert hass.states.get(OTHER).attributes["brightness"] == 99
+        assert_released(services, hass, (LIGHT, OTHER))
+    asyncio.run(run())
+
+
+def test_manual_epoch_is_captured_when_worker_is_scheduled(monkeypatch):
+    async def run():
+        services, engine, hass, _ = environment()
+        manual = hass.data[services.DOMAIN][ENTRY_ID]["hi_input_booleans"]["air_control_manual_override"]
+        manual.entity_id = "switch.example_manual"
+        create_task = asyncio.create_task
+        scheduled = []
+
+        def schedule(coro, *args, **kwargs):
+            if coro.cr_code.co_name == "_visual_alert_loop":
+                for state in ("on", "off"):
+                    scheduled.append(create_task(engine._handle_change(SimpleNamespace(data={
+                        "entity_id": manual.entity_id, "new_state": _FakeState(state),
+                    }))))
+            task = create_task(coro, *args, **kwargs)
+            scheduled.append(task)
+            return task
+
+        monkeypatch.setattr(asyncio, "create_task", schedule)
+        lock = engine._get_evaluate_lock()
+        await lock.acquire()
+        try:
+            await engine._sync_visual_alert_tasks([{
+                "trigger_type": IDENTITY[0], "sensor": IDENTITY[1], "room": IDENTITY[2],
+                "visual_alert": {"lights": [LIGHT]},
+            }])
+            await asyncio.wait_for(asyncio.gather(*scheduled), 1)
+            assert not manual.is_on and engine._visual_alert_manual_epoch > 0
+            assert hass.services.calls == []
+        finally:
+            lock.release()
+            await engine.async_stop()
+        assert_released(services, hass)
+    asyncio.run(run())

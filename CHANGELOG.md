@@ -18,7 +18,8 @@ preserved gate settings and saved slope identities.
   until accepted service calls finish. Retiring light workers remain owned without
   blocking CO ventilation or other control evaluation. A ten-second deadline stops
   further restoration submissions; draining accepted device work can extend unload.
-  Respect Manual handover, propagate cancellation and log failed or timed-out
+  Keep old workers revoked after Manual handover even when Manual turns off;
+  allow fresh workers under AUTO. Propagate cancellation and log failed or timed-out
   restoration without claiming a physical result.
 - Distinguish a current high CO reading from incomplete clearance evidence,
   clearance hold and readings that have not yet fallen below the clear threshold.
