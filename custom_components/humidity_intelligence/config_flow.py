@@ -10,10 +10,15 @@ import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import section
+try:
+    from homeassistant.data_entry_flow import Optional as _FlowOptional
+except ImportError:
+    _FlowOptional = None
 from homeassistant.helpers import selector
 from homeassistant.helpers.selector import SelectOptionDict
 
 from .adaptive_output.options import OutputObservationOptionsMixin
+from .helpers.slope_mapping import bindings_for_save
 from .helpers.frontend_dependencies import async_render_dependency_status
 from .helpers.level_labels import (
     level_label as resolve_level_label,
@@ -108,16 +113,45 @@ def _advanced_section(fields: Dict[Any, Any]) -> Any:
     return section(vol.Schema(fields), {"collapsed": True})
 
 
+def _gate_optional(field: str, *, default: Any) -> Any:
+    """Use conditional markers only with their matching schema implementation."""
+    if _FlowOptional is not None and issubclass(_FlowOptional, vol.Optional):
+        gate = "enable_presence_gate" if field == "presence_entities" else "enable_time_gate"
+        return _FlowOptional(field, default=default, visible={"field": gate, "value": True})
+    return vol.Optional(field, default=default)
+
+
 def _dependency_schema(default_skip: bool = False) -> vol.Schema:
     return vol.Schema({
         vol.Optional("skip", default=default_skip): selector.BooleanSelector()
     })
 
 
-def _presence_states_schema(options: List[str]) -> vol.Schema:
+def _presence_gate_for_entities(previous: Dict[str, Any], entities: Any, enabled: bool) -> Dict[str, Any]:
+    """Stage selected entities without transferring another identity's mapping."""
+    entities = _sanitize_entity_ids(entities)
+    gate = {**previous, "enabled": enabled, "entities": entities}
+    if set(entities) != set(_sanitize_entity_ids(previous.get("entities", []))):
+        gate.pop("present_states", None)
+        gate.pop("away_states", None)
+    return gate
+
+
+def _presence_states_schema(
+    options: List[str], values: Optional[Dict[str, Any]] = None, *, require_review: bool = False,
+) -> vol.Schema:
+    """Build presence selectors with staged or submitted ``values`` as defaults.
+
+    A new entity selection requires an explicit mapping; observed states are
+    choices, not evidence that those states mean present. Explicit empty
+    selections and submitted error-form values are kept."""
     select_options = [SelectOptionDict(value=o, label=o) for o in options] if options else []
+    present = (
+        vol.Required("present_states") if require_review and "present_states" not in (values or {})
+        else vol.Required("present_states", default=_form_input_default(values, "present_states", options or ["home"]))
+    )
     return vol.Schema({
-        vol.Required("present_states", default=options or ["home"]): selector.SelectSelector(
+        present: selector.SelectSelector(
             selector.SelectSelectorConfig(
                 options=select_options,
                 multiple=True,
@@ -125,7 +159,7 @@ def _presence_states_schema(options: List[str]) -> vol.Schema:
                 mode=selector.SelectSelectorMode.DROPDOWN,
             )
         ),
-        vol.Optional("away_states", default=[]): selector.SelectSelector(
+        vol.Optional("away_states", default=_form_input_default(values, "away_states", [])): selector.SelectSelector(
             selector.SelectSelectorConfig(
                 options=select_options,
                 multiple=True,
@@ -266,9 +300,23 @@ class HumidityIntelligenceConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         )
 
     async def async_step_gates(self, user_input: Optional[Dict[str, Any]] = None):
-        """Collect global time and presence gate settings."""
+        """Collect global time and presence gate settings.
+
+        Reuse staged defaults on revisits and preserve omitted Advanced settings.
+        Stage submissions, then open presence-state selection when enabled with
+        entities, or continue to telemetry otherwise."""
         if user_input is not None:
-            user_input = _flatten_advanced_section_input(user_input)
+            user_input = dict(_flatten_advanced_section_input(user_input))
+
+            # A collapsed Advanced section can be absent from a native submission.
+            # Keep previously staged values while allowing explicit replacements.
+            for field in (
+                "engine_interval_minutes", CONF_AUTO_REFRESH_UI_ON_STARTUP,
+                CONF_SHOW_OUTPUT_ENTITY_DETAILS, "custom_target_low", "custom_target_high",
+                "temperature_comfort_custom_low", "temperature_comfort_custom_high",
+            ):
+                if field not in user_input and field in self._data:
+                    user_input[field] = self._data[field]
 
             target_profile = _normalize_target_profile(user_input.get("target_profile", "auto"))
             custom_low = _bounded_float(
@@ -302,9 +350,9 @@ class HumidityIntelligenceConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
             self._data["time_gate"] = {
                 "enabled": user_input.get("enable_time_gate", False),
-                "start": user_input.get("start_time"),
-                "end": user_input.get("end_time"),
-                "outside_action": user_input.get("outside_action"),
+                "start": user_input.get("start_time", self._data.get("time_gate", {}).get("start", DEFAULT_TIME_START)),
+                "end": user_input.get("end_time", self._data.get("time_gate", {}).get("end", DEFAULT_TIME_END)),
+                "outside_action": user_input.get("outside_action", self._data.get("time_gate", {}).get("outside_action", OUTSIDE_WINDOW_ACTIONS[0]["value"])),
             }
             self._data["engine_interval_minutes"] = user_input.get(
                 "engine_interval_minutes", ENGINE_INTERVAL_MINUTES_DEFAULT
@@ -329,23 +377,21 @@ class HumidityIntelligenceConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             self._data["temperature_comfort_custom_low"] = temp_comfort_low
             self._data["temperature_comfort_custom_high"] = temp_comfort_high
             presence_enabled = user_input.get("enable_presence_gate", False)
-            entities = user_input.get("presence_entities", [])
-            self._data["presence_gate"] = {
-                "enabled": presence_enabled,
-                "entities": entities,
-                "present_states": [],
-                "away_states": [],
-            }
+            previous_presence = self._data.get("presence_gate", {})
+            entities = user_input.get("presence_entities", previous_presence.get("entities", []))
+            self._data["presence_gate"] = _presence_gate_for_entities(previous_presence, entities, presence_enabled)
             if presence_enabled and entities:
                 return await self.async_step_presence_states()
             return await self.async_step_telemetry()
 
+        time_gate = self._data.get("time_gate", {})
+        presence_gate = self._data.get("presence_gate", {})
         gates_default = lambda field, default: _form_input_default(user_input, field, default)
         schema_fields: Dict[Any, Any] = {
-            vol.Optional("enable_time_gate", default=gates_default("enable_time_gate", False)): selector.BooleanSelector(),
-            vol.Optional("start_time", default=gates_default("start_time", DEFAULT_TIME_START)): selector.TimeSelector(),
-            vol.Optional("end_time", default=gates_default("end_time", DEFAULT_TIME_END)): selector.TimeSelector(),
-            vol.Optional("outside_action", default=gates_default("outside_action", OUTSIDE_WINDOW_ACTIONS[0]["value"])): selector.SelectSelector(
+            vol.Optional("enable_time_gate", default=gates_default("enable_time_gate", time_gate.get("enabled", False))): selector.BooleanSelector(),
+            _gate_optional("start_time", default=gates_default("start_time", time_gate.get("start", DEFAULT_TIME_START))): selector.TimeSelector(),
+            _gate_optional("end_time", default=gates_default("end_time", time_gate.get("end", DEFAULT_TIME_END))): selector.TimeSelector(),
+            _gate_optional("outside_action", default=gates_default("outside_action", time_gate.get("outside_action", OUTSIDE_WINDOW_ACTIONS[0]["value"]))): selector.SelectSelector(
                 selector.SelectSelectorConfig(
                     options=_value_label_options(OUTSIDE_WINDOW_ACTIONS),
                     mode=selector.SelectSelectorMode.DROPDOWN,
@@ -370,13 +416,13 @@ class HumidityIntelligenceConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     mode=selector.SelectSelectorMode.DROPDOWN,
                 )
             ),
-            vol.Optional("enable_presence_gate", default=gates_default("enable_presence_gate", False)): selector.BooleanSelector(),
-            vol.Optional("presence_entities", default=gates_default("presence_entities", [])): selector.EntitySelector(
+            vol.Optional("enable_presence_gate", default=gates_default("enable_presence_gate", presence_gate.get("enabled", False))): selector.BooleanSelector(),
+            _gate_optional("presence_entities", default=gates_default("presence_entities", presence_gate.get("entities", []))): selector.EntitySelector(
                 selector.EntitySelectorConfig(multiple=True)
             ),
         }
         schema_fields[vol.Optional(ADVANCED_OPTIONS_FIELD)] = _advanced_section({
-            vol.Optional("engine_interval_minutes", default=ENGINE_INTERVAL_MINUTES_DEFAULT): selector.NumberSelector(
+            vol.Optional("engine_interval_minutes", default=self._data.get("engine_interval_minutes", ENGINE_INTERVAL_MINUTES_DEFAULT)): selector.NumberSelector(
                 selector.NumberSelectorConfig(
                     min=ENGINE_INTERVAL_MIN,
                     max=ENGINE_INTERVAL_MAX,
@@ -450,23 +496,26 @@ class HumidityIntelligenceConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         )
 
     async def async_step_presence_states(self, user_input: Optional[Dict[str, Any]] = None):
-        """Collect presence state values that indicate someone is home."""
+        """Collect disjoint present and away states, retaining staged defaults.
+
+        Redisplay overlapping selections with a field error without saving them;
+        otherwise stage both selections and continue to telemetry."""
         options = _presence_state_options(self.hass, self._data.get("presence_gate", {}).get("entities", []))
         if user_input is not None:
             states = user_input.get("present_states", [])
             away_states = user_input.get("away_states", [])
             overlap = set(states).intersection(set(away_states))
-            if overlap:
+            if overlap or "present_states" not in user_input:
                 return self.async_show_form(
                     step_id="presence_states",
-                    data_schema=_presence_states_schema(options),
-                    errors={"away_states": "overlap"},
+                    data_schema=_presence_states_schema(options, user_input, require_review=True),
+                    errors={"away_states": "overlap"} if overlap else {"present_states": "required"},
                 )
             self._data.setdefault("presence_gate", {})["present_states"] = states
             self._data.setdefault("presence_gate", {})["away_states"] = away_states
             return await self.async_step_telemetry()
 
-        schema = _presence_states_schema(options)
+        schema = _presence_states_schema(options, self._data.get("presence_gate", {}), require_review=True)
         return self.async_show_form(step_id="presence_states", data_schema=schema)
 
     async def async_step_telemetry(self, user_input: Optional[Dict[str, Any]] = None):
@@ -791,6 +840,12 @@ class HumidityIntelligenceConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 errors["slope_sources"] = "required"
             if mode == SLOPE_MODE_PROVIDED and not provided_sensors:
                 errors["slope_sensors"] = "required"
+            bindings = {}
+            if mode == SLOPE_MODE_PROVIDED and provided_sensors:
+                bindings = bindings_for_save(self.hass, slope_sources or temp_entities, provided_sensors,
+                                             self._telemetry, self._data.get("slope", {}).get("bindings"))
+                if len(bindings) != len(set(slope_sources or temp_entities)):
+                    errors["slope_sensors"] = "ambiguous_slope_mapping"
             if not errors:
                 slope_data: Dict[str, Any] = {
                     "mode": mode,
@@ -802,6 +857,7 @@ class HumidityIntelligenceConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 elif mode == SLOPE_MODE_PROVIDED:
                     slope_data["source_entities"] = slope_sources or temp_entities
                     slope_data["provided_sensors"] = provided_sensors
+                    slope_data["bindings"] = bindings
                 self._data["slope"] = slope_data
                 return await self.async_step_zones()
 
@@ -1629,6 +1685,10 @@ class HumidityIntelligenceOptionsFlow(OutputObservationOptionsMixin, config_entr
             }
         else:
             slope["source_entities"] = source_entities
+            if "bindings" in slope:
+                bindings = slope["bindings"] if isinstance(slope["bindings"], dict) else {}
+                slope["bindings"] = {source: sensor for source, sensor in bindings.items()
+                                     if source in source_entities and sensor in provided_sensors}
             if mode == SLOPE_MODE_PROVIDED:
                 slope["provided_sensors"] = provided_sensors
             elif "provided_sensors" in slope:
@@ -1680,8 +1740,6 @@ class HumidityIntelligenceOptionsFlow(OutputObservationOptionsMixin, config_entr
         presence_gate = dict(self._section("presence_gate", {}))
 
         default_presence_entities = _sanitize_entity_ids(presence_gate.get("entities", []))
-        default_present_states = _sanitize_state_values(presence_gate.get("present_states", []))
-        default_away_states = _sanitize_state_values(presence_gate.get("away_states", []))
 
         if user_input is not None:
             user_input = _flatten_advanced_section_input(user_input)
@@ -1715,9 +1773,9 @@ class HumidityIntelligenceOptionsFlow(OutputObservationOptionsMixin, config_entr
                 custom_high = min(float(TARGET_CUSTOM_HIGH_MAX), custom_low + 1.0)
             self._options["time_gate"] = {
                 "enabled": user_input.get("enable_time_gate", False),
-                "start": user_input.get("start_time"),
-                "end": user_input.get("end_time"),
-                "outside_action": user_input.get("outside_action", OUTSIDE_WINDOW_ACTIONS[0]["value"]),
+                "start": user_input.get("start_time", time_gate.get("start", DEFAULT_TIME_START)),
+                "end": user_input.get("end_time", time_gate.get("end", DEFAULT_TIME_END)),
+                "outside_action": user_input.get("outside_action", time_gate.get("outside_action", OUTSIDE_WINDOW_ACTIONS[0]["value"])),
             }
             self._options["alert_only_mode"] = user_input.get("alert_only_mode", self._section("alert_only_mode", False))
             self._options[CONF_AUTO_REFRESH_UI_ON_STARTUP] = user_input.get(
@@ -1741,13 +1799,8 @@ class HumidityIntelligenceOptionsFlow(OutputObservationOptionsMixin, config_entr
             self._options["custom_target_low"] = custom_low
             self._options["custom_target_high"] = custom_high
             presence_enabled = user_input.get("enable_presence_gate", False)
-            entities = _sanitize_entity_ids(user_input.get("presence_entities", []))
-            pending_presence = {
-                "enabled": presence_enabled,
-                "entities": entities,
-                "present_states": default_present_states,
-                "away_states": default_away_states,
-            }
+            entities = _sanitize_entity_ids(user_input.get("presence_entities", default_presence_entities))
+            pending_presence = _presence_gate_for_entities(presence_gate, entities, presence_enabled)
 
             if presence_enabled and entities:
                 self._pending_presence_gate = pending_presence
@@ -1760,9 +1813,9 @@ class HumidityIntelligenceOptionsFlow(OutputObservationOptionsMixin, config_entr
         gates_default = lambda field, default: _form_input_default(user_input, field, default)
         schema_fields: Dict[Any, Any] = {
             vol.Optional("enable_time_gate", default=gates_default("enable_time_gate", time_gate.get("enabled", False))): selector.BooleanSelector(),
-            vol.Optional("start_time", default=gates_default("start_time", time_gate.get("start") or DEFAULT_TIME_START)): selector.TimeSelector(),
-            vol.Optional("end_time", default=gates_default("end_time", time_gate.get("end") or DEFAULT_TIME_END)): selector.TimeSelector(),
-            vol.Optional(
+            _gate_optional("start_time", default=gates_default("start_time", time_gate.get("start") or DEFAULT_TIME_START)): selector.TimeSelector(),
+            _gate_optional("end_time", default=gates_default("end_time", time_gate.get("end") or DEFAULT_TIME_END)): selector.TimeSelector(),
+            _gate_optional(
                 "outside_action",
                 default=gates_default(
                     "outside_action",
@@ -1782,7 +1835,7 @@ class HumidityIntelligenceOptionsFlow(OutputObservationOptionsMixin, config_entr
                 )
             ),
             vol.Optional("enable_presence_gate", default=gates_default("enable_presence_gate", presence_gate.get("enabled", False))): selector.BooleanSelector(),
-            vol.Optional("presence_entities", default=gates_default("presence_entities", default_presence_entities)): selector.EntitySelector(
+            _gate_optional("presence_entities", default=gates_default("presence_entities", default_presence_entities)): selector.EntitySelector(
                 selector.EntitySelectorConfig(multiple=True)
             ),
         }
@@ -1865,8 +1918,10 @@ class HumidityIntelligenceOptionsFlow(OutputObservationOptionsMixin, config_entr
             present_states = _sanitize_state_values(user_input.get("present_states", []))
             away_states = _sanitize_state_values(user_input.get("away_states", []))
             overlap = set(present_states).intersection(set(away_states))
-            if overlap:
-                errors["away_states"] = "overlap"
+            if overlap or "present_states" not in user_input:
+                errors = {"away_states": "overlap"} if overlap else {"present_states": "required"}
+                present_defaults, away_defaults = present_states, away_states
+                options = _merge_unique_values(options, present_states, away_states)
             else:
                 self._options["presence_gate"] = {
                     "enabled": bool(presence_gate.get("enabled")),
@@ -1879,7 +1934,7 @@ class HumidityIntelligenceOptionsFlow(OutputObservationOptionsMixin, config_entr
 
         schema = self._options_presence_states_schema(
             options,
-            present_defaults or (options or ["home"]),
+            (present_defaults if "present_states" in (user_input if user_input is not None else presence_gate) else None),
             away_defaults,
         )
         return self.async_show_form(
@@ -1891,12 +1946,12 @@ class HumidityIntelligenceOptionsFlow(OutputObservationOptionsMixin, config_entr
     def _options_presence_states_schema(
         self,
         options: List[str],
-        present_defaults: List[str],
+        present_defaults: Optional[List[str]],
         away_defaults: List[str],
     ) -> vol.Schema:
         select_options = [SelectOptionDict(value=o, label=o) for o in options] if options else []
         return vol.Schema({
-            vol.Required("present_states", default=present_defaults): selector.SelectSelector(
+            (vol.Required("present_states") if present_defaults is None else vol.Required("present_states", default=present_defaults)): selector.SelectSelector(
                 selector.SelectSelectorConfig(
                     options=select_options,
                     multiple=True,
@@ -3177,6 +3232,12 @@ class HumidityIntelligenceOptionsFlow(OutputObservationOptionsMixin, config_entr
                 errors["slope_sources"] = "required"
             if mode == SLOPE_MODE_PROVIDED and not provided_sensors:
                 errors["slope_sensors"] = "required"
+            bindings = {}
+            if mode == SLOPE_MODE_PROVIDED and provided_sensors:
+                bindings = bindings_for_save(self.hass, slope_sources or temp_entities, provided_sensors,
+                                             telemetry, slope.get("bindings"))
+                if len(bindings) != len(set(slope_sources or temp_entities)):
+                    errors["slope_sensors"] = "ambiguous_slope_mapping"
             if not errors:
                 slope_data: Dict[str, Any] = {
                     "mode": mode,
@@ -3188,6 +3249,7 @@ class HumidityIntelligenceOptionsFlow(OutputObservationOptionsMixin, config_entr
                 elif mode == SLOPE_MODE_PROVIDED:
                     slope_data["source_entities"] = slope_sources or temp_entities
                     slope_data["provided_sensors"] = provided_sensors
+                    slope_data["bindings"] = bindings
                 self._options["slope"] = slope_data
                 return await self.async_step_init()
 

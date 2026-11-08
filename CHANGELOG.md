@@ -6,7 +6,96 @@ All notable changes to Humidity Intelligence will be documented in this file.
 
 This project follows a practical changelog format for Home Assistant and HACS users. Add new entries under a fresh `Unreleased` section before publishing a future release.
 
-<a id="unreleased--v211-stable-preparation"></a>
+## v2.1.2 — Stable source preparation
+
+**Home Assistant 2026.11 Harmonization.** Includes component ZIP delivery,
+Marketplace/HACS observation, canonical AQ units, complete-evidence CO clearance,
+preserved gate settings and saved slope identities.
+
+- Drain active evaluations and owned background tasks before successful unload;
+  discard queued follow-up evaluations after stop.
+- Own public admin flash calls across loaded entries and drain them on final
+  unload. Preserve services when another entry remains loaded.
+- Bound the runtime-drain wait to 30 seconds before platform teardown. Failed or
+  interrupted unload retains stopped entry data, cleanup tasks and light locks;
+  late completion cannot reopen admission. Resolve the service fault and restart
+  Home Assistant. See [unload recovery](docs/runtime-unload.md).
+- Restore captured alert-light state when a flash is interrupted, retaining locks
+  until accepted service calls finish. Retiring light workers remain owned without
+  blocking CO ventilation or other control evaluation. A ten-second deadline stops
+  further restoration submissions; accepted device work can extend cleanup beyond
+  a failed unload without abandoning its light locks.
+  Keep old workers revoked after Manual handover even when Manual turns off;
+  free their active slots immediately so fresh AUTO workers do not wait for the
+  old repeat interval. Propagate cancellation and log failed or timed-out
+  restoration without claiming a physical result.
+- Distinguish a current high CO reading from incomplete clearance evidence,
+  clearance hold and readings that have not yet fallen below the clear threshold.
+- Retain staged gate values when returning to setup, and reject unmatched leftover
+  supplied-slope pairs in multi-source configurations.
+- Fix generated optional JavaScript references that could bind unrelated legacy
+  entities when those sources were not configured. Remove absent source bindings
+  before mapping, preserving explicitly mapped entities even when their names look
+  like legacy placeholders. Keep missing/unavailable configured-input checks intact.
+- Advance both V2 layouts to revision **16**, superseding 1–15; stamp schema and
+  generator contract remain **1**. Refresh/export and replace complete saved V2
+  cards, including beta.1 revision-14 cards, after a complete update and restart.
+- Name Marketplace in setup and Dashboard add-ons guidance on Home Assistant
+  2026.11 or later, retaining HACS guidance for earlier supported versions.
+- Warn through Home Assistant Repairs when configured CO sources lack supported
+  units, without inferring units or changing control behavior.
+- Restore unambiguous calculated kitchen slopes from separately configured sources;
+  preserve supplied-slope identity and reject other-room or ambiguous fallbacks.
+- Harden maintainer-note checks against fenced examples and locale-dependent
+  decoding; show working installation choices before the Install instruction.
+- Preserve canonical README, website and Wiki headers; place the release write-up
+  below established content and retain the maintainer-owned notes workflow.
+
+This changes the generator package beyond the previously tested revision-14
+candidate. Earlier Marketplace/HACS installer and manual Stable-instance results
+remain bound to their exact packages. See the [validation and upgrade record](docs/releases/v2.1.2.md).
+The PR #147 corrections also change component bytes beyond the accepted
+`cc709769` package; its Stable acceptance remains historical evidence.
+The PR #148 flash-restoration correction changes the package again; the earlier
+`d6174038` Lab and Stable results retain their original package and test scope.
+The lifecycle package `8cdd3ae` passed fresh native Lab setup and manual
+Stable-instance acceptance with all 80 files verified, five valid card exports
+and no failed checks. Stalled-unload behavior has native regression coverage;
+it was not fault-injected live, and physical output response was not tested.
+Published Stable remains v2.1.1; final published delivery is still separate.
+
+Thanks to [@Slaybcn](https://github.com/Slaybcn) for reporting the Marketplace
+installation failure and sharing logs in [#145](https://github.com/senyo888/humidity-intelligence/issues/145),
+and to [@Thorsten1982](https://github.com/Thorsten1982) for confirming the same issue.
+
+## v2.1.2-beta.1 — Beta prerelease (2026-11-07)
+
+Opt-in prerelease from `senyo888-patch-1`; `main` and Current Stable v2.1.1 are unchanged.
+[Release and downloads](https://github.com/senyo888/humidity-intelligence/releases/tag/v2.1.2-beta.1).
+
+- Deliver the component through a named release ZIP, avoiding the full source
+  archive that exceeds Marketplace's 100 MiB limit in [#145](https://github.com/senyo888/humidity-intelligence/issues/145).
+- Build from immutable tracked blobs, verify every packaged file, enforce size
+  limits and retain reproducible CI review artifacts. Publication requires the
+  verified asset on the draft release; CI does not publish.
+- Hide default-branch downloads explicitly because branches have no release asset.
+  Keep manual exact-source installation and document the legacy HACS 2.0.5
+  older-release first-install limitation in [release packaging](docs/release-packaging.md).
+- Extend the existing release-check and controller-artifact version acceptance
+  through v2.1.2; their ownership, call schemas and control boundaries are unchanged.
+- Add exact Marketplace/HACS update observation and remove package-manager files
+  from optional frontend-card requirements. Unsupported/ambiguous evidence stays unverified.
+- Normalize VOC, CO/CO₂ and PM2.5 units consistently before runtime, aggregate and
+  Stability evaluation; expose bounded input-quality diagnostics and canonical units.
+- Require complete, valid CO evidence throughout a fresh monotonic clearance hold;
+  retain the latch across missing/invalid evidence and fix clearance timer ownership.
+- Preserve hidden gate settings in conditional 2026.11 forms, with older-HA fallback.
+  Save supplied-slope identity pairs explicitly and stop ambiguous positional remapping.
+- Retain runtime custody when platform unloading fails.
+- **UI revision 14:** both V2 layouts supersede 1–13; stamp schema/generator remain 1.
+  Export and replace saved cards for Marketplace support. No automatic source,
+  threshold or history migration. See [2026.11 compatibility](docs/home-assistant-2026.11.md).
+  Complete-package updates require restart; restart clears in-memory Stability history.
 
 ## v2.1.1 — Stable (2026-10-24)
 

@@ -291,6 +291,62 @@ the deterministic engine has selected an alert lane. The public `flash_lights`
 service is admin-gated and is not the engine's control path; it cannot create,
 reorder, or override a lane decision.
 
+Visual flashing captures the configured lights only after acquiring their shared
+locks. Normal completion, alert cancellation and unload attempt to restore that
+snapshot before releasing the locks. Restoration skips unknown, unavailable and
+missing original states. An on-state snapshot restores one color descriptor from
+its captured mode, using Kelvin for temperature or `white` with captured brightness
+for white mode, plus saved brightness and a non-null effect. A null effect is
+omitted so native service validation cannot reject the whole restoration request.
+Retiring visual workers remain owned by the
+engine without blocking control evaluation, including CO emergency ventilation.
+Unload drains active and retiring workers. Accepted flash and restoration service
+calls remain owned through HI-managed caller cancellation because executor-backed device work cannot
+be recalled. The ten-second restoration deadline stops further submissions; draining
+an accepted call can extend cleanup beyond that deadline. Service failures
+or timeout leave physical restoration unconfirmed and are logged. Engine-owned flash,
+power and restoration calls check Manual at service admission and stop remaining writes
+once Manual is observed. A worker's handover revocation is permanent: observing
+Manual ON invalidates existing workers even if Manual turns OFF before they drain.
+Revoked workers retire immediately, freeing their active slots without waiting for
+the repeat interval or accepted-call drainage. Fresh workers created after Manual
+turns OFF receive new ownership and still wait for shared light locks before writing.
+Commands already accepted by a device integration cannot
+be revoked, and external manual commands do not use HI's locks. The public service schema and optional power-entity policy
+remain unchanged; cleanup does not restore the power entity.
+
+Public admin `flash_lights` calls have domain-level task ownership across loaded
+entries. Authorization precedes an atomic admission/registration step. Setup
+reservations count as owners; last-owner closure rejects new calls, cancels and
+drains accepted public workers before successful unload. Unloading one entry
+preserves services and public calls owned by the remaining entries.
+Replacement setup waits for ongoing closes to succeed; failed custody still
+rejects setup. Failed or cancelled setup retains public forwarding inside bounded
+cleanup; an observed failure starts rollback without waiting for stalled siblings.
+Each forwarding failure logs its original traceback when it settles. Rollback
+removes only this attempt's initialized platforms. Platforms belonging
+to other entries or reset objects from earlier attempts are excluded.
+If a forwarding operation itself is cancelled, runtime/public cleanup still runs,
+but failed custody is retained without platform teardown: HA can leave a shielded
+setup body running, so forwarding cancellation does not prove setup completion.
+
+Integration unload allows 30 seconds for runtime drainage before platform teardown.
+It reports failure on timeout without cancelling the retained cleanup task, releasing
+light locks or deleting entry data. Failed or interrupted unload closes new public
+flash admission and blocks new setup; unrelated loaded engines continue. Late cleanup
+cannot reopen the failed entry or perform deferred teardown. Resolve the service
+fault and restart Home Assistant; normal reload cannot recover `FAILED_UNLOAD`.
+Platform teardown has its own HA lifecycle and is outside this runtime-drain bound.
+See [unload behavior and recovery](docs/runtime-unload.md).
+Stopped engines retain Manual observation until owned cleanup finishes, so an
+ON/OFF handover cannot be missed while platforms remain loaded after a timeout.
+The observer cannot restart evaluation or periodic control.
+
+This ownership guarantee does not extend to direct cancellation of a protected
+service task or Home Assistant's global shutdown. Accepted work may continue after
+a failed unload; cleanup can attempt restoration when it finishes. No timeout,
+cancellation or restart proves physical completion or recalls a device command.
+
 Generated-artifact purge must validate its full fixed file target set before mutation,
 show the exact existing files in a completed blocking notification before deletion,
 reject paths outside the direct owned basename set and non-regular filesystem objects,
@@ -343,17 +399,17 @@ update, while a rollback mismatch is a difference. Export success never proves c
 replacement. This observation adds no writer, lane input or frontend runtime
 dependency. See [the rendered UI revision contract](docs/ui-revision-status.md).
 
-The same footer presents an independent, optional HACS update observation. The
+The same footer presents an independent, optional Marketplace/HACS update observation. The
 backend resolves the official HI repository through Home Assistant's entity
 registry and reads its update entity during existing Diagnostics publication.
 Missing, disabled, ambiguous or malformed evidence stays unverified. Provider
 states are reported without HI version ordering, release-channel selection, remote
-polling or installation actions. A HACS downloaded version is not loaded-runtime
+polling or installation actions. A provider-reported downloaded version is not loaded-runtime
 proof, and entity availability is not a fresh Internet check. UI revision status,
 Diagnostics' primary state, Stability and deterministic control remain independent.
 The footer keeps UI revision status at the left and software cues at the right.
 A positive provider report is labelled **Update available**; its details retain
-HACS's source and freshness limits. The routine no-update cue is visually hidden,
+the provider's source and freshness limits. The routine no-update cue is visually hidden,
 while its evidence remains in the shared details/accessibility text. Skipped,
 in-progress and unverified states stay visible; absence is not a software-current
 claim. The shared details button adds no new action.
@@ -361,11 +417,58 @@ The additive `update_observation` payload has its own schema 1; native/support
 exports omit the locally resolved update entity ID. See [UI and software version
 details](docs/ui-revision-status.md#software-update-observation).
 
+In 2.1.2, schema-1 provider identity is `hacs`, `marketplace`, or null
+when unresolved. Both V2 layouts use revision 16, superseding revisions 1–15.
+Revision 14 introduced Marketplace observation; revision 16 removes unconfigured
+optional-source literals from generated JavaScript before applying configured
+entity mappings. Mapped missing/unknown/unavailable sources remain visible to
+validation. Re-export and replace older saved cards, including beta.1 revision 14.
+Old revision-13 cards conservatively reject Marketplace evidence; schema/generator 1
+remains supported.
+
+## Canonical AQ Inputs And Complete CO Clearance
+
+The shared AQ parser normalizes VOC to ppb, CO/CO₂ to ppm and PM2.5 to µg/m³ before
+runtime comparison, aggregation and Stability evaluation. It accepts only explicit,
+dimensionally compatible concentration units and finite nonnegative numbers;
+unitless IAQ remains supported. Unsupported units are incomplete evidence, never
+zero or an inferred healthy result. Native, live and support-export `aq_inputs`
+contains bounded per-type counts, without source IDs or readings. This is an
+additive diagnostics-output contract; service names, call schemas and permissions
+are unchanged.
+
+CO activates from any valid source meeting its start threshold. Clearing a latched
+emergency requires every configured CO source below the existing clear threshold
+for a fresh continuous two-minute monotonic hold. Invalid/missing evidence resets
+the hold even during coalesced evaluations. Waiting deadlines never own or cancel
+a running evaluation. This corrects clearance behavior without changing thresholds,
+priority, Manual exception, outputs or humidifier independence.
+The engine separately owns the active evaluation. Successful stop closes admission,
+discards queued follow-ups and cancels/drains evaluation and background tasks before
+unload removes entry data. Runtime drainage precedes platform teardown; a failed
+platform unload retains stopped runtime custody and requires restart recovery.
+CO explanations distinguish current above-start readings, incomplete clearance
+evidence, the continuous hold and readings that have not met the clear threshold.
+Building those explanations does not start or reset the clearance timer.
+
+Provided-slope associations are captured by entity ID only on explicit setup/Options
+save. Saved pairs survive display-name changes; legacy ambiguous name matches and
+multi-source positional guesses remain unmapped. Calculated-slope identities and
+sampling are unchanged. See [compatibility and rollback](docs/home-assistant-2026.11.md).
+The sole-source/slope convenience applies only to the complete configuration;
+removing saved pairs must not turn an unmatched remainder into an inferred pair.
+
 ## Home Assistant And HACS Boundaries
 
 Config flow, options flow, entity registry behavior, services, translations,
 diagnostics, and generated files must remain compatible with supported Home Assistant
 versions.
+
+Selecting presence entities for the first time or changing their set requires an explicit present/away
+mapping review in setup and Options. Unchanged selections retain their mapping;
+observed states are choices, not inferred presence. Options remain staged until
+the existing final save. A failed Options reload reports that saved settings are
+not confirmed active; it neither exports cards nor announces an update success.
 
 Avoid blocking filesystem, network, or slow I/O work in async Home Assistant paths.
 Keep service schemas explicit and error messages actionable. Keep `hacs.json` limited
@@ -389,6 +492,15 @@ cannot publish a GitHub Release, change HACS availability, install or deploy HI,
 rollback, or transfer HI runtime and release authority to the external controller.
 The public repository, manifest, tag, GitHub Release, HACS package, and explicit
 maintainer gates retain their existing roles.
+
+The v2.1.2 package delivers a named component-only release ZIP through
+the supported `zip_release`/`filename` metadata. Its manifest sits at the ZIP root;
+the source repository retains its conventional component directory and full source
+archives. The default-branch download choice is explicitly hidden because branches
+do not supply release assets; complete-component manual installation remains
+available. Every release asset must match its exact commit and version and be
+verified before publication. The read-only release-check workflow builds review
+artifacts only. See [packaging, historical-version limits and rollback](docs/release-packaging.md).
 
 ## Documentation And Release Boundaries
 

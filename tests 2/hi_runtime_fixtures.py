@@ -551,6 +551,8 @@ def _default_attrs(entity_id: str) -> Dict[str, Any]:
         return {"unit_of_measurement": "%"}
     if entity_id.endswith("_co_ppm"):
         return {"unit_of_measurement": "ppm"}
+    if entity_id.endswith("_pm25"):
+        return {"unit_of_measurement": "µg/m³"}
     return {}
 
 

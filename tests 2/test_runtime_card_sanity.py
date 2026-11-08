@@ -117,6 +117,8 @@ def _install_homeassistant_stubs(*, include_unit_ratio: bool = True) -> None:
     core = types.ModuleType("homeassistant.core")
     config_entries = types.ModuleType("homeassistant.config_entries")
     const = types.ModuleType("homeassistant.const")
+    entity_platform = types.ModuleType("homeassistant.helpers.entity_platform")
+    entity_platform.async_get_platforms = lambda _hass, _domain: []
     components = types.ModuleType("homeassistant.components")
     diagnostics_mod = types.ModuleType("homeassistant.components.diagnostics")
     sensor_mod = types.ModuleType("homeassistant.components.sensor")
@@ -359,6 +361,7 @@ def _install_homeassistant_stubs(*, include_unit_ratio: bool = True) -> None:
     sys.modules["homeassistant.helpers.device_registry"] = device_registry
     sys.modules["homeassistant.helpers.entity"] = entity_helper
     sys.modules["homeassistant.helpers.entity_registry"] = entity_registry
+    sys.modules["homeassistant.helpers.entity_platform"] = entity_platform
     sys.modules["homeassistant.util"] = util
     sys.modules["homeassistant.util.dt"] = util_dt
     sys.modules["voluptuous"] = voluptuous
@@ -1310,7 +1313,7 @@ async def _run_runtime_assertions(engine_mod) -> None:
             "sensor.hall_t": _FakeState(22),
             "sensor.bed_t": _FakeState(21),
             "sensor.l1_iaq": _FakeState(40),
-            "sensor.co_val": _FakeState(16),
+            "sensor.co_val": _FakeState(16, {"unit_of_measurement": "ppm"}),
         },
     )
     engine_co = HIAutomationEngine(hass_co, entry)
@@ -1348,7 +1351,7 @@ async def _run_runtime_assertions(engine_mod) -> None:
             "sensor.hall_t": _FakeState(22),
             "sensor.bed_t": _FakeState(21),
             "sensor.l1_iaq": _FakeState(40),
-            "sensor.co_val": _FakeState(21),  # above configured CO threshold (20)
+            "sensor.co_val": _FakeState(21, {"unit_of_measurement": "ppm"}),  # above configured CO threshold (20)
         },
     )
     engine_co_cfg = HIAutomationEngine(hass_co_cfg, entry_co_cfg)
@@ -1391,7 +1394,7 @@ async def _run_runtime_assertions(engine_mod) -> None:
             "sensor.hall_t": _FakeState(22),
             "sensor.bed_t": _FakeState(21),
             "sensor.l1_iaq": _FakeState(40),
-            "sensor.co_val": _FakeState(8),
+            "sensor.co_val": _FakeState(8, {"unit_of_measurement": "ppm"}),
         },
     )
     engine_co_guard = HIAutomationEngine(hass_co_guard, entry_co_guard)
@@ -1412,14 +1415,14 @@ async def _run_runtime_assertions(engine_mod) -> None:
             "sensor.hall_t": _FakeState(22),
             "sensor.bed_t": _FakeState(21),
             "sensor.l1_iaq": _FakeState(40),
-            "sensor.co_val": _FakeState(16),
+            "sensor.co_val": _FakeState(16, {"unit_of_measurement": "ppm"}),
         },
     )
     engine_co_clear = HIAutomationEngine(hass_co_clear, entry_co_clear)
     await engine_co_clear._evaluate()
     assert hass_co_clear.data["humidity_intelligence"][ENTRY_ID].get("runtime_mode") == "co_emergency"
 
-    hass_co_clear.states._values["sensor.co_val"] = _FakeState(0)
+    hass_co_clear.states._values["sensor.co_val"] = _FakeState(0, {"unit_of_measurement": "ppm"})
     await engine_co_clear._evaluate()
     assert engine_co_clear._co_below_since is not None
     assert engine_co_clear._co_clear_recheck_task is not None
@@ -1448,7 +1451,7 @@ async def _run_runtime_assertions(engine_mod) -> None:
             "sensor.hall_t": _FakeState(22),
             "sensor.bed_t": _FakeState(21),
             "sensor.l1_iaq": _FakeState(40),
-            "sensor.co_val": _FakeState(0),
+            "sensor.co_val": _FakeState(0, {"unit_of_measurement": "ppm"}),
         },
     )
     engine_humidity_missing = HIAutomationEngine(hass_humidity_missing, entry_humidity_missing)
@@ -1478,7 +1481,7 @@ async def _run_runtime_assertions(engine_mod) -> None:
             "sensor.hall_t": _FakeState("unavailable"),
             "sensor.bed_t": _FakeState("unavailable"),
             "sensor.l1_iaq": _FakeState(40),
-            "sensor.co_val": _FakeState(0),
+            "sensor.co_val": _FakeState(0, {"unit_of_measurement": "ppm"}),
         },
     )
     engine_temperature_missing = HIAutomationEngine(hass_temperature_missing, entry_temperature_missing)
@@ -1503,7 +1506,7 @@ async def _run_runtime_assertions(engine_mod) -> None:
             "sensor.hall_t": _FakeState(22),
             "sensor.bed_t": _FakeState(21),
             "sensor.l1_iaq": _FakeState(70),
-            "sensor.co_val": _FakeState(4),
+            "sensor.co_val": _FakeState(4, {"unit_of_measurement": "ppm"}),
         },
     )
     engine = HIAutomationEngine(hass, entry2)
@@ -1578,7 +1581,7 @@ async def _run_runtime_assertions(engine_mod) -> None:
             "sensor.hall_t": _FakeState(22),
             "sensor.bed_t": _FakeState(21),
             "sensor.l1_iaq": _FakeState(85),
-            "sensor.co_val": _FakeState(4),
+            "sensor.co_val": _FakeState(4, {"unit_of_measurement": "ppm"}),
         },
     )
     engine_room_alert = HIAutomationEngine(hass_room_alert, entry_room_alert)
@@ -1619,7 +1622,7 @@ async def _run_runtime_assertions(engine_mod) -> None:
             "sensor.hall_t": _FakeState(22),
             "sensor.bed_t": _FakeState(21),
             "sensor.l1_iaq": _FakeState(85),
-            "sensor.co_val": _FakeState(4),
+            "sensor.co_val": _FakeState(4, {"unit_of_measurement": "ppm"}),
         },
     )
     engine_zone_alert = HIAutomationEngine(hass_zone_alert, entry_zone_alert)
@@ -1673,7 +1676,7 @@ async def _run_runtime_assertions(engine_mod) -> None:
             "sensor.hall_t": _FakeState(22),
             "sensor.bed_t": _FakeState(20),
             "sensor.l1_iaq": _FakeState(85),
-            "sensor.co_val": _FakeState(4),
+            "sensor.co_val": _FakeState(4, {"unit_of_measurement": "ppm"}),
         },
     )
     engine_alert_hierarchy = HIAutomationEngine(hass_alert_hierarchy, entry_alert_hierarchy)
@@ -1721,7 +1724,7 @@ async def _run_runtime_assertions(engine_mod) -> None:
             "sensor.hall_t": _FakeState(22),
             "sensor.bed_t": _FakeState(20),
             "sensor.l1_iaq": _FakeState(85),
-            "sensor.co_val": _FakeState(4),
+            "sensor.co_val": _FakeState(4, {"unit_of_measurement": "ppm"}),
         },
     )
     engine_zone_priority = HIAutomationEngine(hass_zone_priority, entry_zone_priority)
@@ -1760,7 +1763,7 @@ async def _run_runtime_assertions(engine_mod) -> None:
             "sensor.hall_t": _FakeState(22),
             "sensor.bed_t": _FakeState("unknown"),
             "sensor.l1_iaq": _FakeState(85),
-            "sensor.co_val": _FakeState(4),
+            "sensor.co_val": _FakeState(4, {"unit_of_measurement": "ppm"}),
         },
     )
     engine_alert_degraded = HIAutomationEngine(hass_alert_degraded, entry_alert_degraded)
@@ -1787,7 +1790,7 @@ async def _run_runtime_assertions(engine_mod) -> None:
             "sensor.hall_t": _FakeState(22),
             "sensor.bed_t": _FakeState(21),
             "sensor.l1_iaq": _FakeState(85),
-            "sensor.co_val": _FakeState(4),
+            "sensor.co_val": _FakeState(4, {"unit_of_measurement": "ppm"}),
         },
     )
     engine_alert_disabled = HIAutomationEngine(hass_alert_disabled, entry_alert_disabled)
@@ -1824,7 +1827,7 @@ async def _run_runtime_assertions(engine_mod) -> None:
             "sensor.hall_t": _FakeState(22),
             "sensor.bed_t": _FakeState(21),
             "sensor.l1_iaq": _FakeState(70),
-            "sensor.co_val": _FakeState(4),
+            "sensor.co_val": _FakeState(4, {"unit_of_measurement": "ppm"}),
         },
     )
     engine_unmapped_alert = HIAutomationEngine(hass_unmapped_alert, entry_unmapped_alert)
@@ -1870,7 +1873,7 @@ async def _run_runtime_assertions(engine_mod) -> None:
             "sensor.hall_t": _FakeState(22),
             "sensor.bed_t": _FakeState(21),
             "sensor.l1_iaq": _FakeState(85),
-            "sensor.co_val": _FakeState(4),
+            "sensor.co_val": _FakeState(4, {"unit_of_measurement": "ppm"}),
         },
     )
     engine_room_alert_dynamic = HIAutomationEngine(hass_room_alert_dynamic, entry_room_alert_dynamic)
@@ -1934,7 +1937,7 @@ async def _run_runtime_assertions(engine_mod) -> None:
             "sensor.hall_t": _FakeState(22),
             "sensor.bed_t": _FakeState(21),
             "sensor.l1_iaq": _FakeState(85),
-            "sensor.co_val": _FakeState(4),
+            "sensor.co_val": _FakeState(4, {"unit_of_measurement": "ppm"}),
         },
     )
     engine_room_alert_no_lights = HIAutomationEngine(
@@ -1970,7 +1973,7 @@ async def _run_runtime_assertions(engine_mod) -> None:
             "sensor.hall_t": _FakeState(22),
             "sensor.bed_t": _FakeState(21),
             "sensor.l1_iaq": _FakeState(85),
-            "sensor.co_val": _FakeState(4),
+            "sensor.co_val": _FakeState(4, {"unit_of_measurement": "ppm"}),
         },
     )
     engine_room_alert_miss = HIAutomationEngine(hass_room_alert_miss, entry_room_alert_miss)
@@ -1996,7 +1999,7 @@ async def _run_runtime_assertions(engine_mod) -> None:
             "sensor.hall_t": _FakeState(22),
             "sensor.bed_t": _FakeState(21),
             "sensor.l1_iaq": _FakeState(85),
-            "sensor.co_val": _FakeState(4),
+            "sensor.co_val": _FakeState(4, {"unit_of_measurement": "ppm"}),
         },
     )
     engine_label = HIAutomationEngine(hass_label, entry_label)
@@ -2032,7 +2035,7 @@ async def _run_runtime_assertions(engine_mod) -> None:
             "sensor.kitchen_t": _FakeState(23),
             "sensor.hall_t": _FakeState(22),
             "sensor.bed_t": _FakeState(21),
-            "sensor.co_val": _FakeState(4),
+            "sensor.co_val": _FakeState(4, {"unit_of_measurement": "ppm"}),
         },
     )
     engine_zone_select = HIAutomationEngine(hass_zone_select, entry_zone_select)
@@ -2071,7 +2074,7 @@ async def _run_runtime_assertions(engine_mod) -> None:
             "sensor.hall_t": _FakeState(22),
             "sensor.bed_t": _FakeState(21),
             "sensor.l1_iaq": _FakeState(70),
-            "sensor.co_val": _FakeState(4),
+            "sensor.co_val": _FakeState(4, {"unit_of_measurement": "ppm"}),
         },
     )
     engine_aq = HIAutomationEngine(hass_aq, entry3)
@@ -2111,7 +2114,7 @@ async def _run_runtime_assertions(engine_mod) -> None:
             "sensor.hall_t": _FakeState(22),
             "sensor.bed_t": _FakeState(21),
             "sensor.l1_iaq": _FakeState(70),
-            "sensor.co_val": _FakeState(4),
+            "sensor.co_val": _FakeState(4, {"unit_of_measurement": "ppm"}),
         },
     )
     engine_aq_auto = HIAutomationEngine(hass_aq_auto, entry_aq_auto)
@@ -2163,7 +2166,7 @@ async def _run_runtime_assertions(engine_mod) -> None:
             "sensor.bed_t": _FakeState(21),
             "sensor.l1_iaq": _FakeState(70),   # level1 triggers first
             "sensor.l2_iaq": _FakeState(90),   # level2 idle initially
-            "sensor.co_val": _FakeState(4),
+            "sensor.co_val": _FakeState(4, {"unit_of_measurement": "ppm"}),
         },
     )
     engine_shared_aq = HIAutomationEngine(hass_shared_aq, entry_shared_aq)
@@ -2210,7 +2213,7 @@ async def _run_runtime_assertions(engine_mod) -> None:
             "sensor.hall_t": _FakeState(22),
             "sensor.bed_t": _FakeState(21),
             "sensor.l1_iaq": _FakeState(90),
-            "sensor.co_val": _FakeState(4),
+            "sensor.co_val": _FakeState(4, {"unit_of_measurement": "ppm"}),
             "humidifier.shared": _FakeState("off"),
         },
     )
@@ -2268,7 +2271,7 @@ async def _run_runtime_assertions(engine_mod) -> None:
             "sensor.hall_t": _FakeState(22),
             "sensor.bed_t": _FakeState(21),
             "sensor.l1_iaq": _FakeState(90),
-            "sensor.co_val": _FakeState(4),
+            "sensor.co_val": _FakeState(4, {"unit_of_measurement": "ppm"}),
         },
     )
     hass_isolated.data["humidity_intelligence"][ENTRY_ID]["hi_input_booleans"]["air_isolate_fan_outputs"].is_on = True
@@ -2309,7 +2312,7 @@ async def _run_runtime_assertions(engine_mod) -> None:
             "sensor.hall_t": _FakeState(22),
             "sensor.bed_t": _FakeState(21),
             "sensor.l1_iaq": _FakeState(85),
-            "sensor.co_val": _FakeState(4),
+            "sensor.co_val": _FakeState(4, {"unit_of_measurement": "ppm"}),
         },
     )
     hass_stale.data["humidity_intelligence"][ENTRY_ID]["hi_input_booleans"]["air_aq_upstairs_active"].is_on = True
@@ -2345,7 +2348,7 @@ async def _run_runtime_assertions(engine_mod) -> None:
             "sensor.hall_t": _FakeState(22),
             "sensor.bed_t": _FakeState(21),
             "sensor.l1_iaq": _FakeState(85),
-            "sensor.co_val": _FakeState(4),
+            "sensor.co_val": _FakeState(4, {"unit_of_measurement": "ppm"}),
             "binary_sensor.home_presence": _FakeState("off"),
         },
     )
@@ -2380,7 +2383,7 @@ async def _run_runtime_assertions(engine_mod) -> None:
             "sensor.hall_t": _FakeState(22),
             "sensor.bed_t": _FakeState(21),
             "sensor.l1_iaq": _FakeState(85),
-            "sensor.co_val": _FakeState(4),
+            "sensor.co_val": _FakeState(4, {"unit_of_measurement": "ppm"}),
             "binary_sensor.home_presence": _FakeState("on"),
         },
     )
@@ -2431,7 +2434,7 @@ async def _run_runtime_assertions(engine_mod) -> None:
             "sensor.hall_t": _FakeState(22),
             "sensor.bed_t": _FakeState(21),
             "sensor.l1_iaq": _FakeState(85),
-            "sensor.co_val": _FakeState(4),
+            "sensor.co_val": _FakeState(4, {"unit_of_measurement": "ppm"}),
         },
     )
     engine_time_gate_alert = HIAutomationEngine(hass_time_gate_alert, entry_time_gate_alert)
@@ -2480,7 +2483,7 @@ async def _run_runtime_assertions(engine_mod) -> None:
             "sensor.hall_t": _FakeState(22),
             "sensor.bed_t": _FakeState(21),
             "sensor.l1_iaq": _FakeState(85),
-            "sensor.co_val": _FakeState(4),
+            "sensor.co_val": _FakeState(4, {"unit_of_measurement": "ppm"}),
             "humidifier.l1": _FakeState("on"),
         },
     )
@@ -2511,7 +2514,7 @@ async def _run_runtime_assertions(engine_mod) -> None:
             "sensor.hall_t": _FakeState(22),
             "sensor.bed_t": _FakeState(21),
             "sensor.l1_iaq": _FakeState(85),
-            "sensor.co_val": _FakeState(4),
+            "sensor.co_val": _FakeState(4, {"unit_of_measurement": "ppm"}),
             "humidifier.l1": _FakeState("on"),
         },
     )
@@ -3054,7 +3057,7 @@ async def _run_condensation_risk_alert_assertions(engine_mod) -> None:
             "sensor.hall_t": _FakeState(22),
             "sensor.bed_t": _FakeState(20),
             "sensor.l1_iaq": _FakeState(85),
-            "sensor.co_val": _FakeState(4),
+            "sensor.co_val": _FakeState(4, {"unit_of_measurement": "ppm"}),
         },
     )
 
@@ -3201,6 +3204,9 @@ def test_custom_temperature_comfort_keeps_high_plus_one_warm_boundary():
 
 
 async def _registered_flash_handler(services_mod, hass):
+    owner = services_mod.lifecycle_for(hass)
+    owner.reserve_setup(ENTRY_ID)
+    owner.finish_setup(ENTRY_ID)
     await services_mod.async_register_services(hass)
     return hass.services.handlers[(services_mod.DOMAIN, services_mod.SERVICE_FLASH_LIGHTS)]
 
@@ -3632,7 +3638,10 @@ def test_startup_ui_refresh_contract_is_wired():
     assert "@callback" in init_source
     assert "hass.create_task(_run_startup_ui_refresh())" in init_source
     assert "hass.async_create_task(_async_refresh_and_dump_cards" not in init_source
-    assert ".add_done_callback(" not in init_source
+    startup_source = init_source.split("def _async_register_startup_ui_refresh", 1)[1].split(
+        "def _entry_auto_refresh_ui_on_startup", 1,
+    )[0]
+    assert ".add_done_callback(" not in startup_source
     assert "startup_ui_refresh_scheduled" in init_source
     assert "SERVICE_REFRESH_UI" in init_source
     assert '"dump_cards",' not in init_source
@@ -3707,6 +3716,7 @@ def test_options_update_reloads_entry_then_regenerates_owned_ui_with_loaded_code
 
     async def async_reload(entry_id):
         events.append(("reload", entry_id))
+        return True
 
     async def refresh_and_dump(_hass, entry_id):
         events.append(("refresh_export", entry_id))
@@ -3778,7 +3788,7 @@ def test_options_update_reports_export_failure_without_success_path():
     service_calls = []
 
     async def async_reload(_entry_id):
-        return None
+        return True
 
     async def failed_refresh_and_dump(_hass, _entry_id):
         raise RuntimeError("fixture writer rejected")
@@ -3891,7 +3901,10 @@ def test_advanced_tuning_uses_collapsible_sections_not_submit_reveal():
             "\n    async def ",
             1,
         )[0]
-        assert "user_input = _flatten_advanced_section_input(user_input)" in method_source
+        assert (
+            "user_input = _flatten_advanced_section_input(user_input)" in method_source
+            or "user_input = dict(_flatten_advanced_section_input(user_input))" in method_source
+        )
         assert "_advanced_section(" in method_source
 
 
@@ -3995,8 +4008,10 @@ def test_v21_publication_preserves_stable_and_candidate_history():
     assert "export" in notes.lower()
     highlights = readme.split("## Current Release Highlights", 1)[1].split("## Installation", 1)[0]
     assert "`refresh_ui`" in highlights and "`view_cards`" in highlights and "`dump_cards`" in highlights
-    assert "revision 13" in highlights and "superseding 1–12" in highlights
-    assert "v2.1.1-beta.4 and v2.1.1-rc.1 revision-13 cards remain compatible" in highlights
+    assert "revision 16" in highlights and "superseding 1–15" in highlights
+    assert "beta.1 revision-14 cards or earlier" in highlights
+    stable_notes = notes.split("### v2.1.1 (Current Stable)", 1)[1]
+    assert "Revision **13**" in stable_notes and "compatible with beta.4/RC.1" in stable_notes
     assert "revision-9 cards remain compatible" in previous
     assert 'id="v210-current-published-stable"' in previous
 
@@ -4221,7 +4236,7 @@ def test_v205_release_check_report_verifies_export_contract_and_ui_visibility():
             "sensor.hall_t": _FakeState(20),
             "sensor.bed_t": _FakeState(19),
             "sensor.l1_iaq": _FakeState(35),
-            "sensor.co_val": _FakeState(4),
+            "sensor.co_val": _FakeState(4, {"unit_of_measurement": "ppm"}),
             "fan.zone1": _FakeState("off"),
             "fan.zone2": _FakeState("off"),
             "fan.aq1": _FakeState("off"),
@@ -4313,6 +4328,9 @@ def test_v205_release_check_report_verifies_export_contract_and_ui_visibility():
         "2.1.1-beta.4",
         "2.1.1-rc.1",
         "2.1.1",
+        "2.1.2-beta.1",
+        "2.1.2-rc.1",
+        "2.1.2",
     ):
         future_report = services_mod._build_v205_release_check_entry_report(
             hass,
@@ -5558,7 +5576,7 @@ def test_frontend_dependency_status_is_non_blocking_for_release_contract_checks(
             "sensor.hall_t": _FakeState(20),
             "sensor.bed_t": _FakeState(19),
             "sensor.l1_iaq": _FakeState(35),
-            "sensor.co_val": _FakeState(4),
+            "sensor.co_val": _FakeState(4, {"unit_of_measurement": "ppm"}),
             "fan.zone1": _FakeState("off"),
             "fan.zone2": _FakeState("off"),
             "fan.aq1": _FakeState("off"),
@@ -5668,7 +5686,7 @@ def test_v205_release_check_warns_for_existing_unavailable_card_reference():
             "sensor.hall_t": _FakeState(20),
             "sensor.bed_t": _FakeState(19),
             "sensor.l1_iaq": _FakeState(35),
-            "sensor.co_val": _FakeState(4),
+            "sensor.co_val": _FakeState(4, {"unit_of_measurement": "ppm"}),
             "fan.zone1": _FakeState("off"),
             "fan.zone2": _FakeState("off"),
             "fan.aq1": _FakeState("off"),
@@ -5832,7 +5850,7 @@ def test_v205_release_check_service_is_documented_and_registered():
     assert "wiki/Services-Reference" in readme_source
     assert "wiki/Release-Validation-for-Users" in readme_source
     assert "humidity_intelligence_v205_release_check.json" in services_yaml
-    assert manifest["version"] == "2.1.1"
+    assert manifest["version"] == "2.1.2"
 
 
 def test_owned_ui_path_discovery_and_legacy_cleanup_guidance_is_explicit():
@@ -5889,7 +5907,7 @@ def test_v205_release_check_only_fails_local_snapshot_when_required():
             "sensor.hall_t": _FakeState(20),
             "sensor.bed_t": _FakeState(19),
             "sensor.l1_iaq": _FakeState(35),
-            "sensor.co_val": _FakeState(4),
+            "sensor.co_val": _FakeState(4, {"unit_of_measurement": "ppm"}),
             "fan.zone1": _FakeState("off"),
             "fan.zone2": _FakeState("off"),
             "fan.aq1": _FakeState("off"),
@@ -7105,7 +7123,7 @@ def test_generated_v1_cards_escape_dynamic_html_text():
 
 def test_release_check_rejects_unsupported_or_malformed_v21_versions():
     services = _load_services_module()
-    for version in ("2.1.2-beta.1", "2.2.0-beta.1", "2.1.0-beta.0",
+    for version in ("2.1.3-beta.1", "2.2.0-beta.1", "2.1.2-beta.0",
                     "2.1.0-beta.01", "2.1.0-alpha.1", "2.1.0-beta.1extra"):
         status, _ = services._release_check_manifest_status(version)
         assert status == "fail", version

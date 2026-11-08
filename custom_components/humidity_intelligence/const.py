@@ -107,10 +107,6 @@ DEFAULT_TEMPERATURE_COMFORT_CUSTOM_HIGH = 21.0
 # Optional frontend dependencies used by the dashboards
 DEPENDENCIES = [
     {
-        "name": "HACS",
-        "domain": "hacs",
-    },
-    {
         "name": "card-mod",
         "url": "https://github.com/thomasloven/lovelace-card-mod",
         "resource": "card-mod.js",

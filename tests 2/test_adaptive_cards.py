@@ -253,6 +253,7 @@ def test_observation_options_regenerate_only_for_presentation_changes():
         events = []
         async def reload_entry(entry_id):
             events.append('reload')
+            return True
         async def export_cards(hass, entry_id):
             events.append('export')
             return ['humidity_intelligence/ui/example.yaml']

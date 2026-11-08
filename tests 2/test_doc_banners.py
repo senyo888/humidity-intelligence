@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import pathlib
+import re
 import struct
 import unittest
 
@@ -59,6 +60,17 @@ class DocumentationBannerTests(unittest.TestCase):
                 first_line = doc_path.read_text(encoding="utf-8").splitlines()[0]
 
                 self.assertEqual(first_line, banner_line)
+
+    def test_readme_keeps_product_header_and_release_art_in_release_notes(self) -> None:
+        readme = (ROOT / "README.md").read_text(encoding="utf-8")
+        first_image = re.search(r"!\[[^\]]*\]\(([^)]+)\)", readme)
+        self.assertIsNotNone(first_image)
+        self.assertEqual(first_image.group(1), "assets/header.png")
+        self.assertLess(readme.index("assets/header.png"), readme.index("# Humidity Intelligence"))
+        release_notes = readme.index("## Release Notes")
+        for line in readme[:release_notes].splitlines():
+            self.assertNotIn("assets/release_banner/", line)
+        self.assertIn("assets/release_banner/v2.1.2_release.png", readme[release_notes:])
 
     def test_canonical_banner_assets_exist_as_pngs(self) -> None:
         for doc_name, banner_line in CANONICAL_DOC_BANNERS.items():

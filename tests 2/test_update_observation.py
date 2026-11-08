@@ -318,3 +318,23 @@ def test_real_sensor_async_refresh_contains_provider_fault_but_not_core_fault(mo
     monkeypatch.setattr(sensor_mod, "_build_diagnostics_summary", core_fault)
     with pytest.raises(RuntimeError, match="core builder failure"):
         asyncio.run(sensor.async_update())
+
+@pytest.mark.parametrize('provider', ['hacs', 'marketplace'])
+def test_exact_provider_survives_entity_rename(adapter, monkeypatch, provider):
+    _bind_registry(monkeypatch, adapter, [_registry_entry(platform=provider)])
+    result = adapter.update_observation(_hass(_state()))
+    assert result['provider'] == provider
+    assert result['status'] == 'reported_update'
+    assert result['entity_id'] == ENTITY_ID
+    assert adapter.update_observation(_hass(_state()), include_entity_id=False)['entity_id'] is None
+
+
+def test_migration_overlap_is_ambiguous_even_if_one_provider_disabled(adapter, monkeypatch):
+    _bind_registry(monkeypatch, adapter, [
+        _registry_entry(platform='hacs', disabled_by='user'),
+        _registry_entry(platform='marketplace', entity_id='update.example_new'),
+    ])
+    result = adapter.update_observation(_hass(_state()))
+    assert result['reason'] == 'entity_ambiguous'
+    assert result['provider'] is None
+    assert result['entity_id'] is None

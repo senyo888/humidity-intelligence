@@ -7,7 +7,6 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 import logging
 from typing import Any, Deque, Dict, List, Optional, Tuple
-import re
 
 from homeassistant.core import HomeAssistant
 from homeassistant.config_entries import ConfigEntry
@@ -17,6 +16,7 @@ from homeassistant.helpers.event import async_track_state_change_event, async_tr
 from homeassistant.components.sensor import SensorEntity, SensorStateClass
 from homeassistant.util import slugify
 
+from ..helpers.slope_mapping import match_provided_slopes
 from ..const import DOMAIN, SLOPE_MODE_CALCULATED, SLOPE_MODE_PROVIDED
 from ..helpers.parsing import hass_temperature_unit, parse_temperature
 
@@ -128,6 +128,7 @@ def build_slope_entities(hass: HomeAssistant, entry: ConfigEntry) -> Tuple[List[
             source_entities,
             provided_sensors,
             room_map,
+            slope_cfg.get("bindings"),
         )
         return [], provided_sensors, source_to_slope
 
@@ -219,41 +220,9 @@ def _match_provided_sensors_to_sources(
     source_entities: List[str],
     provided_sensors: List[str],
     room_map: Dict[str, str],
+    bindings=None,
 ) -> Dict[str, str]:
-    """Best-effort pairing from temperature sources -> provided slope sensors."""
-    if not source_entities or not provided_sensors:
-        return {}
-
-    unmatched = [sensor for sensor in provided_sensors if isinstance(sensor, str)]
-    mapping: Dict[str, str] = {}
-
-    for source in source_entities:
-        room_name = room_map.get(source, source)
-        room_key = slugify(room_name) or ""
-        selected = None
-        for sensor_entity in unmatched:
-            if _matches_room(hass, sensor_entity, room_key):
-                selected = sensor_entity
-                break
-        if not selected and unmatched:
-            selected = unmatched[0]
-        if selected:
-            mapping[source] = selected
-            unmatched.remove(selected)
-
-    return mapping
-
-
-def _matches_room(hass: HomeAssistant, entity_id: str, room_key: str) -> bool:
-    if not room_key:
-        return False
-    state = hass.states.get(entity_id)
-    friendly = ""
-    if state:
-        friendly = str(state.attributes.get("friendly_name", ""))
-    token_source = " ".join([entity_id, friendly])
-    token_key = slugify(re.sub(r"[^A-Za-z0-9]+", " ", token_source))
-    return bool(token_key and (room_key in token_key or token_key in room_key))
+    return match_provided_slopes(hass, source_entities, provided_sensors, room_map, bindings)
 
 
 def _registered_slope_entity_id(hass: HomeAssistant, unique_id: str) -> Optional[str]:

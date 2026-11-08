@@ -130,7 +130,7 @@ def _states(humidity, *, co=0, output="off"):
     return {
         "sensor.example_humidity": _FakeState(humidity),
         "sensor.example_temperature": _FakeState(21),
-        "sensor.example_co": _FakeState(co),
+        "sensor.example_co": _FakeState(co, {"unit_of_measurement": "ppm"}),
         "humidifier.example_output": _FakeState(output),
     }
 

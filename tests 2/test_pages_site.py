@@ -112,6 +112,21 @@ class PagesSiteTests(unittest.TestCase):
         self.assertIn("Humidity Intelligence", parser.meta.get("description", ""))
         self.assertIn("Home Assistant", parser.meta.get("description", ""))
 
+    def test_release_copy_preserves_established_product_hero(self) -> None:
+        html, _parser = parse_index()
+        hero = html.split('<section class="hero"', 1)[1].split("</section>", 1)[0]
+        stability = html.split('id="stability"', 1)[1].split("</section>", 1)[0]
+        self.assertIn('<h1 id="hero-title">Humidity Intelligence</h1>', hero)
+        self.assertIn('class="hero-logo" src="assets/logo.png"', hero)
+        self.assertNotIn('release_banner/', hero)
+        self.assertIn('02 / The bigger picture', stability)
+        self.assertIn('src="assets/release_banner/v2.1_release.png"', stability)
+        self.assertIn('class="led-layer"', stability)
+        self.assertIn('class="pause-motion"', stability)
+        self.assertEqual(html.count('class="led-layer"'), 1)
+        self.assertLess(html.index('<section class="hero"'), html.index('id="harmonization"'))
+        self.assertLess(html.index('id="harmonization"'), html.index('id="stability"'))
+
     def test_pages_site_has_search_discovery_structured_data(self) -> None:
         _html, parser = parse_index()
         self.assertTrue(parser.structured_data)
@@ -156,22 +171,19 @@ class PagesSiteTests(unittest.TestCase):
 
         self.assertIn("assets/logo.png", parser.images)
         self.assertIn("assets/site/github-pages-hero.png", assets)
-        self.assertIn("assets/release_banner/v2.1.1_release.png", parser.images)
-        self.assertIn("Dashboards that follow your home.", html)
-        self.assertIn("v2.1.1 · Stable", html)
-        self.assertIn("included in the HACS default integration repository", normalized_html)
-        self.assertIn("Single-level homes need no dummy second level", normalized_html)
-        # Finished release copy preserves separate HACS and loaded-version evidence.
+        self.assertIn("assets/first-interaction-welcome.png", assets)
+        self.assertIn("assets/release_banner/v2.1_release.png", parser.images)
+        self.assertIn("Home Assistant 2026.11 Harmonization", html)
+        self.assertIn("v2.1.2 · In preparation", html)
+        # Preparation must not relabel the still-published stable release.
         self.assertIn("V2.1.1 · Stable", normalized_html)
         self.assertIn("V2.1.1 · 24 October 2026", normalized_html)
-        self.assertIn("blob/main/docs/releases/v2.1.1.md", html)
-        self.assertIn("refresh repository information if an older version is shown", normalized_html)
-        self.assertNotIn("awaits publication", normalized_html)
-        self.assertNotIn("Install from GitHub", html)
-        self.assertIn("Open in HACS", html)
         self.assertIn("Stable version</span><span class=\"badge-value\">v2.1.1", html)
-        self.assertIn("replace the complete saved YAML", normalized_html)
-        self.assertIn("Existing v2.1.1-beta.4 and v2.1.1-rc.1 revision-13 cards remain compatible", normalized_html)
+        self.assertIn("blob/senyo888-patch-1/docs/releases/v2.1.2.md", html)
+        self.assertIn("releases/tag/v2.1.1", html)
+        self.assertIn("release-packaging.md#earlier-versions-and-current-evidence-limits", html)
+        self.assertNotIn("Install from GitHub", html)
+        self.assertIn("Open legacy HACS", html)
 
         for asset in assets:
             with self.subTest(asset=asset):

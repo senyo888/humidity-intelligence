@@ -981,8 +981,6 @@ def test_setup_gates_flattens_advanced_section_and_preserves_visible_values():
     assert flow._data["presence_gate"] == {
         "enabled": False,
         "entities": [],
-        "present_states": [],
-        "away_states": [],
     }
     assert flow._data["engine_interval_minutes"] == 9
     assert flow._data["auto_refresh_ui_on_startup"] is False
@@ -1164,8 +1162,6 @@ def test_options_gates_flattens_advanced_section_and_preserves_visible_values():
     assert flow._options["presence_gate"] == {
         "enabled": False,
         "entities": [],
-        "present_states": [],
-        "away_states": [],
     }
     assert flow._options["alert_only_mode"] is True
     assert flow._options["target_profile"] == "winter"

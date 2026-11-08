@@ -8,7 +8,7 @@ import logging
 import os
 import re
 from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
 import voluptuous as vol
 from homeassistant.core import HomeAssistant, ServiceCall
@@ -16,6 +16,7 @@ from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import config_validation as cv
 
 from .helpers.stability import stability_diagnostics_payload
+from .helpers.air_quality import aq_source_summary
 from .helpers.update_observation import support_update_observation, update_observation
 from .const import CONF_SHOW_OUTPUT_ENTITY_DETAILS, DEFAULT_SHOW_OUTPUT_ENTITY_DETAILS, DOMAIN
 from .helpers.cleanup import (
@@ -55,6 +56,7 @@ from .helpers.report_exports import (
     write_owned_ui_export,
 )
 from .helpers.runtime_control import runtime_control_summary
+from .helpers.lifecycle import lifecycle_for
 from .helpers.seasonal import resolve_target_profile, resolve_temperature_comfort_profile
 from .helpers.zone_validation import (
     detect_zone_mapping_duplicates,
@@ -126,7 +128,7 @@ _SAFE_FILENAME_RE = re.compile(r"^[A-Za-z0-9._-]{1,128}$")
 _OWNED_REPORT_FILENAME_PREFIX = "humidity_intelligence_"
 _OWNED_REPORT_FILENAME_SUFFIX = ".json"
 _RELEASE_CHECK_MANIFEST_VERSION_RE = re.compile(
-    r"^2\.(?:0\.(?:5|(?:[6-9]|1[0-2])(?:-(?:beta|rc)\.[1-9]\d*)?)|1\.[01](?:-(?:beta|rc)\.[1-9]\d*)?)$"
+    r"^2\.(?:0\.(?:5|(?:[6-9]|1[0-2])(?:-(?:beta|rc)\.[1-9]\d*)?)|1\.[012](?:-(?:beta|rc)\.[1-9]\d*)?)$"
 )
 _SENSITIVE_ATTR_EXACT = {
     "access_token",
@@ -355,8 +357,25 @@ async def async_flash_lights_for_alert(
     color: Optional[List[int]] = None,
     duration: int = 10,
     flash_count: Optional[int] = None,
+    should_abort: Optional[Callable[[], bool]] = None,
 ) -> None:
-    """Run one trusted HI visual-alert flash without using the public service."""
+    """Run one trusted HI visual-alert flash without using the public service.
+
+    Serialize shared lights and attempt captured-state restoration before
+    releasing their locks, including on cancellation. The optional switch or
+    light ``power_entity`` is turned on but is not restored. No lights means
+    no device calls. Invalid power entities raise ``HomeAssistantError``;
+    invalid ``duration`` conversion can raise ``TypeError`` or ``ValueError``.
+
+    ``flash_count`` sets the number of on/off cycles; otherwise ``duration``
+    in seconds is clamped to at least one, then uses ``max(1, int(duration / 0.5))``.
+    Each cycle waits 0.5 seconds on and 0.5 seconds off, plus service time.
+    ``should_abort`` returning true suppresses further
+    power, flash, and restore submissions, not accepted calls.
+
+    Device service failures are caught so restoration is best effort. Caller
+    cancellation propagates after cleanup. Accepted calls can delay cleanup
+    indefinitely; the ten-second deadline only stops further restore calls."""
     if power_entity:
         try:
             power_entity = _validate_visual_power_entity(power_entity)
@@ -381,36 +400,40 @@ async def async_flash_lights_for_alert(
 
         initial_states = _capture_light_states(hass, lights)
 
-        if power_entity:
-            domain = power_entity.split(".")[0]
-            if hass.services.has_service(domain, "turn_on"):
-                try:
-                    await hass.services.async_call(
-                        domain,
-                        "turn_on",
-                        {"entity_id": power_entity},
-                        blocking=True,
-                    )
-                    await asyncio.sleep(0.5)
-                except Exception:
-                    _LOGGER.exception(
-                        "Failed to turn on alert power entity %s",
-                        power_entity,
-                    )
+        try:
+            if power_entity:
+                domain = power_entity.split(".")[0]
+                if hass.services.has_service(domain, "turn_on"):
+                    try:
+                        await _async_call_flash_service(
+                            hass,
+                            domain,
+                            "turn_on",
+                            {"entity_id": power_entity},
+                            should_abort,
+                        )
+                        await asyncio.sleep(0.5)
+                    except Exception:
+                        _LOGGER.exception(
+                            "Failed to turn on alert power entity %s",
+                            power_entity,
+                        )
 
-        supports_color = {
-            light: _supports_color(hass.states.get(light))
-            for light in lights
-        }
-        await _flash_lights(
-            hass,
-            lights,
-            rgb_color,
-            duration,
-            flash_count,
-            supports_color,
-        )
-        await _restore_lights(hass, initial_states)
+            supports_color = {
+                light: _supports_color(hass.states.get(light))
+                for light in lights
+            }
+            await _flash_lights(
+                hass,
+                lights,
+                rgb_color,
+                duration,
+                flash_count,
+                supports_color,
+                should_abort,
+            )
+        finally:
+            await _restore_lights_before_unlock(hass, initial_states, should_abort)
     finally:
         for lock in reversed(acquired_locks):
             try:
@@ -421,16 +444,21 @@ async def async_flash_lights_for_alert(
 
 async def async_register_services(hass: HomeAssistant) -> None:
     """Register services for the integration."""
+    lifecycle = lifecycle_for(hass)
 
     async def handle_flash(call: ServiceCall) -> None:
+        generation = lifecycle.generation
         await _async_require_admin_user(hass, call, SERVICE_FLASH_LIGHTS)
-        await async_flash_lights_for_alert(
-            hass,
-            power_entity=call.data.get("power_entity"),
-            lights=call.data.get("lights"),
-            color=call.data.get("color"),
-            duration=call.data.get("duration", 10),
-            flash_count=call.data.get("flash_count"),
+        await lifecycle.async_public_flash(
+            generation,
+            lambda: async_flash_lights_for_alert(
+                hass,
+                power_entity=call.data.get("power_entity"),
+                lights=call.data.get("lights"),
+                color=call.data.get("color"),
+                duration=call.data.get("duration", 10),
+                flash_count=call.data.get("flash_count"),
+            ),
         )
 
     hass.services.async_register(DOMAIN, SERVICE_FLASH_LIGHTS, handle_flash, schema=SERVICE_FLASH_SCHEMA)
@@ -995,7 +1023,9 @@ async def async_register_services(hass: HomeAssistant) -> None:
 
 
 async def async_unregister_services(hass: HomeAssistant) -> None:
-    """Unregister services for the integration."""
+    """Unregister only after every entry has successfully relinquished custody."""
+    if lifecycle_for(hass).entries:
+        return
     if hass.services.has_service(DOMAIN, SERVICE_FLASH_LIGHTS):
         hass.services.async_remove(DOMAIN, SERVICE_FLASH_LIGHTS)
     if hass.services.has_service(DOMAIN, SERVICE_REFRESH_UI):
@@ -1136,6 +1166,7 @@ def _support_safe_diagnostics_summary(summary: dict) -> dict:
         else {}
     )
     return {
+        "aq_inputs": summary.get("aq_inputs", {}),
         "update_observation": support_update_observation(summary.get("update_observation", {})),
         "runtime_control": {
             "mode": runtime_control.get("mode"),
@@ -1337,7 +1368,10 @@ def _build_diagnostics_summary(
     unavailable = _unavailable_configured_entities(hass, effective, entity_map)
     drift_dependency = humidity_drift_dependency_status(hass)
     drift_dependency_warning = humidity_drift_warning(drift_dependency)
+    aq_inputs = aq_source_summary(hass, effective)
     warnings = []
+    if aq_inputs["by_type"] and not aq_inputs["complete"]:
+        warnings.append("AQ input evidence is incomplete: check source units, availability and numeric readings. Invalid CO evidence cannot clear an active emergency.")
     duplicate_summary = summarize_zone_mapping_duplicate_count_warning(duplicates)
     if duplicate_summary:
         warnings.append(duplicate_summary)
@@ -1348,6 +1382,11 @@ def _build_diagnostics_summary(
     pm25_normalization = _pm25_normalization_status(runtime_data)
     if pm25_normalization.get("blocked"):
         warnings.append("PM25 aggregate entity ID normalization is blocked by an existing target entity.")
+    slope = effective.get("slope", {})
+    if isinstance(slope, dict) and slope.get("mode") == "user_provided":
+        sources = slope.get("source_entities") or [item.get("entity_id") for item in telemetry if item.get("sensor_type") == "temperature"]
+        if len(runtime_data.get("slope_map") or {}) < len(set(sources)):
+            warnings.append("Some provided slope sources have no unambiguous pairing. Review slope Options; names or list order must not silently reassign a source.")
     if not telemetry:
         warnings.append("No telemetry sensors are configured.")
     if not zones and not effective.get("alert_only_mode"):
@@ -1374,6 +1413,7 @@ def _build_diagnostics_summary(
         warnings.append("One or more humidifier outputs have a conflicting configured output owner.")
 
     summary = {
+        "aq_inputs": aq_inputs,
         "update_observation": update_observation(hass),
         "runtime_control": runtime_control_summary(runtime_data),
         "target_profile": {
@@ -1667,11 +1707,11 @@ def _release_check_manifest_status(manifest_version: Optional[str]) -> Tuple[str
     if manifest_version and _RELEASE_CHECK_MANIFEST_VERSION_RE.fullmatch(manifest_version):
         return (
             "pass",
-            f"Manifest version is {version}; release-check contract accepts the v2.0.5-v2.0.12 and v2.1.0-v2.1.1 lines.",
+            f"Manifest version is {version}; release-check contract accepts the v2.0.5-v2.0.12 and v2.1.0-v2.1.2 lines.",
         )
     return (
         "fail",
-        f"Manifest version is {version}; expected v2.0.5, a v2.0.6-v2.0.12 beta/rc/stable version, or v2.1.0-v2.1.1 beta/rc/stable.",
+        f"Manifest version is {version}; expected v2.0.5, a v2.0.6-v2.0.12 beta/rc/stable version, or v2.1.0-v2.1.2 beta/rc/stable.",
     )
 
 
@@ -2159,53 +2199,179 @@ async def _flash_lights(
     duration: int,
     flash_count: Optional[int],
     supports_color: dict,
+    should_abort: Optional[Callable[[], bool]] = None,
 ) -> None:
+    """Flash lights at full brightness with half-second on and off waits.
+
+    Use ``color`` only for lights marked in ``supports_color``. Without
+    ``flash_count``, derive at least one cycle as ``int(duration / 0.5)``;
+    ``duration`` is in seconds and is not an elapsed-time limit. Nonpositive
+    explicit counts perform no cycles. A true ``should_abort`` skips further
+    submissions. Service errors are caught per light; cancellation propagates
+    after any accepted call finishes."""
     interval = 0.5
     if flash_count is None:
         flash_count = max(1, int(duration / interval))
 
     for _ in range(flash_count):
+        if should_abort is not None and should_abort():
+            return
         for light in lights:
             data = {"entity_id": light, "brightness": 255}
             if supports_color.get(light):
                 data["rgb_color"] = color
             try:
-                await hass.services.async_call("light", "turn_on", data, blocking=True)
+                await _async_call_flash_service(hass, "light", "turn_on", data, should_abort)
             except Exception:
                 _LOGGER.exception("Failed to turn on flashing light %s", light)
         await asyncio.sleep(interval)
         for light in lights:
             try:
-                await hass.services.async_call("light", "turn_off", {"entity_id": light}, blocking=True)
+                await _async_call_flash_service(hass, "light", "turn_off", {"entity_id": light}, should_abort)
             except Exception:
                 _LOGGER.exception("Failed to turn off flashing light %s", light)
         await asyncio.sleep(interval)
 
 
-async def _restore_lights(hass: HomeAssistant, states: Dict[str, Dict[str, Any]]) -> None:
+_FLASH_RESTORE_TIMEOUT_SECONDS = 10.0
+
+
+async def _async_call_flash_service(
+    hass: HomeAssistant, domain: str, service: str, data: Dict[str, Any],
+    should_abort: Optional[Callable[[], bool]] = None,
+) -> None:
+    """Submit a blocking service call unless ``should_abort`` returns true.
+
+    Caller cancellation before submission cancels the queued call; after
+    submission it waits for the accepted call, then raises ``CancelledError``.
+    Service errors propagate unless caller cancellation is pending, in which
+    case cancellation takes precedence. Shielding covers caller cancellation,
+    not direct cancellation of the child task or global HA shutdown."""
+    started = False
+
+    async def call() -> None:
+        """Check abort status at admission and await the accepted service call."""
+        nonlocal started
+        if should_abort is not None and should_abort():
+            return
+        started = True
+        await hass.services.async_call(domain, service, data, blocking=True)
+
+    pending = asyncio.create_task(
+        call(),
+        name="hi-flash-service",
+    )
+    cancelled = False
+    while not pending.done():
+        try:
+            await asyncio.shield(pending)
+        except asyncio.CancelledError:
+            cancelled = True
+            if not started:
+                pending.cancel()
+        except Exception:
+            # Retrieve below without letting a late failure swallow cancellation.
+            break
+    try:
+        pending.result()
+    except Exception:
+        if not cancelled:
+            raise
+        _LOGGER.exception("Visual alert service failed while cancellation was draining it")
+    if cancelled:
+        raise asyncio.CancelledError
+
+
+async def _restore_lights_before_unlock(
+    hass: HomeAssistant,
+    states: Dict[str, Dict[str, Any]],
+    should_abort: Optional[Callable[[], bool]],
+) -> None:
+    """Attempt restoration with a ten-second deadline for further submissions.
+
+    Accepted calls are drained even beyond the deadline, so this is not a
+    completion timeout. Deadline expiry is caught; caller cancellation is
+    re-raised after cleanup. Other restoration errors propagate. The caller
+    must retain the light locks until this call finishes."""
+    async def restore() -> None:
+        """Restore captured lights, treating deadline expiry as incomplete restoration."""
+        try:
+            # Stop further submissions at the deadline. An accepted service may
+            # outlive cancellation, so it must finish before locks are released.
+            async with asyncio.timeout(_FLASH_RESTORE_TIMEOUT_SECONDS):
+                await _restore_lights(hass, states, should_abort)
+        except TimeoutError:
+            _LOGGER.warning(
+                "Visual alert light restoration timed out; original state is not confirmed"
+            )
+
+    restoration = asyncio.create_task(restore(), name="hi-flash-restore")
+    cancelled = False
+    while not restoration.done():
+        try:
+            await asyncio.shield(restoration)
+        except asyncio.CancelledError:
+            # Repeated caller cancellation must not release locks ahead of cleanup.
+            cancelled = True
+    # Retrieve exceptions, including cancellation of the cleanup task itself.
+    restoration.result()
+    if cancelled:
+        raise asyncio.CancelledError
+
+
+async def _restore_lights(
+    hass: HomeAssistant,
+    states: Dict[str, Dict[str, Any]],
+    should_abort: Optional[Callable[[], bool]] = None,
+) -> None:
+    """Restore captured on/off states, skipping missing or unknown snapshots.
+
+    Restore saved brightness, color, temperature, and effect attributes for
+    lights previously on, using one color descriptor; turn previously off lights
+    off. A true ``should_abort``
+    stops further submissions. Service failures are caught per light so later
+    lights are still attempted; cancellation propagates after accepted work."""
     for entity_id, snapshot in states.items():
+        # Manual handover can occur while a previous light's service is awaited.
+        if should_abort is not None and should_abort():
+            return
         initial_state = snapshot.get("state")
-        if initial_state is None:
+        if initial_state not in {"on", "off"}:
             continue
         if initial_state == "on":
             data = {"entity_id": entity_id}
             attrs = snapshot.get("attributes") or {}
             if "brightness" in attrs:
                 data["brightness"] = attrs.get("brightness")
-            if "rgb_color" in attrs:
-                data["rgb_color"] = attrs.get("rgb_color")
-            if "hs_color" in attrs:
-                data["hs_color"] = attrs.get("hs_color")
-            if "color_temp" in attrs:
-                data["color_temp"] = attrs.get("color_temp")
-            if "effect" in attrs:
-                data["effect"] = attrs.get("effect")
+            color_attributes = {
+                "color_temp": "color_temp_kelvin",
+                "hs": "hs_color",
+                "xy": "xy_color",
+                "rgb": "rgb_color",
+                "rgbw": "rgbw_color",
+                "rgbww": "rgbww_color",
+            }
+            color_attribute = color_attributes.get(attrs.get("color_mode"))
+            if attrs.get("color_mode") is None:
+                # Older/custom sources may omit color_mode. Preserve one saved
+                # descriptor without submitting HA's mutually exclusive formats.
+                color_attribute = next(
+                    (key for key in color_attributes.values() if attrs.get(key) is not None),
+                    None,
+                )
+            if attrs.get("color_mode") == "white" and attrs.get("brightness") is not None:
+                # Brightness alone does not switch an RGB light back to white.
+                data["white"] = attrs["brightness"]
+            elif color_attribute is not None and attrs.get(color_attribute) is not None:
+                data[color_attribute] = attrs[color_attribute]
+            if attrs.get("effect") is not None:
+                data["effect"] = attrs["effect"]
             try:
-                await hass.services.async_call("light", "turn_on", data, blocking=True)
+                await _async_call_flash_service(hass, "light", "turn_on", data, should_abort)
             except Exception:
                 _LOGGER.exception("Failed to restore light state for %s", entity_id)
         else:
             try:
-                await hass.services.async_call("light", "turn_off", {"entity_id": entity_id}, blocking=True)
+                await _async_call_flash_service(hass, "light", "turn_off", {"entity_id": entity_id}, should_abort)
             except Exception:
                 _LOGGER.exception("Failed to restore light off state for %s", entity_id)

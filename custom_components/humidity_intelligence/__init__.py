@@ -8,6 +8,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import EVENT_HOMEASSISTANT_STARTED
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers import config_validation as cv
+from homeassistant.helpers.entity_platform import async_get_platforms
 
 from .const import (
     CONF_AUTO_REFRESH_UI_ON_STARTUP,
@@ -30,12 +31,16 @@ from .helpers.report_exports import (
     remove_owned_ui_export,
 )
 from .helpers.drift_repairs import async_update_humidity_drift_repair_issue
+from .helpers.co_repairs import async_setup_co_unit_repair
 from .helpers.entity_registry import normalize_pm25_aggregate_entity_ids
+from .helpers.lifecycle import lifecycle_for
 from .ui.register import async_register_cards, async_build_entity_mapping
 from .automations import async_setup_entry as async_setup_automations
 from .automations import async_unload_entry as async_unload_automations
 
 _LOGGER = logging.getLogger(__name__)
+_UNLOAD_DRAIN_TIMEOUT_SECONDS = 30
+_PLATFORMS = ("sensor", "binary_sensor", "switch")
 
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 
@@ -52,6 +57,28 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Humidity Intelligence from a config entry."""
+    lifecycle = lifecycle_for(hass)
+    await lifecycle.async_reserve_setup(entry.entry_id)
+    try:
+        result = await _async_setup_entry(hass, entry)
+    except BaseException:
+        # A failed setup can be the final reservation while another entry closes.
+        # Use the same retained, bounded drain instead of orphaning public work.
+        try:
+            await async_unload_entry(hass, entry, _setup_rollback=True)
+        except BaseException:
+            lifecycle.fail_close(entry.entry_id)
+            _LOGGER.exception("HI failed-setup cleanup did not complete; restart required")
+        raise
+    lifecycle.finish_setup(entry.entry_id)
+    data = hass.data[DOMAIN].get(entry.entry_id, {})
+    data.pop("setup_platforms_before", None)
+    data.pop("setup_forward_task", None)
+    return result
+
+
+async def _async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    """Initialize one reserved entry without changing domain ownership."""
     entry.async_on_unload(entry.add_update_listener(_async_options_updated))
     effective_config = _effective_entry_config(entry)
     hass.data.setdefault(DOMAIN, {})
@@ -95,8 +122,51 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             )
     entry_data["pm25_entity_id_normalization"] = pm25_normalization
 
-    await hass.config_entries.async_forward_entry_setups(entry, ["sensor", "binary_sensor", "switch"])
+    # Older supported HA versions keep reset platforms in the public registry.
+    # Retain the objects so rollback can distinguish this attempt from old ones.
+    entry_data["setup_platforms_before"] = tuple(async_get_platforms(hass, DOMAIN))
+
+    forwards = tuple(
+        asyncio.create_task(
+            hass.config_entries.async_forward_entry_setups(entry, (platform,)),
+            name=f"hi-entry-platform-setup-{platform}",
+        )
+        for platform in _PLATFORMS
+    )
+
+    def forward_finished(platform: str, done: asyncio.Task) -> None:
+        if done.cancelled():
+            _LOGGER.warning("HI %s platform setup cancelled; retaining platform custody", platform)
+        elif (error := done.exception()) is not None:
+            _LOGGER.error(
+                "HI %s platform setup failed; continuing rollback", platform,
+                exc_info=(type(error), error, error.__traceback__),
+            )
+
+    for platform, child in zip(_PLATFORMS, forwards):
+        child.add_done_callback(lambda done, platform=platform: forward_finished(platform, done))
+
+    async def forward_platforms() -> list:
+        # Retain every sibling through settlement, including cancelled children.
+        # Report failures separately so a stalled sibling cannot delay rollback.
+        return await asyncio.gather(*forwards, return_exceptions=True)
+
+    forward = asyncio.create_task(
+        forward_platforms(),
+        name="hi-entry-platform-setup",
+    )
+    entry_data["setup_forward_task"] = forward
+    # wait() observes without cancelling children if this setup caller is cancelled.
+    # HA can shield platform setup; rollback must still await the retained gather.
+    pending = set(forwards)
+    while pending:
+        done, pending = await asyncio.wait(pending, return_when=asyncio.FIRST_COMPLETED)
+        for child in forwards:
+            if child in done:
+                child.result()
+    await asyncio.shield(forward)
     await async_update_humidity_drift_repair_issue(hass)
+    async_setup_co_unit_repair(hass, entry, effective_config)
     await async_setup_automations(hass, entry)
 
     # Optional static presentation resource; it has no authority over the engine.
@@ -208,11 +278,104 @@ async def _async_install_selected_ui(
     hass.config_entries.async_update_entry(entry, data=data)
 
 
-async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    """Unload a config entry."""
-    await hass.config_entries.async_unload_platforms(entry, ["sensor", "binary_sensor", "switch"])
-    await async_unload_automations(hass, entry)
-    data = hass.data.get(DOMAIN, {}).get(entry.entry_id, {})
+async def async_unload_entry(
+    hass: HomeAssistant, entry: ConfigEntry, *, _setup_rollback: bool = False,
+) -> bool:
+    """Drain runtime within 30 seconds, retaining custody if unload cannot finish.
+
+    Timeout never cancels the retained drain or releases its light locks. Failed
+    or interrupted unload leaves the entry stopped and requires a HA restart;
+    late cleanup does not perform platform teardown or claim successful unload.
+    Platform teardown is a subsequent HA operation, outside the drain deadline.
+    """
+    lifecycle = lifecycle_for(hass)
+    data = hass.data.setdefault(DOMAIN, {}).setdefault(entry.entry_id, {})
+    if "unload_task" in data or lifecycle.entries.get(entry.entry_id) == "failed":
+        _LOGGER.error("HI unload is already pending or failed; retained custody requires a restart")
+        return False
+    public_drain = lifecycle.begin_close(entry.entry_id)
+
+    async def drain() -> bool:
+        forwarding_cancelled = False
+        if forward := data.get("setup_forward_task"):
+            results = await asyncio.shield(forward)
+            # Child cancellation is a settled result, not cancellation of this
+            # drain. HA may still have a shielded setup body; drain runtime, but
+            # cannot prove platform teardown is safe.
+            forwarding_cancelled = any(isinstance(result, asyncio.CancelledError) for result in results)
+        drains = [async_unload_automations(hass, entry)]
+        if public_drain is not None:
+            drains.append(asyncio.shield(public_drain))
+        results = await asyncio.gather(*drains, return_exceptions=True)
+        for result in results:
+            if isinstance(result, BaseException):
+                raise RuntimeError("HI runtime cleanup failed") from result
+        return not forwarding_cancelled
+
+    task = asyncio.create_task(drain(), name="hi-entry-unload-drain")
+    data["unload_task"] = task
+
+    def drain_finished(done: asyncio.Task) -> None:
+        error = None if done.cancelled() else done.exception()
+        if error is not None:
+            _LOGGER.error(
+                "HI retained runtime cleanup failed; restart required",
+                exc_info=(type(error), error, error.__traceback__),
+            )
+
+    task.add_done_callback(drain_finished)
+    try:
+        done, _pending = await asyncio.wait({task}, timeout=_UNLOAD_DRAIN_TIMEOUT_SECONDS)
+        if not done:
+            lifecycle.fail_close(entry.entry_id)
+            _LOGGER.error(
+                "HI unload runtime drain timed out after %s seconds. Platforms and runtime "
+                "custody are retained; pending device work and restoration may still finish. "
+                "Resolve the service fault and restart Home Assistant; reload cannot recover "
+                "a failed unload. Physical light restoration is unconfirmed.",
+                _UNLOAD_DRAIN_TIMEOUT_SECONDS,
+            )
+            return False
+        if task.cancelled() or task.exception() is not None:
+            lifecycle.fail_close(entry.entry_id)
+            return False
+        if not task.result():
+            lifecycle.fail_close(entry.entry_id)
+            _LOGGER.error(
+                "HI platform forwarding was cancelled; runtime drainage completed but "
+                "platform setup completion is unconfirmed. Custody retained; restart required",
+            )
+            return False
+        platforms = _PLATFORMS
+        if _setup_rollback:
+            # A loaded base component does not prove this entry's platform was
+            # initialized. Skip only platforms absent from this setup attempt.
+            before = data.get("setup_platforms_before")
+            initialized = {
+                platform.domain for platform in async_get_platforms(hass, DOMAIN)
+                if before is not None
+                and all(platform is not previous for previous in before)
+                and platform.config_entry is not None
+                and platform.config_entry.entry_id == entry.entry_id
+            }
+            platforms = tuple(platform for platform in _PLATFORMS if platform in initialized)
+        if not await hass.config_entries.async_unload_platforms(entry, platforms):
+            lifecycle.fail_close(entry.entry_id)
+            _LOGGER.error("HI platform unload failed; stopped runtime retained, restart required")
+            return False
+        await _async_finish_unload(hass, entry, data)
+    except BaseException:
+        lifecycle.fail_close(entry.entry_id)
+        _LOGGER.exception("HI unload interrupted; runtime custody retained, restart required")
+        raise
+    lifecycle.finish_close(entry.entry_id)
+    hass.data.get(DOMAIN, {}).pop(entry.entry_id, None)
+    await async_unregister_services(hass)
+    return True
+
+
+async def _async_finish_unload(hass: HomeAssistant, entry: ConfigEntry, data: dict) -> None:
+    """Remove listeners only after runtime drainage and platform unload succeed."""
     observer = data.pop("output_observer", None)
     if observer is not None and observer.active:
         try:
@@ -231,9 +394,6 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         unsub()
     if unsub := data.get("slope_unsub"):
         unsub()
-    hass.data.get(DOMAIN, {}).pop(entry.entry_id, None)
-    await async_unregister_services(hass)
-    return True
 
 
 async def async_remove_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
@@ -494,7 +654,28 @@ async def _async_options_updated(hass: HomeAssistant, entry: ConfigEntry) -> Non
     next_observation = observation_presentation({**entry.data, **entry.options})
     next_alert_only = _entry_alert_only_mode(entry)
     next_output_details = _entry_show_output_entity_details(entry)
-    await hass.config_entries.async_reload(entry.entry_id)
+    try:
+        reloaded = await hass.config_entries.async_reload(entry.entry_id)
+    except Exception:
+        _LOGGER.exception("HI entry %s failed to reload after an options update", entry.entry_id)
+        reloaded = False
+    if not reloaded:
+        _LOGGER.error("HI entry %s options were saved but reload did not complete", entry.entry_id)
+        await hass.services.async_call(
+            "persistent_notification",
+            "create",
+            {
+                "title": "Humidity Intelligence Options Update Incomplete",
+                "message": (
+                    "Your options were saved, but Humidity Intelligence could not reload. "
+                    "The new settings are not confirmed active. HI skipped the requested card refresh. "
+                    "Check the Home Assistant log, resolve the reported fault, then restart "
+                    "Home Assistant. After HI loads successfully, regenerate the cards if needed."
+                ),
+            },
+            blocking=False,
+        )
+        return
     ui_visibility_changed = (
         prev_alert_only != next_alert_only
         or prev_output_details != next_output_details
