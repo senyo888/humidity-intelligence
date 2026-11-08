@@ -15,8 +15,11 @@ preserved gate settings and saved slope identities.
 - Drain active evaluations and owned background tasks before successful unload;
   discard queued follow-up evaluations after stop.
 - Restore captured alert-light state when a flash is interrupted, retaining locks
-  until bounded cleanup completes. Respect Manual handover, propagate cancellation
-  and log failed or timed-out restoration without claiming a physical result.
+  until accepted service calls finish. Retiring light workers remain owned without
+  blocking CO ventilation or other control evaluation. A ten-second deadline stops
+  further restoration submissions; draining accepted device work can extend unload.
+  Respect Manual handover, propagate cancellation and log failed or timed-out
+  restoration without claiming a physical result.
 - Distinguish a current high CO reading from incomplete clearance evidence,
   clearance hold and readings that have not yet fallen below the clear threshold.
 - Retain staged gate values when returning to setup, and reject unmatched leftover

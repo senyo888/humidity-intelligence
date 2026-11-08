@@ -293,11 +293,16 @@ reorder, or override a lane decision.
 
 Visual flashing captures the configured lights only after acquiring their shared
 locks. Normal completion, alert cancellation and unload attempt to restore that
-snapshot before releasing the locks. Restoration stays owned and drained through
-repeated cancellation, with a ten-second cleanup deadline; service failures or a
-timeout leave physical restoration unconfirmed and are logged. Engine-owned cleanup
-checks Manual handover before each restore submission and stops remaining writes
-once Manual is observed. The public service schema and optional power-entity policy
+snapshot before releasing the locks. Retiring visual workers remain owned by the
+engine without blocking control evaluation, including CO emergency ventilation.
+Unload drains active and retiring workers. Accepted flash and restoration service
+calls remain owned through cancellation because executor-backed device work cannot
+be recalled. The ten-second restoration deadline stops further submissions; draining
+an accepted call can extend cleanup and unload beyond that deadline. Service failures
+or timeout leave physical restoration unconfirmed and are logged. Engine-owned flash,
+power and restoration calls check Manual at service admission and stop remaining writes
+once Manual is observed. Commands already accepted by a device integration cannot
+be revoked, and external manual commands do not use HI's locks. The public service schema and optional power-entity policy
 remain unchanged; cleanup does not restore the power entity.
 
 Generated-artifact purge must validate its full fixed file target set before mutation,

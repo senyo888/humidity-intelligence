@@ -1,5 +1,7 @@
 """Visual-alert cancellation, lock custody and Manual handover regressions."""
 import asyncio
+from concurrent.futures import ThreadPoolExecutor
+import threading
 from types import SimpleNamespace
 
 import pytest
@@ -59,7 +61,7 @@ def worker(engine, lights=(LIGHT,)):
 def assert_released(services, hass, lights=(LIGHT,)):
     assert all(not lock.locked() for lock in services._light_flash_locks(hass, list(lights)))
     assert not [task for task in asyncio.all_tasks()
-                if task.get_name() == "hi-flash-restore" and not task.done()]
+                if task.get_name() in {"hi-flash-restore", "hi-flash-service"} and not task.done()]
 
 
 @pytest.mark.parametrize("initial", ["on", "off"])
@@ -84,6 +86,8 @@ def test_cancelled_flash_restores_before_custody_is_released(monkeypatch, initia
             await engine.async_stop()
         elif route == "clear":
             await engine._sync_visual_alert_tasks([])
+            assert task in engine._visual_alert_retiring
+            await task
         else:
             integration = _load_integration_init_module()
             async def unload_platforms(*_args):
@@ -213,6 +217,7 @@ def test_manual_handover_suppresses_remaining_restore_writes(monkeypatch, during
         if not during_restore:
             manual.is_on = True
         await engine._sync_visual_alert_tasks([])
+        await task
         assert task.done()
         assert len(hass.services.calls) == calls + int(during_restore)
         assert hass.states.get(OTHER).attributes["brightness"] == 255
@@ -238,24 +243,177 @@ def test_restore_service_failure_logs_and_attempts_remaining_lights(monkeypatch,
     asyncio.run(run())
 
 
-def test_restore_timeout_cancels_and_drains_service_before_unlock(monkeypatch, caplog):
+def test_manual_handover_before_queued_restore_service_prevents_submission():
+    async def run():
+        services, engine, hass, _ = environment()
+        manual = hass.data[services.DOMAIN][ENTRY_ID]["hi_input_booleans"]["air_control_manual_override"]
+
+        def should_abort():
+            active = engine._manual_override_active()
+            if not active:
+                asyncio.get_running_loop().call_soon(setattr, manual, "is_on", True)
+            return active
+
+        await services.async_flash_lights_for_alert(
+            hass, lights=[LIGHT], flash_count=0, should_abort=should_abort,
+        )
+        assert manual.is_on and hass.services.calls == []
+        assert_released(services, hass)
+    asyncio.run(run())
+
+
+@pytest.mark.parametrize("power_entity", [None, "switch.example_alert_power"])
+def test_engine_manual_handover_before_queued_flash_or_power_call_prevents_submission(monkeypatch, power_entity):
+    async def run():
+        services, engine, hass, _ = environment()
+        manual = hass.data[services.DOMAIN][ENTRY_ID]["hi_input_booleans"]["air_control_manual_override"]
+        create_task, sleep = asyncio.create_task, asyncio.sleep
+        handover_tasks = []
+
+        def handover():
+            manual.is_on = True
+            handover_tasks.append(create_task(engine.async_request_evaluate()))
+
+        def schedule(coro, *args, **kwargs):
+            if kwargs.get("name") == "hi-flash-service" and not manual.is_on:
+                asyncio.get_running_loop().call_soon(handover)
+            return create_task(coro, *args, **kwargs)
+
+        async def yield_only(_delay):
+            await sleep(0)
+
+        monkeypatch.setattr(asyncio, "create_task", schedule)
+        monkeypatch.setattr(asyncio, "sleep", yield_only)
+        engine._visual_alert_active = {IDENTITY}
+        task = create_task(engine._visual_alert_loop(IDENTITY, {
+            "visual_alert": {"lights": [LIGHT], "power_entity": power_entity},
+        }))
+        engine._visual_alert_tasks[IDENTITY] = task
+        await asyncio.wait_for(task, 1)
+        await asyncio.gather(*handover_tasks)
+        assert manual.is_on and hass.services.calls == []
+        await engine.async_stop()
+        assert_released(services, hass)
+    asyncio.run(run())
+
+
+@pytest.mark.parametrize("service_fails", [False, True])
+def test_restore_deadline_retains_executor_call_and_stops_remaining_submissions(monkeypatch, caplog, service_fails):
+    async def run():
+        services, _, hass, _ = environment(lights=(LIGHT, OTHER))
+        monkeypatch.setattr(services, "_FLASH_RESTORE_TIMEOUT_SECONDS", 0.01)
+        loop = asyncio.get_running_loop()
+        started, finished = asyncio.Event(), threading.Event()
+        release = threading.Event()
+        original_call = hass.services.async_call
+
+        def device_write():
+            loop.call_soon_threadsafe(started.set)
+            assert release.wait(2), "test did not release executor"
+            finished.set()
+            if service_fails:
+                raise RuntimeError("simulated late executor failure")
+
+        with ThreadPoolExecutor(max_workers=1) as pool:
+            async def call(domain, service, data=None, blocking=False):
+                if (data or {}).get("entity_id") == LIGHT:
+                    await loop.run_in_executor(pool, device_write)
+                await original_call(domain, service, data, blocking)
+
+            hass.services.async_call = call
+            task = asyncio.create_task(services.async_flash_lights_for_alert(
+                hass, lights=[LIGHT, OTHER], flash_count=0,
+            ))
+            try:
+                await asyncio.wait_for(started.wait(), 1)
+                await asyncio.sleep(0.03)  # The submission deadline has expired.
+                assert not task.done() and not finished.is_set()
+                assert services._light_flash_locks(hass, [LIGHT])[0].locked()
+                contender = asyncio.create_task(services.async_flash_lights_for_alert(
+                    hass, lights=[LIGHT], flash_count=0,
+                ))
+                await asyncio.sleep(0)
+                assert not contender.done() and hass.services.calls == []
+                contender.cancel()
+                with pytest.raises(asyncio.CancelledError):
+                    await contender
+            finally:
+                release.set()
+                await task
+        assert finished.is_set() and len(hass.services.calls) == int(not service_fails)
+        if not service_fails:
+            assert hass.services.calls[0][2]["entity_id"] == LIGHT
+        assert "original state is not confirmed" in caplog.text
+        assert_released(services, hass, (LIGHT, OTHER))
+    asyncio.run(run())
+
+
+def test_cancellation_drains_inflight_flash_call_before_restoration(monkeypatch):
     async def run():
         services, _, hass, _ = environment()
-        monkeypatch.setattr(services, "_FLASH_RESTORE_TIMEOUT_SECONDS", 0.01)
-        finished = asyncio.Event()
+        started, release = asyncio.Event(), asyncio.Event()
+        original_call = hass.services.async_call
 
-        async def stalled(*_args, **_kwargs):
-            try:
-                await asyncio.Event().wait()
-            finally:
-                finished.set()
+        async def call(domain, service, data=None, blocking=False):
+            if (data or {}).get("brightness") == 255:
+                started.set()
+                await release.wait()
+            await original_call(domain, service, data, blocking)
 
-        hass.services.async_call = stalled
-        await asyncio.wait_for(services.async_flash_lights_for_alert(
-            hass, lights=[LIGHT], flash_count=0,
-        ), 1)
-        assert finished.is_set()
-        assert "original state is not confirmed" in caplog.text
+        hass.services.async_call = call
+        task = asyncio.create_task(services.async_flash_lights_for_alert(
+            hass, lights=[LIGHT], flash_count=1,
+        ))
+        await asyncio.wait_for(started.wait(), 1)
+        for _ in range(3):
+            task.cancel()
+            await asyncio.sleep(0)
+        assert not task.done() and hass.services.calls == []
+        assert services._light_flash_locks(hass, [LIGHT])[0].locked()
+        release.set()
+        with pytest.raises(asyncio.CancelledError):
+            await task
+        assert [call[2]["brightness"] for call in hass.services.calls] == [255, 77]
+        assert_released(services, hass)
+    asyncio.run(run())
+
+
+@pytest.mark.parametrize("already_retiring", [False, True])
+def test_co_ventilation_does_not_wait_for_visual_cleanup_and_stop_retains_it(monkeypatch, already_retiring):
+    async def run():
+        services, engine, hass, _ = environment()
+        paused, yield_once = suspend_phase(monkeypatch, 1)
+        restoring, release = asyncio.Event(), asyncio.Event()
+        original_call = hass.services.async_call
+
+        async def call(domain, service, data=None, blocking=False):
+            if (data or {}).get("brightness") == 77:
+                restoring.set()
+                await release.wait()
+            await original_call(domain, service, data, blocking)
+
+        hass.services.async_call = call
+        task = worker(engine)
+        await asyncio.wait_for(paused.wait(), 1)
+        if already_retiring:
+            # A previous non-CO evaluation must also relinquish its lock.
+            await asyncio.wait_for(engine.async_request_evaluate(), 1)
+            await asyncio.wait_for(restoring.wait(), 1)
+        hass.states._values["sensor.co_val"] = _FakeState(16, {"unit_of_measurement": "ppm"})
+        await asyncio.wait_for(engine.async_request_evaluate(), 1)
+        assert hass.data[services.DOMAIN][ENTRY_ID]["runtime_mode"] == "co_emergency"
+        fan_calls = [c for c in hass.services.calls if c[:2] == ("fan", "set_percentage")]
+        assert fan_calls and all(c[2]["percentage"] == 100 for c in fan_calls)
+        await asyncio.wait_for(restoring.wait(), 1)
+        assert task in engine._visual_alert_retiring and not task.done()
+        assert not engine._get_evaluate_lock().locked()
+        stop = asyncio.create_task(engine.async_stop())
+        await yield_once(0)
+        assert not stop.done()
+        assert services._light_flash_locks(hass, [LIGHT])[0].locked()
+        release.set()
+        await asyncio.wait_for(stop, 1)
+        assert task.done() and not engine._visual_alert_retiring
         assert_released(services, hass)
     asyncio.run(run())
 
@@ -275,5 +433,45 @@ def test_cancelled_restore_task_terminates_without_retry_or_detached_cleanup():
                 hass, lights=[LIGHT], flash_count=0,
             ), 1)
         assert calls == [True]
+        assert_released(services, hass)
+    asyncio.run(run())
+
+
+def test_retiring_worker_cannot_remove_its_replacement_or_release_its_locks_early(monkeypatch):
+    async def run():
+        services, engine, hass, _ = environment()
+        paused, yield_once = suspend_phase(monkeypatch, 1)
+        restoring, release = asyncio.Event(), asyncio.Event()
+        original_call = hass.services.async_call
+
+        async def call(domain, service, data=None, blocking=False):
+            if (data or {}).get("brightness") == 77:
+                restoring.set()
+                await release.wait()
+            await original_call(domain, service, data, blocking)
+
+        hass.services.async_call = call
+        old = worker(engine)
+        await asyncio.wait_for(paused.wait(), 1)
+        await engine._sync_visual_alert_tasks([])
+        await asyncio.wait_for(restoring.wait(), 1)
+        detail = {"trigger_type": IDENTITY[0], "sensor": IDENTITY[1], "room": IDENTITY[2],
+                  "visual_alert": {"lights": [LIGHT], "flash_mode": "red"}}
+        try:
+            await engine._sync_visual_alert_tasks([detail])
+            replacement = engine._visual_alert_tasks[IDENTITY]
+            assert replacement is not old and not replacement.done()
+            assert old in engine._visual_alert_retiring
+            calls = list(hass.services.calls)
+            await yield_once(0)
+            assert hass.services.calls == calls
+            release.set()
+            await asyncio.wait_for(old, 1)
+            assert engine._visual_alert_tasks[IDENTITY] is replacement
+            assert old not in engine._visual_alert_retiring
+        finally:
+            release.set()
+            await engine.async_stop()
+        assert not engine._visual_alert_tasks and not engine._visual_alert_retiring
         assert_released(services, hass)
     asyncio.run(run())

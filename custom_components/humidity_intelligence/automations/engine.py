@@ -159,6 +159,7 @@ class HIAutomationEngine:
         self._aq_tasks: Dict[str, asyncio.Task] = {}
         self._aq_trigger_active: Dict[str, bool] = {}
         self._visual_alert_tasks: Dict[Tuple[str, str, str], asyncio.Task] = {}
+        self._visual_alert_retiring: set[asyncio.Task] = set()
         self._visual_alert_active: set[Tuple[str, str, str]] = set()
         self._startup_recheck_task: Optional[asyncio.Task] = None
         self._co_clear_recheck_task: Optional[asyncio.Task] = None
@@ -232,6 +233,7 @@ class HIAutomationEngine:
                 self._evaluate_task, self._startup_recheck_task,
                 self._co_clear_recheck_task, *self._aq_tasks.values(),
                 *self._visual_alert_tasks.values(), *self._humidifier_retry_tasks.values(),
+                *self._visual_alert_retiring,
             ) if task is not None and task is not current
         }
         for task in tasks:
@@ -243,6 +245,7 @@ class HIAutomationEngine:
         self._aq_tasks.clear()
         self._humidifier_retry_tasks.clear()
         self._visual_alert_tasks.clear()
+        self._visual_alert_retiring.clear()
         self._visual_alert_active.clear()
         self._notify_other_humidifier_engines()
 
@@ -1090,15 +1093,15 @@ class HIAutomationEngine:
             if self._visual_alert_configured(detail)
         }
         self._visual_alert_active = active_identities
-        cancelled_tasks: List[asyncio.Task[Any]] = []
         for identity, task in list(self._visual_alert_tasks.items()):
             if identity not in active_identities:
                 if task is not asyncio.current_task() and not task.done():
+                    # Optional light cleanup must not hold the evaluation lock
+                    # ahead of CO ventilation. Retain custody until completion.
+                    self._visual_alert_retiring.add(task)
+                    task.add_done_callback(self._visual_alert_retired)
                     task.cancel()
-                    cancelled_tasks.append(task)
                 self._visual_alert_tasks.pop(identity, None)
-        if cancelled_tasks:
-            await asyncio.gather(*cancelled_tasks, return_exceptions=True)
         for detail in active_details:
             if not self._visual_alert_configured(detail):
                 if detail.get("trigger_type") in _BUILT_IN_ZONE_ALERT_TRIGGERS:
@@ -1114,6 +1117,14 @@ class HIAutomationEngine:
             task = asyncio.create_task(self._visual_alert_loop(identity, dict(detail)))
             self._visual_alert_tasks[identity] = task
             await asyncio.sleep(0)
+
+    def _visual_alert_retired(self, task: asyncio.Task) -> None:
+        self._visual_alert_retiring.discard(task)
+        if not task.cancelled() and (error := task.exception()) is not None:
+            _LOGGER.error(
+                "Retired visual alert task failed",
+                exc_info=(type(error), error, error.__traceback__),
+            )
 
     def _visual_alert_configured(self, detail: Dict[str, Any]) -> bool:
         visual = detail.get("visual_alert") if isinstance(detail, dict) else {}
@@ -1151,7 +1162,7 @@ class HIAutomationEngine:
                         color=flash_payload["color"],
                         duration=flash_payload["duration"],
                         flash_count=flash_payload["flash_count"],
-                        should_abort_restore=self._manual_override_active,
+                        should_abort=self._manual_override_active,
                     )
                 except Exception:
                     _LOGGER.exception(
