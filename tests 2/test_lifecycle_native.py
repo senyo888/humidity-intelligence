@@ -72,6 +72,122 @@ class NativeLifecycleTests(unittest.IsolatedAsyncioTestCase):
     async def test_manual_pulse_during_interrupted_unload_revokes_late_restoration(self):
         await self.manual_during_unload(cancel=True)
 
+    async def test_failed_native_options_reload_does_not_export_or_claim_success(self):
+        notifications = []
+
+        async def notify(call):
+            notifications.append(dict(call.data))
+
+        self.hass.services.async_register("persistent_notification", "create", notify)
+        entry = SimpleNamespace(
+            entry_id="example_reload", domain=integration.DOMAIN, data={}, options={},
+            setup_lock=asyncio.Lock(), disabled_by=None, state=ConfigEntryState.LOADED,
+            async_cancel_retry_setup=lambda: None,
+        )
+        self.hass.config.components.add(integration.DOMAIN)
+        self.hass.data[integration.DOMAIN][entry.entry_id] = {"config": {"alert_only_mode": False}}
+        for visibility_changed in (False, True):
+            with self.subTest(visibility_changed=visibility_changed):
+                entry.options = {"alert_only_mode": visibility_changed}
+                notifications.clear()
+                with (
+                    patch.object(self.hass.config_entries, "async_get_known_entry", return_value=entry),
+                    patch.object(self.hass.config_entries, "async_unload", AsyncMock(return_value=False)) as unload,
+                    patch.object(integration, "_async_refresh_and_dump_cards", AsyncMock()) as export,
+                ):
+                    await integration._async_options_updated(self.hass, entry)
+                    await self.hass.async_block_till_done()
+                unload.assert_awaited_once()
+                export.assert_not_awaited()
+                self.assertEqual([n["title"] for n in notifications], ["Humidity Intelligence Options Update Incomplete"])
+                self.assertIn("restart Home Assistant", notifications[0]["message"])
+                self.assertEqual(entry.options, {"alert_only_mode": visibility_changed})
+
+    async def test_options_reload_exception_is_reported_and_cancellation_propagates(self):
+        for error in (RuntimeError("example reload failure"), asyncio.CancelledError()):
+            with (
+                self.subTest(error=type(error).__name__),
+                patch.object(self.hass.config_entries, "async_reload", AsyncMock(side_effect=error)),
+                patch.object(integration, "_async_refresh_and_dump_cards", AsyncMock()) as export,
+                patch.object(type(self.hass.services), "async_call", AsyncMock()) as notify,
+            ):
+                if isinstance(error, asyncio.CancelledError):
+                    with self.assertRaises(asyncio.CancelledError):
+                        await integration._async_options_updated(self.hass, self.entry)
+                    notify.assert_not_awaited()
+                else:
+                    await integration._async_options_updated(self.hass, self.entry)
+                    self.assertEqual(notify.await_args.args[2]["title"], "Humidity Intelligence Options Update Incomplete")
+                export.assert_not_awaited()
+
+    async def test_native_light_effect_snapshots_restore_missing_null_and_valid_values(self):
+        class ExampleLight(light.LightEntity):
+            _attr_is_on = True
+            _attr_color_mode = light.ColorMode.RGB
+            _attr_supported_color_modes = {light.ColorMode.RGB}
+            _attr_supported_features = light.LightEntityFeature.EFFECT
+            _attr_effect = None
+            _attr_brightness = 77
+            _attr_rgb_color = (1, 2, 3)
+
+        attrs = ExampleLight().state_attributes
+        self.assertIn("effect", attrs)
+        self.assertIsNone(attrs["effect"])
+        calls = []
+
+        async def restore(call):
+            calls.append(dict(call.data))
+            self.hass.states.async_set("light.example_alert", "on", call.data)
+
+        self.hass.services.async_register("light", "turn_on", restore,
+            schema=cv.make_entity_service_schema(light.LIGHT_TURN_ON_SCHEMA))
+        for effect in (None, "example_effect", "missing"):
+            with self.subTest(effect=effect):
+                saved = dict(attrs, effect=effect)
+                if effect == "missing":
+                    saved.pop("effect")
+                self.hass.states.async_set("light.example_alert", "on", saved)
+                snapshot = services._capture_light_states(self.hass, ["light.example_alert"])
+                self.hass.states.async_set("light.example_alert", "off")
+                calls.clear()
+                await services._restore_lights(self.hass, snapshot)
+                self.assertEqual(len(calls), 1)
+                self.assertEqual(self.hass.states.get("light.example_alert").state, "on")
+                self.assertEqual(calls[0]["brightness"], 77)
+                self.assertEqual(tuple(calls[0]["rgb_color"]), (1, 2, 3))
+                if effect == "example_effect":
+                    self.assertEqual(calls[0]["effect"], effect)
+                else:
+                    self.assertNotIn("effect", calls[0])
+
+    async def test_cancel_after_flash_off_restores_light_with_null_effect(self):
+        off = asyncio.Event()
+        calls = []
+        self.hass.states.async_set("light.example_alert", "on", {
+            "effect": None, "brightness": 77, "color_mode": "rgb", "rgb_color": (1, 2, 3),
+        })
+
+        async def handle(call):
+            calls.append((call.service, dict(call.data)))
+            self.hass.states.async_set("light.example_alert", call.service.removeprefix("turn_"), call.data)
+            if call.service == "turn_off":
+                off.set()
+
+        self.hass.services.async_register("light", "turn_on", handle,
+            schema=cv.make_entity_service_schema(light.LIGHT_TURN_ON_SCHEMA))
+        self.hass.services.async_register("light", "turn_off", handle)
+        task = asyncio.create_task(services.async_flash_lights_for_alert(
+            self.hass, lights=["light.example_alert"], flash_count=2, color=[255, 0, 0],
+        ))
+        await asyncio.wait_for(off.wait(), 2)
+        task.cancel()
+        with self.assertRaises(asyncio.CancelledError):
+            await asyncio.wait_for(task, 2)
+        self.assertEqual([name for name, _ in calls], ["turn_on", "turn_off", "turn_on"])
+        self.assertNotIn("effect", calls[-1][1])
+        self.assertEqual(self.hass.states.get("light.example_alert").state, "on")
+        self.assertEqual(calls[-1][1]["brightness"], 77)
+
     async def test_restore_color_snapshots_use_native_service_schema(self):
         calls = []
 

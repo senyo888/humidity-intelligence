@@ -654,7 +654,28 @@ async def _async_options_updated(hass: HomeAssistant, entry: ConfigEntry) -> Non
     next_observation = observation_presentation({**entry.data, **entry.options})
     next_alert_only = _entry_alert_only_mode(entry)
     next_output_details = _entry_show_output_entity_details(entry)
-    await hass.config_entries.async_reload(entry.entry_id)
+    try:
+        reloaded = await hass.config_entries.async_reload(entry.entry_id)
+    except Exception:
+        _LOGGER.exception("HI entry %s failed to reload after an options update", entry.entry_id)
+        reloaded = False
+    if not reloaded:
+        _LOGGER.error("HI entry %s options were saved but reload did not complete", entry.entry_id)
+        await hass.services.async_call(
+            "persistent_notification",
+            "create",
+            {
+                "title": "Humidity Intelligence Options Update Incomplete",
+                "message": (
+                    "Your options were saved, but Humidity Intelligence could not reload. "
+                    "The new settings are not confirmed active. HI skipped the requested card refresh. "
+                    "Check the Home Assistant log, resolve the reported fault, then restart "
+                    "Home Assistant. After HI loads successfully, regenerate the cards if needed."
+                ),
+            },
+            blocking=False,
+        )
+        return
     ui_visibility_changed = (
         prev_alert_only != next_alert_only
         or prev_output_details != next_output_details

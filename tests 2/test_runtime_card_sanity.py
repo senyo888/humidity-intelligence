@@ -3716,6 +3716,7 @@ def test_options_update_reloads_entry_then_regenerates_owned_ui_with_loaded_code
 
     async def async_reload(entry_id):
         events.append(("reload", entry_id))
+        return True
 
     async def refresh_and_dump(_hass, entry_id):
         events.append(("refresh_export", entry_id))
@@ -3787,7 +3788,7 @@ def test_options_update_reports_export_failure_without_success_path():
     service_calls = []
 
     async def async_reload(_entry_id):
-        return None
+        return True
 
     async def failed_refresh_and_dump(_hass, _entry_id):
         raise RuntimeError("fixture writer rejected")

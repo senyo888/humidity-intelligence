@@ -111,6 +111,15 @@ Omitted hidden values preserve saved settings. Explicitly clearing an entity lis
 still clears it. Older supported HA versions retain visible fields and the same
 save behavior. Options remain staged until the existing final save.
 Returning to the setup gates form also retains the staged controls and values.
+Selecting new or different presence entities requires an explicit state mapping before the gate is
+enabled. The old mapping is not transferred to different entities, including when
+the selection was changed while disabled. Unchanged or reordered selections keep
+their saved mapping; observed sensor states are not guessed to mean present.
+
+If an Options reload fails, HI reports that the saved settings are not confirmed
+active and skips the requested card refresh without reporting UI success. Resolve the logged
+fault and restart Home Assistant; regenerate cards after HI loads successfully
+if the changed settings affect their presentation.
 
 Provided temperature-slope pairs are saved by source and slope entity ID during
 explicit setup/Options save. Existing saved pairs survive display-name changes and

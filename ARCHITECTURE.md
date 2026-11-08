@@ -296,7 +296,8 @@ locks. Normal completion, alert cancellation and unload attempt to restore that
 snapshot before releasing the locks. Restoration skips unknown, unavailable and
 missing original states. An on-state snapshot restores one color descriptor from
 its captured mode, using Kelvin for temperature or `white` with captured brightness
-for white mode, plus saved brightness and effect.
+for white mode, plus saved brightness and a non-null effect. A null effect is
+omitted so native service validation cannot reject the whole restoration request.
 Retiring visual workers remain owned by the
 engine without blocking control evaluation, including CO emergency ventilation.
 Unload drains active and retiring workers. Accepted flash and restoration service
@@ -462,6 +463,12 @@ removing saved pairs must not turn an unmatched remainder into an inferred pair.
 Config flow, options flow, entity registry behavior, services, translations,
 diagnostics, and generated files must remain compatible with supported Home Assistant
 versions.
+
+Selecting presence entities for the first time or changing their set requires an explicit present/away
+mapping review in setup and Options. Unchanged selections retain their mapping;
+observed states are choices, not inferred presence. Options remain staged until
+the existing final save. A failed Options reload reports that saved settings are
+not confirmed active; it neither exports cards nor announces an update success.
 
 Avoid blocking filesystem, network, or slow I/O work in async Home Assistant paths.
 Keep service schemas explicit and error messages actionable. Keep `hacs.json` limited
