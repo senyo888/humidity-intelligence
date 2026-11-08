@@ -2359,7 +2359,10 @@ async def _restore_lights(
                     (key for key in color_attributes.values() if attrs.get(key) is not None),
                     None,
                 )
-            if color_attribute is not None and attrs.get(color_attribute) is not None:
+            if attrs.get("color_mode") == "white" and attrs.get("brightness") is not None:
+                # Brightness alone does not switch an RGB light back to white.
+                data["white"] = attrs["brightness"]
+            elif color_attribute is not None and attrs.get(color_attribute) is not None:
                 data[color_attribute] = attrs[color_attribute]
             if "effect" in attrs:
                 data["effect"] = attrs.get("effect")

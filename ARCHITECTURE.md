@@ -295,7 +295,8 @@ Visual flashing captures the configured lights only after acquiring their shared
 locks. Normal completion, alert cancellation and unload attempt to restore that
 snapshot before releasing the locks. Restoration skips unknown, unavailable and
 missing original states. An on-state snapshot restores one color descriptor from
-its captured mode, using Kelvin for temperature, plus saved brightness and effect.
+its captured mode, using Kelvin for temperature or `white` with captured brightness
+for white mode, plus saved brightness and effect.
 Retiring visual workers remain owned by the
 engine without blocking control evaluation, including CO emergency ventilation.
 Unload drains active and retiring workers. Accepted flash and restoration service
@@ -319,9 +320,14 @@ reservations count as owners; last-owner closure rejects new calls, cancels and
 drains accepted public workers before successful unload. Unloading one entry
 preserves services and public calls owned by the remaining entries.
 Replacement setup waits for ongoing closes to succeed; failed custody still
-rejects setup. Cancelled setup retains forwarding inside bounded cleanup before
-rollback removes only this attempt's initialized platforms. Platforms belonging
+rejects setup. Failed or cancelled setup retains public forwarding inside bounded
+cleanup; an observed failure starts rollback without waiting for stalled siblings.
+Each forwarding failure logs its original traceback when it settles. Rollback
+removes only this attempt's initialized platforms. Platforms belonging
 to other entries or reset objects from earlier attempts are excluded.
+If a forwarding operation itself is cancelled, runtime/public cleanup still runs,
+but failed custody is retained without platform teardown: HA can leave a shielded
+setup body running, so forwarding cancellation does not prove setup completion.
 
 Integration unload allows 30 seconds for runtime drainage before platform teardown.
 It reports failure on timeout without cancelling the retained cleanup task, releasing

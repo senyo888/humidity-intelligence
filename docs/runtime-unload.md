@@ -21,11 +21,21 @@ only after setup succeeds. A reservation already in progress
 counts when another entry unloads. Failed setup uses the same cleanup path, so
 removing the last reservation cannot orphan public calls or services.
 
-Cancelled setup retains its platform-forwarding task until it settles. Rollback
-then unloads only this attempt's initialized entry platforms, excluding platforms
+Failed or cancelled setup retains each public platform-forwarding operation.
+The first observed failure starts bounded rollback immediately, even if a sibling
+is stalled before HA's platform-setup timeout. Each forwarding failure logs its
+platform and original traceback when it finishes, without waiting for siblings.
+After forwarding settles, rollback unloads only this attempt's initialized entry platforms, excluding platforms
 from other entries and reset objects left by earlier attempts on older HA versions.
 A loaded base component alone does not mean the entry platform was initialized.
 Actual platform-unload failures still retain failed custody.
+
+Cancellation of a forwarding operation is distinct from cancellation of the HI
+setup caller. A cancelled forward can leave an HA-shielded setup body running.
+HI therefore continues runtime/public-flash drainage, but retains failed custody
+and skips platform teardown because setup completion is unconfirmed. Late body
+completion does not reopen the entry. Cancellation of the drain itself is not
+swallowed as a child result.
 
 Unloading one of several entries preserves public calls and shared services for
 the others. Last-owner closure rejects new public calls, cancels the owned flash
@@ -37,7 +47,9 @@ optional power entities are not restored.
 Restoration uses only captured `on` or `off` states; unknown, unavailable and
 missing snapshots do not produce restoration commands. For an `on` snapshot,
 HI restores brightness and effect with one color descriptor matching its captured
-color mode, using Kelvin for color temperature. When an older/custom source omits
+color mode, using Kelvin for color temperature and `white` with the captured
+brightness for white mode. Brightness alone cannot restore white mode after RGB.
+When an older/custom source omits
 the mode, HI selects one saved descriptor rather than sending conflicting formats.
 
 ## Bounded runtime drainage

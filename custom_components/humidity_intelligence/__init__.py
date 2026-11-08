@@ -126,25 +126,44 @@ async def _async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     # Retain the objects so rollback can distinguish this attempt from old ones.
     entry_data["setup_platforms_before"] = tuple(async_get_platforms(hass, DOMAIN))
 
-    async def forward_platforms() -> None:
-        # HA's bulk forwarding may raise before a sibling finishes initializing.
-        # Use its public API per platform and settle every attempt before raising.
-        results = await asyncio.gather(
-            *(hass.config_entries.async_forward_entry_setups(entry, (platform,))
-              for platform in _PLATFORMS),
-            return_exceptions=True,
+    forwards = tuple(
+        asyncio.create_task(
+            hass.config_entries.async_forward_entry_setups(entry, (platform,)),
+            name=f"hi-entry-platform-setup-{platform}",
         )
-        for result in results:
-            if isinstance(result, BaseException):
-                raise result
+        for platform in _PLATFORMS
+    )
+
+    def forward_finished(platform: str, done: asyncio.Task) -> None:
+        if done.cancelled():
+            _LOGGER.warning("HI %s platform setup cancelled; retaining platform custody", platform)
+        elif (error := done.exception()) is not None:
+            _LOGGER.error(
+                "HI %s platform setup failed; continuing rollback", platform,
+                exc_info=(type(error), error, error.__traceback__),
+            )
+
+    for platform, child in zip(_PLATFORMS, forwards):
+        child.add_done_callback(lambda done, platform=platform: forward_finished(platform, done))
+
+    async def forward_platforms() -> list:
+        # Retain every sibling through settlement, including cancelled children.
+        # Report failures separately so a stalled sibling cannot delay rollback.
+        return await asyncio.gather(*forwards, return_exceptions=True)
 
     forward = asyncio.create_task(
         forward_platforms(),
         name="hi-entry-platform-setup",
     )
     entry_data["setup_forward_task"] = forward
-    # HA can shield its platform setup body. Retain the whole forward operation
-    # so cancellation cannot leave that body creating entities after rollback.
+    # wait() observes without cancelling children if this setup caller is cancelled.
+    # HA can shield platform setup; rollback must still await the retained gather.
+    pending = set(forwards)
+    while pending:
+        done, pending = await asyncio.wait(pending, return_when=asyncio.FIRST_COMPLETED)
+        for child in forwards:
+            if child in done:
+                child.result()
     await asyncio.shield(forward)
     await async_update_humidity_drift_repair_issue(hass)
     async_setup_co_unit_repair(hass, entry, effective_config)
@@ -276,14 +295,14 @@ async def async_unload_entry(
         return False
     public_drain = lifecycle.begin_close(entry.entry_id)
 
-    async def drain() -> None:
+    async def drain() -> bool:
+        forwarding_cancelled = False
         if forward := data.get("setup_forward_task"):
-            try:
-                await asyncio.shield(forward)
-            except Exception:
-                # Setup failure is re-raised by async_setup_entry. Settled
-                # forwarding still needs cleanup of any initialized platforms.
-                pass
+            results = await asyncio.shield(forward)
+            # Child cancellation is a settled result, not cancellation of this
+            # drain. HA may still have a shielded setup body; drain runtime, but
+            # cannot prove platform teardown is safe.
+            forwarding_cancelled = any(isinstance(result, asyncio.CancelledError) for result in results)
         drains = [async_unload_automations(hass, entry)]
         if public_drain is not None:
             drains.append(asyncio.shield(public_drain))
@@ -291,6 +310,7 @@ async def async_unload_entry(
         for result in results:
             if isinstance(result, BaseException):
                 raise RuntimeError("HI runtime cleanup failed") from result
+        return not forwarding_cancelled
 
     task = asyncio.create_task(drain(), name="hi-entry-unload-drain")
     data["unload_task"] = task
@@ -318,6 +338,13 @@ async def async_unload_entry(
             return False
         if task.cancelled() or task.exception() is not None:
             lifecycle.fail_close(entry.entry_id)
+            return False
+        if not task.result():
+            lifecycle.fail_close(entry.entry_id)
+            _LOGGER.error(
+                "HI platform forwarding was cancelled; runtime drainage completed but "
+                "platform setup completion is unconfirmed. Custody retained; restart required",
+            )
             return False
         platforms = _PLATFORMS
         if _setup_rollback:
