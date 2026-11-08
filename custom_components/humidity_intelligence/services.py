@@ -358,7 +358,23 @@ async def async_flash_lights_for_alert(
     flash_count: Optional[int] = None,
     should_abort: Optional[Callable[[], bool]] = None,
 ) -> None:
-    """Run one trusted HI visual-alert flash without using the public service."""
+    """Run one trusted HI visual-alert flash without using the public service.
+
+    Serialize shared lights and attempt captured-state restoration before
+    releasing their locks, including on cancellation. The optional switch or
+    light ``power_entity`` is turned on but is not restored. No lights means
+    no device calls. Invalid power entities raise ``HomeAssistantError``;
+    invalid ``duration`` conversion can raise ``TypeError`` or ``ValueError``.
+
+    ``flash_count`` sets the number of on/off cycles; otherwise ``duration``
+    in seconds, clamped to at least one, derives the count at two cycles per
+    second. Each cycle actually waits 0.5 seconds on and 0.5 seconds off,
+    plus service time. ``should_abort`` returning true suppresses further
+    power, flash, and restore submissions, not accepted calls.
+
+    Device service failures are caught so restoration is best effort. Caller
+    cancellation propagates after cleanup. Accepted calls can delay cleanup
+    indefinitely; the ten-second deadline only stops further restore calls."""
     if power_entity:
         try:
             power_entity = _validate_visual_power_entity(power_entity)
@@ -2177,6 +2193,14 @@ async def _flash_lights(
     supports_color: dict,
     should_abort: Optional[Callable[[], bool]] = None,
 ) -> None:
+    """Flash lights at full brightness with half-second on and off waits.
+
+    Use ``color`` only for lights marked in ``supports_color``. Without
+    ``flash_count``, derive at least one cycle as ``int(duration / 0.5)``;
+    ``duration`` is in seconds and is not an elapsed-time limit. Nonpositive
+    explicit counts perform no cycles. A true ``should_abort`` skips further
+    submissions. Service errors are caught per light; cancellation propagates
+    after any accepted call finishes."""
     interval = 0.5
     if flash_count is None:
         flash_count = max(1, int(duration / interval))
@@ -2208,10 +2232,17 @@ async def _async_call_flash_service(
     hass: HomeAssistant, domain: str, service: str, data: Dict[str, Any],
     should_abort: Optional[Callable[[], bool]] = None,
 ) -> None:
-    """Retain an accepted call; cancellation cannot stop executor device work."""
+    """Submit a blocking service call unless ``should_abort`` returns true.
+
+    Caller cancellation before submission cancels the queued call; after
+    submission it waits for the accepted call, then raises ``CancelledError``.
+    Service errors propagate unless caller cancellation is pending, in which
+    case cancellation takes precedence. Shielding covers caller cancellation,
+    not direct cancellation of the child task or global HA shutdown."""
     started = False
 
     async def call() -> None:
+        """Check abort status at admission and await the accepted service call."""
         nonlocal started
         if should_abort is not None and should_abort():
             return
@@ -2248,8 +2279,14 @@ async def _restore_lights_before_unlock(
     states: Dict[str, Dict[str, Any]],
     should_abort: Optional[Callable[[], bool]],
 ) -> None:
-    """Limit further restoration, draining accepted calls before unlocking."""
+    """Attempt restoration with a ten-second deadline for further submissions.
+
+    Accepted calls are drained even beyond the deadline, so this is not a
+    completion timeout. Deadline expiry is caught; caller cancellation is
+    re-raised after cleanup. Other restoration errors propagate. The caller
+    must retain the light locks until this call finishes."""
     async def restore() -> None:
+        """Restore captured lights, treating deadline expiry as incomplete restoration."""
         try:
             # Stop further submissions at the deadline. An accepted service may
             # outlive cancellation, so it must finish before locks are released.
@@ -2279,6 +2316,12 @@ async def _restore_lights(
     states: Dict[str, Dict[str, Any]],
     should_abort: Optional[Callable[[], bool]] = None,
 ) -> None:
+    """Attempt to restore captured light states, skipping missing snapshots.
+
+    Restore saved brightness, color, temperature, and effect attributes for
+    lights previously on; turn other known states off. A true ``should_abort``
+    stops further submissions. Service failures are caught per light so later
+    lights are still attempted; cancellation propagates after accepted work."""
     for entity_id, snapshot in states.items():
         # Manual handover can occur while a previous light's service is awaited.
         if should_abort is not None and should_abort():

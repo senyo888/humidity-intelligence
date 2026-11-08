@@ -128,6 +128,10 @@ def _dependency_schema(default_skip: bool = False) -> vol.Schema:
 
 
 def _presence_states_schema(options: List[str], values: Optional[Dict[str, Any]] = None) -> vol.Schema:
+    """Build presence selectors with staged or submitted ``values`` as defaults.
+
+    Without supplied values, all options (or ``home`` when empty) count as
+    present and no states count as away. Explicit empty selections are kept."""
     select_options = [SelectOptionDict(value=o, label=o) for o in options] if options else []
     return vol.Schema({
         vol.Required("present_states", default=_form_input_default(values, "present_states", options or ["home"])): selector.SelectSelector(
@@ -279,7 +283,11 @@ class HumidityIntelligenceConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         )
 
     async def async_step_gates(self, user_input: Optional[Dict[str, Any]] = None):
-        """Collect global time and presence gate settings."""
+        """Collect global time and presence gate settings.
+
+        Reuse staged defaults on revisits and preserve omitted Advanced settings.
+        Stage submissions, then open presence-state selection when enabled with
+        entities, or continue to telemetry otherwise."""
         if user_input is not None:
             user_input = dict(_flatten_advanced_section_input(user_input))
 
@@ -475,7 +483,10 @@ class HumidityIntelligenceConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         )
 
     async def async_step_presence_states(self, user_input: Optional[Dict[str, Any]] = None):
-        """Collect presence state values that indicate someone is home."""
+        """Collect disjoint present and away states, retaining staged defaults.
+
+        Redisplay overlapping selections with a field error without saving them;
+        otherwise stage both selections and continue to telemetry."""
         options = _presence_state_options(self.hass, self._data.get("presence_gate", {}).get("entities", []))
         if user_input is not None:
             states = user_input.get("present_states", [])

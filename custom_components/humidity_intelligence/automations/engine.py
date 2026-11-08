@@ -140,6 +140,7 @@ class _AlertMatch:
 
 class HIAutomationEngine:
     def __init__(self, hass: HomeAssistant, entry: ConfigEntry) -> None:
+        """Initialize entry configuration and task ownership without starting automation."""
         self.hass = hass
         self.entry = entry
         self.telemetry = self._cfg("telemetry", [])
@@ -218,6 +219,11 @@ class HIAutomationEngine:
         self._notify_other_humidifier_engines()
 
     async def async_stop(self) -> None:
+        """Stop accepting evaluations, unsubscribe, and cancel and await owned tasks.
+
+        Task failures are collected without being re-raised; cancellation of this
+        call propagates. Accepted visual service calls can delay completion
+        indefinitely, including beyond the restoration submission deadline."""
         self._stopped = True
         self._evaluate_pending = False
         if self._unsub:
@@ -252,6 +258,9 @@ class HIAutomationEngine:
 
     async def _handle_change(self, event) -> None:
         # Observe every CO interruption, even while evaluation requests coalesce.
+        """Observe Manual handover and CO clearance interruptions before evaluation.
+
+        Active pause-countdown refreshes do not request an evaluation."""
         event_data = getattr(event, "data", {}) or {}
         manual = self.hass.data.get(DOMAIN, {}).get(self.entry.entry_id, {}).get(
             "hi_input_booleans", {}
@@ -296,7 +305,10 @@ class HIAutomationEngine:
         await self.async_request_evaluate()
 
     async def async_request_evaluate(self) -> None:
-        """Request an immediate evaluation cycle."""
+        """Run evaluation unless stopped, coalescing concurrent requests.
+
+        A request during an active cycle queues a follow-up and returns without
+        waiting for it. Cancellation of the task running evaluation propagates."""
         if self._stopped:
             return
         evaluate_lock = self._get_evaluate_lock()
@@ -338,6 +350,7 @@ class HIAutomationEngine:
         self._startup_recheck_task = asyncio.create_task(_startup_recheck())
 
     async def _evaluate(self) -> None:
+        """Apply the highest-priority eligible control lane and refresh runtime telemetry."""
         try:
             try:
                 self._record_stability_aq_truth()
@@ -1098,6 +1111,10 @@ class HIAutomationEngine:
             )
 
     async def _sync_visual_alert_tasks(self, active_details: List[Dict[str, Any]]) -> None:
+        """Start workers for configured active alerts and retire obsolete workers.
+
+        Retiring workers remain owned for shutdown; their cleanup is not awaited
+        here, so it does not delay control evaluation."""
         active_identities = {
             _alert_identity(detail)
             for detail in active_details
@@ -1126,6 +1143,7 @@ class HIAutomationEngine:
             await asyncio.sleep(0)
 
     def _revoke_visual_alerts(self) -> None:
+        """Permanently revoke current visual workers and free their active slots."""
         self._visual_alert_manual_epoch += 1
         self._visual_alert_active.clear()
         # A revoked worker must not occupy its alert's active slot during cleanup
@@ -1136,6 +1154,10 @@ class HIAutomationEngine:
     def _retire_visual_alert_task(
         self, identity: Tuple[str, str, str], task: asyncio.Task,
     ) -> None:
+        """Remove this worker from its active slot without waiting for cleanup.
+
+        Cancel an unfinished worker other than the current task and retain it
+        until completion so shutdown can await it."""
         if task is not asyncio.current_task() and not task.done():
             # Optional light cleanup must not hold the evaluation lock
             # ahead of CO ventilation. Retain custody until completion.
@@ -1146,6 +1168,7 @@ class HIAutomationEngine:
             self._visual_alert_tasks.pop(identity, None)
 
     def _visual_alert_retired(self, task: asyncio.Task) -> None:
+        """Release ownership of a completed retiring worker and retrieve its failure."""
         self._visual_alert_retiring.discard(task)
         if not task.cancelled() and (error := task.exception()) is not None:
             _LOGGER.error(
@@ -1164,11 +1187,19 @@ class HIAutomationEngine:
         *,
         manual_epoch: Optional[int] = None,
     ) -> None:
+        """Flash an active alert ten times per burst, repeating every 30 minutes.
+
+        The repeat wait begins after each burst finishes. ``manual_epoch`` is the
+        handover generation captured at scheduling, defaulting to the current
+        one. An epoch change or observed Manual override permanently revokes this
+        worker. Flash failures are caught and retried on the next burst;
+        cancellation ends the worker after flash cleanup."""
         if manual_epoch is None:
             manual_epoch = self._visual_alert_manual_epoch
         revoked = False
 
         def should_abort() -> bool:
+            """Latch revocation after Manual handover or a change in its generation."""
             nonlocal revoked
             revoked = (revoked or manual_epoch != self._visual_alert_manual_epoch
                        or self._manual_override_active())
@@ -3071,6 +3102,11 @@ class HIAutomationEngine:
         )
 
     def _co_display_facts(self) -> ReasonFacts:
+        """Return CO emergency explanations from current readings in ppm.
+
+        Distinguish an active threshold, incomplete readings, a clearance hold,
+        and readings at or above the clear threshold without changing the latch
+        or its clearance timer."""
         start_threshold, clear_threshold, outputs = self._co_emergency_settings()
         sources = {item.get("entity_id") for item in self.telemetry
                    if item.get("sensor_type") == "co"}
