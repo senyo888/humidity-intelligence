@@ -58,6 +58,10 @@ The PR #147 corrections also change component bytes beyond the accepted
 `cc709769` package; its Stable acceptance remains historical evidence.
 The PR #148 flash-restoration correction changes the package again; the earlier
 `d6174038` Lab and Stable results retain their original package and test scope.
+The lifecycle package `8cdd3ae` passed fresh native Lab setup and manual
+Stable-instance acceptance with all 80 files verified, five valid card exports
+and no failed checks. Stalled-unload behavior has native regression coverage;
+it was not fault-injected live, and physical output response was not tested.
 Published Stable remains v2.1.1; final published delivery is still separate.
 
 Thanks to [@Slaybcn](https://github.com/Slaybcn) for reporting the Marketplace
