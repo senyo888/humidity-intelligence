@@ -20,6 +20,17 @@ class IntegrationLifecycle:
         self.public_tasks: set[asyncio.Task] = set()
         self.public_drain: asyncio.Task | None = None
         self.generation = 0
+        self._closure_changed = asyncio.Event()
+
+    async def async_reserve_setup(self, entry_id: str) -> None:
+        """Wait for successful closure, then reserve without an intervening await.
+
+        Cancelling a waiter does not cancel cleanup or reserve an entry. Failed
+        custody still blocks setup, even when another entry remains closing.
+        """
+        while "closing" in self.entries.values() and "failed" not in self.entries.values():
+            await self._closure_changed.wait()
+        self.reserve_setup(entry_id)
 
     def reserve_setup(self, entry_id: str) -> None:
         """Reserve before setup awaits; never replace retained failed custody."""
@@ -58,11 +69,18 @@ class IntegrationLifecycle:
     def fail_close(self, entry_id: str) -> None:
         # Late drainage cannot clear this tombstone or reopen public admission.
         self.entries[entry_id] = "failed"
+        self._notify_closure_changed()
 
     def finish_close(self, entry_id: str) -> None:
         self.entries.pop(entry_id, None)
         if not self.entries:
             self.public_drain = None
+        self._notify_closure_changed()
+
+    def _notify_closure_changed(self) -> None:
+        # Wake every current waiter; subsequent waits observe the next change.
+        self._closure_changed.set()
+        self._closure_changed = asyncio.Event()
 
     async def async_public_flash(
         self, generation: int, run: Callable[[], Awaitable[None]],

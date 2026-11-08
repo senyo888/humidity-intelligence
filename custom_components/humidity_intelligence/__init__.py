@@ -8,6 +8,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import EVENT_HOMEASSISTANT_STARTED
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers import config_validation as cv
+from homeassistant.helpers.entity_platform import async_get_platforms
 
 from .const import (
     CONF_AUTO_REFRESH_UI_ON_STARTUP,
@@ -39,6 +40,7 @@ from .automations import async_unload_entry as async_unload_automations
 
 _LOGGER = logging.getLogger(__name__)
 _UNLOAD_DRAIN_TIMEOUT_SECONDS = 30
+_PLATFORMS = ("sensor", "binary_sensor", "switch")
 
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 
@@ -56,19 +58,22 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Humidity Intelligence from a config entry."""
     lifecycle = lifecycle_for(hass)
-    lifecycle.reserve_setup(entry.entry_id)
+    await lifecycle.async_reserve_setup(entry.entry_id)
     try:
         result = await _async_setup_entry(hass, entry)
     except BaseException:
         # A failed setup can be the final reservation while another entry closes.
         # Use the same retained, bounded drain instead of orphaning public work.
         try:
-            await async_unload_entry(hass, entry)
+            await async_unload_entry(hass, entry, _setup_rollback=True)
         except BaseException:
             lifecycle.fail_close(entry.entry_id)
             _LOGGER.exception("HI failed-setup cleanup did not complete; restart required")
         raise
     lifecycle.finish_setup(entry.entry_id)
+    data = hass.data[DOMAIN].get(entry.entry_id, {})
+    data.pop("setup_platforms_before", None)
+    data.pop("setup_forward_task", None)
     return result
 
 
@@ -117,7 +122,30 @@ async def _async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             )
     entry_data["pm25_entity_id_normalization"] = pm25_normalization
 
-    await hass.config_entries.async_forward_entry_setups(entry, ["sensor", "binary_sensor", "switch"])
+    # Older supported HA versions keep reset platforms in the public registry.
+    # Retain the objects so rollback can distinguish this attempt from old ones.
+    entry_data["setup_platforms_before"] = tuple(async_get_platforms(hass, DOMAIN))
+
+    async def forward_platforms() -> None:
+        # HA's bulk forwarding may raise before a sibling finishes initializing.
+        # Use its public API per platform and settle every attempt before raising.
+        results = await asyncio.gather(
+            *(hass.config_entries.async_forward_entry_setups(entry, (platform,))
+              for platform in _PLATFORMS),
+            return_exceptions=True,
+        )
+        for result in results:
+            if isinstance(result, BaseException):
+                raise result
+
+    forward = asyncio.create_task(
+        forward_platforms(),
+        name="hi-entry-platform-setup",
+    )
+    entry_data["setup_forward_task"] = forward
+    # HA can shield its platform setup body. Retain the whole forward operation
+    # so cancellation cannot leave that body creating entities after rollback.
+    await asyncio.shield(forward)
     await async_update_humidity_drift_repair_issue(hass)
     async_setup_co_unit_repair(hass, entry, effective_config)
     await async_setup_automations(hass, entry)
@@ -231,7 +259,9 @@ async def _async_install_selected_ui(
     hass.config_entries.async_update_entry(entry, data=data)
 
 
-async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+async def async_unload_entry(
+    hass: HomeAssistant, entry: ConfigEntry, *, _setup_rollback: bool = False,
+) -> bool:
     """Drain runtime within 30 seconds, retaining custody if unload cannot finish.
 
     Timeout never cancels the retained drain or releases its light locks. Failed
@@ -247,6 +277,13 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     public_drain = lifecycle.begin_close(entry.entry_id)
 
     async def drain() -> None:
+        if forward := data.get("setup_forward_task"):
+            try:
+                await asyncio.shield(forward)
+            except Exception:
+                # Setup failure is re-raised by async_setup_entry. Settled
+                # forwarding still needs cleanup of any initialized platforms.
+                pass
         drains = [async_unload_automations(hass, entry)]
         if public_drain is not None:
             drains.append(asyncio.shield(public_drain))
@@ -259,8 +296,12 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     data["unload_task"] = task
 
     def drain_finished(done: asyncio.Task) -> None:
-        if not done.cancelled() and done.exception() is not None:
-            _LOGGER.error("HI retained runtime cleanup failed; restart required")
+        error = None if done.cancelled() else done.exception()
+        if error is not None:
+            _LOGGER.error(
+                "HI retained runtime cleanup failed; restart required",
+                exc_info=(type(error), error, error.__traceback__),
+            )
 
     task.add_done_callback(drain_finished)
     try:
@@ -278,9 +319,20 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         if task.cancelled() or task.exception() is not None:
             lifecycle.fail_close(entry.entry_id)
             return False
-        if not await hass.config_entries.async_unload_platforms(
-            entry, ["sensor", "binary_sensor", "switch"],
-        ):
+        platforms = _PLATFORMS
+        if _setup_rollback:
+            # A loaded base component does not prove this entry's platform was
+            # initialized. Skip only platforms absent from this setup attempt.
+            before = data.get("setup_platforms_before")
+            initialized = {
+                platform.domain for platform in async_get_platforms(hass, DOMAIN)
+                if before is not None
+                and all(platform is not previous for previous in before)
+                and platform.config_entry is not None
+                and platform.config_entry.entry_id == entry.entry_id
+            }
+            platforms = tuple(platform for platform in _PLATFORMS if platform in initialized)
+        if not await hass.config_entries.async_unload_platforms(entry, platforms):
             lifecycle.fail_close(entry.entry_id)
             _LOGGER.error("HI platform unload failed; stopped runtime retained, restart required")
             return False

@@ -2324,10 +2324,11 @@ async def _restore_lights(
     states: Dict[str, Dict[str, Any]],
     should_abort: Optional[Callable[[], bool]] = None,
 ) -> None:
-    """Attempt to restore captured light states, skipping missing snapshots.
+    """Restore captured on/off states, skipping missing or unknown snapshots.
 
     Restore saved brightness, color, temperature, and effect attributes for
-    lights previously on; turn other known states off. A true ``should_abort``
+    lights previously on, using one color descriptor; turn previously off lights
+    off. A true ``should_abort``
     stops further submissions. Service failures are caught per light so later
     lights are still attempted; cancellation propagates after accepted work."""
     for entity_id, snapshot in states.items():
@@ -2335,19 +2336,31 @@ async def _restore_lights(
         if should_abort is not None and should_abort():
             return
         initial_state = snapshot.get("state")
-        if initial_state is None:
+        if initial_state not in {"on", "off"}:
             continue
         if initial_state == "on":
             data = {"entity_id": entity_id}
             attrs = snapshot.get("attributes") or {}
             if "brightness" in attrs:
                 data["brightness"] = attrs.get("brightness")
-            if "rgb_color" in attrs:
-                data["rgb_color"] = attrs.get("rgb_color")
-            if "hs_color" in attrs:
-                data["hs_color"] = attrs.get("hs_color")
-            if "color_temp" in attrs:
-                data["color_temp"] = attrs.get("color_temp")
+            color_attributes = {
+                "color_temp": "color_temp_kelvin",
+                "hs": "hs_color",
+                "xy": "xy_color",
+                "rgb": "rgb_color",
+                "rgbw": "rgbw_color",
+                "rgbww": "rgbww_color",
+            }
+            color_attribute = color_attributes.get(attrs.get("color_mode"))
+            if attrs.get("color_mode") is None:
+                # Older/custom sources may omit color_mode. Preserve one saved
+                # descriptor without submitting HA's mutually exclusive formats.
+                color_attribute = next(
+                    (key for key in color_attributes.values() if attrs.get(key) is not None),
+                    None,
+                )
+            if color_attribute is not None and attrs.get(color_attribute) is not None:
+                data[color_attribute] = attrs[color_attribute]
             if "effect" in attrs:
                 data["effect"] = attrs.get("effect")
             try:

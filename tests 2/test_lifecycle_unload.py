@@ -365,3 +365,105 @@ def test_partial_engine_start_failure_retains_accepted_work(monkeypatch):
             await drain_task(hass, services.DOMAIN, second)
         assert_released(services, hass)
     asyncio.run(run())
+
+
+@pytest.mark.parametrize("outcome", ["success", "failure", "cancel_waiter"])
+def test_replacement_setup_waits_for_other_entry_close(monkeypatch, outcome):
+    async def run():
+        services, _, hass, entry, integration, owner, _, _, _ = await fixture(monkeypatch)
+        second = SimpleNamespace(entry_id=SECOND)
+        hass.data[services.DOMAIN][SECOND] = {}
+        owner.reserve_setup(SECOND)
+        owner.finish_setup(SECOND)
+        closing, release, setup_started = asyncio.Event(), asyncio.Event(), asyncio.Event()
+
+        async def unload_platforms(current, _platforms):
+            if current.entry_id == SECOND:
+                closing.set()
+                await release.wait()
+                return outcome != "failure"
+            return True
+
+        async def setup(_hass, current):
+            setup_started.set()
+            hass.data[services.DOMAIN][current.entry_id] = {}
+            await services.async_register_services(hass)
+            return True
+
+        hass.config_entries.async_unload_platforms = unload_platforms
+        monkeypatch.setattr(integration, "_async_setup_entry", setup)
+        unloading = asyncio.create_task(integration.async_unload_entry(hass, second))
+        await asyncio.wait_for(closing.wait(), 1)
+        assert await integration.async_unload_entry(hass, entry)
+        replacement = asyncio.create_task(integration.async_setup_entry(hass, entry))
+        await asyncio.sleep(0)
+        assert not replacement.done() and not setup_started.is_set()
+        assert ENTRY_ID not in owner.entries
+        if outcome == "cancel_waiter":
+            replacement.cancel()
+            with pytest.raises(asyncio.CancelledError):
+                await replacement
+            assert not unloading.done()
+        release.set()
+        assert await asyncio.wait_for(unloading, 1) is (outcome != "failure")
+        if outcome == "success":
+            assert await asyncio.wait_for(replacement, 1)
+            assert owner.entries == {ENTRY_ID: "loaded"}
+            assert hass.services.has_service(services.DOMAIN, services.SERVICE_FLASH_LIGHTS)
+            assert await integration.async_unload_entry(hass, entry)
+        elif outcome == "failure":
+            with pytest.raises(services.HomeAssistantError, match="restart"):
+                await asyncio.wait_for(replacement, 1)
+            assert not setup_started.is_set()
+            assert owner.entries == {SECOND: "failed"}
+        else:
+            assert not owner.entries and not setup_started.is_set()
+    asyncio.run(run())
+
+
+def test_all_setup_waiters_wake_only_after_last_successful_close(monkeypatch):
+    async def run():
+        services, _, _, _, _, owner, _, _, _ = await fixture(monkeypatch)
+        owner.reserve_setup(SECOND)
+        owner.finish_setup(SECOND)
+        owner.begin_close(ENTRY_ID)
+        public_drain = owner.begin_close(SECOND)
+        first = asyncio.create_task(owner.async_reserve_setup("example_replacement_a"))
+        second = asyncio.create_task(owner.async_reserve_setup("example_replacement_b"))
+        await asyncio.sleep(0)
+        owner.finish_close(ENTRY_ID)
+        await asyncio.sleep(0)
+        assert not first.done() and not second.done()
+        owner.finish_close(SECOND)
+        await asyncio.wait_for(asyncio.gather(first, second), 1)
+        assert owner.entries == {"example_replacement_a": "starting", "example_replacement_b": "starting"}
+        await public_drain
+        owner.fail_close("example_replacement_a")
+        with pytest.raises(services.HomeAssistantError, match="restart"):
+            await owner.async_reserve_setup("example_replacement_c")
+    asyncio.run(run())
+
+
+@pytest.mark.parametrize("late", [False, True])
+def test_cleanup_failure_logs_original_traceback_even_after_timeout(monkeypatch, caplog, late):
+    async def run():
+        services, engine, hass, entry, integration, _, _, _, _ = await fixture(monkeypatch)
+        release = asyncio.Event()
+
+        async def stop():
+            if late:
+                await release.wait()
+            raise ValueError("example cleanup failure")
+
+        monkeypatch.setattr(engine, "async_stop", stop)
+        assert await integration.async_unload_entry(hass, entry) is False
+        release.set()
+        cleanup = hass.data[services.DOMAIN][ENTRY_ID]["unload_task"]
+        with pytest.raises(RuntimeError, match="runtime cleanup"):
+            await asyncio.wait_for(asyncio.shield(cleanup), 1)
+        records = [record for record in caplog.records if "retained runtime cleanup failed" in record.message]
+        assert len(records) == 1
+        assert records[0].exc_info[2] is not None
+        assert isinstance(records[0].exc_info[1].__cause__, ValueError)
+        assert "example cleanup failure" in caplog.text
+    asyncio.run(run())

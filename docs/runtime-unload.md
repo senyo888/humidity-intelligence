@@ -13,10 +13,19 @@ Admin authorization finishes before the admission check and task registration,
 with no intervening await. A request authenticating across final closure is rejected,
 even if another entry is subsequently set up.
 
-An entry reserves ownership before setup first awaits and becomes available for
-new public calls only after setup succeeds. A reservation already in progress
+Setup waits for any ongoing entry closure to succeed before reserving ownership.
+A failed close wakes waiting setups and rejects them; cancelling a waiting setup
+does not cancel the close or leave a reservation. Once admitted, an entry reserves
+before its initialization first awaits and becomes available for new public calls
+only after setup succeeds. A reservation already in progress
 counts when another entry unloads. Failed setup uses the same cleanup path, so
 removing the last reservation cannot orphan public calls or services.
+
+Cancelled setup retains its platform-forwarding task until it settles. Rollback
+then unloads only this attempt's initialized entry platforms, excluding platforms
+from other entries and reset objects left by earlier attempts on older HA versions.
+A loaded base component alone does not mean the entry platform was initialized.
+Actual platform-unload failures still retain failed custody.
 
 Unloading one of several entries preserves public calls and shared services for
 the others. Last-owner closure rejects new public calls, cancels the owned flash
@@ -25,9 +34,16 @@ Services are removed only when all entries have successfully released ownership.
 Normal completion and HI-managed cancellation preserve accepted-call custody;
 optional power entities are not restored.
 
+Restoration uses only captured `on` or `off` states; unknown, unavailable and
+missing snapshots do not produce restoration commands. For an `on` snapshot,
+HI restores brightness and effect with one color descriptor matching its captured
+color mode, using Kelvin for color temperature. When an older/custom source omits
+the mode, HI selects one saved descriptor rather than sending conflicting formats.
+
 ## Bounded runtime drainage
 
-HI allows **30 seconds** for engine and required public-flash drainage. This wait
+HI allows **30 seconds** for retained setup forwarding, engine and required
+public-flash drainage. This wait
 does not cancel the retained cleanup task. If a handler stalls, unload returns
 failure before platform teardown and logs that restoration is unconfirmed. The
 entry retains its engine, pending cleanup and light locks. Accepted work may still
@@ -46,6 +62,8 @@ Platform teardown follows successful runtime drainage and is governed separately
 by Home Assistant; the 30-second bound does not cover platform teardown. Platform
 failure retains **stopped** runtime custody. Cancellation of the unload caller also
 retains the drain and marks HI's local lifecycle failed.
+Cleanup failures log their original chained exception and traceback, including
+failures that finish after the caller's wait has timed out.
 
 ## Recovery and limits
 

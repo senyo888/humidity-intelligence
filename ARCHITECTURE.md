@@ -293,7 +293,10 @@ reorder, or override a lane decision.
 
 Visual flashing captures the configured lights only after acquiring their shared
 locks. Normal completion, alert cancellation and unload attempt to restore that
-snapshot before releasing the locks. Retiring visual workers remain owned by the
+snapshot before releasing the locks. Restoration skips unknown, unavailable and
+missing original states. An on-state snapshot restores one color descriptor from
+its captured mode, using Kelvin for temperature, plus saved brightness and effect.
+Retiring visual workers remain owned by the
 engine without blocking control evaluation, including CO emergency ventilation.
 Unload drains active and retiring workers. Accepted flash and restoration service
 calls remain owned through HI-managed caller cancellation because executor-backed device work cannot
@@ -315,6 +318,10 @@ entries. Authorization precedes an atomic admission/registration step. Setup
 reservations count as owners; last-owner closure rejects new calls, cancels and
 drains accepted public workers before successful unload. Unloading one entry
 preserves services and public calls owned by the remaining entries.
+Replacement setup waits for ongoing closes to succeed; failed custody still
+rejects setup. Cancelled setup retains forwarding inside bounded cleanup before
+rollback removes only this attempt's initialized platforms. Platforms belonging
+to other entries or reset objects from earlier attempts are excluded.
 
 Integration unload allows 30 seconds for runtime drainage before platform teardown.
 It reports failure on timeout without cancelling the retained cleanup task, releasing
