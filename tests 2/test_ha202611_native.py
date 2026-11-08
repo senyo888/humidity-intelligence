@@ -15,6 +15,7 @@ from homeassistant.config_entries import ConfigEntries
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import entity_registry as er, device_registry as dr, config_validation as cv
 from homeassistant.helpers import area_registry, issue_registry, label_registry
+import voluptuous as vol
 
 ROOT = Path(__file__).resolve().parents[1]
 PACKAGE = "_hi_alignment_native"
@@ -292,6 +293,78 @@ class NativeAlignmentTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(flow._data["time_gate"]["start"], flow_module.DEFAULT_TIME_START)
         self.assertEqual(flow._data["time_gate"]["end"], flow_module.DEFAULT_TIME_END)
         self.assertEqual(flow._data["presence_gate"]["entities"], [])
+
+    async def test_presence_entity_replacement_requires_mapping_in_setup_and_options(self):
+        engine_class = importlib.import_module(PACKAGE + ".automations.engine").HIAutomationEngine
+        self.hass.states.async_set("person.example", "home")
+        self.hass.states.async_set("binary_sensor.example_presence", "on")
+        for setup in (False, True):
+            with self.subTest(setup=setup):
+                flow, entry = self.options()
+                before = copy.deepcopy(entry.data)
+                if setup:
+                    flow = flow_module.HumidityIntelligenceConfigFlow()
+                    flow.hass = self.hass
+                    flow._data = copy.deepcopy(before)
+                gates = flow.async_step_gates if setup else flow.async_step_options_gates
+                states = flow.async_step_presence_states if setup else flow.async_step_options_presence_states
+                await gates({"enable_presence_gate": False})
+                form = await gates()
+                values = {"enable_presence_gate": True, "presence_entities": ["binary_sensor.example_presence"]}
+                schema = form["data_schema"]
+                if hasattr(data_entry_flow, "_strip_hidden_fields"):
+                    schema, values = data_entry_flow._strip_hidden_fields(schema, values)
+                form = await gates(schema(values))
+                with self.assertRaises(vol.Invalid):
+                    form["data_schema"]({})
+                rejected = await states({})
+                self.assertEqual(rejected["errors"], {"present_states": "required"})
+                await states(form["data_schema"]({"present_states": ["on"], "away_states": ["off"]}))
+                cfg = flow._data if setup else flow._options
+                self.assertEqual(cfg["presence_gate"]["present_states"], ["on"])
+                engine = engine_class(self.hass, SimpleNamespace(entry_id="example_mapping", data=cfg, options={}))
+                self.assertTrue(engine._gate_evaluation().allowed)
+                self.assertEqual(entry.data, before)
+                self.assertEqual(entry.options, {})
+                # An intentionally empty mapping remains empty on later visits.
+                await states({"present_states": [], "away_states": []})
+                form = await states()
+                self.assertEqual(form["data_schema"]({}), {"present_states": [], "away_states": []})
+
+    async def test_presence_changed_while_disabled_stays_unmapped_after_save(self):
+        flow, entry = self.options()
+        self.hass.states.async_set("binary_sensor.example_presence", "unknown")
+        await flow.async_step_options_gates({
+            "enable_presence_gate": False, "presence_entities": ["binary_sensor.example_presence"],
+        })
+        staged = copy.deepcopy(flow._options)
+        self.assertNotIn("present_states", staged["presence_gate"])
+        self.assertEqual(entry.options, {})
+        # Simulate the explicit final save and a fresh Options session.
+        entry.options = staged
+        reopened = flow_module.HumidityIntelligenceOptionsFlow(entry)
+        reopened.hass = self.hass
+        form = await reopened.async_step_options_gates({"enable_presence_gate": True})
+        with self.assertRaises(vol.Invalid):
+            form["data_schema"]({})
+        self.assertEqual(entry.options, staged)
+
+    async def test_presence_reordered_entities_keep_custom_mapping_and_error_values(self):
+        flow, entry = self.options()
+        entry.data["presence_gate"] = {
+            "enabled": True, "entities": ["person.example", "person.example_other"],
+            "present_states": ["custom_present"], "away_states": ["custom_away"],
+        }
+        before = copy.deepcopy(entry.data)
+        form = await flow.async_step_options_gates({
+            "enable_presence_gate": True, "presence_entities": ["person.example_other", "person.example"],
+        })
+        self.assertEqual(form["data_schema"]({}), {"present_states": ["custom_present"], "away_states": ["custom_away"]})
+        form = await flow.async_step_options_presence_states({"present_states": ["custom"], "away_states": ["custom"]})
+        self.assertEqual(form["errors"], {"away_states": "overlap"})
+        self.assertEqual(form["data_schema"]({}), {"present_states": ["custom"], "away_states": ["custom"]})
+        self.assertEqual(entry.data, before)
+        self.assertEqual(entry.options, {})
 
     async def test_setup_gate_revisit_renders_and_resubmits_staged_values(self):
         flow = flow_module.HumidityIntelligenceConfigFlow()

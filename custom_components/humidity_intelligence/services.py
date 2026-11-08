@@ -2364,8 +2364,8 @@ async def _restore_lights(
                 data["white"] = attrs["brightness"]
             elif color_attribute is not None and attrs.get(color_attribute) is not None:
                 data[color_attribute] = attrs[color_attribute]
-            if "effect" in attrs:
-                data["effect"] = attrs.get("effect")
+            if attrs.get("effect") is not None:
+                data["effect"] = attrs["effect"]
             try:
                 await _async_call_flash_service(hass, "light", "turn_on", data, should_abort)
             except Exception:

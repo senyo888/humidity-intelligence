@@ -127,14 +127,31 @@ def _dependency_schema(default_skip: bool = False) -> vol.Schema:
     })
 
 
-def _presence_states_schema(options: List[str], values: Optional[Dict[str, Any]] = None) -> vol.Schema:
+def _presence_gate_for_entities(previous: Dict[str, Any], entities: Any, enabled: bool) -> Dict[str, Any]:
+    """Stage selected entities without transferring another identity's mapping."""
+    entities = _sanitize_entity_ids(entities)
+    gate = {**previous, "enabled": enabled, "entities": entities}
+    if set(entities) != set(_sanitize_entity_ids(previous.get("entities", []))):
+        gate.pop("present_states", None)
+        gate.pop("away_states", None)
+    return gate
+
+
+def _presence_states_schema(
+    options: List[str], values: Optional[Dict[str, Any]] = None, *, require_review: bool = False,
+) -> vol.Schema:
     """Build presence selectors with staged or submitted ``values`` as defaults.
 
-    Without supplied values, all options (or ``home`` when empty) count as
-    present and no states count as away. Explicit empty selections are kept."""
+    A new entity selection requires an explicit mapping; observed states are
+    choices, not evidence that those states mean present. Explicit empty
+    selections and submitted error-form values are kept."""
     select_options = [SelectOptionDict(value=o, label=o) for o in options] if options else []
+    present = (
+        vol.Required("present_states") if require_review and "present_states" not in (values or {})
+        else vol.Required("present_states", default=_form_input_default(values, "present_states", options or ["home"]))
+    )
     return vol.Schema({
-        vol.Required("present_states", default=_form_input_default(values, "present_states", options or ["home"])): selector.SelectSelector(
+        present: selector.SelectSelector(
             selector.SelectSelectorConfig(
                 options=select_options,
                 multiple=True,
@@ -362,11 +379,7 @@ class HumidityIntelligenceConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             presence_enabled = user_input.get("enable_presence_gate", False)
             previous_presence = self._data.get("presence_gate", {})
             entities = user_input.get("presence_entities", previous_presence.get("entities", []))
-            self._data["presence_gate"] = {
-                **previous_presence,
-                "enabled": presence_enabled,
-                "entities": entities,
-            }
+            self._data["presence_gate"] = _presence_gate_for_entities(previous_presence, entities, presence_enabled)
             if presence_enabled and entities:
                 return await self.async_step_presence_states()
             return await self.async_step_telemetry()
@@ -492,17 +505,17 @@ class HumidityIntelligenceConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             states = user_input.get("present_states", [])
             away_states = user_input.get("away_states", [])
             overlap = set(states).intersection(set(away_states))
-            if overlap:
+            if overlap or "present_states" not in user_input:
                 return self.async_show_form(
                     step_id="presence_states",
-                    data_schema=_presence_states_schema(options, user_input),
-                    errors={"away_states": "overlap"},
+                    data_schema=_presence_states_schema(options, user_input, require_review=True),
+                    errors={"away_states": "overlap"} if overlap else {"present_states": "required"},
                 )
             self._data.setdefault("presence_gate", {})["present_states"] = states
             self._data.setdefault("presence_gate", {})["away_states"] = away_states
             return await self.async_step_telemetry()
 
-        schema = _presence_states_schema(options, self._data.get("presence_gate", {}))
+        schema = _presence_states_schema(options, self._data.get("presence_gate", {}), require_review=True)
         return self.async_show_form(step_id="presence_states", data_schema=schema)
 
     async def async_step_telemetry(self, user_input: Optional[Dict[str, Any]] = None):
@@ -1727,8 +1740,6 @@ class HumidityIntelligenceOptionsFlow(OutputObservationOptionsMixin, config_entr
         presence_gate = dict(self._section("presence_gate", {}))
 
         default_presence_entities = _sanitize_entity_ids(presence_gate.get("entities", []))
-        default_present_states = _sanitize_state_values(presence_gate.get("present_states", []))
-        default_away_states = _sanitize_state_values(presence_gate.get("away_states", []))
 
         if user_input is not None:
             user_input = _flatten_advanced_section_input(user_input)
@@ -1789,12 +1800,7 @@ class HumidityIntelligenceOptionsFlow(OutputObservationOptionsMixin, config_entr
             self._options["custom_target_high"] = custom_high
             presence_enabled = user_input.get("enable_presence_gate", False)
             entities = _sanitize_entity_ids(user_input.get("presence_entities", default_presence_entities))
-            pending_presence = {
-                "enabled": presence_enabled,
-                "entities": entities,
-                "present_states": default_present_states,
-                "away_states": default_away_states,
-            }
+            pending_presence = _presence_gate_for_entities(presence_gate, entities, presence_enabled)
 
             if presence_enabled and entities:
                 self._pending_presence_gate = pending_presence
@@ -1912,8 +1918,8 @@ class HumidityIntelligenceOptionsFlow(OutputObservationOptionsMixin, config_entr
             present_states = _sanitize_state_values(user_input.get("present_states", []))
             away_states = _sanitize_state_values(user_input.get("away_states", []))
             overlap = set(present_states).intersection(set(away_states))
-            if overlap:
-                errors["away_states"] = "overlap"
+            if overlap or "present_states" not in user_input:
+                errors = {"away_states": "overlap"} if overlap else {"present_states": "required"}
                 present_defaults, away_defaults = present_states, away_states
                 options = _merge_unique_values(options, present_states, away_states)
             else:
@@ -1928,7 +1934,7 @@ class HumidityIntelligenceOptionsFlow(OutputObservationOptionsMixin, config_entr
 
         schema = self._options_presence_states_schema(
             options,
-            present_defaults or (options or ["home"]),
+            (present_defaults if "present_states" in (user_input if user_input is not None else presence_gate) else None),
             away_defaults,
         )
         return self.async_show_form(
@@ -1940,12 +1946,12 @@ class HumidityIntelligenceOptionsFlow(OutputObservationOptionsMixin, config_entr
     def _options_presence_states_schema(
         self,
         options: List[str],
-        present_defaults: List[str],
+        present_defaults: Optional[List[str]],
         away_defaults: List[str],
     ) -> vol.Schema:
         select_options = [SelectOptionDict(value=o, label=o) for o in options] if options else []
         return vol.Schema({
-            vol.Required("present_states", default=present_defaults): selector.SelectSelector(
+            (vol.Required("present_states") if present_defaults is None else vol.Required("present_states", default=present_defaults)): selector.SelectSelector(
                 selector.SelectSelectorConfig(
                     options=select_options,
                     multiple=True,
