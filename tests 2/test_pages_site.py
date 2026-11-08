@@ -174,12 +174,12 @@ class PagesSiteTests(unittest.TestCase):
         self.assertIn("assets/first-interaction-welcome.png", assets)
         self.assertIn("assets/release_banner/v2.1_release.png", parser.images)
         self.assertIn("Home Assistant 2026.11 Harmonization", html)
-        self.assertIn("v2.1.2 · In preparation", html)
-        # Preparation must not relabel the still-published stable release.
-        self.assertIn("V2.1.1 · Stable", normalized_html)
-        self.assertIn("V2.1.1 · 24 October 2026", normalized_html)
-        self.assertIn("Stable version</span><span class=\"badge-value\">v2.1.1", html)
-        self.assertIn("blob/senyo888-patch-1/docs/releases/v2.1.2.md", html)
+        self.assertIn("v2.1.2 · Current Stable", html)
+        # Publication updates the release labels while preserving product identity.
+        self.assertIn("V2.1.2 · Stable", normalized_html)
+        self.assertIn("V2.1.2 · 8 November 2026", normalized_html)
+        self.assertIn("Stable version</span><span class=\"badge-value\">v2.1.2", html)
+        self.assertIn("releases/tag/v2.1.2", html)
         self.assertIn("releases/tag/v2.1.1", html)
         self.assertIn("release-packaging.md#earlier-versions-and-current-evidence-limits", html)
         self.assertNotIn("Install from GitHub", html)
