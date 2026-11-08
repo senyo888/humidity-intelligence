@@ -56,6 +56,7 @@ from .helpers.report_exports import (
     write_owned_ui_export,
 )
 from .helpers.runtime_control import runtime_control_summary
+from .helpers.lifecycle import lifecycle_for
 from .helpers.seasonal import resolve_target_profile, resolve_temperature_comfort_profile
 from .helpers.zone_validation import (
     detect_zone_mapping_duplicates,
@@ -367,9 +368,9 @@ async def async_flash_lights_for_alert(
     invalid ``duration`` conversion can raise ``TypeError`` or ``ValueError``.
 
     ``flash_count`` sets the number of on/off cycles; otherwise ``duration``
-    in seconds, clamped to at least one, derives the count at two cycles per
-    second. Each cycle actually waits 0.5 seconds on and 0.5 seconds off,
-    plus service time. ``should_abort`` returning true suppresses further
+    in seconds is clamped to at least one, then uses ``max(1, int(duration / 0.5))``.
+    Each cycle waits 0.5 seconds on and 0.5 seconds off, plus service time.
+    ``should_abort`` returning true suppresses further
     power, flash, and restore submissions, not accepted calls.
 
     Device service failures are caught so restoration is best effort. Caller
@@ -443,16 +444,21 @@ async def async_flash_lights_for_alert(
 
 async def async_register_services(hass: HomeAssistant) -> None:
     """Register services for the integration."""
+    lifecycle = lifecycle_for(hass)
 
     async def handle_flash(call: ServiceCall) -> None:
+        generation = lifecycle.generation
         await _async_require_admin_user(hass, call, SERVICE_FLASH_LIGHTS)
-        await async_flash_lights_for_alert(
-            hass,
-            power_entity=call.data.get("power_entity"),
-            lights=call.data.get("lights"),
-            color=call.data.get("color"),
-            duration=call.data.get("duration", 10),
-            flash_count=call.data.get("flash_count"),
+        await lifecycle.async_public_flash(
+            generation,
+            lambda: async_flash_lights_for_alert(
+                hass,
+                power_entity=call.data.get("power_entity"),
+                lights=call.data.get("lights"),
+                color=call.data.get("color"),
+                duration=call.data.get("duration", 10),
+                flash_count=call.data.get("flash_count"),
+            ),
         )
 
     hass.services.async_register(DOMAIN, SERVICE_FLASH_LIGHTS, handle_flash, schema=SERVICE_FLASH_SCHEMA)
@@ -1017,7 +1023,9 @@ async def async_register_services(hass: HomeAssistant) -> None:
 
 
 async def async_unregister_services(hass: HomeAssistant) -> None:
-    """Unregister services for the integration."""
+    """Unregister only after every entry has successfully relinquished custody."""
+    if lifecycle_for(hass).entries:
+        return
     if hass.services.has_service(DOMAIN, SERVICE_FLASH_LIGHTS):
         hass.services.async_remove(DOMAIN, SERVICE_FLASH_LIGHTS)
     if hass.services.has_service(DOMAIN, SERVICE_REFRESH_UI):

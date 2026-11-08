@@ -32,11 +32,13 @@ from .helpers.report_exports import (
 from .helpers.drift_repairs import async_update_humidity_drift_repair_issue
 from .helpers.co_repairs import async_setup_co_unit_repair
 from .helpers.entity_registry import normalize_pm25_aggregate_entity_ids
+from .helpers.lifecycle import lifecycle_for
 from .ui.register import async_register_cards, async_build_entity_mapping
 from .automations import async_setup_entry as async_setup_automations
 from .automations import async_unload_entry as async_unload_automations
 
 _LOGGER = logging.getLogger(__name__)
+_UNLOAD_DRAIN_TIMEOUT_SECONDS = 30
 
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 
@@ -53,6 +55,25 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Humidity Intelligence from a config entry."""
+    lifecycle = lifecycle_for(hass)
+    lifecycle.reserve_setup(entry.entry_id)
+    try:
+        result = await _async_setup_entry(hass, entry)
+    except BaseException:
+        # A failed setup can be the final reservation while another entry closes.
+        # Use the same retained, bounded drain instead of orphaning public work.
+        try:
+            await async_unload_entry(hass, entry)
+        except BaseException:
+            lifecycle.fail_close(entry.entry_id)
+            _LOGGER.exception("HI failed-setup cleanup did not complete; restart required")
+        raise
+    lifecycle.finish_setup(entry.entry_id)
+    return result
+
+
+async def _async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    """Initialize one reserved entry without changing domain ownership."""
     entry.async_on_unload(entry.add_update_listener(_async_options_updated))
     effective_config = _effective_entry_config(entry)
     hass.data.setdefault(DOMAIN, {})
@@ -211,11 +232,71 @@ async def _async_install_selected_ui(
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    """Unload a config entry."""
-    if not await hass.config_entries.async_unload_platforms(entry, ["sensor", "binary_sensor", "switch"]):
+    """Drain runtime within 30 seconds, retaining custody if unload cannot finish.
+
+    Timeout never cancels the retained drain or releases its light locks. Failed
+    or interrupted unload leaves the entry stopped and requires a HA restart;
+    late cleanup does not perform platform teardown or claim successful unload.
+    Platform teardown is a subsequent HA operation, outside the drain deadline.
+    """
+    lifecycle = lifecycle_for(hass)
+    data = hass.data.setdefault(DOMAIN, {}).setdefault(entry.entry_id, {})
+    if "unload_task" in data or lifecycle.entries.get(entry.entry_id) == "failed":
+        _LOGGER.error("HI unload is already pending or failed; retained custody requires a restart")
         return False
-    await async_unload_automations(hass, entry)
-    data = hass.data.get(DOMAIN, {}).get(entry.entry_id, {})
+    public_drain = lifecycle.begin_close(entry.entry_id)
+
+    async def drain() -> None:
+        drains = [async_unload_automations(hass, entry)]
+        if public_drain is not None:
+            drains.append(asyncio.shield(public_drain))
+        results = await asyncio.gather(*drains, return_exceptions=True)
+        for result in results:
+            if isinstance(result, BaseException):
+                raise RuntimeError("HI runtime cleanup failed") from result
+
+    task = asyncio.create_task(drain(), name="hi-entry-unload-drain")
+    data["unload_task"] = task
+
+    def drain_finished(done: asyncio.Task) -> None:
+        if not done.cancelled() and done.exception() is not None:
+            _LOGGER.error("HI retained runtime cleanup failed; restart required")
+
+    task.add_done_callback(drain_finished)
+    try:
+        done, _pending = await asyncio.wait({task}, timeout=_UNLOAD_DRAIN_TIMEOUT_SECONDS)
+        if not done:
+            lifecycle.fail_close(entry.entry_id)
+            _LOGGER.error(
+                "HI unload runtime drain timed out after %s seconds. Platforms and runtime "
+                "custody are retained; pending device work and restoration may still finish. "
+                "Resolve the service fault and restart Home Assistant; reload cannot recover "
+                "a failed unload. Physical light restoration is unconfirmed.",
+                _UNLOAD_DRAIN_TIMEOUT_SECONDS,
+            )
+            return False
+        if task.cancelled() or task.exception() is not None:
+            lifecycle.fail_close(entry.entry_id)
+            return False
+        if not await hass.config_entries.async_unload_platforms(
+            entry, ["sensor", "binary_sensor", "switch"],
+        ):
+            lifecycle.fail_close(entry.entry_id)
+            _LOGGER.error("HI platform unload failed; stopped runtime retained, restart required")
+            return False
+        await _async_finish_unload(hass, entry, data)
+    except BaseException:
+        lifecycle.fail_close(entry.entry_id)
+        _LOGGER.exception("HI unload interrupted; runtime custody retained, restart required")
+        raise
+    lifecycle.finish_close(entry.entry_id)
+    hass.data.get(DOMAIN, {}).pop(entry.entry_id, None)
+    await async_unregister_services(hass)
+    return True
+
+
+async def _async_finish_unload(hass: HomeAssistant, entry: ConfigEntry, data: dict) -> None:
+    """Remove listeners only after runtime drainage and platform unload succeed."""
     observer = data.pop("output_observer", None)
     if observer is not None and observer.active:
         try:
@@ -234,9 +315,6 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         unsub()
     if unsub := data.get("slope_unsub"):
         unsub()
-    hass.data.get(DOMAIN, {}).pop(entry.entry_id, None)
-    await async_unregister_services(hass)
-    return True
 
 
 async def async_remove_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:

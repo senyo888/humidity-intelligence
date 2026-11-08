@@ -461,6 +461,6 @@ def test_successful_unload_releases_custody_after_platforms(monkeypatch):
         hass = SimpleNamespace(data={'humidity_intelligence': {ENTRY_ID: data}},
                                config_entries=SimpleNamespace(async_unload_platforms=unload))
         assert await mod.async_unload_entry(hass, SimpleNamespace(entry_id=ENTRY_ID))
-        assert calls == ['platforms', 'automations', 'observer', 'listener', 'services']
+        assert calls == ['automations', 'platforms', 'observer', 'listener', 'services']
         assert ENTRY_ID not in hass.data['humidity_intelligence']
     asyncio.run(run())

@@ -3201,6 +3201,9 @@ def test_custom_temperature_comfort_keeps_high_plus_one_warm_boundary():
 
 
 async def _registered_flash_handler(services_mod, hass):
+    owner = services_mod.lifecycle_for(hass)
+    owner.reserve_setup(ENTRY_ID)
+    owner.finish_setup(ENTRY_ID)
     await services_mod.async_register_services(hass)
     return hass.services.handlers[(services_mod.DOMAIN, services_mod.SERVICE_FLASH_LIGHTS)]
 
@@ -3632,7 +3635,10 @@ def test_startup_ui_refresh_contract_is_wired():
     assert "@callback" in init_source
     assert "hass.create_task(_run_startup_ui_refresh())" in init_source
     assert "hass.async_create_task(_async_refresh_and_dump_cards" not in init_source
-    assert ".add_done_callback(" not in init_source
+    startup_source = init_source.split("def _async_register_startup_ui_refresh", 1)[1].split(
+        "def _entry_auto_refresh_ui_on_startup", 1,
+    )[0]
+    assert ".add_done_callback(" not in startup_source
     assert "startup_ui_refresh_scheduled" in init_source
     assert "SERVICE_REFRESH_UI" in init_source
     assert '"dump_cards",' not in init_source

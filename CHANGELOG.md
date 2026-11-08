@@ -14,10 +14,17 @@ preserved gate settings and saved slope identities.
 
 - Drain active evaluations and owned background tasks before successful unload;
   discard queued follow-up evaluations after stop.
+- Own public admin flash calls across loaded entries and drain them on final
+  unload. Preserve services when another entry remains loaded.
+- Bound the runtime-drain wait to 30 seconds before platform teardown. Failed or
+  interrupted unload retains stopped entry data, cleanup tasks and light locks;
+  late completion cannot reopen admission. Resolve the service fault and restart
+  Home Assistant. See [unload recovery](docs/runtime-unload.md).
 - Restore captured alert-light state when a flash is interrupted, retaining locks
   until accepted service calls finish. Retiring light workers remain owned without
   blocking CO ventilation or other control evaluation. A ten-second deadline stops
-  further restoration submissions; draining accepted device work can extend unload.
+  further restoration submissions; accepted device work can extend cleanup beyond
+  a failed unload without abandoning its light locks.
   Keep old workers revoked after Manual handover even when Manual turns off;
   free their active slots immediately so fresh AUTO workers do not wait for the
   old repeat interval. Propagate cancellation and log failed or timed-out

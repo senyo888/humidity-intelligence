@@ -298,7 +298,7 @@ engine without blocking control evaluation, including CO emergency ventilation.
 Unload drains active and retiring workers. Accepted flash and restoration service
 calls remain owned through HI-managed caller cancellation because executor-backed device work cannot
 be recalled. The ten-second restoration deadline stops further submissions; draining
-an accepted call can extend cleanup and unload beyond that deadline. Service failures
+an accepted call can extend cleanup beyond that deadline. Service failures
 or timeout leave physical restoration unconfirmed and are logged. Engine-owned flash,
 power and restoration calls check Manual at service admission and stop remaining writes
 once Manual is observed. A worker's handover revocation is permanent: observing
@@ -310,14 +310,28 @@ Commands already accepted by a device integration cannot
 be revoked, and external manual commands do not use HI's locks. The public service schema and optional power-entity policy
 remain unchanged; cleanup does not restore the power entity.
 
+Public admin `flash_lights` calls have domain-level task ownership across loaded
+entries. Authorization precedes an atomic admission/registration step. Setup
+reservations count as owners; last-owner closure rejects new calls, cancels and
+drains accepted public workers before successful unload. Unloading one entry
+preserves services and public calls owned by the remaining entries.
+
+Integration unload allows 30 seconds for runtime drainage before platform teardown.
+It reports failure on timeout without cancelling the retained cleanup task, releasing
+light locks or deleting entry data. Failed or interrupted unload closes new public
+flash admission and blocks new setup; unrelated loaded engines continue. Late cleanup
+cannot reopen the failed entry or perform deferred teardown. Resolve the service
+fault and restart Home Assistant; normal reload cannot recover `FAILED_UNLOAD`.
+Platform teardown has its own HA lifecycle and is outside this runtime-drain bound.
+See [unload behavior and recovery](docs/runtime-unload.md).
+Stopped engines retain Manual observation until owned cleanup finishes, so an
+ON/OFF handover cannot be missed while platforms remain loaded after a timeout.
+The observer cannot restart evaluation or periodic control.
+
 This ownership guarantee does not extend to direct cancellation of a protected
-service task or Home Assistant's global shutdown. An accepted handler that never
-returns keeps its locks and can prevent unload from completing; the restoration
-timeout is reported after that call drains, not as a hard shutdown bound. Public
-admin `flash_lights` invocations are domain-scoped caller operations, not engine
-workers; service unregistration does not drain an already accepted public call.
-Changing those public-service and failed-unload lifetimes requires a separate
-ownership policy rather than abandoning accepted device work.
+service task or Home Assistant's global shutdown. Accepted work may continue after
+a failed unload; cleanup can attempt restoration when it finishes. No timeout,
+cancellation or restart proves physical completion or recalls a device command.
 
 Generated-artifact purge must validate its full fixed file target set before mutation,
 show the exact existing files in a completed blocking notification before deletion,
@@ -417,7 +431,8 @@ a running evaluation. This corrects clearance behavior without changing threshol
 priority, Manual exception, outputs or humidifier independence.
 The engine separately owns the active evaluation. Successful stop closes admission,
 discards queued follow-ups and cancels/drains evaluation and background tasks before
-unload removes entry data. A failed platform unload retains runtime custody.
+unload removes entry data. Runtime drainage precedes platform teardown; a failed
+platform unload retains stopped runtime custody and requires restart recovery.
 CO explanations distinguish current above-start readings, incomplete clearance
 evidence, the continuous hold and readings that have not met the clear threshold.
 Building those explanations does not start or reset the clearance timer.

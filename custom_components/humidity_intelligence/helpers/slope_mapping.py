@@ -13,7 +13,8 @@ def match_provided_slopes(hass, sources, sensors, room_map, bindings=None, *, al
     """Return a source-to-slope mapping, omitting ambiguous or unmatched pairs.
 
     When ``bindings`` is supplied, retain only selected saved pairs with a
-    unique sensor; invalid bindings return an empty mapping without inference.
+    unique sensor. Non-dictionary bindings return an empty mapping; invalid
+    or duplicate pairs are omitted without inference.
     Otherwise match room labels against sensor IDs or friendly names, requiring
     one candidate per source and no shared candidates. ``allow_singleton``
     also permits pairing one source and one sensor without label evidence."""

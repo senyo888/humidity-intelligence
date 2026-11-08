@@ -219,16 +219,15 @@ class HIAutomationEngine:
         self._notify_other_humidifier_engines()
 
     async def async_stop(self) -> None:
-        """Stop accepting evaluations, unsubscribe, and cancel and await owned tasks.
+        """Stop evaluations and drain owned work before removing Manual observation.
 
         Task failures are collected without being re-raised; cancellation of this
         call propagates. Accepted visual service calls can delay completion
-        indefinitely, including beyond the restoration submission deadline."""
+        indefinitely, including beyond the restoration submission deadline. Manual
+        handover remains observable until owned work finishes, including after the
+        integration's bounded unload wait fails."""
         self._stopped = True
         self._evaluate_pending = False
-        if self._unsub:
-            self._unsub()
-            self._unsub = None
         if self._periodic:
             self._periodic()
             self._periodic = None
@@ -245,8 +244,15 @@ class HIAutomationEngine:
         }
         for task in tasks:
             task.cancel()
-        if tasks:
-            await asyncio.gather(*tasks, return_exceptions=True)
+        try:
+            if tasks:
+                await asyncio.gather(*tasks, return_exceptions=True)
+        finally:
+            # A retained cleanup can outlive failed unload while the Manual
+            # switch is still available. Do not miss an ON/OFF handover pulse.
+            if all(task.done() for task in tasks) and self._unsub:
+                self._unsub()
+                self._unsub = None
         self._startup_recheck_task = None
         self._co_clear_recheck_task = None
         self._aq_tasks.clear()
@@ -270,6 +276,8 @@ class HIAutomationEngine:
                 and getattr(event_data.get("new_state"), "state", None) == "on"):
             # Remember even a brief handover while another evaluation is busy.
             self._revoke_visual_alerts()
+        if self._stopped:
+            return
         if any(item.get("sensor_type") == "co" and item.get("entity_id") == event_data.get("entity_id")
                for item in self.telemetry):
             state = event_data.get("new_state")
