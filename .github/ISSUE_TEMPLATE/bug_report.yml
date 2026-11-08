@@ -106,5 +106,5 @@ body:
     id: logs
     attributes:
       label: Logs, entities, or screenshots
-      description: Paste relevant redacted logs/config and attach screenshots if useful.
+      description: Paste relevant redacted integration-filtered logs/config. For installation failures, include Marketplace or HACS logs, the attempted version and the first error; HI diagnostics may not exist yet. Attach screenshots if useful.
       render: text

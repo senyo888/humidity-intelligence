@@ -1,7 +1,7 @@
-"""Bounded, read-only observation of HI's optional HACS update entity.
+"""Bounded, read-only observation of HI's optional package update entity.
 
-HACS describes the downloaded package, not the code loaded by Home Assistant.
-This adapter never checks GitHub, compares versions, refreshes HACS, or installs
+The provider describes the downloaded package, not Home Assistant's loaded code.
+This adapter never checks GitHub, compares versions, refreshes the provider, or installs
 anything. Call it on the event loop alongside the existing Diagnostics refresh.
 """
 
@@ -13,18 +13,18 @@ from typing import Any
 
 from homeassistant.helpers import entity_registry as er
 
-PROVIDER = "hacs"
+PROVIDERS = frozenset({"hacs", "marketplace"})
 REPOSITORY = "senyo888/humidity-intelligence"
-# HACS uses str(repository.data.id), not the display name, as its unique ID.
+# Both providers use str(repository.data.id), not the display name, as unique ID.
 REPOSITORY_ID = "1127166185"
 VERSION_LIMIT = 128
 _ENTITY_ID = re.compile(r"update\.[a-z0-9_]+\Z")
 
 
-def _payload(reason: str, *, entity_id: str | None = None) -> dict[str, Any]:
+def _payload(reason: str, *, entity_id: str | None = None, provider: str | None = None) -> dict[str, Any]:
     return {
         "schema": 1,
-        "provider": PROVIDER,
+        "provider": provider,
         "repository": REPOSITORY,
         "status": "unverified",
         "reason": reason,
@@ -47,34 +47,34 @@ def _version(value: Any) -> bool:
     )
 
 
-def _resolve_entity(hass: Any) -> tuple[str | None, str | None]:
+def _resolve_entity(hass: Any) -> tuple[str | None, str | None, str | None]:
     registry = er.async_get(hass)
     matches = [
         entry
         for entry in registry.entities.values()
         if entry.domain == "update"
-        and entry.platform == PROVIDER
+        and entry.platform in PROVIDERS
         and entry.unique_id == REPOSITORY_ID
     ]
     if not matches:
-        return None, "entity_missing"
+        return None, None, "entity_missing"
     if len(matches) != 1:
-        return None, "entity_ambiguous"
+        return None, None, "entity_ambiguous"
     entry = matches[0]
     if entry.disabled_by is not None:
-        return None, "entity_disabled"
+        return None, entry.platform, "entity_disabled"
     entity_id = entry.entity_id
     if (
         not isinstance(entity_id, str)
         or len(entity_id) > 255
         or _ENTITY_ID.fullmatch(entity_id) is None
     ):
-        return None, "entity_invalid"
-    return entity_id, None
+        return None, entry.platform, "entity_invalid"
+    return entity_id, entry.platform, None
 
 
-def _observe_state(hass: Any, entity_id: str) -> dict[str, Any]:
-    payload = _payload("state_missing", entity_id=entity_id)
+def _observe_state(hass: Any, entity_id: str, provider: str) -> dict[str, Any]:
+    payload = _payload("state_missing", entity_id=entity_id, provider=provider)
     state = hass.states.get(entity_id)
     if state is None:
         return payload
@@ -133,15 +133,15 @@ def update_observation(hass: Any, *, include_entity_id: bool = True) -> dict[str
     code. No last-good cache can turn a later missing provider into an all-clear.
     """
     try:
-        entity_id, reason = _resolve_entity(hass)
+        entity_id, provider, reason = _resolve_entity(hass)
     except Exception:  # Optional provider/registry failure must not break HI.
         return _payload("registry_unavailable")
     if reason is not None:
-        return _payload(reason)
+        return _payload(reason, provider=provider)
     try:
-        payload = _observe_state(hass, entity_id)
+        payload = _observe_state(hass, entity_id, provider)
     except Exception:  # Contain only the optional provider's state/attributes.
-        payload = _payload("state_read_failed", entity_id=entity_id)
+        payload = _payload("state_read_failed", entity_id=entity_id, provider=provider)
     return payload if include_entity_id else support_update_observation(payload)
 
 

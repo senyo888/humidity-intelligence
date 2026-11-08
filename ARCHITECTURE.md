@@ -343,23 +343,55 @@ update, while a rollback mismatch is a difference. Export success never proves c
 replacement. This observation adds no writer, lane input or frontend runtime
 dependency. See [the rendered UI revision contract](docs/ui-revision-status.md).
 
-The same footer presents an independent, optional HACS update observation. The
+The same footer presents an independent, optional Marketplace/HACS update observation. The
 backend resolves the official HI repository through Home Assistant's entity
 registry and reads its update entity during existing Diagnostics publication.
 Missing, disabled, ambiguous or malformed evidence stays unverified. Provider
 states are reported without HI version ordering, release-channel selection, remote
-polling or installation actions. A HACS downloaded version is not loaded-runtime
+polling or installation actions. A provider-reported downloaded version is not loaded-runtime
 proof, and entity availability is not a fresh Internet check. UI revision status,
 Diagnostics' primary state, Stability and deterministic control remain independent.
 The footer keeps UI revision status at the left and software cues at the right.
 A positive provider report is labelled **Update available**; its details retain
-HACS's source and freshness limits. The routine no-update cue is visually hidden,
+the provider's source and freshness limits. The routine no-update cue is visually hidden,
 while its evidence remains in the shared details/accessibility text. Skipped,
 in-progress and unverified states stay visible; absence is not a software-current
 claim. The shared details button adds no new action.
 The additive `update_observation` payload has its own schema 1; native/support
 exports omit the locally resolved update entity ID. See [UI and software version
 details](docs/ui-revision-status.md#software-update-observation).
+
+In 2.1.2, schema-1 provider identity is `hacs`, `marketplace`, or null
+when unresolved. Both V2 layouts use revision 16, superseding revisions 1–15.
+Revision 14 introduced Marketplace observation; revision 16 removes unconfigured
+optional-source literals from generated JavaScript before applying configured
+entity mappings. Mapped missing/unknown/unavailable sources remain visible to
+validation. Re-export and replace older saved cards, including beta.1 revision 14.
+Old revision-13 cards conservatively reject Marketplace evidence; schema/generator 1
+remains supported.
+
+## Canonical AQ Inputs And Complete CO Clearance
+
+The shared AQ parser normalizes VOC to ppb, CO/CO₂ to ppm and PM2.5 to µg/m³ before
+runtime comparison, aggregation and Stability evaluation. It accepts only explicit,
+dimensionally compatible concentration units and finite nonnegative numbers;
+unitless IAQ remains supported. Unsupported units are incomplete evidence, never
+zero or an inferred healthy result. Native, live and support-export `aq_inputs`
+contains bounded per-type counts, without source IDs or readings. This is an
+additive diagnostics-output contract; service names, call schemas and permissions
+are unchanged.
+
+CO activates from any valid source meeting its start threshold. Clearing a latched
+emergency requires every configured CO source below the existing clear threshold
+for a fresh continuous two-minute monotonic hold. Invalid/missing evidence resets
+the hold even during coalesced evaluations. Waiting deadlines never own or cancel
+a running evaluation. This corrects clearance behavior without changing thresholds,
+priority, Manual exception, outputs or humidifier independence.
+
+Provided-slope associations are captured by entity ID only on explicit setup/Options
+save. Saved pairs survive display-name changes; legacy ambiguous name matches and
+multi-source positional guesses remain unmapped. Calculated-slope identities and
+sampling are unchanged. See [compatibility and rollback](docs/home-assistant-2026.11.md).
 
 ## Home Assistant And HACS Boundaries
 
@@ -389,6 +421,15 @@ cannot publish a GitHub Release, change HACS availability, install or deploy HI,
 rollback, or transfer HI runtime and release authority to the external controller.
 The public repository, manifest, tag, GitHub Release, HACS package, and explicit
 maintainer gates retain their existing roles.
+
+The v2.1.2 package delivers a named component-only release ZIP through
+the supported `zip_release`/`filename` metadata. Its manifest sits at the ZIP root;
+the source repository retains its conventional component directory and full source
+archives. The default-branch download choice is explicitly hidden because branches
+do not supply release assets; complete-component manual installation remains
+available. Every release asset must match its exact commit and version and be
+verified before publication. The read-only release-check workflow builds review
+artifacts only. See [packaging, historical-version limits and rollback](docs/release-packaging.md).
 
 ## Documentation And Release Boundaries
 

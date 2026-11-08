@@ -74,7 +74,7 @@ self_check:
         text: {}
 v205_release_check:
   name: Release Check
-  description: Admin-only action from an authenticated UI/API session; background calls without a user ID are rejected. Run a runtime/device-read-only v2.0.5-v2.0.12 and v2.1.0-v2.1.1 beta/rc/stable validation check, including sanitized humidifier demand/output reconciliation truth, and write its report under the owned Home Assistant config/humidity_intelligence/exports directory. It cannot prove physical moisture production.
+  description: Admin-only action from an authenticated UI/API session; background calls without a user ID are rejected. Run a runtime/device-read-only v2.0.5-v2.0.12 and v2.1.0-v2.1.2 beta/rc/stable validation check, including sanitized humidifier demand/output reconciliation truth, and write its report under the owned Home Assistant config/humidity_intelligence/exports directory. It cannot prove physical moisture production.
   fields:
     entry_id:
       name: Entry ID
@@ -108,7 +108,7 @@ v205_release_check:
           unit_of_measurement: min
 create_local_backup:
   name: Create Local HI Snapshot
-  description: Admin-only action from an authenticated UI/API session; background calls without a user ID are rejected. Create a local HI-only snapshot of /config/custom_components/humidity_intelligence. This is not a Home Assistant backup, does not intercept HACS updates, and does not change running code until Home Assistant is restarted.
+  description: Admin-only action from an authenticated UI/API session; background calls without a user ID are rejected. Create a local HI-only snapshot of /config/custom_components/humidity_intelligence. This is not a Home Assistant backup, does not intercept Marketplace or HACS updates, and does not change running code until Home Assistant is restarted.
   fields:
     retain_count:
       name: Snapshots to retain

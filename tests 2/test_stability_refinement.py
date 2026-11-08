@@ -72,7 +72,7 @@ def test_raw_first_selection_is_per_level_with_iaq_fallback():
     ("unavailable", "ppm", 1200, True),
     ("unknown", "ppm", 1200, True),
     ("nan", "ppm", 1200, True),
-    (800, "ppb", 1200, True),
+    (800, "index", 1200, True),
     (800, "ppm", "invalid", True),
     (800, "ppm", None, True),
     (800, "ppm", 1200, False),

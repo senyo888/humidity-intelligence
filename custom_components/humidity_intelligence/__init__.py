@@ -30,6 +30,7 @@ from .helpers.report_exports import (
     remove_owned_ui_export,
 )
 from .helpers.drift_repairs import async_update_humidity_drift_repair_issue
+from .helpers.co_repairs import async_setup_co_unit_repair
 from .helpers.entity_registry import normalize_pm25_aggregate_entity_ids
 from .ui.register import async_register_cards, async_build_entity_mapping
 from .automations import async_setup_entry as async_setup_automations
@@ -97,6 +98,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     await hass.config_entries.async_forward_entry_setups(entry, ["sensor", "binary_sensor", "switch"])
     await async_update_humidity_drift_repair_issue(hass)
+    async_setup_co_unit_repair(hass, entry, effective_config)
     await async_setup_automations(hass, entry)
 
     # Optional static presentation resource; it has no authority over the engine.
@@ -210,7 +212,8 @@ async def _async_install_selected_ui(
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry."""
-    await hass.config_entries.async_unload_platforms(entry, ["sensor", "binary_sensor", "switch"])
+    if not await hass.config_entries.async_unload_platforms(entry, ["sensor", "binary_sensor", "switch"]):
+        return False
     await async_unload_automations(hass, entry)
     data = hass.data.get(DOMAIN, {}).get(entry.entry_id, {})
     observer = data.pop("output_observer", None)

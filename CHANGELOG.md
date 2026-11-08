@@ -6,7 +6,67 @@ All notable changes to Humidity Intelligence will be documented in this file.
 
 This project follows a practical changelog format for Home Assistant and HACS users. Add new entries under a fresh `Unreleased` section before publishing a future release.
 
-<a id="unreleased--v211-stable-preparation"></a>
+## v2.1.2 — Stable source preparation
+
+**Home Assistant 2026.11 Harmonization.** Includes component ZIP delivery,
+Marketplace/HACS observation, canonical AQ units, complete-evidence CO clearance,
+preserved gate settings and saved slope identities.
+
+- Fix generated optional JavaScript references that could bind unrelated legacy
+  entities when those sources were not configured. Remove absent source bindings
+  before mapping, preserving explicitly mapped entities even when their names look
+  like legacy placeholders. Keep missing/unavailable configured-input checks intact.
+- Advance both V2 layouts to revision **16**, superseding 1–15; stamp schema and
+  generator contract remain **1**. Refresh/export and replace complete saved V2
+  cards, including beta.1 revision-14 cards, after a complete update and restart.
+- Name Marketplace in setup and Dashboard add-ons guidance on Home Assistant
+  2026.11 or later, retaining HACS guidance for earlier supported versions.
+- Warn through Home Assistant Repairs when configured CO sources lack supported
+  units, without inferring units or changing control behavior.
+- Restore unambiguous calculated kitchen slopes from separately configured sources;
+  preserve supplied-slope identity and reject other-room or ambiguous fallbacks.
+- Harden maintainer-note checks against fenced examples and locale-dependent
+  decoding; show working installation choices before the Install instruction.
+- Preserve canonical README, website and Wiki headers; place the release write-up
+  below established content and retain the maintainer-owned notes workflow.
+
+This changes the generator package beyond the previously tested revision-14
+candidate. Earlier Marketplace/HACS installer and manual Stable-instance results
+remain bound to their exact packages. See the [validation and upgrade record](docs/releases/v2.1.2.md).
+Published Stable remains v2.1.1; final published delivery is still separate.
+
+Thanks to [@Slaybcn](https://github.com/Slaybcn) for reporting the Marketplace
+installation failure and sharing logs in [#145](https://github.com/senyo888/humidity-intelligence/issues/145),
+and to [@Thorsten1982](https://github.com/Thorsten1982) for confirming the same issue.
+
+## v2.1.2-beta.1 — Beta prerelease (2026-11-07)
+
+Opt-in prerelease from `senyo888-patch-1`; `main` and Current Stable v2.1.1 are unchanged.
+[Release and downloads](https://github.com/senyo888/humidity-intelligence/releases/tag/v2.1.2-beta.1).
+
+- Deliver the component through a named release ZIP, avoiding the full source
+  archive that exceeds Marketplace's 100 MiB limit in [#145](https://github.com/senyo888/humidity-intelligence/issues/145).
+- Build from immutable tracked blobs, verify every packaged file, enforce size
+  limits and retain reproducible CI review artifacts. Publication requires the
+  verified asset on the draft release; CI does not publish.
+- Hide default-branch downloads explicitly because branches have no release asset.
+  Keep manual exact-source installation and document the legacy HACS 2.0.5
+  older-release first-install limitation in [release packaging](docs/release-packaging.md).
+- Extend the existing release-check and controller-artifact version acceptance
+  through v2.1.2; their ownership, call schemas and control boundaries are unchanged.
+- Add exact Marketplace/HACS update observation and remove package-manager files
+  from optional frontend-card requirements. Unsupported/ambiguous evidence stays unverified.
+- Normalize VOC, CO/CO₂ and PM2.5 units consistently before runtime, aggregate and
+  Stability evaluation; expose bounded input-quality diagnostics and canonical units.
+- Require complete, valid CO evidence throughout a fresh monotonic clearance hold;
+  retain the latch across missing/invalid evidence and fix clearance timer ownership.
+- Preserve hidden gate settings in conditional 2026.11 forms, with older-HA fallback.
+  Save supplied-slope identity pairs explicitly and stop ambiguous positional remapping.
+- Retain runtime custody when platform unloading fails.
+- **UI revision 14:** both V2 layouts supersede 1–13; stamp schema/generator remain 1.
+  Export and replace saved cards for Marketplace support. No automatic source,
+  threshold or history migration. See [2026.11 compatibility](docs/home-assistant-2026.11.md).
+  Complete-package updates require restart; restart clears in-memory Stability history.
 
 ## v2.1.1 — Stable (2026-10-24)
 

@@ -333,6 +333,38 @@ def test_slope_mapping_uses_fallback_before_registry_entry_exists():
     }
 
 
+
+def test_provided_pairs_do_not_fall_back_to_list_order_after_rename():
+    mod = _load_slope_module()
+    states = {
+        'sensor.example_trend_x': SimpleNamespace(attributes={'friendly_name': 'Room A slope'}),
+        'sensor.example_trend_y': SimpleNamespace(attributes={'friendly_name': 'Room B slope'}),
+    }
+    hass = SimpleNamespace(states=SimpleNamespace(get=states.get))
+    sources = ['sensor.example_temp_a', 'sensor.example_temp_b']
+    provided = ['sensor.example_trend_y', 'sensor.example_trend_x']
+    rooms = dict(zip(sources, ['Room A', 'Room B']))
+    expected = {sources[0]: provided[1], sources[1]: provided[0]}
+    assert mod._match_provided_sensors_to_sources(hass, sources, provided, rooms) == expected
+    for state in states.values():
+        state.attributes['friendly_name'] = 'Renamed shared display'
+    assert mod._match_provided_sensors_to_sources(hass, sources, provided, rooms) == {}
+    assert mod._match_provided_sensors_to_sources(hass, list(reversed(sources)), provided, rooms, expected) == expected
+    states.clear()
+    assert mod._match_provided_sensors_to_sources(hass, sources, provided, rooms, expected) == expected
+
+
+def test_ambiguous_names_and_duplicate_saved_targets_are_unmapped():
+    mod = _load_slope_module()
+    hass = SimpleNamespace(states=SimpleNamespace(get=lambda _id: SimpleNamespace(attributes={'friendly_name': 'Room A slope'})))
+    sources = ['sensor.example_temp_a', 'sensor.example_temp_b']
+    provided = ['sensor.example_trend_x', 'sensor.example_trend_y']
+    rooms = {source: 'Room A' for source in sources}
+    assert mod._match_provided_sensors_to_sources(hass, sources, provided, rooms) == {}
+    assert mod._match_provided_sensors_to_sources(hass, sources, provided, rooms, {source: provided[0] for source in sources}) == {}
+    assert mod._match_provided_sensors_to_sources(hass, sources[:1], provided[:1], rooms) == {sources[0]: provided[0]}
+
+
 if __name__ == "__main__":
     tests = [
         (name, value)

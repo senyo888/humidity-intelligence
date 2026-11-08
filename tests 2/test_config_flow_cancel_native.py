@@ -74,7 +74,11 @@ class NativeCancelTests(unittest.IsolatedAsyncioTestCase):
         # This fixture never starts HA. force=True runs its shutdown lifecycle
         # even in not_running state, before the temporary storage is removed.
         self.addAsyncCleanup(self.stop_hass, self.hass)
-        device_registry.async_setup(self.hass)
+        self.hass.config_entries = ConfigEntries(self.hass, {})
+        await self.hass.config_entries.async_initialize()
+        setup = getattr(device_registry, "async_setup", None)
+        if setup is not None:
+            setup(self.hass)
         await device_registry.async_load(self.hass)
         await entity_registry.async_load(self.hass)
         await area_registry.async_load(self.hass)

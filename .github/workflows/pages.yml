@@ -7,11 +7,13 @@ on:
       - "site/**"
       - "assets/logo.png"
       - "assets/header.png"
+      - "assets/first-interaction-welcome.png"
       - "assets/release_banner/v2.0.10_release.png"
       - "assets/release_banner/v2.0.11_release.png"
       - "assets/release_banner/v2.0.12_release.png"
       - "assets/release_banner/v2.1_release.png"
       - "assets/release_banner/v2.1.1_release.png"
+      - "assets/release_banner/v2.1.2_release.png"
       - "assets/site/**"
       - "assets/ui/v2.1/**"
       - "scripts/build_hi_inspector.py"
@@ -49,12 +51,14 @@ jobs:
           python3 scripts/build_hi_inspector.py _site/inspector
           cp assets/logo.png _site/assets/logo.png
           cp assets/header.png _site/assets/header.png
+          cp assets/first-interaction-welcome.png _site/assets/first-interaction-welcome.png
           cp assets/release_banner/v2.0.10_release.png _site/assets/release_banner/v2.0.10_release.png
           cp assets/release_banner/v2.0.11_release.png _site/assets/release_banner/v2.0.11_release.png
           cp assets/release_banner/v2.0.12_release.png _site/assets/release_banner/v2.0.12_release.png
           cp assets/site/github-pages-hero.png _site/assets/site/github-pages-hero.png
           cp assets/release_banner/v2.1_release.png _site/assets/release_banner/v2.1_release.png
           cp assets/release_banner/v2.1.1_release.png _site/assets/release_banner/v2.1.1_release.png
+          cp assets/release_banner/v2.1.2_release.png _site/assets/release_banner/v2.1.2_release.png
           cp assets/site/home-assistant-logo.svg _site/assets/site/home-assistant-logo.svg
           cp assets/site/thermal-intelligence-logo.png _site/assets/site/thermal-intelligence-logo.png
           cp assets/site/thermal-intelligence-logo-96.png _site/assets/site/thermal-intelligence-logo-96.png

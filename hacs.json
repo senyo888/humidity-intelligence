@@ -1,5 +1,8 @@
 {
   "name": "Humidity Intelligence",
   "render_readme": true,
-  "homeassistant": "2026.5.1"
+  "homeassistant": "2026.5.1",
+  "zip_release": true,
+  "filename": "humidity_intelligence.zip",
+  "hide_default_branch": true
 }

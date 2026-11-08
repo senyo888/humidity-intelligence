@@ -8,7 +8,7 @@
       },
       "dependencies": {
         "title": "Dashboard add-ons",
-        "description": "Optional frontend custom cards used by the Humidity Intelligence dashboards.\n\n{dependencies}\n\nBackend control works without optional frontend cards, but dashboard visuals may degrade until they are installed. If a status is Unknown, verify manually in HACS and Dashboard resources.\n\nNeed help finishing setup? Open the Configuration Walkthrough for the recommended dependency, dashboard, and first-run checks: {walkthrough_url}\n\nThanks to Home Assistant, HACS, and the community developers that make these cards possible.",
+        "description": "Optional frontend custom cards used by the Humidity Intelligence dashboards.\n\n{dependencies}\n\nBackend control works without optional frontend cards, but dashboard visuals may degrade until they are installed. If a status is Unknown, verify optional cards in Settings → Marketplace on Home Assistant 2026.11 or later; on earlier supported versions, use HACS. Also check Dashboard resources.\n\nNeed help finishing setup? Open the Configuration Walkthrough for the recommended dependency, dashboard, and first-run checks: {walkthrough_url}\n\nThanks to Home Assistant, HACS, and the community developers that make these cards possible.",
         "data": {
           "skip": "Skip frontend dependency checks and continue"
         }
@@ -420,7 +420,8 @@
       "alert_save_failed": "Failed to save alert configuration. Check logs and try again.",
       "room_unknown": "Selected room is not in configured telemetry.",
       "room_missing_humidity": "Selected room has no humidity telemetry for room-scoped humidity danger.",
-      "room_missing_temp_humidity": "Selected room needs both humidity and temperature telemetry for this room-scoped trigger."
+      "room_missing_temp_humidity": "Selected room needs both humidity and temperature telemetry for this room-scoped trigger.",
+      "ambiguous_slope_mapping": "Cannot uniquely pair every temperature source with a slope sensor. Use matching room names, or select one source and one slope sensor. Existing saved pairs are retained."
     },
     "abort": {
       "user_cancelled": "Setup closed without saving."
@@ -448,7 +449,7 @@
       },
       "options_dependencies": {
         "title": "Dashboard add-ons",
-        "description": "Optional frontend custom cards used by the Humidity Intelligence dashboards.\n\n{dependencies}\n\nCustom card lines include upstream repo links for quick install/verification in HACS and Dashboard resources.\n\nNeed help finishing setup? Open the Configuration Walkthrough for the recommended dependency, dashboard, and first-run checks: {walkthrough_url}",
+        "description": "Optional frontend custom cards used by the Humidity Intelligence dashboards.\n\n{dependencies}\n\nCustom card lines include upstream repository links. On Home Assistant 2026.11 or later, use Settings → Marketplace to install or verify optional cards; on earlier supported versions, use HACS. Also check Dashboard resources.\n\nNeed help finishing setup? Open the Configuration Walkthrough for the recommended dependency, dashboard, and first-run checks: {walkthrough_url}",
         "data": {
           "skip": "Skip frontend dependency checks in setup"
         }
@@ -904,7 +905,8 @@
       "meaning_limit": "This entry already has 32 custom meanings. Manage an existing meaning first.",
       "meaning_in_use": "This meaning is used by saved rules. Choose a replacement or explicitly remove those rules.",
       "invalid_replacement": "Choose a different saved meaning or a standard classification as the replacement.",
-      "invalid_instructions": "Use at most 240 characters of plain text. Line breaks are allowed; other control characters are not."
+      "invalid_instructions": "Use at most 240 characters of plain text. Line breaks are allowed; other control characters are not.",
+      "ambiguous_slope_mapping": "Cannot uniquely pair every temperature source with a slope sensor. Use matching room names, or select one source and one slope sensor. Existing saved pairs are retained."
     },
     "abort": {
       "user_cancelled": "Options closed without saving."
@@ -914,6 +916,10 @@
     "house_humidity_mean_7d_missing": {
       "title": "House humidity drift needs a Statistics helper",
       "description": "Humidity Intelligence cannot calculate 7-day house humidity drift until `{dependency_entity}` exists. Create a Home Assistant Statistics helper named House Humidity Mean 7d using `{source_entity}` as the source, state characteristic `mean`, and max age 7 days. The helper entity ID must be exactly `sensor.house_humidity_mean_7d`; rename the entity ID manually if Home Assistant creates a different one. Drift will stay unavailable until Home Assistant reports sufficient recorder/statistics coverage. Do not fabricate history."
+    },
+    "co_unit_unsupported": {
+      "title": "CO source units need attention",
+      "description": "These configured carbon monoxide sources have no supported concentration unit: {entities}. HI cannot use their readings to activate CO emergency ventilation. Check the source integration or template and supply its actual unit explicitly as ppm or ppb. Do not infer a unit or relabel a different measurement. This notice clears when the units are supported; missing or invalid readings still remain unavailable. HI does not change your sensors, thresholds or outputs."
     }
   },
   "selector": {

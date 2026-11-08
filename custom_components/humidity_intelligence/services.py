@@ -16,6 +16,7 @@ from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import config_validation as cv
 
 from .helpers.stability import stability_diagnostics_payload
+from .helpers.air_quality import aq_source_summary
 from .helpers.update_observation import support_update_observation, update_observation
 from .const import CONF_SHOW_OUTPUT_ENTITY_DETAILS, DEFAULT_SHOW_OUTPUT_ENTITY_DETAILS, DOMAIN
 from .helpers.cleanup import (
@@ -126,7 +127,7 @@ _SAFE_FILENAME_RE = re.compile(r"^[A-Za-z0-9._-]{1,128}$")
 _OWNED_REPORT_FILENAME_PREFIX = "humidity_intelligence_"
 _OWNED_REPORT_FILENAME_SUFFIX = ".json"
 _RELEASE_CHECK_MANIFEST_VERSION_RE = re.compile(
-    r"^2\.(?:0\.(?:5|(?:[6-9]|1[0-2])(?:-(?:beta|rc)\.[1-9]\d*)?)|1\.[01](?:-(?:beta|rc)\.[1-9]\d*)?)$"
+    r"^2\.(?:0\.(?:5|(?:[6-9]|1[0-2])(?:-(?:beta|rc)\.[1-9]\d*)?)|1\.[012](?:-(?:beta|rc)\.[1-9]\d*)?)$"
 )
 _SENSITIVE_ATTR_EXACT = {
     "access_token",
@@ -1136,6 +1137,7 @@ def _support_safe_diagnostics_summary(summary: dict) -> dict:
         else {}
     )
     return {
+        "aq_inputs": summary.get("aq_inputs", {}),
         "update_observation": support_update_observation(summary.get("update_observation", {})),
         "runtime_control": {
             "mode": runtime_control.get("mode"),
@@ -1337,7 +1339,10 @@ def _build_diagnostics_summary(
     unavailable = _unavailable_configured_entities(hass, effective, entity_map)
     drift_dependency = humidity_drift_dependency_status(hass)
     drift_dependency_warning = humidity_drift_warning(drift_dependency)
+    aq_inputs = aq_source_summary(hass, effective)
     warnings = []
+    if aq_inputs["by_type"] and not aq_inputs["complete"]:
+        warnings.append("AQ input evidence is incomplete: check source units, availability and numeric readings. Invalid CO evidence cannot clear an active emergency.")
     duplicate_summary = summarize_zone_mapping_duplicate_count_warning(duplicates)
     if duplicate_summary:
         warnings.append(duplicate_summary)
@@ -1348,6 +1353,11 @@ def _build_diagnostics_summary(
     pm25_normalization = _pm25_normalization_status(runtime_data)
     if pm25_normalization.get("blocked"):
         warnings.append("PM25 aggregate entity ID normalization is blocked by an existing target entity.")
+    slope = effective.get("slope", {})
+    if isinstance(slope, dict) and slope.get("mode") == "user_provided":
+        sources = slope.get("source_entities") or [item.get("entity_id") for item in telemetry if item.get("sensor_type") == "temperature"]
+        if len(runtime_data.get("slope_map") or {}) < len(set(sources)):
+            warnings.append("Some provided slope sources have no unambiguous pairing. Review slope Options; names or list order must not silently reassign a source.")
     if not telemetry:
         warnings.append("No telemetry sensors are configured.")
     if not zones and not effective.get("alert_only_mode"):
@@ -1374,6 +1384,7 @@ def _build_diagnostics_summary(
         warnings.append("One or more humidifier outputs have a conflicting configured output owner.")
 
     summary = {
+        "aq_inputs": aq_inputs,
         "update_observation": update_observation(hass),
         "runtime_control": runtime_control_summary(runtime_data),
         "target_profile": {
@@ -1667,11 +1678,11 @@ def _release_check_manifest_status(manifest_version: Optional[str]) -> Tuple[str
     if manifest_version and _RELEASE_CHECK_MANIFEST_VERSION_RE.fullmatch(manifest_version):
         return (
             "pass",
-            f"Manifest version is {version}; release-check contract accepts the v2.0.5-v2.0.12 and v2.1.0-v2.1.1 lines.",
+            f"Manifest version is {version}; release-check contract accepts the v2.0.5-v2.0.12 and v2.1.0-v2.1.2 lines.",
         )
     return (
         "fail",
-        f"Manifest version is {version}; expected v2.0.5, a v2.0.6-v2.0.12 beta/rc/stable version, or v2.1.0-v2.1.1 beta/rc/stable.",
+        f"Manifest version is {version}; expected v2.0.5, a v2.0.6-v2.0.12 beta/rc/stable version, or v2.1.0-v2.1.2 beta/rc/stable.",
     )
 
 

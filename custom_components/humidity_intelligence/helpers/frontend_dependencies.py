@@ -97,7 +97,7 @@ async def async_frontend_dependency_status(hass: HomeAssistant) -> dict:
 async def async_render_dependency_status(hass: HomeAssistant) -> str:
     """Render setup/options dependency status from the shared resource truth."""
     frontend_status = await async_frontend_dependency_status(hass)
-    return render_dependency_status(frontend_status, _custom_components_path(hass))
+    return render_dependency_status(frontend_status)
 
 
 def render_dependency_status(frontend_status: dict, custom_components_path: Path | None = None) -> str:

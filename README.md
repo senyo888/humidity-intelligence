@@ -58,23 +58,15 @@ It gives you:
 - native Home Assistant diagnostics for support and triage
 - services for dashboard export, self-check, diagnostics, pause/resume, and release validation
 
-**Current Stable: v2.1.1** brings [single-level dashboards, clearer update status and report fixes](#v211-current-stable).
+Install the complete package and restart Home Assistant. From v2.1.1 or older
+cards, refresh/export the V2 layouts and replace the complete saved Manual-card
+YAML. Beta.1 revision-14 cards also need replacement. Restarting clears
+in-memory Stability history. See the [upgrade guide](docs/releases/v2.1.2.md#updating-and-rollback).
+
 Check [GitHub Releases](https://github.com/senyo888/humidity-intelligence/releases/latest)
-for the latest published version, then confirm the version offered in HACS.
-Stability Score, badge explanations and optional output monitoring provide context
-alongside current control decisions. If HACS shows an older version, refresh its
-repository information. See [Current Release Highlights](#current-release-highlights)
-for v2.1.1 changes and the required card-refresh steps.
-
-Optional HA Lab evidence is advisory and does not block promotion, tagging, or
-publication.
-Canonical tests, review, CI, version governance, and explicit maintainer decisions
-remain the release authority.
-
-For publication status, installed packages, and release tags, use
-[GitHub Releases](https://github.com/senyo888/Humidity-Intelligence/releases) and
-HACS as the user-facing record.
-
+for publication status and confirm the version offered by Marketplace or HACS
+separately from the loaded package. Optional Lab evidence is advisory; canonical
+tests, review, CI, version governance and maintainer decisions govern release.
 
 ---
 
@@ -93,7 +85,7 @@ without changing HI’s control decisions.
 
 *Earlier V2.1 dashboard capture: Stability Score 92, classified Excellent. Output
 monitoring remains incomplete, as shown separately below the score. Use current
-exports for the v2.1.1 card layout.*
+exports for the installed version’s card layout.*
 
 Tap the badge for contributions, individual deductions, their total and the
 calculation: **100 − total deductions = calculated score**. The displayed score
@@ -115,6 +107,14 @@ records the exact rules.
 
 V2.1.1 includes opt-in [output observation](docs/output-observation.md), adding read-only diagnostic context and an optional adaptive Outputs view.
 The adaptive Outputs panel uses an HVAC icon and a compact attention summary; full evidence and existing native controls are available on demand.
+
+**V2.1.2 — Home Assistant 2026.11 Harmonization** builds on these features with
+smaller Marketplace downloads, consistent air-quality units and clearer update
+status. The component-only ZIP addresses the installation failure reported in
+[#145](https://github.com/senyo888/humidity-intelligence/issues/145); Marketplace
+and legacy HACS observations remain separate from loaded code and card compatibility.
+See the [release notes and upgrade guide](docs/releases/v2.1.2.md). V2.1.2 remains
+in preparation; the published Stable is v2.1.1.
 
 ---
 
@@ -506,57 +506,50 @@ must be reviewable from tracked repository files.
 
 ## Current Release Highlights
 
-**[v2.1.1 Stable](https://github.com/senyo888/humidity-intelligence/releases/tag/v2.1.1)** — published 24 October 2026.
+**[v2.1.2 — Home Assistant 2026.11 Harmonization](docs/releases/v2.1.2.md)** is the
+current release preparation. It combines component-only Marketplace/HACS delivery,
+canonical air-quality units, complete-evidence CO clearance, preserved gate/slope
+settings and clearer update observations.
 
-- **Dashboards for single-level homes:** V2 Mobile and Tablet need no dummy second
-  level. Humidity and temperature chips follow saved Options; configured sensors
-  that become unavailable stay visible, and required mapping gaps remain explicit.
-- **Clearer update information:** the footer separates card compatibility from
-  optional HACS-reported updates. Open its details to inspect both; provider versions
-  do not prove which code Home Assistant has loaded.
-- **More consistent temperature trends:** calculated slopes use the latest actual
-  reading per minute over one hour. The changed weighting can affect slope-based
-  decisions; lane priority and CO protection remain unchanged.
-- **More reliable reports and output display:** self-check counts follow sensor
-  changes saved in Options. Native Outputs handles device text and percentages
-  safely, and issue-summary privacy filtering is hardened.
+Both V2 layouts use **revision 16**, superseding 1–15, with schema **1** and generator
+contract **1**. From beta.1 revision-14 cards or earlier, run `refresh_ui`, export
+with `view_cards` or `dump_cards`, and replace the complete saved Manual-card YAML
+after installing the full package and restarting.
+No configuration-entry or entity-ID migration is required; restarting clears
+in-memory Stability history.
 
-**Refresh older saved cards after updating.** Install the complete package and fully
-restart Home Assistant. From v2.1.0 or earlier V2 revisions, run `refresh_ui`, export
-with `view_cards` or `dump_cards`, replace the **complete saved Manual-card YAML**,
-then refresh the client. V2 Mobile and Tablet use **revision 13**, superseding 1–12;
-existing v2.1.1-beta.4 and v2.1.1-rc.1 revision-13 cards remain compatible.
-
-No configuration or entity migration is required. Restart/reload clears in-memory
-Stability history. See the [complete v2.1.1 release notes](docs/releases/v2.1.1.md)
-and [HACS and Updates](https://github.com/senyo888/humidity-intelligence/wiki/HACS-and-Updates)
-for installation, card refresh and rollback guidance.
+The [release record](docs/releases/v2.1.2.md#validation-and-publication-status)
+records exact package validation and the required optional-reference generator
+correction. Published Stable remains
+[v2.1.1](#v211-current-stable). Its single-level dashboards, explained updates and
+reporting improvements continue in v2.1.2, alongside Stability Score.
 
 ---
 
 ## Installation
 
-### Option A - HACS (Recommended)
+### Option A - Marketplace or HACS (Recommended)
 
 Requires Home Assistant **2026.5.1** or newer.
 
-[![Open your Home Assistant instance and open Humidity Intelligence inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=senyo888&repository=humidity-intelligence&category=integration)
+Until **v2.1.2 Stable is published**, the default release is v2.1.1, whose archive
+exceeds Marketplace's download limit. For Stable, use the complete component from
+the [v2.1.1 tag](https://github.com/senyo888/humidity-intelligence/tree/v2.1.1/custom_components/humidity_intelligence)
+and follow [Option B](#option-b---manual-package-upgrade). For testing, explicitly
+select [v2.1.2-beta.1](https://github.com/senyo888/humidity-intelligence/releases/tag/v2.1.2-beta.1)
+before installing; it provides the smaller install ZIP.
 
-The button opens Humidity Intelligence in HACS; it does not install automatically.
-Select **Download** in HACS, then continue with the restart and integration setup
-steps below.
+On **2026.11+**, open **Settings → Marketplace**, find **Humidity Intelligence**,
+select the intended available version, then **Install**. A fresh installation can
+open its setup flow directly. On earlier supported versions, open **HACS →
+Integrations**, select the intended version, download HI, restart, and add it through
+**Settings → Devices & services**. Updates require a full restart.
 
-The repository uses the conventional HACS integration layout under
-`custom_components/humidity_intelligence/`. HACS installs that package directory only;
-repository documentation, tests, scripts, site files, legacy material, and UI Gallery
-examples are not included in the Home Assistant integration payload.
+[![Open Humidity Intelligence in Marketplace or HACS.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=senyo888&repository=humidity-intelligence&category=integration)
 
-1. Open HACS in Home Assistant.
-2. Search for **Humidity Intelligence**, filtering by **Integration** if needed.
-3. Open the repository entry and select **Download**.
-4. Restart Home Assistant.
-5. Go to **Settings -> Devices & services -> Add integration**.
-6. Search for **Humidity Intelligence** and complete setup.
+The button opens the repository page; it does not install automatically. See the
+[older-version installation limits](docs/release-packaging.md#earlier-versions-and-current-evidence-limits)
+and [2026.11 compatibility](docs/home-assistant-2026.11.md), including corrected AQ units.
 
 ### Option B - Manual package upgrade
 
@@ -575,6 +568,8 @@ release or candidate and replace the complete existing directory at:
 
 Follow the [manual package update guide](https://github.com/senyo888/humidity-intelligence/wiki/HACS-and-Updates#manual-package-update)
 for backup, full-restart and rollback steps.
+For a fresh installation, after restarting open **Settings → Devices & services →
+Add integration**, select **Humidity Intelligence**, and complete its setup.
 
 ---
 
@@ -588,7 +583,7 @@ You can complete setup without them, but if you want the **full visual system (b
 
 ### Core Recommendation
 
-Install via HACS before anything else.
+Use Marketplace on HA 2026.11+, or HACS on earlier supported versions.
 
 ### Optional frontend cards
 
@@ -605,7 +600,7 @@ The following projects power the visual layer of Humidity Intelligence:
 
 ### Installation Notes
 
-- All frontend dependencies can be installed via HACS (**Frontend** section).
+- Install frontend cards through Marketplace or the legacy HACS **Frontend** section.
 - After installing, hard refresh your browser or use a new session to avoid caching issues.
 - If you skip these, the system still runs, but UI elements may not render correctly.
 
@@ -623,7 +618,7 @@ These tools are foundational to the Home Assistant ecosystem and give the dashbo
 
 If you are unsure:
 
-1. Install HACS
+1. Open Marketplace or HACS
 2. Install the frontend dependencies above
 3. Continue with the configuration flow
 
@@ -763,7 +758,7 @@ Common post-configuration areas:
   includes [reusable meanings and optional guidance](docs/custom-monitoring-meanings.md)
 - UI: run `humidity_intelligence.dump_cards` and replace Manual-card YAML
   after visibility, template, mapping or generated-card option changes.
-  [Revision footer](docs/ui-revision-status.md): UI compatibility and separate HACS-reported updates
+  [Revision footer](docs/ui-revision-status.md): UI compatibility and separate Marketplace/HACS update reports
 
 Detailed manual:
 
@@ -828,9 +823,28 @@ CO emergency pressure. Details are in
 
 ## Release Notes
 
+### v2.1.2 (Stable source preparation)
+
+![Humidity Intelligence v2.1.2 — Home Assistant 2026.11 Harmonization](assets/release_banner/v2.1.2_release.png)
+
+**Home Assistant 2026.11 Harmonization** brings smaller Marketplace downloads,
+consistent air-quality units, complete-evidence CO clearance and clearer update
+status. It also corrects optional generated-card references so unconfigured sources
+cannot bind unrelated legacy entities. Both V2 layouts advance to **revision 16**;
+refresh/export and replace complete saved cards, including beta.1 revision-14 cards.
+[Validation and upgrade details](docs/releases/v2.1.2.md) distinguish the changed
+package from earlier installer and Stable-instance evidence. Published Stable
+remains v2.1.1 pending promotion and publication.
+
+Thanks to [@Slaybcn](https://github.com/Slaybcn) for the report and logs, and
+[@Thorsten1982](https://github.com/Thorsten1982) for confirming the Marketplace
+installation problem in [#145](https://github.com/senyo888/humidity-intelligence/issues/145).
+
 <a id="v211-stable-source-preparation"></a>
 
 ### v2.1.1 (Current Stable)
+
+**Current Stable: v2.1.1** — published 24 October 2026.
 
 ![Humidity Intelligence v2.1.1 — single-level cards and clearer update status](assets/release_banner/v2.1.1_release.png)
 
@@ -856,6 +870,14 @@ identity. [Complete notes](docs/releases/v2.1.1.md) cover
 under Previous Releases; CHANGELOG.md retains the complete detailed history. -->
 <details>
 <summary>Previous Releases</summary>
+
+### v2.1.2-beta.1 (Beta prerelease)
+
+Published 7 November 2026 as an opt-in prerelease: Marketplace ZIP delivery,
+canonical AQ units, complete-evidence CO clearance and revision-14 cards.
+[Release notes](docs/releases/v2.1.2-beta.1.md) retain the native Marketplace fresh
+install and manually seeded v2.1.1 upgrade results, exact beta identity and
+[validation limits](docs/releases/v2.1.2-beta.1.md#validation-and-limits).
 
 <a id="v210-current-published-stable"></a>
 
