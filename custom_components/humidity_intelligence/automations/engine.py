@@ -260,7 +260,7 @@ class HIAutomationEngine:
         if (manual_id and event_data.get("entity_id") == manual_id
                 and getattr(event_data.get("new_state"), "state", None) == "on"):
             # Remember even a brief handover while another evaluation is busy.
-            self._visual_alert_manual_epoch += 1
+            self._revoke_visual_alerts()
         if any(item.get("sensor_type") == "co" and item.get("entity_id") == event_data.get("entity_id")
                for item in self.telemetry):
             state = event_data.get("new_state")
@@ -382,7 +382,7 @@ class HIAutomationEngine:
             # Absolute top-priority lane: CO emergency must bypass gates,
             # pause, manual override, and normal control locks.
             if self._manual_override_active():
-                self._visual_alert_manual_epoch += 1
+                self._revoke_visual_alerts()
             if self._co_emergency_active and self._co_clear_ready():
                 self._co_emergency_active = False
                 self._co_below_since = None
@@ -1106,13 +1106,7 @@ class HIAutomationEngine:
         self._visual_alert_active = active_identities
         for identity, task in list(self._visual_alert_tasks.items()):
             if identity not in active_identities:
-                if task is not asyncio.current_task() and not task.done():
-                    # Optional light cleanup must not hold the evaluation lock
-                    # ahead of CO ventilation. Retain custody until completion.
-                    self._visual_alert_retiring.add(task)
-                    task.add_done_callback(self._visual_alert_retired)
-                    task.cancel()
-                self._visual_alert_tasks.pop(identity, None)
+                self._retire_visual_alert_task(identity, task)
         for detail in active_details:
             if not self._visual_alert_configured(detail):
                 if detail.get("trigger_type") in _BUILT_IN_ZONE_ALERT_TRIGGERS:
@@ -1130,6 +1124,26 @@ class HIAutomationEngine:
             ))
             self._visual_alert_tasks[identity] = task
             await asyncio.sleep(0)
+
+    def _revoke_visual_alerts(self) -> None:
+        self._visual_alert_manual_epoch += 1
+        self._visual_alert_active.clear()
+        # A revoked worker must not occupy its alert's active slot during cleanup
+        # or the repeat sleep. A later AUTO evaluation may admit a fresh worker.
+        for identity, task in list(self._visual_alert_tasks.items()):
+            self._retire_visual_alert_task(identity, task)
+
+    def _retire_visual_alert_task(
+        self, identity: Tuple[str, str, str], task: asyncio.Task,
+    ) -> None:
+        if task is not asyncio.current_task() and not task.done():
+            # Optional light cleanup must not hold the evaluation lock
+            # ahead of CO ventilation. Retain custody until completion.
+            self._visual_alert_retiring.add(task)
+            task.add_done_callback(self._visual_alert_retired)
+            task.cancel()
+        if self._visual_alert_tasks.get(identity) is task:
+            self._visual_alert_tasks.pop(identity, None)
 
     def _visual_alert_retired(self, task: asyncio.Task) -> None:
         self._visual_alert_retiring.discard(task)
@@ -1194,6 +1208,8 @@ class HIAutomationEngine:
                         "Alert flash service call failed for alert identity %s",
                         identity,
                     )
+                if should_abort():
+                    return
                 await asyncio.sleep(timedelta(minutes=HUMIDITY_ALERT_REPEAT_MINUTES).total_seconds())
         except asyncio.CancelledError:
             return

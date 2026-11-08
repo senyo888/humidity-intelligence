@@ -303,7 +303,10 @@ or timeout leave physical restoration unconfirmed and are logged. Engine-owned f
 power and restoration calls check Manual at service admission and stop remaining writes
 once Manual is observed. A worker's handover revocation is permanent: observing
 Manual ON invalidates existing workers even if Manual turns OFF before they drain.
-Fresh workers created after Manual turns OFF receive new ownership. Commands already accepted by a device integration cannot
+Revoked workers retire immediately, freeing their active slots without waiting for
+the repeat interval or accepted-call drainage. Fresh workers created after Manual
+turns OFF receive new ownership and still wait for shared light locks before writing.
+Commands already accepted by a device integration cannot
 be revoked, and external manual commands do not use HI's locks. The public service schema and optional power-entity policy
 remain unchanged; cleanup does not restore the power entity.
 

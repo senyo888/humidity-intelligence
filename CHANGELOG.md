@@ -19,7 +19,8 @@ preserved gate settings and saved slope identities.
   blocking CO ventilation or other control evaluation. A ten-second deadline stops
   further restoration submissions; draining accepted device work can extend unload.
   Keep old workers revoked after Manual handover even when Manual turns off;
-  allow fresh workers under AUTO. Propagate cancellation and log failed or timed-out
+  free their active slots immediately so fresh AUTO workers do not wait for the
+  old repeat interval. Propagate cancellation and log failed or timed-out
   restoration without claiming a physical result.
 - Distinguish a current high CO reading from incomplete clearance evidence,
   clearance hold and readings that have not yet fallen below the clear threshold.

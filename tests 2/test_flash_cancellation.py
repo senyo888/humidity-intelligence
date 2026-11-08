@@ -544,7 +544,7 @@ def test_manual_pulse_permanently_revokes_retiring_snapshot_but_allows_fresh_wor
     asyncio.run(run())
 
 
-def test_manual_epoch_is_captured_when_worker_is_scheduled(monkeypatch):
+def test_manual_handover_before_worker_starts_submits_no_commands(monkeypatch):
     async def run():
         services, engine, hass, _ = environment()
         manual = hass.data[services.DOMAIN][ENTRY_ID]["hi_input_booleans"]["air_control_manual_override"]
@@ -570,11 +570,82 @@ def test_manual_epoch_is_captured_when_worker_is_scheduled(monkeypatch):
                 "trigger_type": IDENTITY[0], "sensor": IDENTITY[1], "room": IDENTITY[2],
                 "visual_alert": {"lights": [LIGHT]},
             }])
-            await asyncio.wait_for(asyncio.gather(*scheduled), 1)
+            results = await asyncio.wait_for(asyncio.gather(*scheduled, return_exceptions=True), 1)
+            assert all(result is None or isinstance(result, asyncio.CancelledError)
+                       for result in results)
             assert not manual.is_on and engine._visual_alert_manual_epoch > 0
             assert hass.services.calls == []
         finally:
             lock.release()
             await engine.async_stop()
+        assert_released(services, hass)
+    asyncio.run(run())
+
+
+@pytest.mark.parametrize("phase", ["flash_sleep", "repeat_sleep", "accepted_call"])
+def test_manual_pulse_restarts_same_alert_without_waiting_for_repeat(monkeypatch, phase):
+    async def run():
+        services, engine, hass, _ = environment()
+        manual = hass.data[services.DOMAIN][ENTRY_ID]["hi_input_booleans"]["air_control_manual_override"]
+        manual.entity_id = "switch.example_manual"
+        paused, release, fresh_flash = asyncio.Event(), asyncio.Event(), asyncio.Event()
+        original_sleep, original_call = asyncio.sleep, hass.services.async_call
+        handed_over = False
+        first_call = True
+
+        async def sleep(delay):
+            if delay > 1 or (phase == "flash_sleep" and delay == 0.5 and not paused.is_set()):
+                paused.set()
+                await asyncio.Event().wait()
+            await original_sleep(0)
+
+        async def call(domain, service, data=None, blocking=False):
+            nonlocal first_call
+            if first_call:
+                first_call = False
+                if phase == "accepted_call":
+                    paused.set()
+                    await release.wait()
+            elif handed_over and (data or {}).get("brightness") == 255:
+                fresh_flash.set()
+            await original_call(domain, service, data, blocking)
+
+        monkeypatch.setattr(asyncio, "sleep", sleep)
+        hass.services.async_call = call
+        detail = {"trigger_type": IDENTITY[0], "sensor": IDENTITY[1], "room": IDENTITY[2],
+                  "visual_alert": {"lights": [LIGHT]}}
+        evaluate_lock = engine._get_evaluate_lock()
+        await evaluate_lock.acquire()
+        try:
+            await engine._sync_visual_alert_tasks([detail])
+            old = engine._visual_alert_tasks[IDENTITY]
+            await asyncio.wait_for(paused.wait(), 1)
+            # Both events arrive while evaluation is busy and live state is OFF.
+            for state in ("on", "off"):
+                await engine._handle_change(SimpleNamespace(data={
+                    "entity_id": manual.entity_id, "new_state": _FakeState(state),
+                }))
+            handed_over = True
+            await engine._sync_visual_alert_tasks([detail])
+            replacement = engine._visual_alert_tasks[IDENTITY]
+            assert replacement is not old
+            # Repeated evaluation must keep exactly one replacement for this alert.
+            await engine._sync_visual_alert_tasks([detail])
+            assert engine._visual_alert_tasks[IDENTITY] is replacement
+            if phase == "accepted_call":
+                assert not old.done() and old in engine._visual_alert_retiring
+                assert not fresh_flash.is_set()
+                assert services._light_flash_locks(hass, [LIGHT])[0].locked()
+            release.set()
+            await asyncio.wait_for(fresh_flash.wait(), 1)
+            # The test's timeout must not supply a cancellation missing in HI.
+            await asyncio.wait_for(asyncio.shield(old), 1)
+            assert engine._visual_alert_tasks[IDENTITY] is replacement
+            assert old not in engine._visual_alert_retiring
+        finally:
+            release.set()
+            evaluate_lock.release()
+            await engine.async_stop()
+        assert not engine._visual_alert_tasks and not engine._visual_alert_retiring
         assert_released(services, hass)
     asyncio.run(run())
