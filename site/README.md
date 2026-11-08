@@ -19,12 +19,19 @@ The release block keeps v2.1.1 as Published Stable and points to the current
 validation record. The earlier `0d99f598` revision-16 package passed minimal-instance
 and Stable acceptance, with 13 passes, 3 explained warnings and no failures on
 Stable. The later CO-unit Repairs and calculated-slope correction changes package
-bytes. The final `cc709769` package completed its own Stable acceptance with
+bytes. The earlier `cc709769` package completed its own Stable acceptance with
 13 passes, 3 explained warnings and no failures; both saved V2 cards were verified
 at revision 16 in browser checks. Final published Marketplace delivery remains
 separate. The maintainer approved the corrected website; this follow-up
 leaves its rendered source unchanged. Approval does not claim Pages deployment.
+The four PR #147 runtime/configuration corrections change the package again;
+the corrected `d6174038` package completed isolated Lab setup and its own Stable
+acceptance on 8 November: 13 passes, 3 explained warnings and no failures on Stable,
+with both existing revision-16 cards verified in the browser. Earlier results retain
+their own package scope. The approved hero and release summary remain unchanged.
 Installer coverage stays in the release notes.
+The later PR #148 flash-restoration correction changes the package again; its
+offline cancellation tests do not extend the earlier live acceptance to those bytes.
 Prepared-release links point to the canonical `senyo888-patch-1` records so review
 links resolve before promotion. At publication, switch preparation status and links
 to the verified immutable release. Users check the offered Marketplace/HACS version

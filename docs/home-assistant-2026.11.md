@@ -83,7 +83,8 @@ starts a new hold; it does not inherit time from before the interruption.
 
 The hold uses monotonic elapsed time. CO state-change interruptions are recorded
 even while controller evaluations coalesce. The deadline releases its waiting-task
-ownership before requesting evaluation, so cleanup cannot cancel that evaluation.
+ownership before requesting evaluation, so resetting the hold cannot cancel that evaluation.
+Stop separately owns and drains an active evaluation before successful unload.
 This corrects clearance behavior; thresholds, hold duration, lane priority, Manual
 exception, output ownership and humidifier independence remain intact.
 
@@ -93,6 +94,8 @@ invalid value and missing source. These counts contain no entity IDs or readings
 An empty configuration is not complete evidence. Incomplete configured inputs also produce a
 warning. An emergency retained because clearance is unproved is not a claim that
 a new high reading was observed.
+The CO reason now distinguishes current high readings, missing clearance evidence,
+the continuous hold and the clear threshold not yet being met.
 
 The review follow-up restores calculated kitchen-slope lookup when its configured
 source differs from the kitchen telemetry sensor. It requires one unambiguous
@@ -107,6 +110,7 @@ gate is enabled; presence entities appear only when the presence gate is enabled
 Omitted hidden values preserve saved settings. Explicitly clearing an entity list
 still clears it. Older supported HA versions retain visible fields and the same
 save behavior. Options remain staged until the existing final save.
+Returning to the setup gates form also retains the staged controls and values.
 
 Provided temperature-slope pairs are saved by source and slope entity ID during
 explicit setup/Options save. Existing saved pairs survive display-name changes and
@@ -116,10 +120,14 @@ multi-source list order no longer guesses an association. Ambiguous pairs remain
 unmapped with Diagnostics guidance. Review slope Options using matching room names
 before saving. No startup migration or source renaming occurs; calculated-slope
 identity and sampling are unchanged.
+An unmatched source/slope remainder in a multi-source setup does not qualify as a
+sole-source pair. Replacing a telemetry entity is not an automatic slope-binding
+migration: explicitly review its slope sources and bindings in Options.
 
 If Home Assistant cannot unload HI's entity platforms, HI returns failure and
 retains its remaining runtime/service custody instead of reporting successful
-cleanup. The successful unload path is unchanged.
+cleanup. Successful unload now waits for active evaluations and owned background
+tasks to stop, discarding queued follow-ups before entry data is removed.
 
 ## Validation and rollback
 

@@ -12,6 +12,27 @@ This project follows a practical changelog format for Home Assistant and HACS us
 Marketplace/HACS observation, canonical AQ units, complete-evidence CO clearance,
 preserved gate settings and saved slope identities.
 
+- Drain active evaluations and owned background tasks before successful unload;
+  discard queued follow-up evaluations after stop.
+- Own public admin flash calls across loaded entries and drain them on final
+  unload. Preserve services when another entry remains loaded.
+- Bound the runtime-drain wait to 30 seconds before platform teardown. Failed or
+  interrupted unload retains stopped entry data, cleanup tasks and light locks;
+  late completion cannot reopen admission. Resolve the service fault and restart
+  Home Assistant. See [unload recovery](docs/runtime-unload.md).
+- Restore captured alert-light state when a flash is interrupted, retaining locks
+  until accepted service calls finish. Retiring light workers remain owned without
+  blocking CO ventilation or other control evaluation. A ten-second deadline stops
+  further restoration submissions; accepted device work can extend cleanup beyond
+  a failed unload without abandoning its light locks.
+  Keep old workers revoked after Manual handover even when Manual turns off;
+  free their active slots immediately so fresh AUTO workers do not wait for the
+  old repeat interval. Propagate cancellation and log failed or timed-out
+  restoration without claiming a physical result.
+- Distinguish a current high CO reading from incomplete clearance evidence,
+  clearance hold and readings that have not yet fallen below the clear threshold.
+- Retain staged gate values when returning to setup, and reject unmatched leftover
+  supplied-slope pairs in multi-source configurations.
 - Fix generated optional JavaScript references that could bind unrelated legacy
   entities when those sources were not configured. Remove absent source bindings
   before mapping, preserving explicitly mapped entities even when their names look
@@ -33,6 +54,14 @@ preserved gate settings and saved slope identities.
 This changes the generator package beyond the previously tested revision-14
 candidate. Earlier Marketplace/HACS installer and manual Stable-instance results
 remain bound to their exact packages. See the [validation and upgrade record](docs/releases/v2.1.2.md).
+The PR #147 corrections also change component bytes beyond the accepted
+`cc709769` package; its Stable acceptance remains historical evidence.
+The PR #148 flash-restoration correction changes the package again; the earlier
+`d6174038` Lab and Stable results retain their original package and test scope.
+The lifecycle package `8cdd3ae` passed fresh native Lab setup and manual
+Stable-instance acceptance with all 80 files verified, five valid card exports
+and no failed checks. Stalled-unload behavior has native regression coverage;
+it was not fault-injected live, and physical output response was not tested.
 Published Stable remains v2.1.1; final published delivery is still separate.
 
 Thanks to [@Slaybcn](https://github.com/Slaybcn) for reporting the Marketplace

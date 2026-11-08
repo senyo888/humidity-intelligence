@@ -117,6 +117,8 @@ def _install_homeassistant_stubs(*, include_unit_ratio: bool = True) -> None:
     core = types.ModuleType("homeassistant.core")
     config_entries = types.ModuleType("homeassistant.config_entries")
     const = types.ModuleType("homeassistant.const")
+    entity_platform = types.ModuleType("homeassistant.helpers.entity_platform")
+    entity_platform.async_get_platforms = lambda _hass, _domain: []
     components = types.ModuleType("homeassistant.components")
     diagnostics_mod = types.ModuleType("homeassistant.components.diagnostics")
     sensor_mod = types.ModuleType("homeassistant.components.sensor")
@@ -359,6 +361,7 @@ def _install_homeassistant_stubs(*, include_unit_ratio: bool = True) -> None:
     sys.modules["homeassistant.helpers.device_registry"] = device_registry
     sys.modules["homeassistant.helpers.entity"] = entity_helper
     sys.modules["homeassistant.helpers.entity_registry"] = entity_registry
+    sys.modules["homeassistant.helpers.entity_platform"] = entity_platform
     sys.modules["homeassistant.util"] = util
     sys.modules["homeassistant.util.dt"] = util_dt
     sys.modules["voluptuous"] = voluptuous
@@ -3201,6 +3204,9 @@ def test_custom_temperature_comfort_keeps_high_plus_one_warm_boundary():
 
 
 async def _registered_flash_handler(services_mod, hass):
+    owner = services_mod.lifecycle_for(hass)
+    owner.reserve_setup(ENTRY_ID)
+    owner.finish_setup(ENTRY_ID)
     await services_mod.async_register_services(hass)
     return hass.services.handlers[(services_mod.DOMAIN, services_mod.SERVICE_FLASH_LIGHTS)]
 
@@ -3632,7 +3638,10 @@ def test_startup_ui_refresh_contract_is_wired():
     assert "@callback" in init_source
     assert "hass.create_task(_run_startup_ui_refresh())" in init_source
     assert "hass.async_create_task(_async_refresh_and_dump_cards" not in init_source
-    assert ".add_done_callback(" not in init_source
+    startup_source = init_source.split("def _async_register_startup_ui_refresh", 1)[1].split(
+        "def _entry_auto_refresh_ui_on_startup", 1,
+    )[0]
+    assert ".add_done_callback(" not in startup_source
     assert "startup_ui_refresh_scheduled" in init_source
     assert "SERVICE_REFRESH_UI" in init_source
     assert '"dump_cards",' not in init_source
@@ -3891,7 +3900,10 @@ def test_advanced_tuning_uses_collapsible_sections_not_submit_reveal():
             "\n    async def ",
             1,
         )[0]
-        assert "user_input = _flatten_advanced_section_input(user_input)" in method_source
+        assert (
+            "user_input = _flatten_advanced_section_input(user_input)" in method_source
+            or "user_input = dict(_flatten_advanced_section_input(user_input))" in method_source
+        )
         assert "_advanced_section(" in method_source
 
 

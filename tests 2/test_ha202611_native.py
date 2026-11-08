@@ -293,6 +293,82 @@ class NativeAlignmentTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(flow._data["time_gate"]["end"], flow_module.DEFAULT_TIME_END)
         self.assertEqual(flow._data["presence_gate"]["entities"], [])
 
+    async def test_setup_gate_revisit_renders_and_resubmits_staged_values(self):
+        flow = flow_module.HumidityIntelligenceConfigFlow()
+        flow.hass = self.hass
+        _options, entry = self.options()
+        flow._data.update(copy.deepcopy(entry.data))
+        flow._data["engine_interval_minutes"] = 8
+        flow._data["custom_target_low"] = 42.0
+        flow._data["custom_target_high"] = 54.0
+        before = copy.deepcopy(flow._data)
+        result = await flow.async_step_gates()
+        markers = {key.schema: key for key in result["data_schema"].schema}
+        for key, expected in {
+            "enable_time_gate": True, "start_time": "06:15", "end_time": "22:45",
+            "outside_action": "pause", "enable_presence_gate": True,
+            "presence_entities": ["person.example"],
+        }.items():
+            self.assertEqual(markers[key].default(), expected)
+        submitted = {key: markers[key].default() for key in (
+            "enable_time_gate", "enable_presence_gate", "start_time", "end_time",
+            "outside_action", "presence_entities",
+        )}
+        # Leave Advanced collapsed, as the real frontend may omit that section.
+        result = await flow.async_step_gates(result["data_schema"](submitted))
+        self.assertEqual(result["step_id"], "presence_states")
+        await flow.async_step_presence_states(result["data_schema"]({}))
+        for key in ("time_gate", "presence_gate", "engine_interval_minutes", "custom_target_low", "custom_target_high"):
+            self.assertEqual(flow._data[key], before[key])
+        # Revisit, disable (HA 2026.11 omits hidden fields), then re-enable.
+        for enabled in (False, True):
+            result = await flow.async_step_gates()
+            schema = result["data_schema"]
+            submitted = {"enable_time_gate": enabled, "enable_presence_gate": enabled}
+            if hasattr(data_entry_flow, "_strip_hidden_fields"):
+                schema, submitted = data_entry_flow._strip_hidden_fields(schema, submitted)
+            await flow.async_step_gates(schema(submitted))
+            self.assertEqual(flow._data["time_gate"]["start"], "06:15")
+            self.assertEqual(flow._data["time_gate"]["end"], "22:45")
+            self.assertEqual(flow._data["presence_gate"]["entities"], ["person.example"])
+            self.assertEqual(flow._data["presence_gate"]["present_states"], ["home"])
+            self.assertEqual(flow._data["engine_interval_minutes"], 8)
+        result = await flow.async_step_presence_states({"present_states": ["away"], "away_states": ["away"]})
+        self.assertEqual(result["errors"]["away_states"], "overlap")
+        markers = {key.schema: key for key in result["data_schema"].schema}
+        self.assertEqual(markers["present_states"].default(), ["away"])
+        self.assertEqual(flow._data["presence_gate"]["present_states"], ["home"])
+        await flow.async_step_presence_states({"present_states": [], "away_states": []})
+        result = await flow.async_step_presence_states()
+        self.assertEqual(result["data_schema"]({}), {"present_states": [], "away_states": []})
+        result = await flow.async_step_gates()
+        await flow.async_step_gates(result["data_schema"]({
+            "enable_time_gate": True, "enable_presence_gate": True, "presence_entities": [],
+        }))
+        self.assertEqual(flow._data["presence_gate"]["entities"], [])
+
+    async def test_options_rejects_unmatched_residual_slope_without_changing_saved_pairs(self):
+        flow, entry = self.options()
+        entry.data["telemetry"] = [
+            {"entity_id": "sensor.example_temp_a", "sensor_type": "temperature", "room": "Room A"},
+            {"entity_id": "sensor.example_temp_b", "sensor_type": "temperature", "room": "Room B"},
+        ]
+        entry.data["slope"] = {"mode": "user_provided",
+            "source_entities": ["sensor.example_temp_a"],
+            "provided_sensors": ["sensor.example_trend_x"],
+            "bindings": {"sensor.example_temp_a": "sensor.example_trend_x"}}
+        self.hass.states.async_set("sensor.example_trend_z", "1", {"friendly_name": "Room A slope"})
+        before = copy.deepcopy(entry.data)
+        result = await flow.async_step_options_slope({
+            "slope_mode": "user_provided",
+            "slope_sources": ["sensor.example_temp_a", "sensor.example_temp_b"],
+            "slope_sensors": ["sensor.example_trend_x", "sensor.example_trend_z"],
+        })
+        self.assertEqual(result["errors"]["slope_sensors"], "ambiguous_slope_mapping")
+        self.assertNotIn("slope", flow._options)
+        self.assertEqual(entry.data, before)
+        self.assertEqual(entry.options, {})
+
     async def test_saved_slope_bindings_survive_names_and_prune_deleted_source(self):
         flow, entry = self.options()
         telemetry = [

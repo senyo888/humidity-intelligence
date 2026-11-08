@@ -140,6 +140,7 @@ class _AlertMatch:
 
 class HIAutomationEngine:
     def __init__(self, hass: HomeAssistant, entry: ConfigEntry) -> None:
+        """Initialize entry configuration and task ownership without starting automation."""
         self.hass = hass
         self.entry = entry
         self.telemetry = self._cfg("telemetry", [])
@@ -159,6 +160,8 @@ class HIAutomationEngine:
         self._aq_tasks: Dict[str, asyncio.Task] = {}
         self._aq_trigger_active: Dict[str, bool] = {}
         self._visual_alert_tasks: Dict[Tuple[str, str, str], asyncio.Task] = {}
+        self._visual_alert_retiring: set[asyncio.Task] = set()
+        self._visual_alert_manual_epoch = 0
         self._visual_alert_active: set[Tuple[str, str, str]] = set()
         self._startup_recheck_task: Optional[asyncio.Task] = None
         self._co_clear_recheck_task: Optional[asyncio.Task] = None
@@ -168,6 +171,7 @@ class HIAutomationEngine:
         self._co_below_since: Optional[float] = None
         self._co_clear_generation = 0
         self._evaluate_lock: Optional[asyncio.Lock] = None
+        self._evaluate_task: Optional[asyncio.Task] = None
         self._evaluate_pending = False
         self._stopped = False
         self._humidifier_lane_demand: Dict[str, bool] = {}
@@ -215,29 +219,65 @@ class HIAutomationEngine:
         self._notify_other_humidifier_engines()
 
     async def async_stop(self) -> None:
+        """Stop evaluations and drain owned work before removing Manual observation.
+
+        Task failures are collected without being re-raised; cancellation of this
+        call propagates. Accepted visual service calls can delay completion
+        indefinitely, including beyond the restoration submission deadline. Manual
+        handover remains observable until owned work finishes, including after the
+        integration's bounded unload wait fails."""
         self._stopped = True
-        if self._unsub:
-            self._unsub()
+        self._evaluate_pending = False
         if self._periodic:
             self._periodic()
-        if self._startup_recheck_task and not self._startup_recheck_task.done():
-            self._startup_recheck_task.cancel()
+            self._periodic = None
+        # A deadline relinquishes its timer handle before evaluating. Keep the
+        # active evaluation separately owned until cancellation has completed.
+        current = asyncio.current_task()
+        tasks = {
+            task for task in (
+                self._evaluate_task, self._startup_recheck_task,
+                self._co_clear_recheck_task, *self._aq_tasks.values(),
+                *self._visual_alert_tasks.values(), *self._humidifier_retry_tasks.values(),
+                *self._visual_alert_retiring,
+            ) if task is not None and task is not current
+        }
+        for task in tasks:
+            task.cancel()
+        try:
+            if tasks:
+                await asyncio.gather(*tasks, return_exceptions=True)
+        finally:
+            # A retained cleanup can outlive failed unload while the Manual
+            # switch is still available. Do not miss an ON/OFF handover pulse.
+            if all(task.done() for task in tasks) and self._unsub:
+                self._unsub()
+                self._unsub = None
         self._startup_recheck_task = None
-        self._cancel_co_clear_recheck()
-        for task in self._aq_tasks.values():
-            task.cancel()
-        for task in self._visual_alert_tasks.values():
-            task.cancel()
-        for task in self._humidifier_retry_tasks.values():
-            task.cancel()
+        self._co_clear_recheck_task = None
+        self._aq_tasks.clear()
         self._humidifier_retry_tasks.clear()
         self._visual_alert_tasks.clear()
+        self._visual_alert_retiring.clear()
         self._visual_alert_active.clear()
         self._notify_other_humidifier_engines()
 
     async def _handle_change(self, event) -> None:
         # Observe every CO interruption, even while evaluation requests coalesce.
+        """Observe Manual handover and CO clearance interruptions before evaluation.
+
+        Active pause-countdown refreshes do not request an evaluation."""
         event_data = getattr(event, "data", {}) or {}
+        manual = self.hass.data.get(DOMAIN, {}).get(self.entry.entry_id, {}).get(
+            "hi_input_booleans", {}
+        ).get("air_control_manual_override")
+        manual_id = getattr(manual, "entity_id", None)
+        if (manual_id and event_data.get("entity_id") == manual_id
+                and getattr(event_data.get("new_state"), "state", None) == "on"):
+            # Remember even a brief handover while another evaluation is busy.
+            self._revoke_visual_alerts()
+        if self._stopped:
+            return
         if any(item.get("sensor_type") == "co" and item.get("entity_id") == event_data.get("entity_id")
                for item in self.telemetry):
             state = event_data.get("new_state")
@@ -273,7 +313,10 @@ class HIAutomationEngine:
         await self.async_request_evaluate()
 
     async def async_request_evaluate(self) -> None:
-        """Request an immediate evaluation cycle."""
+        """Run evaluation unless stopped, coalescing concurrent requests.
+
+        A request during an active cycle queues a follow-up and returns without
+        waiting for it. Cancellation of the task running evaluation propagates."""
         if self._stopped:
             return
         evaluate_lock = self._get_evaluate_lock()
@@ -285,11 +328,16 @@ class HIAutomationEngine:
             )
             return
         async with evaluate_lock:
-            while True:
+            self._evaluate_task = asyncio.current_task()
+            try:
+                while not self._stopped:
+                    self._evaluate_pending = False
+                    await self._evaluate()
+                    if not self._evaluate_pending:
+                        break
+            finally:
+                self._evaluate_task = None
                 self._evaluate_pending = False
-                await self._evaluate()
-                if not self._evaluate_pending:
-                    break
 
     def _get_evaluate_lock(self) -> asyncio.Lock:
         if self._evaluate_lock is None:
@@ -310,6 +358,7 @@ class HIAutomationEngine:
         self._startup_recheck_task = asyncio.create_task(_startup_recheck())
 
     async def _evaluate(self) -> None:
+        """Apply the highest-priority eligible control lane and refresh runtime telemetry."""
         try:
             try:
                 self._record_stability_aq_truth()
@@ -353,6 +402,8 @@ class HIAutomationEngine:
 
             # Absolute top-priority lane: CO emergency must bypass gates,
             # pause, manual override, and normal control locks.
+            if self._manual_override_active():
+                self._revoke_visual_alerts()
             if self._co_emergency_active and self._co_clear_ready():
                 self._co_emergency_active = False
                 self._co_below_since = None
@@ -1068,21 +1119,19 @@ class HIAutomationEngine:
             )
 
     async def _sync_visual_alert_tasks(self, active_details: List[Dict[str, Any]]) -> None:
+        """Start workers for configured active alerts and retire obsolete workers.
+
+        Retiring workers remain owned for shutdown; their cleanup is not awaited
+        here, so it does not delay control evaluation."""
         active_identities = {
             _alert_identity(detail)
             for detail in active_details
             if self._visual_alert_configured(detail)
         }
         self._visual_alert_active = active_identities
-        cancelled_tasks: List[asyncio.Task[Any]] = []
         for identity, task in list(self._visual_alert_tasks.items()):
             if identity not in active_identities:
-                if task is not asyncio.current_task() and not task.done():
-                    task.cancel()
-                    cancelled_tasks.append(task)
-                self._visual_alert_tasks.pop(identity, None)
-        if cancelled_tasks:
-            await asyncio.gather(*cancelled_tasks, return_exceptions=True)
+                self._retire_visual_alert_task(identity, task)
         for detail in active_details:
             if not self._visual_alert_configured(detail):
                 if detail.get("trigger_type") in _BUILT_IN_ZONE_ALERT_TRIGGERS:
@@ -1095,9 +1144,45 @@ class HIAutomationEngine:
             existing = self._visual_alert_tasks.get(identity)
             if existing and not existing.done():
                 continue
-            task = asyncio.create_task(self._visual_alert_loop(identity, dict(detail)))
+            task = asyncio.create_task(self._visual_alert_loop(
+                identity, dict(detail), manual_epoch=self._visual_alert_manual_epoch,
+            ))
             self._visual_alert_tasks[identity] = task
             await asyncio.sleep(0)
+
+    def _revoke_visual_alerts(self) -> None:
+        """Permanently revoke current visual workers and free their active slots."""
+        self._visual_alert_manual_epoch += 1
+        self._visual_alert_active.clear()
+        # A revoked worker must not occupy its alert's active slot during cleanup
+        # or the repeat sleep. A later AUTO evaluation may admit a fresh worker.
+        for identity, task in list(self._visual_alert_tasks.items()):
+            self._retire_visual_alert_task(identity, task)
+
+    def _retire_visual_alert_task(
+        self, identity: Tuple[str, str, str], task: asyncio.Task,
+    ) -> None:
+        """Remove this worker from its active slot without waiting for cleanup.
+
+        Cancel an unfinished worker other than the current task and retain it
+        until completion so shutdown can await it."""
+        if task is not asyncio.current_task() and not task.done():
+            # Optional light cleanup must not hold the evaluation lock
+            # ahead of CO ventilation. Retain custody until completion.
+            self._visual_alert_retiring.add(task)
+            task.add_done_callback(self._visual_alert_retired)
+            task.cancel()
+        if self._visual_alert_tasks.get(identity) is task:
+            self._visual_alert_tasks.pop(identity, None)
+
+    def _visual_alert_retired(self, task: asyncio.Task) -> None:
+        """Release ownership of a completed retiring worker and retrieve its failure."""
+        self._visual_alert_retiring.discard(task)
+        if not task.cancelled() and (error := task.exception()) is not None:
+            _LOGGER.error(
+                "Retired visual alert task failed",
+                exc_info=(type(error), error, error.__traceback__),
+            )
 
     def _visual_alert_configured(self, detail: Dict[str, Any]) -> bool:
         visual = detail.get("visual_alert") if isinstance(detail, dict) else {}
@@ -1107,10 +1192,30 @@ class HIAutomationEngine:
         self,
         identity: Tuple[str, str, str],
         detail: Dict[str, Any],
+        *,
+        manual_epoch: Optional[int] = None,
     ) -> None:
+        """Flash an active alert ten times per burst, repeating every 30 minutes.
+
+        The repeat wait begins after each burst finishes. ``manual_epoch`` is the
+        handover generation captured at scheduling, defaulting to the current
+        one. An epoch change or observed Manual override permanently revokes this
+        worker. Flash failures are caught and retried on the next burst;
+        cancellation ends the worker after flash cleanup."""
+        if manual_epoch is None:
+            manual_epoch = self._visual_alert_manual_epoch
+        revoked = False
+
+        def should_abort() -> bool:
+            """Latch revocation after Manual handover or a change in its generation."""
+            nonlocal revoked
+            revoked = (revoked or manual_epoch != self._visual_alert_manual_epoch
+                       or self._manual_override_active())
+            return revoked
+
         try:
             while identity in self._visual_alert_active:
-                if self._manual_override_active():
+                if should_abort():
                     return
                 visual = detail.get("visual_alert") or {}
                 lights = list(visual.get("lights") or [])
@@ -1125,7 +1230,7 @@ class HIAutomationEngine:
                 power_entity = visual.get("power_entity")
                 if power_entity:
                     flash_payload["power_entity"] = power_entity
-                if self._manual_override_active():
+                if should_abort():
                     return
                 try:
                     await async_flash_lights_for_alert(
@@ -1135,12 +1240,15 @@ class HIAutomationEngine:
                         color=flash_payload["color"],
                         duration=flash_payload["duration"],
                         flash_count=flash_payload["flash_count"],
+                        should_abort=should_abort,
                     )
                 except Exception:
                     _LOGGER.exception(
                         "Alert flash service call failed for alert identity %s",
                         identity,
                     )
+                if should_abort():
+                    return
                 await asyncio.sleep(timedelta(minutes=HUMIDITY_ALERT_REPEAT_MINUTES).total_seconds())
         except asyncio.CancelledError:
             return
@@ -3002,11 +3110,20 @@ class HIAutomationEngine:
         )
 
     def _co_display_facts(self) -> ReasonFacts:
+        """Return CO emergency explanations from current readings in ppm.
+
+        Distinguish an active threshold, incomplete readings, a clearance hold,
+        and readings at or above the clear threshold without changing the latch
+        or its clearance timer."""
         start_threshold, clear_threshold, outputs = self._co_emergency_settings()
-        co_values = self._collect_values("co")
+        sources = {item.get("entity_id") for item in self.telemetry
+                   if item.get("sensor_type") == "co"}
+        readings = [_get_float(self.hass, source, sensor_type="co") for source in sources]
+        co_values = [value for value in readings if value is not None]
+        maximum = max(co_values) if co_values else None
         lines: List[ReasonLine] = []
-        if co_values:
-            maximum = max(co_values)
+        if maximum is not None and maximum >= start_threshold:
+            variant = "threshold_active"
             lines.append(
                 ReasonLine(
                     "why",
@@ -3024,6 +3141,29 @@ class HIAutomationEngine:
                     },
                 )
             )
+        elif not readings or len(co_values) != len(readings):
+            variant = "clearance_unavailable"
+            lines.append(ReasonLine(
+                "why", "safety", "co.clearance_unavailable", "unavailable",
+                "The CO emergency remains active because valid readings from every "
+                "configured CO source are needed to prove clearance.",
+            ))
+        elif maximum < clear_threshold:
+            variant = "clearance_hold"
+            lines.append(ReasonLine(
+                "why", "safety", "co.clearance_hold", "observed",
+                f"All configured CO readings are below {clear_threshold:g} ppm. "
+                "The emergency remains active until the continuous clearance hold is confirmed.",
+                {"measured": maximum, "clear_threshold": clear_threshold, "unit": "ppm"},
+            ))
+        else:
+            variant = "clearance_threshold_not_met"
+            lines.append(ReasonLine(
+                "why", "safety", "co.clearance_threshold_not_met", "observed",
+                f"The highest configured CO reading is {maximum:g} ppm. The emergency "
+                f"remains active because every reading must fall below {clear_threshold:g} ppm.",
+                {"measured": maximum, "clear_threshold": clear_threshold, "unit": "ppm"},
+            ))
         output_summary = self._presentation_output_summary(
             outputs,
             generic="configured emergency ventilation output",
@@ -3079,7 +3219,7 @@ class HIAutomationEngine:
         lines.extend(self._isolation_display_lines(include_fan=False))
         return self._make_reason_facts(
             "co_emergency",
-            "threshold_active",
+            variant,
             "critical",
             "Carbon monoxide emergency lane selected",
             lines,
