@@ -6,7 +6,13 @@ All notable changes to Humidity Intelligence will be documented in this file.
 
 This project follows a practical changelog format for Home Assistant and HACS users. Add new entries under a fresh `Unreleased` section before publishing a future release.
 
-## v2.1.2 — Stable source preparation
+<a id="v212--stable-source-preparation"></a>
+
+## v2.1.2 — Stable (2026-11-08)
+
+[Published release and downloads](https://github.com/senyo888/humidity-intelligence/releases/tag/v2.1.2). The verified
+80-file install ZIP matches the accepted Stable-instance package; final Marketplace
+discovery and installation remain separate observations.
 
 **Home Assistant 2026.11 Harmonization.** Includes component ZIP delivery,
 Marketplace/HACS observation, canonical AQ units, complete-evidence CO clearance,
@@ -62,7 +68,10 @@ The lifecycle package `8cdd3ae` passed fresh native Lab setup and manual
 Stable-instance acceptance with all 80 files verified, five valid card exports
 and no failed checks. Stalled-unload behavior has native regression coverage;
 it was not fault-injected live, and physical output response was not tested.
-Published Stable remains v2.1.1; final published delivery is still separate.
+The final `9f52a22` component passed its own Stable acceptance with 80 files
+verified, 13 passes, 3 explained warnings and no failures. Published tag `v2.1.2`
+at `7b578f5` contains those same component bytes. Final Marketplace installer
+delivery remains separate from package verification and manual acceptance.
 
 Thanks to [@Slaybcn](https://github.com/Slaybcn) for reporting the Marketplace
 installation failure and sharing logs in [#145](https://github.com/senyo888/humidity-intelligence/issues/145),
@@ -70,7 +79,8 @@ and to [@Thorsten1982](https://github.com/Thorsten1982) for confirming the same 
 
 ## v2.1.2-beta.1 — Beta prerelease (2026-11-07)
 
-Opt-in prerelease from `senyo888-patch-1`; `main` and Current Stable v2.1.1 are unchanged.
+Historical opt-in prerelease from `senyo888-patch-1`; at its publication, `main`
+and then-current Stable v2.1.1 were unchanged.
 [Release and downloads](https://github.com/senyo888/humidity-intelligence/releases/tag/v2.1.2-beta.1).
 
 - Deliver the component through a named release ZIP, avoiding the full source

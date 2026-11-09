@@ -1,19 +1,19 @@
 # Home Assistant 2026.11 compatibility
 
-The `2.1.2` stable source preserves beta.1 Marketplace support, canonical
+Published Stable `2.1.2` preserves beta.1 Marketplace support, canonical
 air-quality units, complete-evidence CO clearance and bounded setup improvements.
-Published Stable remains `v2.1.1` while final stable validation is completed. Source tests, publication, installed files and
-loaded runtime behavior are separate evidence.
+[V2.1.2 was published on 8 November 2026](https://github.com/senyo888/humidity-intelligence/releases/tag/v2.1.2).
+Source tests, publication, installed files and loaded runtime behavior are separate evidence.
 
 ## Installation and update observations
 
 On Home Assistant 2026.11+, use **Settings → Marketplace**. On supported earlier
 versions, use HACS. The declared minimum remains 2026.5.1. The named component ZIP
 and older-release recovery limits are documented in [release packaging](release-packaging.md).
-Published **v2.1.1 exceeds Marketplace's archive limit** and can fail to download.
-The beta provides a smaller install ZIP and must be selected explicitly for testing.
-For Stable v2.1.1, use
-[exact-tag manual recovery](release-packaging.md#earlier-versions-and-current-evidence-limits) if affected.
+**Select Stable v2.1.2 when offered** to use the smaller integration-only ZIP.
+The earlier v2.1.1 source archive exceeds Marketplace's limit; use
+[exact-tag manual recovery](release-packaging.md#earlier-versions-and-current-evidence-limits)
+if you need that older release.
 Marketplace can open a fresh installation's setup flow directly; updates and manual
 package replacement require a full Home Assistant restart. A restart discards HI's
 in-memory Stability sampling history.
@@ -168,4 +168,4 @@ No automatic threshold, history, source or dashboard rollback is performed.
 - [Conditional forms](https://contributors.home-assistant.io/core/integrations/flow-steps/#fields-that-show-based-on-another-field)
 
 Native monitoring sections, section strategies, energy observations and AI support
-remain separate future work; this candidate does not implement those features.
+remain separate future work; v2.1.2 does not implement those features.
