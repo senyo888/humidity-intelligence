@@ -1,9 +1,10 @@
 # Release ZIP packaging
 
-The `2.1.2` stable source retains the release delivery introduced in beta.1: the named
-`humidity_intelligence.zip` asset. Published Stable remains `v2.1.1` until a new
-Stable release is approved and published. Select the beta explicitly for testing;
-source preparation and CI artifacts do not make an installable release available.
+[V2.1.2 is the current published Stable release](https://github.com/senyo888/humidity-intelligence/releases/tag/v2.1.2),
+released on 8 November 2026. It retains the named `humidity_intelligence.zip`
+delivery introduced in beta.1. The attached asset was downloaded and verified
+against the exact tag before publication, then verified again from its public URL.
+Package-manager discovery and installation remain separate checks.
 
 ## Why the delivery changes
 
@@ -81,7 +82,7 @@ or ZIP extraction check is not evidence of a completed Home Assistant install.
 Download/corrupt-asset failures must remain visible and preserve an existing
 installation; retain the previous complete package for rollback.
 
-ZIP delivery alone needs no configuration migration. The broader candidate also
+ZIP delivery alone needs no configuration migration. The v2.1.2 release also
 changes unit handling and advances V2 cards to revision 16; follow the
 [compatibility and saved-card instructions](home-assistant-2026.11.md). A package update requires a full Home Assistant restart
 when installed; restart resets in-memory Stability history. Preserve rollback
@@ -134,8 +135,11 @@ acceptance on 8 November 2026. All 79 files matched; Stable recorded 13 passes,
 3 explained warnings and no failures. The Lab route was isolated native setup,
 not Marketplace delivery. `cc709769` results retain their earlier package scope.
 The subsequent PR #148 flash-restoration correction changes component bytes again;
-its package needs its own identity and appropriate acceptance. The `d6174038` live
-results do not cover the newer package or interrupted-flash restoration.
+its package required its own identity and acceptance. The `d6174038` live
+results retain their earlier scope. The final 80-file package at tag `v2.1.2`,
+commit `7b578f5`, matches the accepted `9f52a22` component; its Stable acceptance
+recorded 13 passes, 3 explained warnings and no failures. Interrupted-flash failure
+boundaries retain native offline coverage, not physical-output proof.
 The [route-by-route validation record](releases/v2.1.2.md#validation-and-publication-status)
 keeps final-tag/draft-asset verification, post-publication Marketplace acceptance
 and legacy HACS results distinct. HACS 2.0.5 on HA 2026.10.1 subsequently installed
@@ -145,7 +149,7 @@ configuration and entity identities were preserved. A subsequent manual bridge
 loaded the earlier revision-14 candidate ZIP. This does not prove published stable HACS delivery,
 managed-baseline update notification or the older-version cached-metadata edge.
 The minimal fixture exposed an optional-reference generated-card defect, corrected
-in the revision-16 source. Its new package validation remains distinct from these
+in the revision-16 source. The corrected final package validation remains distinct from these
 earlier installer passes.
 Retain the actual-installer requirement above; metadata checks and source
 harnesses cannot fill an untested route.

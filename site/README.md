@@ -2,8 +2,7 @@
 
 The landing page mirrors tracked product and release claims; the repository and
 Wiki own setup, compatibility and operational detail. V2.1.2 has a text section directly below the established hero, **Home Assistant 2026.11 Harmonization**, with Marketplace delivery,
-air-quality units, update status and revision-16 card upgrade guidance. Published
-Stable remains v2.1.1 during preparation; update that status only after publication.
+air-quality units, update status and revision-16 card upgrade guidance. V2.1.2 is the current published Stable release, dated 8 November 2026.
 
 The product hero uses the same image as the issue welcome message:
 `assets/first-interaction-welcome.png`, behind the Humidity Intelligence wording.
@@ -15,27 +14,19 @@ A compact linked history connects 2.1.0, 2.1.1 and
 the #145 reporters without implying they tested the fix.
 
 The main-only Pages workflow includes the V2.1, v2.1.1 and v2.1.2 artwork.
-The release block keeps v2.1.1 as Published Stable and points to the current
-validation record. The earlier `0d99f598` revision-16 package passed minimal-instance
-and Stable acceptance, with 13 passes, 3 explained warnings and no failures on
-Stable. The later CO-unit Repairs and calculated-slope correction changes package
-bytes. The earlier `cc709769` package completed its own Stable acceptance with
-13 passes, 3 explained warnings and no failures; both saved V2 cards were verified
-at revision 16 in browser checks. Final published Marketplace delivery remains
-separate. The maintainer approved the corrected website; this follow-up
-leaves its rendered source unchanged. Approval does not claim Pages deployment.
-The four PR #147 runtime/configuration corrections change the package again;
-the corrected `d6174038` package completed isolated Lab setup and its own Stable
-acceptance on 8 November: 13 passes, 3 explained warnings and no failures on Stable,
-with both existing revision-16 cards verified in the browser. Earlier results retain
-their own package scope. The approved hero and release summary remain unchanged.
-Installer coverage stays in the release notes.
-The later PR #148 flash-restoration correction changes the package again; its
-offline cancellation tests do not extend the earlier live acceptance to those bytes.
-Prepared-release links point to the canonical `senyo888-patch-1` records so review
-links resolve before promotion. At publication, switch preparation status and links
-to the verified immutable release. Users check the offered Marketplace/HACS version
-and loaded Home Assistant identity separately.
+The release block identifies v2.1.2 as current Stable and links to its published
+release. Its tag resolves to `7b578f5`; the 80-file install ZIP matches the accepted
+`9f52a22` component. Manual Stable acceptance recorded 13 passes, 3 explained
+warnings and no failures; both saved V2 layouts were verified at revision 16.
+The draft asset and subsequent public download were verified against the exact tag.
+Final stable Marketplace discovery and installation remain separate checks;
+earlier beta and candidate installer results retain their exact package scope.
+See the canonical release record for complete validation and upgrade guidance.
+
+The approved product hero, Stability artwork and controls are preserved. Pages
+publishes website changes only after they reach main; branch preparation and preview
+are not deployment evidence. Users check the offered Marketplace/HACS version and
+loaded Home Assistant identity separately.
 
 The page uses static HTML and CSS, system fonts, locally packaged images and
 native disclosures. It requires no JavaScript, third-party widget, analytics or

@@ -113,8 +113,8 @@ smaller Marketplace downloads, consistent air-quality units and clearer update
 status. The component-only ZIP addresses the installation failure reported in
 [#145](https://github.com/senyo888/humidity-intelligence/issues/145); Marketplace
 and legacy HACS observations remain separate from loaded code and card compatibility.
-See the [release notes and upgrade guide](docs/releases/v2.1.2.md). V2.1.2 remains
-in preparation; the published Stable is v2.1.1.
+See the [release notes and upgrade guide](docs/releases/v2.1.2.md). **V2.1.2 is
+the current Stable release**, published 8 November 2026.
 
 ---
 
@@ -507,7 +507,7 @@ must be reviewable from tracked repository files.
 ## Current Release Highlights
 
 **[v2.1.2 — Home Assistant 2026.11 Harmonization](docs/releases/v2.1.2.md)** is the
-current release preparation. It combines component-only Marketplace/HACS delivery,
+current Stable release, published 8 November 2026. It combines component-only Marketplace/HACS delivery,
 canonical air-quality units, complete-evidence CO clearance, preserved gate/slope
 settings and clearer update observations.
 
@@ -520,9 +520,8 @@ in-memory Stability history.
 
 The [release record](docs/releases/v2.1.2.md#validation-and-publication-status)
 records exact package validation and the required optional-reference generator
-correction. Published Stable remains
-[v2.1.1](#v211-current-stable). Its single-level dashboards, explained updates and
-reporting improvements continue in v2.1.2, alongside Stability Score.
+correction. The single-level dashboards, explained updates and reporting
+improvements from v2.1.1 continue in v2.1.2, alongside Stability Score.
 
 ---
 
@@ -532,12 +531,11 @@ reporting improvements continue in v2.1.2, alongside Stability Score.
 
 Requires Home Assistant **2026.5.1** or newer.
 
-Until **v2.1.2 Stable is published**, the default release is v2.1.1, whose archive
-exceeds Marketplace's download limit. For Stable, use the complete component from
-the [v2.1.1 tag](https://github.com/senyo888/humidity-intelligence/tree/v2.1.1/custom_components/humidity_intelligence)
-and follow [Option B](#option-b---manual-package-upgrade). For testing, explicitly
-select [v2.1.2-beta.1](https://github.com/senyo888/humidity-intelligence/releases/tag/v2.1.2-beta.1)
-before installing; it provides the smaller install ZIP.
+**[v2.1.2 is the current Stable release](https://github.com/senyo888/humidity-intelligence/releases/tag/v2.1.2)**,
+with a smaller integration-only ZIP. Select **v2.1.2** when your package manager
+offers it. Earlier versions retain their download limitations; see
+[exact-tag recovery](docs/release-packaging.md#earlier-versions-and-current-evidence-limits)
+if you need an older package.
 
 On **2026.11+**, open **Settings → Marketplace**, find **Humidity Intelligence**,
 select the intended available version, then **Install**. A fresh installation can
@@ -823,7 +821,11 @@ CO emergency pressure. Details are in
 
 ## Release Notes
 
-### v2.1.2 (Stable source preparation)
+<a id="v212-stable-source-preparation"></a>
+
+### v2.1.2 (Current Stable)
+
+**Current Stable: v2.1.2** — published 8 November 2026.
 
 ![Humidity Intelligence v2.1.2 — Home Assistant 2026.11 Harmonization](assets/release_banner/v2.1.2_release.png)
 
@@ -833,18 +835,25 @@ status. It also corrects optional generated-card references so unconfigured sour
 cannot bind unrelated legacy entities. Both V2 layouts advance to **revision 16**;
 refresh/export and replace complete saved cards, including beta.1 revision-14 cards.
 [Validation and upgrade details](docs/releases/v2.1.2.md) distinguish the changed
-package from earlier installer and Stable-instance evidence. Published Stable
-remains v2.1.1 pending promotion and publication.
+package from earlier installer and Stable-instance evidence.
+[Release and downloads](https://github.com/senyo888/humidity-intelligence/releases/tag/v2.1.2).
 
 Thanks to [@Slaybcn](https://github.com/Slaybcn) for the report and logs, and
 [@Thorsten1982](https://github.com/Thorsten1982) for confirming the Marketplace
 installation problem in [#145](https://github.com/senyo888/humidity-intelligence/issues/145).
 
+<!-- Current Stable is expanded. Earlier releases and candidates remain
+under Previous Releases; CHANGELOG.md retains the complete detailed history. -->
+<details>
+<summary>Previous Releases</summary>
+
 <a id="v211-stable-source-preparation"></a>
 
-### v2.1.1 (Current Stable)
+<a id="v211-current-stable"></a>
 
-**Current Stable: v2.1.1** — published 24 October 2026.
+### v2.1.1 (Previous Stable)
+
+**Previous Stable: v2.1.1** — published 24 October 2026.
 
 ![Humidity Intelligence v2.1.1 — single-level cards and clearer update status](assets/release_banner/v2.1.1_release.png)
 
@@ -865,11 +874,6 @@ identity. [Complete notes](docs/releases/v2.1.1.md) cover
 [upgrade/rollback](docs/release-governance.md#v211-stable-source-preparation).
 [Release and downloads](https://github.com/senyo888/humidity-intelligence/releases/tag/v2.1.1) ·
 24 October 2026. HACS refresh and loaded package identity remain separate checks.
-
-<!-- Current Stable is expanded. Earlier releases and candidates remain
-under Previous Releases; CHANGELOG.md retains the complete detailed history. -->
-<details>
-<summary>Previous Releases</summary>
 
 ### v2.1.2-beta.1 (Beta prerelease)
 
@@ -974,7 +978,7 @@ This candidate was not published as a beta or made available through HACS.
 
 Earlier candidate entries retain their original preparation and validation scope.
 References to the published Stable at those checkpoints are historical; see
-[v2.1.1](#v211-current-stable) for the current Stable release.
+[v2.1.2](#v212-current-stable) for the current Stable release.
 
 <a id="v2012-maintenance-candidate-not-published"></a>
 

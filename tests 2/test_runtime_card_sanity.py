@@ -3922,7 +3922,9 @@ def test_readme_keeps_current_stable_visible_with_older_releases_collapsed():
     release_notes = readme_source.split("## Release Notes", 1)[1]
     visible_notes, previous_releases = release_notes.split("<details>", 1)
 
-    assert "### v2.1.1 (Current Stable)" in visible_notes
+    assert "### v2.1.2 (Current Stable)" in visible_notes
+    assert "### v2.1.1" not in visible_notes
+    assert "### v2.1.1 (Previous Stable)" in previous_releases
     assert "### v2.1.0" not in visible_notes
     assert "### v2.1.0 — Stability Score (published 12 October 2026)" in previous_releases
     assert "### v2.1.1-rc.1" in previous_releases
@@ -3979,14 +3981,18 @@ def test_v21_publication_preserves_stable_and_candidate_history():
     notes = readme.split("## Release Notes", 1)[1].split("<details>", 1)[0]
     changelog = (ROOT / "CHANGELOG.md").read_text()
     governance = (ROOT / "docs/release-governance.md").read_text()
-    assert "**Current Stable: v2.1.1**" in readme
+    assert "**Current Stable: v2.1.2**" in readme
+    assert "published 8 November 2026" in notes
+    assert "releases/tag/v2.1.2" in notes
     assert "published 24 October 2026" in readme
     assert "releases/tag/v2.1.1" in readme
     assert "published 12 October 2026" in readme
     assert "releases/tag/v2.1.0" in readme
     assert "publication pending" not in notes
-    assert "### v2.1.1 (Current Stable)" in notes
+    assert "### v2.1.2 (Current Stable)" in notes
+    assert "### v2.1.1" not in notes
     assert "### v2.1.0" not in notes
+    assert "## v2.1.2 — Stable (2026-11-08)" in changelog
     assert "## v2.1.0 — Published Stable (2026-10-12)" in changelog
     assert "6da820967173d3d29910c909a3a2a688965aa3ac" in changelog
     assert "## v2.1.0-rc.1 — Earlier unpublished release candidate" in changelog
@@ -4010,8 +4016,9 @@ def test_v21_publication_preserves_stable_and_candidate_history():
     assert "`refresh_ui`" in highlights and "`view_cards`" in highlights and "`dump_cards`" in highlights
     assert "revision 16" in highlights and "superseding 1–15" in highlights
     assert "beta.1 revision-14 cards or earlier" in highlights
-    stable_notes = notes.split("### v2.1.1 (Current Stable)", 1)[1]
-    assert "Revision **13**" in stable_notes and "compatible with beta.4/RC.1" in stable_notes
+    assert "**revision 16**" in notes
+    stable_history = previous.split("### v2.1.1 (Previous Stable)", 1)[1].split("### ", 1)[0]
+    assert "Revision **13**" in stable_history and "compatible with beta.4/RC.1" in stable_history
     assert "revision-9 cards remain compatible" in previous
     assert 'id="v210-current-published-stable"' in previous
 
