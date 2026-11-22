@@ -16,6 +16,7 @@ Humidity Intelligence is a deterministic Home Assistant environmental control en
 - If architecture, runtime behavior, security posture, release flow, contributor expectations, or documentation expectations materially change, update the relevant tracked public docs in the same work.
 - Ignored local docs may be mirrored separately, but must not be required for public contributor correctness.
 - Maintainers may keep local-only instructions in `AGENTS.local.md`. That file is intentionally ignored and must not be required for public contributors or public repo correctness.
+- When present, read `AGENTS.local.md` before non-trivial maintainer work. It supplements this tracked guide; absence must not block public contributor work.
 
 ## Repository Workspace Boundary
 
@@ -73,6 +74,20 @@ Humidity Intelligence is a deterministic Home Assistant environmental control en
 - Keep branding assets, README expectations, HACS metadata, and release notes aligned with the actual package layout.
 - Do not add hard dependencies on optional frontend cards.
 
+## Implementation Ownership And Review
+
+- Assign one implementation owner for the scoped patch, tests, documentation and
+  completion evidence. Preserve concurrent work; do not create competing writers.
+- Use a separate context for required independent review. An author cannot supply the
+  sole independent review of their own patch. Routine wording work needs a focused
+  documentation check, not a standing multi-agent ceremony.
+- Bella reviews coherence; Aetherwing reviews runtime, compatibility, privacy and
+  rollback; Aetherbite explores bounded alternatives. Roles grant no authority by
+  themselves. Aetherwing can implement an explicitly assigned correction within the
+  user's existing scope, with independent review of its authored change.
+- AetherCore remains explicit-invocation only and advisory. Existing release gates
+  remain unchanged; ordinary development does not automatically invoke it.
+
 ## Validation Expectations
 
 - Run validation appropriate to the changed scope.
@@ -81,6 +96,22 @@ Humidity Intelligence is a deterministic Home Assistant environmental control en
 - For docs-only changes, perform a documentation sanity pass: check filenames, source-of-truth references, public-safety, and consistency with current repository structure.
 - Review for stale imports, stale mappings, stale docs, outdated service names, and drift from `ARCHITECTURE.md` plus other tracked public docs.
 - Do not claim validation was completed if it was not run.
+
+Choose validation by affected behaviour; record the checks actually run and any gaps:
+
+| Change | Applicable validation |
+| --- | --- |
+| Instructions or documentation | Source pointers, links, privacy and consistency with the owning contract |
+| Isolated Python logic | Focused regression tests, failure boundaries and compile/import sanity |
+| Configuration, options or service contracts | Relevant integration/contract tests, invalid and unavailable inputs, compatibility |
+| Generated cards or frontend flows | Generated YAML, backend truth, affected browser flows, layouts and cache/export behaviour |
+| Runtime or control behaviour | Deterministic priority, gates, degraded inputs and regression checks; loaded-runtime/physical evidence stays distinct |
+| Release or packaging | The exact checks and approvals in `docs/release-governance.md` |
+
+Use end-to-end tests for affected user flows and integration boundaries. Do not impose
+an unrelated end-to-end suite on every isolated logic or documentation change. Required
+checks must pass; unavailable coverage must be reported and cannot be treated as success.
+
 
 ## HA Lab Operational Validation Boundary
 
