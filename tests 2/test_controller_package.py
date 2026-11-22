@@ -43,9 +43,12 @@ class ControllerPackageTests(unittest.TestCase):
             self.assertEqual("hi-package-public-v20-conventional-1", BUILDER._contract_for_version(version))
         for version in ("2.1.0-beta.1", "2.1.0-rc.1", "2.1.0", "2.1.1-beta.1", "2.1.1-beta.2", "2.1.1-beta.3", "2.1.1-beta.4", "2.1.1-rc.1", "2.1.1"):
             self.assertEqual("hi-package-public-v21-conventional-1", BUILDER._contract_for_version(version))
-        for version in ("2.1.2-beta.1", "2.1.2-rc.1", "2.1.2"):
+        for version in ("2.1.2-beta.1", "2.1.2-rc.1", "2.1.2", "2.1.3-beta.1"):
             self.assertEqual("hi-package-public-v21-conventional-1", BUILDER._contract_for_version(version))
-        for version in ("2.1.3", "2.2.0", "3.0.0", "2.1.0-beta.0", "2.1.0-alpha.1", "2.1.0-beta.01"):
+        for version in (
+            "2.1.3-beta.01", "2.1.3-beta.1+build", "2.1.3-beta.2", "2.1.3-rc.1", "2.1.3",
+            "2.2.0", "3.0.0", "2.1.0-beta.0", "2.1.0-alpha.1", "2.1.0-beta.01",
+        ):
             with self.subTest(version=version), self.assertRaises(BUILDER.PackageBuildError):
                 BUILDER._contract_for_version(version)
 
