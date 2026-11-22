@@ -76,7 +76,8 @@ def _output_details_block(source: str) -> str:
 def _v2_reason_block(source: str) -> str:
     start = source.index("        reason: |\n")
     end = source.index("        aq: |\n", start)
-    return source[start:end]
+    presenter = source.index("        hi_reason_html: &hi_reason_html |")
+    return source[presenter:source.index("        hi_summary: |", presenter)] + source[start:end]
 
 
 def _strip_allowed_output_expander_toggle(source: str) -> str:
@@ -3519,9 +3520,7 @@ def test_v2_reason_panels_use_backend_schema_with_atomic_escaped_fallback():
         for marker in forbidden:
             assert marker not in block, (path.relative_to(ROOT), marker)
         assert block.count("states[") == 1
-        assert block.index("reasonState?.attributes?.full_reason") < block.index(
-            "reasonState?.state"
-        )
+        assert block.index("reasonState?.state") < block.index("reasonState?.attributes?.full_reason")
         assert "max-height: 60px" in source
         assert "overflow-y: auto" in source
         assert ".cv-reason:focus-visible" in source
@@ -5377,9 +5376,9 @@ def test_generated_v2_cards_escape_dynamic_html_text():
         assert "const escapeHtml = " in source, path
         assert "escapeHtml(displayReason.headline)" in source, path
         assert "displayReason.lines.map((line) => escapeHtml(line.text))" in source, path
-        assert "wrapReason(escapeHtml(legacyReason()))" in source, path
+        assert "return escapeHtml(legacyReason())" in source, path
         assert "${escapeHtml(k)}" in source, path
-        assert "${escapeHtml(v === null ? '—' : `${v}${unit || ''}`)}" in source, path
+        assert "${esc(label)}</span> <span class=\"v\">${esc(value)}" in source, path
 
 
 def test_diagnostics_summary_surfaces_temperature_comfort_warm_boundary():
@@ -5857,7 +5856,7 @@ def test_v205_release_check_service_is_documented_and_registered():
     assert "wiki/Services-Reference" in readme_source
     assert "wiki/Release-Validation-for-Users" in readme_source
     assert "humidity_intelligence_v205_release_check.json" in services_yaml
-    assert manifest["version"] == "2.1.2"
+    assert manifest["version"] == "2.1.3-beta.1"
 
 
 def test_owned_ui_path_discovery_and_legacy_cleanup_guidance_is_explicit():
@@ -7130,7 +7129,8 @@ def test_generated_v1_cards_escape_dynamic_html_text():
 
 def test_release_check_rejects_unsupported_or_malformed_v21_versions():
     services = _load_services_module()
-    for version in ("2.1.3-beta.1", "2.2.0-beta.1", "2.1.2-beta.0",
+    assert services._release_check_manifest_status("2.1.3-beta.1")[0] == "pass"
+    for version in ("2.1.3-beta.2", "2.2.0-beta.1", "2.1.2-beta.0",
                     "2.1.0-beta.01", "2.1.0-alpha.1", "2.1.0-beta.1extra"):
         status, _ = services._release_check_manifest_status(version)
         assert status == "fail", version

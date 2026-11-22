@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import logging
+import re
 from copy import deepcopy
+from uuid import uuid4
 from typing import Any, Dict, List, Optional, Tuple
 
 import voluptuous as vol
@@ -18,6 +20,7 @@ from homeassistant.helpers import selector
 from homeassistant.helpers.selector import SelectOptionDict
 
 from .adaptive_output.options import OutputObservationOptionsMixin
+from .helpers.voc_index import provider_identity, same_provider
 from .helpers.slope_mapping import bindings_for_save
 from .helpers.frontend_dependencies import async_render_dependency_status
 from .helpers.level_labels import (
@@ -244,7 +247,107 @@ def _configured_zone_items(zones: Dict[str, Any]) -> List[Tuple[str, Dict[str, A
     return configured
 
 
-class HumidityIntelligenceConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
+VOC_INDEX_CHOICE = {"value": "voc_index", "label": "VOC index (display only)"}
+
+
+class VocIndexEditor:
+    """Manage opt-in display sources independently of control telemetry."""
+
+    _index_key: str | None = None
+    _index_defaults: dict | None = None
+
+    def _index_context(self):
+        raise NotImplementedError
+
+    def _uses_index_provider(self, entity_id: str) -> bool:
+        """Exclude the same provider from control telemetry, including a verified rename."""
+        rows = self._index_context()[0].get("voc_index_sources", [])
+        if any(row.get("entity_id") == entity_id for row in rows):
+            return True
+        if not any("provider_identity" in row for row in rows):
+            return False
+        from homeassistant.helpers import entity_registry as er
+
+        provider = er.async_get(self.hass).async_get(entity_id)
+        return any(same_provider(row, provider) for row in rows)
+
+    async def async_step_voc_index(self, user_input=None):
+        config, _, back = self._index_context()
+        rows = config.get("voc_index_sources", [])
+        if user_input:
+            choice = user_input["source"]
+            if choice == "done":
+                return await back()
+            if choice == "add" or any(row["source_key"] == choice for row in rows):
+                self._index_key = None if choice == "add" else choice
+                self._index_defaults = None
+                return await self.async_step_voc_index_edit()
+        choices = [{"value": row["source_key"], "label": row["label"]} for row in rows]
+        choices.extend([{"value": "add", "label": "Add a source"}, {"value": "done", "label": "Done"}])
+        return self.async_show_form(step_id="voc_index", data_schema=vol.Schema({
+            vol.Required("source"): selector.SelectSelector(selector.SelectSelectorConfig(options=choices)),
+        }))
+
+    async def async_step_voc_index_edit(self, user_input=None):
+        config, target, _ = self._index_context()
+        rows = list(config.get("voc_index_sources", []))
+        current = next((row for row in rows if row["source_key"] == self._index_key), None)
+        if self._index_key and current is None:
+            return await self.async_step_voc_index()
+        errors = {}
+        if user_input:
+            action = user_input.get("action", "save")
+            if action == "cancel":
+                return await self.async_step_voc_index()
+            others = [row for row in rows if row is not current]
+            if action == "delete" and current:
+                target["voc_index_sources"] = others
+                return await self.async_step_voc_index()
+            entity_id = _sanitize_optional_entity_id(user_input.get("entity_id"))
+            label = str(user_input.get("label") or "").strip()
+            if not entity_id or not re.fullmatch(r"sensor\.[a-z0-9_]+", entity_id):
+                errors["entity_id"] = "required"
+            elif any(row.get("entity_id") == entity_id for row in [*config.get("telemetry", []), *others]):
+                errors["entity_id"] = "duplicate_entity"
+            else:
+                from homeassistant.helpers import entity_registry as er
+                provider = er.async_get(self.hass).async_get(entity_id)
+                if provider and provider.platform == DOMAIN:
+                    errors["entity_id"] = "voc_index_provider"
+                elif any(same_provider(row, provider) for row in others):
+                    errors["entity_id"] = "duplicate_entity"
+            if not label or len(label) > 80 or not label.isprintable():
+                errors["label"] = "voc_index_label"
+            elif any(row["label"].casefold() == label.casefold() for row in others):
+                errors["label"] = "voc_index_label"
+            if not errors:
+                if current and (current["entity_id"] == entity_id or same_provider(current, provider)):
+                    # A label-only edit never adopts another provider reusing the old ID.
+                    record = {**current, "entity_id": entity_id, "label": label}
+                else:
+                    key = str(uuid4())
+                    record = {"source_key": key, "entity_id": entity_id, "label": label}
+                    if proof := provider_identity(key, provider):
+                        record["provider_identity"] = proof
+                if current:
+                    rows[rows.index(current)] = record
+                else:
+                    rows.append(record)
+                target["voc_index_sources"] = rows
+                return await self.async_step_voc_index()
+
+        defaults = user_input or current or self._index_defaults or {}
+        actions = ["save", "delete", "cancel"] if current else ["save", "cancel"]
+        return self.async_show_form(step_id="voc_index_edit", errors=errors, data_schema=vol.Schema({
+            _optional_entity_selector_key("entity_id", defaults.get("entity_id")): selector.EntitySelector(
+                selector.EntitySelectorConfig(domain="sensor", multiple=False)),
+            vol.Optional("label", default=defaults.get("label", "")): str,
+            vol.Required("action", default="save"): selector.SelectSelector(
+                selector.SelectSelectorConfig(options=[{"value": a, "label": a.title()} for a in actions])),
+        }))
+
+
+class HumidityIntelligenceConfigFlow(VocIndexEditor, config_entries.ConfigFlow, domain=DOMAIN):
     """Handle a config flow for Humidity Intelligence."""
 
     VERSION = 1
@@ -518,10 +621,15 @@ class HumidityIntelligenceConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         schema = _presence_states_schema(options, self._data.get("presence_gate", {}), require_review=True)
         return self.async_show_form(step_id="presence_states", data_schema=schema)
 
+    def _index_context(self):
+        return self._data, self._data, self.async_step_telemetry
+
     async def async_step_telemetry(self, user_input: Optional[Dict[str, Any]] = None):
         """Menu for telemetry sensors."""
         if user_input is not None:
             action = user_input.get("action")
+            if action == "voc_index":
+                return await self.async_step_voc_index()
             if action == "add":
                 return await self.async_step_telemetry_add()
             if action == "manage":
@@ -534,6 +642,7 @@ class HumidityIntelligenceConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         options = [
             SelectOptionDict(value="add", label="Add sensor"),
         ]
+        options.append(SelectOptionDict(value="voc_index", label="VOC index (display only)"))
         if self._telemetry:
             options.append(SelectOptionDict(value="manage", label="Manage sensors"))
             options.append(SelectOptionDict(value="done", label="Continue"))
@@ -568,8 +677,14 @@ class HumidityIntelligenceConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             entity_id = _sanitize_optional_entity_id(user_input.get("entity_id"))
             if preview_only:
                 pass
+            elif user_input.get("sensor_type") == "voc_index":
+                self._index_key = None
+                self._index_defaults = {"entity_id": entity_id, "label": user_input.get("room", "")}
+                return await self.async_step_voc_index_edit()
             elif not entity_id:
                 errors["entity_id"] = "required"
+            elif self._uses_index_provider(entity_id):
+                errors["entity_id"] = "duplicate_entity"
             elif any(t.get("entity_id") == entity_id for t in self._telemetry):
                 errors["entity_id"] = "duplicate_entity"
             else:
@@ -603,7 +718,7 @@ class HumidityIntelligenceConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             ),
             vol.Optional("sensor_type", default=SENSOR_TYPES[0]["value"]): selector.SelectSelector(
                 selector.SelectSelectorConfig(
-                    options=_value_label_options(SENSOR_TYPES),
+                    options=_value_label_options(SENSOR_TYPES + [VOC_INDEX_CHOICE]),
                     mode=selector.SelectSelectorMode.DROPDOWN,
                 )
             ),
@@ -749,7 +864,9 @@ class HumidityIntelligenceConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             entity_id = _sanitize_optional_entity_id(user_input.get("entity_id"))
             if not entity_id:
                 errors["entity_id"] = "required"
-            elif any(i != index and t.get("entity_id") == entity_id for i, t in enumerate(self._telemetry)):
+            elif self._uses_index_provider(entity_id) or any(
+                i != index and t.get("entity_id") == entity_id for i, t in enumerate(self._telemetry)
+            ):
                 errors["entity_id"] = "duplicate_entity"
             else:
                 area_name = _telemetry_display_value(
@@ -1550,7 +1667,7 @@ class HumidityIntelligenceConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         )
 
 
-class HumidityIntelligenceOptionsFlow(OutputObservationOptionsMixin, config_entries.OptionsFlow):
+class HumidityIntelligenceOptionsFlow(VocIndexEditor, OutputObservationOptionsMixin, config_entries.OptionsFlow):
     """Options flow for Humidity Intelligence."""
 
     def __init__(self, entry: config_entries.ConfigEntry) -> None:
@@ -2106,6 +2223,9 @@ class HumidityIntelligenceOptionsFlow(OutputObservationOptionsMixin, config_entr
         """Alias step for clearer top-level label in Options menu."""
         return await self.async_step_options_telemetry(user_input)
 
+    def _index_context(self):
+        return self._effective_config(), self._options, self.async_step_options_telemetry
+
     async def async_step_options_telemetry(self, user_input: Optional[Dict[str, Any]] = None):
         """Manage telemetry sensors in post-configuration options."""
         telemetry = list(self._section("telemetry", []))
@@ -2113,12 +2233,15 @@ class HumidityIntelligenceOptionsFlow(OutputObservationOptionsMixin, config_entr
             action = user_input.get("action", "done")
             if action == "done":
                 return await self.async_step_init()
+            if action == "voc_index":
+                return await self.async_step_voc_index()
             if action == "add":
                 return await self.async_step_options_telemetry_add()
             if action == "manage":
                 return await self.async_step_options_telemetry_manage()
 
         options = [SelectOptionDict(value="add", label="Add sensor")]
+        options.append(SelectOptionDict(value="voc_index", label="VOC index (display only)"))
         if telemetry:
             options.append(SelectOptionDict(value="manage", label="Edit or delete sensor"))
         options.append(SelectOptionDict(value="done", label="Done"))
@@ -2151,8 +2274,14 @@ class HumidityIntelligenceOptionsFlow(OutputObservationOptionsMixin, config_entr
             entity_id = _sanitize_optional_entity_id(user_input.get("entity_id"))
             if preview_only:
                 pass
+            elif user_input.get("sensor_type") == "voc_index":
+                self._index_key = None
+                self._index_defaults = {"entity_id": entity_id, "label": user_input.get("room", "")}
+                return await self.async_step_voc_index_edit()
             elif not entity_id:
                 errors["entity_id"] = "required"
+            elif self._uses_index_provider(entity_id):
+                errors["entity_id"] = "duplicate_entity"
             elif any(item.get("entity_id") == entity_id for item in telemetry):
                 errors["entity_id"] = "duplicate_entity"
             else:
@@ -2192,7 +2321,7 @@ class HumidityIntelligenceOptionsFlow(OutputObservationOptionsMixin, config_entr
             ),
             vol.Optional("sensor_type", default=SENSOR_TYPES[0]["value"]): selector.SelectSelector(
                 selector.SelectSelectorConfig(
-                    options=[SelectOptionDict(value=o["value"], label=o["label"]) for o in SENSOR_TYPES],
+                    options=[SelectOptionDict(value=o["value"], label=o["label"]) for o in SENSOR_TYPES + [VOC_INDEX_CHOICE]],
                     mode=selector.SelectSelectorMode.DROPDOWN,
                 )
             ),
@@ -2295,7 +2424,10 @@ class HumidityIntelligenceOptionsFlow(OutputObservationOptionsMixin, config_entr
                 return await self._async_show_options_cancel_confirm("options_telemetry_edit", user_input)
 
             selected_entity = _sanitize_optional_entity_id(user_input.get("entity_id"))
-            if selected_entity and any(i != idx and item.get("entity_id") == selected_entity for i, item in enumerate(telemetry)):
+            if selected_entity and (
+                self._uses_index_provider(selected_entity)
+                or any(i != idx and item.get("entity_id") == selected_entity for i, item in enumerate(telemetry))
+            ):
                 errors["entity_id"] = "duplicate_entity"
             else:
                 saved_entity_id = selected_entity or _sanitize_optional_entity_id(current.get("entity_id"))

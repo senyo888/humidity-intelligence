@@ -167,6 +167,14 @@
         "status": "unverified"
       },
       "visual_alert_count": 1,
+      "voc_index_sources": {
+        "available": 0,
+        "configured": 0,
+        "invalid": 0,
+        "unavailable": 0,
+        "unknown": 0,
+        "unsupported_unit": 0
+      },
       "warnings": [
         "AQ input evidence is incomplete: check source units, availability and numeric readings. Invalid CO evidence cannot clear an active emergency.",
         "16 configured/mapped entity references are missing, unknown, or unavailable.",

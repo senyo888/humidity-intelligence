@@ -46,7 +46,13 @@ function statusBody(relativePath) {
 }
 
 const BODIES = SURFACES.map(reasonBody);
-const RENDERERS = BODIES.map((body) => new Function('states', body));
+const RENDERERS = SURFACES.map((file, index) => {
+  const source = fs.readFileSync(path.join(ROOT, file), 'utf8');
+  const start = source.indexOf('[[[', source.indexOf('hi_reason_html: &hi_reason_html |')) + 3;
+  const present = new Function('states', source.slice(start, source.indexOf(']]]', start)));
+  const render = new Function('variables', BODIES[index]);
+  return states => render({hi_reason_html: present(states)});
+});
 const STATUS_BODIES = SURFACES.map(statusBody);
 const STATUS_RENDERERS = STATUS_BODIES.map((body) => new Function('states', body));
 
@@ -349,8 +355,9 @@ test('legacy fallback is escaped and follows full_reason then state then fixed t
   assert.doesNotMatch(output, /<b>/);
 
   for (const state of ['', 'unknown', 'unavailable']) {
-    output = assertIdentical(renderAll(OMIT, { fullReason: '', state }));
-    assert.match(output, /Reason unavailable\./);
+    output = assertIdentical(renderAll(OMIT, { fullReason: 'retained healthy text', state }));
+    assert.match(output, state === 'unknown' ? /Reason unknown\./ : /Reason unavailable\./);
+    assert.doesNotMatch(output, /retained healthy/);
   }
 });
 

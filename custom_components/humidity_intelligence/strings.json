@@ -411,6 +411,22 @@
         "data": {
           "ui_layouts": "UI layouts to export"
         }
+      },
+      "voc_index": {
+        "title": "VOC index (display only)",
+        "description": "Choose a provider source to edit, or add a new source. Each index is displayed separately.",
+        "data": {
+          "source": "Index source"
+        }
+      },
+      "voc_index_edit": {
+        "title": "VOC index source",
+        "description": "Choose an index sensor and a distinct display label. Reselect a renamed provider to keep its verified identity. Selecting a different provider creates a new binding.",
+        "data": {
+          "entity_id": "Provider index sensor",
+          "label": "Display label",
+          "action": "Action"
+        }
       }
     },
     "error": {
@@ -421,7 +437,9 @@
       "room_unknown": "Selected room is not in configured telemetry.",
       "room_missing_humidity": "Selected room has no humidity telemetry for room-scoped humidity danger.",
       "room_missing_temp_humidity": "Selected room needs both humidity and temperature telemetry for this room-scoped trigger.",
-      "ambiguous_slope_mapping": "Cannot uniquely pair every temperature source with a slope sensor. Use matching room names, or select one source and one slope sensor. Existing saved pairs are retained."
+      "ambiguous_slope_mapping": "Cannot uniquely pair every temperature source with a slope sensor. Use matching room names, or select one source and one slope sensor. Existing saved pairs are retained.",
+      "voc_index_provider": "Choose an external provider index sensor.",
+      "voc_index_label": "Enter a distinct display label of 1–80 printable characters."
     },
     "abort": {
       "user_cancelled": "Setup closed without saving."
@@ -881,6 +899,22 @@
           "replacement": "How to handle existing rules",
           "cancel": "Return without changing"
         }
+      },
+      "voc_index": {
+        "title": "VOC index (display only)",
+        "description": "Choose a provider source to edit, or add a new source. Each index is displayed separately.",
+        "data": {
+          "source": "Index source"
+        }
+      },
+      "voc_index_edit": {
+        "title": "VOC index source",
+        "description": "Choose an index sensor and a distinct display label. Reselect a renamed provider to keep its verified identity. Selecting a different provider creates a new binding.",
+        "data": {
+          "entity_id": "Provider index sensor",
+          "label": "Display label",
+          "action": "Action"
+        }
       }
     },
     "error": {
@@ -906,7 +940,9 @@
       "meaning_in_use": "This meaning is used by saved rules. Choose a replacement or explicitly remove those rules.",
       "invalid_replacement": "Choose a different saved meaning or a standard classification as the replacement.",
       "invalid_instructions": "Use at most 240 characters of plain text. Line breaks are allowed; other control characters are not.",
-      "ambiguous_slope_mapping": "Cannot uniquely pair every temperature source with a slope sensor. Use matching room names, or select one source and one slope sensor. Existing saved pairs are retained."
+      "ambiguous_slope_mapping": "Cannot uniquely pair every temperature source with a slope sensor. Use matching room names, or select one source and one slope sensor. Existing saved pairs are retained.",
+      "voc_index_provider": "Choose an external provider index sensor.",
+      "voc_index_label": "Enter a distinct display label of 1–80 printable characters."
     },
     "abort": {
       "user_cancelled": "Options closed without saving."

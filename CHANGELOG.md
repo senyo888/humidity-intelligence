@@ -6,6 +6,17 @@ All notable changes to Humidity Intelligence will be documented in this file.
 
 This project follows a practical changelog format for Home Assistant and HACS users. Add new entries under a fresh `Unreleased` section before publishing a future release.
 
+## Unreleased — v2.1.3-beta.1
+
+- Use a fixed mode palette in V2 history ribbons and legends. Preserve aliases and recorded unavailable states.
+- Use owning units and neutral AQ values. Show configured missing measurements by entry and level.
+- Share the current mode and validated reason presentation across V2 summaries. Guard retained risk and reason attributes in current details and recorded reason samples.
+- Match Tablet Risk icons to the red borders, tighten revision-footer spacing and retain the full focusable target.
+- Keep labelled opening snapshots and inspected history through routine telemetry. Close a dialog when its owner or source binding changes.
+- Add explicit per-source VOC indices with a separate Options collection and read-only sensor. Counts appear in support diagnostics. Concentration thresholds and Stability use their existing inputs.
+
+See the [candidate compatibility and rollback record](docs/releases/v2.1.3-beta.1.md).
+
 <a id="v212--stable-source-preparation"></a>
 
 ## v2.1.2 — Stable (2026-11-08)

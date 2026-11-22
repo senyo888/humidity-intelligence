@@ -464,3 +464,101 @@ def test_successful_unload_releases_custody_after_platforms(monkeypatch):
         assert calls == ['automations', 'platforms', 'observer', 'listener', 'services']
         assert ENTRY_ID not in hass.data['humidity_intelligence']
     asyncio.run(run())
+
+
+def test_voc_index_isolation_with_missing_concentration_and_active_co():
+    from uuid import UUID
+
+    _mod, engine, hass, entry = environment([
+        ("sensor.example_missing_voc", "voc", "unavailable", "ppb"),
+        ("sensor.example_co", "co", "unavailable", "ppm"),
+    ])
+    aq = importlib.import_module(f"{PKG}.helpers.air_quality")
+    index = importlib.import_module(f"{PKG}.helpers.voc_index")
+    core = _load_core_module()._CoreComputations(hass, entry, entry.data["telemetry"])
+    entry.data["aq"] = {"level1": {"enabled": True, "triggers": ["voc_bad", "co_warning"],
+                                  "thresholds": {"voc_bad": 300, "co_warning": 10}}}
+    engine._co_emergency_active = True
+
+    def control_evidence():
+        return (
+            aq.aq_source_summary(hass, entry.data),
+            aq.capture_configured_aq_evidence(hass, entry.data, stability_selection=True),
+            engine._aq_trigger_details("level1", entry.data["aq"]["level1"]),
+            engine._co_emergency_triggered(),
+            core._compute_house_voc_avg(),
+        )
+
+    baseline = control_evidence()
+    assert not baseline[0]["complete"] and baseline[3] and baseline[4][0] is None
+    # Different provider scales are retained individually, including finite zero.
+    section = [
+        {"source_key": str(UUID(int=i + 1)), "entity_id": f"sensor.example_index_{i}", "label": f"Source {i}"}
+        for i in range(2)
+    ]
+    entry.data["voc_index_sources"] = section
+    for source, value, unit in zip(section, (0, 1023), (None, "index")):
+        hass.states._values[source["entity_id"]] = _FakeState(value, {"unit_of_measurement": unit})
+    assert control_evidence() == baseline
+    readings = index.source_readings(hass, index.configured_sources(section))
+    assert [record["value"] for record in readings.values()] == [0, 1023]
+    assert all(record["status"] == "available" for record in readings.values())
+    services = _load_services_module()
+    summary = services._build_diagnostics_summary(hass, entry.data, {}, {}, {})
+    exported = services._support_safe_diagnostics_summary(summary)
+    assert exported["voc_index_sources"] == {
+        "configured": 2, "available": 2, "unknown": 0, "unavailable": 0, "invalid": 0, "unsupported_unit": 0
+    }
+    assert exported["aq_inputs"] == baseline[0]
+    masked = services._build_diagnostics_summary(hass, entry.data, {"voc_index_sources": []}, {}, {})
+    assert masked["voc_index_sources"]["configured"] == 0
+
+
+def test_voc_index_invalid_states_and_units_have_no_reading():
+    environment([])
+    index = importlib.import_module(f"{PKG}.helpers.voc_index")
+    source = {"source_key": "00000000-0000-4000-8000-000000000003", "entity_id": "sensor.example_index", "label": "<Source>"}
+    for raw, unit, status in [
+        ("unavailable", "ppm", "unavailable"), ("unknown", "ppb", "unknown"),
+        ("", None, "invalid"), (False, None, "invalid"), ("inf", None, "invalid"), ("1_0", None, "invalid"),
+        ("nan", "index", "invalid"), ("50", "ppb", "unsupported_unit"), ("0.1", "ppm", "unsupported_unit"),
+    ]:
+        state = SimpleNamespace(state=raw, attributes={"unit_of_measurement": unit})
+        hass = SimpleNamespace(states={source["entity_id"]: state})
+        row = index.source_readings(hass, [source])[source["source_key"]]
+        assert row == {"label": "<Source>", "status": status, "value": None}
+    row = index.source_readings(SimpleNamespace(states={}), [source])[source["source_key"]]
+    assert row == {"label": "<Source>", "status": "unavailable", "value": None}
+
+
+def test_voc_index_does_not_change_control_cycle_or_output_calls():
+    engine_mod, _ = _load_target_modules()
+    display_id = "sensor.example_display_index"
+    row = {"source_key": "00000000-0000-4000-8000-000000000022", "entity_id": display_id, "label": "Index B"}
+
+    async def evaluate(include_index, co_value):
+        config = _base_entry_data()
+        config["zones"] = {}
+        config["humidifiers"] = {}
+        config["alerts"] = []
+        config["aq"]["level1"].update(triggers=["voc_bad"], thresholds={"voc_bad": 50})
+        config["telemetry"].append({"entity_id": "sensor.example_absent_concentration", "sensor_type": "voc",
+                                    "level": "level1", "room": "Example"})
+        options = {"voc_index_sources": [row]} if include_index else {}
+        entry = SimpleNamespace(entry_id=ENTRY_ID, data=config, options=options)
+        states = {item["entity_id"]: _FakeState(50 if item["sensor_type"] == "humidity" else 21)
+                  for item in config["telemetry"] if item["sensor_type"] in {"temperature", "humidity"}}
+        states["sensor.co_val"] = _FakeState(co_value, {"unit_of_measurement": "ppm"})
+        states[display_id] = _FakeState(900)
+        hass = _FakeHass(entry, states)
+        engine = engine_mod.HIAutomationEngine(hass, entry)
+        try:
+            await engine._evaluate()
+            return hass.data["humidity_intelligence"][ENTRY_ID]["runtime_mode"], list(hass.services.calls)
+        finally:
+            await engine.async_stop()
+
+    for co_value, expected_mode in ((0, "normal"), (16, "co_emergency")):
+        baseline = asyncio.run(evaluate(False, co_value))
+        assert baseline[0] == expected_mode
+        assert asyncio.run(evaluate(True, co_value)) == baseline

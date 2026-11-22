@@ -42,7 +42,7 @@ function harness({ supported = true, deferredClose = false, showThrows = false, 
     get innerHTML() { return this._html || ''; }
     set innerHTML(html) {
       this._html = html; this.replaceChildren();
-      for (const name of ['hi-summary-close','hi-summary-history','hi-stability-close','hi-drift-close','hi-drift-history']) if (html.includes(name)) { const button = new Node('button'); button.className = name; this.appendChild(button); }
+      for (const name of ['hi-snapshot-time','hi-summary-close','hi-summary-history','hi-stability-close','hi-drift-close','hi-drift-history']) if (html.includes(name)) { const button = new Node('button'); button.className = name; this.appendChild(button); }
     }
     get isConnected() { return this === document.body || Boolean(this.parentNode?.isConnected); }
     getRootNode() { return this.parentNode ? this.parentNode.getRootNode() : this; }
@@ -56,6 +56,7 @@ function harness({ supported = true, deferredClose = false, showThrows = false, 
     getAttribute(key) { return this.attributes[key] ?? null; }
     hasAttribute(key) { return key in this.attributes; }
     matches(selector) {
+      if (selector === '.hi-snapshot-time') return this.className === 'hi-snapshot-time';
       if (selector.includes('close') || selector.includes('history')) return this.className === selector.replace(/^\./, '');
       if (selector.includes('template')) return this.tagName === 'TEMPLATE' && selector.includes(this.className);
       if (selector.includes('dialog')) return this.tagName === 'DIALOG' && Object.keys(this.attributes).some(key => selector.includes(key));
@@ -87,7 +88,8 @@ function harness({ supported = true, deferredClose = false, showThrows = false, 
     const card = new Node('button-card'); card.shadowRoot = new Node('shadow-root');
     const button = new Node('ha-card'); button.setAttribute('id', 'card'); card.shadowRoot.appendChild(button);
     const template = new Node('template'); template.className = `hi-${kind}-${kind === 'summary' ? '' : 'details-'}template`;
-    template.innerHTML = `<button class="hi-${kind}-close">Close</button><button class="hi-${kind}-history">View history</button>`;
+    template.setAttribute('data-hi-binding', 'entry-layout-history');
+    template.innerHTML = `<p class="hi-snapshot-time"></p><button class="hi-${kind}-close">Close</button><button class="hi-${kind}-history">View history</button>`;
     template.content = new Node('fragment');
     const close = new Node('button'); close.className = 'hi-stability-close';
     template.content.appendChild(close); card.shadowRoot.appendChild(template);
@@ -152,9 +154,16 @@ test('Close, native Escape close, navigation, backdrop and removal clean up',()=
     assert.equal(h.dialogs().length,0,exit);assert.equal(h.observers.size,0,exit);assert.equal(h.window.__hiBadgeDetailsDispose,undefined,exit);
   }
 });
-test('relevant rendered evidence changes close summary; unchanged evidence remains open',()=>{
+test('telemetry retains opening snapshot and inactivity deadline, equal-text retarget closes',()=>{
   const h=harness();const card=h.owner();h.invoke(card);h.flushObservers();assert.equal(h.dialogs().length,1);
-  card.shadowRoot.querySelector('template.hi-summary-template').innerHTML += 'changed source';
+  const d=h.dialogs()[0], deadline=[...h.timers.keys()], focus=h.document.activeElement;
+  const source=card.shadowRoot.querySelector('template.hi-summary-template');
+  const captured=d.querySelector('.hi-snapshot-time').textContent;
+  source.innerHTML += 'changed source';
+  h.flushObservers();assert.equal(h.dialogs()[0],d);assert.equal(h.document.activeElement,focus);
+  assert.deepEqual([...h.timers.keys()],deadline);assert.equal(d.querySelector('.hi-snapshot-time').textContent,captured);
+  assert.match(captured,/Snapshot captured at .*reopen to refresh/);assert.doesNotMatch(d.innerHTML,/changed source/);
+  source.setAttribute('data-hi-binding','changed entry or source');
   h.flushObservers();assert.equal(h.dialogs().length,0);assert.equal(h.observers.size,0);
 });
 test('cross-badge replacement owns one dialog and deferred cleanup cannot steal focus',()=>{
@@ -186,9 +195,9 @@ test('renderer escapes dynamic risk, reason and history labels and qualifies exi
   const hostile='<img src=x onerror="bad()">';
   const entity={state:hostile,attributes:{risk:hostile}};
   const states={[config.history]:{attributes:{friendly_name:hostile}},'sensor.air_control_reason':{state:hostile}};
-  const html=render(entity,{hi_summary:config},states);
-  assert.ok(!html.includes(hostile),title);assert.match(html,/&lt;img/);assert.match(html,/Recorder and retention/);
-  const absent=render(undefined,{hi_summary:config},{});assert.match(absent,/currently unavailable in Home Assistant/);assert.match(absent,/disabled/);assert.match(absent,/Unavailable/);
+  const html=render(entity,{hi_summary:config,hi_mode:hostile,hi_reason_html:"Escaped reason"},states);
+  assert.ok(!html.includes(hostile),title);if(title !== 'Humidity') assert.match(html,/&lt;img/);assert.match(html,/Recorder and retention/);
+  const absent=render(undefined,{hi_summary:config,hi_mode:"Unavailable",hi_reason_html:"Reason unavailable."},{});assert.match(absent,/currently unavailable in Home Assistant/);assert.match(absent,/disabled/);assert.match(absent,/Unavailable/);
  }
 });
 test('compact badges preserve color expressions and icons are removed only from four cards',()=>{
@@ -224,11 +233,11 @@ test('humidity summary accepts strict finite numeric strings and rejects malform
   const render=new Function('entity','variables','states',rendererBody(source,'Humidity','summary'));
   for(const value of ['NaN','Infinity','-Infinity','bad','48bad','',' ','unknown','unavailable','true','0x10',true,false,48,NaN,Infinity,null,undefined]){
    const html=render({state:value},{hi_summary:config},{});
-   assert.match(html,/Current humidity: Unavailable\./,String(value));
+   assert.match(html,/Humidity: Unavailable\./,String(value));
   }
   for(const value of ['0','-2.5','48','48.5','+1','.5','1e2']){
    const html=render({state:value},{hi_summary:config},{});
-   assert.ok(html.includes(`Current humidity: ${value}%.`),value);
+   assert.ok(html.includes(`Humidity: ${value}%.`),value);
   }
  }
 });

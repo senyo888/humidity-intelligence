@@ -50,6 +50,7 @@ TO_REDACT = (
     "unique_ids",
     "output_identity",
     "source_identity",
+    "provider_identity",
     "confirmations",
     "retired",
     "url",

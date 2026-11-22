@@ -36,7 +36,7 @@ card_mod:
       border-radius: 24px;
       border: 1px solid rgba(148,163,184,0.22);
       box-shadow: 0 5px 14px rgba(0,0,0,0.24), inset 0 1px 0 rgba(255,255,255,0.05), 0 0 26px rgba(56,189,248,0.16);
-      padding: 11px;
+      padding: 11px 11px 7px;
       overflow: hidden;
     }
 card:
@@ -48,7 +48,7 @@ card:
           entity: sensor.house_average_humidity
           variables:
             hi_summary: |
-              [[[ return {"title": "Humidity", "history": "sensor.house_average_humidity", "description": "The current house average relative humidity. HI’s seasonal target band provides context for this reading.", "historyNote": "Recorded house-average humidity.", "kind": "humidity"}; ]]]
+              [[[ return {"title": "Humidity", "history": "sensor.house_average_humidity", "description": "The current house average relative humidity. HI’s seasonal target band provides context for this reading.", "historyNote": "Recorded house-average humidity.", "kind": "humidity", "owner": "sensor.house_average_humidity"}; ]]]
           triggers_update:
             - sensor.house_average_humidity
           name: Humidity
@@ -69,7 +69,7 @@ card:
                 const escapeHtml = value => String(value ?? '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#039;');
                 const raw = typeof entity?.state === 'string' ? entity.state.trim() : '';
                 const numeric = /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$/.test(raw) && Number.isFinite(Number(raw));
-                const current = variables.hi_summary.kind === 'humidity' ? (numeric ? raw + '%' : 'Unavailable') : (raw || 'Unavailable');
+                const current = variables.hi_summary.kind === 'mode' ? variables.hi_mode : variables.hi_summary.kind === 'humidity' ? (numeric ? raw + '%' : 'Unavailable') : (raw || 'Unavailable');
                 return `<button type="button" class="hi-summary-open" aria-label="${escapeHtml(variables.hi_summary.title)}: ${escapeHtml(current)}. Open details"></button>`;
               ]]]
             summary: |
@@ -77,18 +77,13 @@ card:
                 const view = variables.hi_summary;
                 const escapeHtml = value => String(value ?? '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#039;');
                 const readable = value => typeof value === 'string' && value.trim() ? value.trim() : 'Unavailable';
-                const current = readable(entity?.state);
                 const humidityText = typeof entity?.state === 'string' ? entity.state.trim() : '';
                 const humidityValid = /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$/.test(humidityText) && Number.isFinite(Number(humidityText));
                 const target = states[view.history];
                 const historyName = readable(target?.attributes?.friendly_name);
-                const reason = states['sensor.air_control_reason'];
-                const context = view.kind === 'risk'
-                  ? `Source: ${current}. Risk: ${readable(entity?.attributes?.risk)}.`
-                  : view.kind === 'mode'
-                    ? `Current mode: ${current}. Reason: ${readable(reason?.attributes?.full_reason || reason?.state)}.`
-                    : `Current humidity: ${humidityValid ? humidityText + '%' : 'Unavailable'}.`;
-                return `<template class="hi-summary-template">
+                const context = `Humidity: ${humidityValid ? humidityText + '%' : 'Unavailable'}.`;
+                const identity = JSON.stringify(['__HI_UI_REVISION_STAMP__', view.title, view.kind, entity?.entity_id || view.owner, view.reason, view.history, (view.historyEntities || []).map(item => [item.kind, item.id])]);
+                return `<template class="hi-summary-template" data-hi-binding="${escapeHtml(identity)}">
                   <style>dialog.hi-summary-details { box-sizing:border-box; width:min(520px,calc(100vw - 32px)); max-height:calc(100vh - 32px); max-height:calc(100dvh - 32px - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px)); top:env(safe-area-inset-top,0px); bottom:env(safe-area-inset-bottom,0px); overflow:auto; padding:20px; border:1px solid #354762; border-radius:20px; background:#0d1522; color:#e2e8f0; text-align:left; white-space:normal; font:14px/1.6 system-ui,sans-serif; }
                   dialog.hi-summary-details::backdrop { background:rgba(0,0,0,.55); }
                   dialog.hi-summary-details h2 { margin:0 0 16px; font-size:20px; }
@@ -98,8 +93,9 @@ card:
                   dialog.hi-summary-details button:focus-visible { outline:2px solid #38bdf8; outline-offset:2px; }</style>
                   <button type="button" class="hi-summary-close" aria-label="Close" title="Close" autofocus><svg aria-hidden="true" viewBox="0 0 24 24" width="18" height="18"><path d="m6 6 12 12M18 6 6 18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
                   <h2>${escapeHtml(view.title)}</h2>
+                  <p class="hi-snapshot-time"></p>
                   <p>${escapeHtml(view.description)}</p>
-                  <p>${escapeHtml(context)}</p>
+                  <p>${context}</p>
                   <p>${target ? `History: ${escapeHtml(historyName === 'Unavailable' ? 'mapped entity' : historyName)}. ${escapeHtml(view.historyNote)}` : 'This source is currently unavailable in Home Assistant.'}</p>
                   <p>Available history depends on Home Assistant Recorder and retention.</p>
                   <button type="button" class="hi-summary-history" ${target ? '' : 'disabled'}>View history</button>
@@ -177,10 +173,38 @@ card:
                 const dialog = document.createElement('dialog');
                 if (typeof dialog.showModal !== 'function') { history(); return; }
                 const snapshot = source.innerHTML;
+                const binding = source.getAttribute('data-hi-binding');
+                if (!binding) { history(); return; }
+                const currentTemplate = () => owner.shadowRoot?.querySelector('template.hi-summary-template');
+                let bindingTimer;
+                let pendingActions = [];
+                // A button-card render can briefly remove its template. Hold completed history
+                // and clicks until the owner proves the same binding, or retire the dialog.
+                const withSource = action => {
+                  if (cleaned) return;
+                  const current = currentTemplate();
+                  if (!owner.isConnected || (current && current.getAttribute('data-hi-binding') !== binding)) {
+                    close(); return;
+                  }
+                  if (action) pendingActions.push(action);
+                  if (!current) {
+                    bindingTimer ??= setTimeout(() => {
+                      if (currentTemplate()) withSource(); else close();
+                    }, 80);
+                    return;
+                  }
+                  clearTimeout(bindingTimer);
+                  bindingTimer = undefined;
+                  const ready = pendingActions;
+                  pendingActions = [];
+                  for (const run of ready) { if (!cleaned) run(); }
+                };
                 dialog.className = 'hi-summary-details';
                 dialog.setAttribute('data-hi-summary-dialog', '');
                 dialog.setAttribute('aria-label', `${variables.hi_summary.title} details`);
                 dialog.innerHTML = snapshot;
+                const captured = new Date().toLocaleString();
+                dialog.querySelector('.hi-snapshot-time').textContent = `Snapshot captured at ${captured}. Close and reopen to refresh.`;
                 const previousFocus = owner.shadowRoot?.activeElement || document.activeElement;
                 let observer;
                 let idleDispose;
@@ -189,6 +213,8 @@ card:
                 const cleanup = () => {
                   if (cleaned) return;
                   cleaned = true;
+                  clearTimeout(bindingTimer);
+                  pendingActions = [];
                   idleDispose?.();
                   observer?.disconnect();
                   for (const name of ['location-changed', 'popstate', 'pagehide']) window.removeEventListener(name, close);
@@ -203,7 +229,7 @@ card:
                 dialog.querySelector('.hi-summary-close').addEventListener('click', close);
                 const historyButton = dialog.querySelector('.hi-summary-history');
                 historyButton.disabled = !entityId || !states[entityId];
-                historyButton.addEventListener('click', () => { close(); history(); });
+                historyButton.addEventListener('click', () => withSource(() => { close(); history(); }));
                 dialog.addEventListener('click', event => {
                   event.stopPropagation();
                   if (event.target !== dialog) return;
@@ -211,13 +237,10 @@ card:
                   if (event.clientX < bounds.left || event.clientX > bounds.right || event.clientY < bounds.top || event.clientY > bounds.bottom) close();
                 });
                 for (const name of ['location-changed', 'popstate', 'pagehide']) window.addEventListener(name, close);
-                observer = new MutationObserver(() => {
-                  const current = owner.shadowRoot?.querySelector('template.hi-summary-template');
-                  if (!owner.isConnected || !current || current.innerHTML !== snapshot) close();
-                });
+                observer = new MutationObserver(() => withSource());
                 let root = owner.shadowRoot;
                 while (root) {
-                  observer.observe(root, { childList: true, subtree: true, characterData: true });
+                  observer.observe(root, { childList: true, subtree: true, attributes: true, attributeFilter: ['data-hi-binding'] });
                   root = root.host ? root.host.getRootNode() : null;
                 }
                 document.body.appendChild(dialog);
@@ -344,7 +367,7 @@ card:
           entity: sensor.worst_room_condensation
           variables:
             hi_summary: |
-              [[[ return {"title": "Condensation", "history": "sensor.worst_room_condensation", "description": "Shows the highest condensation risk across rooms with available readings.", "historyNote": "Recorded risk and reported source room, on separate aligned timelines.", "kind": "risk", "historyEntities": [{"id": "sensor.worst_room_condensation_risk", "label": "Highest reported risk", "kind": "risk"}, {"id": "sensor.worst_room_condensation", "label": "Reported source room", "kind": "source"}]}; ]]]
+              [[[ return {"title": "Condensation", "history": "sensor.worst_room_condensation", "description": "Shows the highest condensation risk across rooms with available readings.", "historyNote": "Recorded risk and reported source room, on separate aligned timelines.", "kind": "risk", "historyEntities": [{"id": "sensor.worst_room_condensation_risk", "label": "Highest reported risk", "kind": "risk"}, {"id": "sensor.worst_room_condensation", "label": "Reported source room", "kind": "source"}], "owner": "sensor.worst_room_condensation"}; ]]]
           triggers_update:
             - sensor.worst_room_condensation
             - sensor.worst_room_condensation_risk
@@ -355,9 +378,13 @@ card:
           show_label: false
           state_display: |
             [[[
-              const r = states['sensor.worst_room_condensation']?.attributes?.risk;
-              if (!r || r === 'unknown' || r === 'unavailable') return '—';
-              return String(r);
+              const source = states['sensor.worst_room_condensation'];
+              const state = String(source?.state || '').trim().toLowerCase();
+              if (!state || state === 'unavailable') return 'Unavailable';
+              if (state === 'unknown') return 'Unknown';
+              const r = source?.attributes?.risk;
+              if (typeof r !== 'string' || !r.trim()) return 'Unknown';
+              return r.trim().replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
             ]]]
           custom_fields:
             summary_open: |
@@ -365,7 +392,7 @@ card:
                 const escapeHtml = value => String(value ?? '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#039;');
                 const raw = typeof entity?.state === 'string' ? entity.state.trim() : '';
                 const numeric = /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$/.test(raw) && Number.isFinite(Number(raw));
-                const current = variables.hi_summary.kind === 'humidity' ? (numeric ? raw + '%' : 'Unavailable') : (raw || 'Unavailable');
+                const current = variables.hi_summary.kind === 'mode' ? variables.hi_mode : variables.hi_summary.kind === 'humidity' ? (numeric ? raw + '%' : 'Unavailable') : (raw || 'Unavailable');
                 return `<button type="button" class="hi-summary-open" aria-label="${escapeHtml(variables.hi_summary.title)}: ${escapeHtml(current)}. Open details"></button>`;
               ]]]
             summary: |
@@ -374,18 +401,14 @@ card:
                 const escapeHtml = value => String(value ?? '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#039;');
                 const readable = value => typeof value === 'string' && value.trim() ? value.trim() : 'Unavailable';
                 const current = readable(entity?.state);
-                const humidityText = typeof entity?.state === 'string' ? entity.state.trim() : '';
-                const humidityValid = /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$/.test(humidityText) && Number.isFinite(Number(humidityText));
                 const target = states[view.history];
                 const historyAvailable = view.historyEntities.some(item => states[item.id]);
                 const historyName = readable(target?.attributes?.friendly_name);
-                const reason = states['sensor.air_control_reason'];
-                const context = view.kind === 'risk'
-                  ? `Source: ${current}. Risk: ${readable(entity?.attributes?.risk)}.`
-                  : view.kind === 'mode'
-                    ? `Current mode: ${current}. Reason: ${readable(reason?.attributes?.full_reason || reason?.state)}.`
-                    : `Current humidity: ${humidityValid ? humidityText + '%' : 'Unavailable'}.`;
-                return `<template class="hi-summary-template">
+                const state = current.trim().toLowerCase();
+                const risk = ['unknown', 'unavailable'].includes(state) ? current : readable(entity?.attributes?.risk);
+                const context = `Source: ${escapeHtml(current)}. Risk: ${escapeHtml(risk)}.`;
+                const identity = JSON.stringify(['__HI_UI_REVISION_STAMP__', view.title, view.kind, entity?.entity_id || view.owner, view.reason, view.history, (view.historyEntities || []).map(item => [item.kind, item.id])]);
+                return `<template class="hi-summary-template" data-hi-binding="${escapeHtml(identity)}">
                   <style>dialog.hi-summary-details { box-sizing:border-box; width:min(520px,calc(100vw - 32px)); max-height:calc(100vh - 32px); max-height:calc(100dvh - 32px - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px)); top:env(safe-area-inset-top,0px); bottom:env(safe-area-inset-bottom,0px); overflow:auto; padding:20px; border:1px solid #354762; border-radius:20px; background:#0d1522; color:#e2e8f0; text-align:left; white-space:normal; font:14px/1.6 system-ui,sans-serif; }
                   dialog.hi-summary-details::backdrop { background:rgba(0,0,0,.55); }
                   dialog.hi-summary-details h2 { margin:0 0 16px; font-size:20px; }
@@ -395,8 +418,9 @@ card:
                   dialog.hi-summary-details button:focus-visible { outline:2px solid #38bdf8; outline-offset:2px; }</style>
                   <button type="button" class="hi-summary-close" aria-label="Close" title="Close" autofocus><svg aria-hidden="true" viewBox="0 0 24 24" width="18" height="18"><path d="m6 6 12 12M18 6 6 18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
                   <h2>${escapeHtml(view.title)}</h2>
+                  <p class="hi-snapshot-time"></p>
                   <p>${escapeHtml(view.description)}</p>
-                  <p>${escapeHtml(context)}</p>
+                  <p>${context}</p>
                   <p>${historyAvailable ? escapeHtml(view.historyNote) : 'History sources are currently unavailable in Home Assistant.'}</p>
                   <p>Available history depends on Home Assistant Recorder and retention.</p>
                   <button type="button" class="hi-summary-history" ${historyAvailable ? '' : 'disabled'}>View history</button>
@@ -431,7 +455,8 @@ card:
                       if (!Number.isFinite(time) || time > end || time < start) { invalid++; continue; }
                       const attrs = item.a && typeof item.a === 'object' ? item.a : item.attributes && typeof item.attributes === 'object' ? item.attributes : {};
                       const state = text(item.s ?? item.state);
-                      const value = kind === 'reason' ? text(attrs.full_reason) || state : state;
+                      const usable = state.trim() && !['unknown', 'unavailable'].includes(state.trim().toLowerCase());
+                      const value = kind === 'reason' && usable ? text(attrs.full_reason) || state : state.trim() || 'Unknown';
                       const unit = typeof attrs.unit_of_measurement === 'string' && attrs.unit_of_measurement.trim() ? text(attrs.unit_of_measurement.trim()) : null;
                       rows.push({time, state: value || 'Unknown', unit, number: numeric(value), boundary: time === start, conflict: false});
                     }
@@ -449,6 +474,12 @@ card:
                     unique.forEach((record, index) => {record.transition = index > 0 && (record.state !== unique[index - 1].state || record.conflict);});
                     return {records: unique.slice(omitted), status: unique.length ? 'ok' : 'empty', omitted, invalid};
                   }
+                  const modeColours = Object.freeze({
+                    normal: '#e5e7eb', cooking: '#38bdf8', bathroom: '#4ade80', bath: '#4ade80',
+                    air_quality: '#c084fc', global_gate: '#fbbf24', away: '#5eead4', paused: '#fde68a',
+                    manual_override: '#f9a8d4', disabled: '#a5b4fc', telemetry_unavailable: '#fdba74',
+                    alert: '#fb923c', danger: '#f87171', co_emergency: '#ef4444',
+                  });
                   function category(value, kind) {
                     if (kind === 'source' || kind === 'reason') return {label: value, tone: 'neutral'};
                     if (['unknown', 'unavailable', 'Conflicting records'].some(x => x.toLowerCase() === value.toLowerCase())) return {label: value, tone: 'unknown'};
@@ -503,7 +534,7 @@ card:
                     if (segment.length) segments.push(segment);
                     return {segments, points, min, max};
                   }
-                  function create({dialog, owner, title, entities, states, close, openEntity, nativeLabel = 'entity', nativeAvailable = true, now = () => Date.now(), timeoutMs = 15000}) {
+                  function create({dialog, owner, title, entities, states, close, openEntity, nativeLabel = 'entity', nativeAvailable = true, withSource = action => action(), now = () => Date.now(), timeoutMs = 15000}) {
                     const document = dialog.ownerDocument;
                     const allowed = entities.slice(0, 4).filter(item => item && typeof item.id === 'string' && /^sensor\.[a-z0-9_]+$/.test(item.id));
                     const requested = [...new Set(allowed.filter(item => states[item.id]).map(item => item.id))];
@@ -548,12 +579,13 @@ card:
                       dialog.scrollTop = 0;
                     };
                     section.querySelector('[data-back]').addEventListener('click', back);
-                    section.querySelector('[data-native]').addEventListener('click', () => { if (nativeAvailable) {close(); openEntity();} });
-                    for (const button of section.querySelectorAll('[data-hours]')) button.addEventListener('click', () => {
+                    section.querySelector('[data-native]').addEventListener('click', () => withSource(() => { if (nativeAvailable) {close(); openEntity();} }));
+                    for (const button of section.querySelectorAll('[data-hours]')) button.addEventListener('click', () => withSource(() => {
+                      if (disposed || !active) return;
                       hours = Number(button.dataset.hours);
                       for (const choice of section.querySelectorAll('[data-hours]')) choice.setAttribute('aria-pressed', String(Number(choice.dataset.hours) === hours));
                       load();
-                    });
+                    }));
                     function inspect(article, records) {
                       const select = article.querySelector('select');
                       if (!select) return;
@@ -598,17 +630,27 @@ card:
                         html += '<p class="hi-history-note">Lines join recorded values. A recorded state such as Unavailable, or a change of unit, creates a break.</p>';
                       } else if (item.kind !== 'reason') {
                         const colors = {ok:'#4ade80',watch:'#facc15',risk:'#fb923c',danger:'#f87171',unknown:'#64748b',neutral:'#7dd3fc'};
-                        const colorFor = value => item.kind === 'source' ? sourceColor(value, document) : colors[category(value, item.kind).tone];
+                        const colorFor = value => {
+                          if (item.kind === 'source') return sourceColor(value, document);
+                          if (item.kind === 'mode') return Object.hasOwn(modeColours, value) ? modeColours[value] : colors.unknown;
+                          return colors[category(value, item.kind).tone];
+                        };
                         if (item.kind === 'source') html += '<p class="hi-history-note">Colours identify rooms. The risk level is shown in the chart above.</p>';
                         const ribbons = records.map((record,index) => {
                           const next = records[index+1]?.time ?? end;
                           const x = 500 * (record.time-start) / Math.max(1,end-start);
                           const width = Math.max(0,500 * (next-record.time) / Math.max(1,end-start));
                           const label = category(record.state,item.kind);
-                          return `<rect x="${x.toFixed(2)}" y="0" width="${width.toFixed(2)}" height="36" fill="${colorFor(record.state)}" stroke="#0d1522" stroke-width="1"><title>${escape(label.label)} · ${escape(date(record.time))}</title></rect>${width >= 50 ? `<text x="${(x+5).toFixed(2)}" y="23" font-size="13" fill="#071523">${escape(label.label.slice(0, Math.max(1, Math.floor((width-10)/8))))}${label.label.length > Math.floor((width-10)/8) ? '…' : ''}</text>` : ''}`;
+                          const foreground = item.kind === 'mode' && label.tone === 'unknown' ? '#ffffff' : '#071523';
+                          return `<rect x="${x.toFixed(2)}" y="0" width="${width.toFixed(2)}" height="36" fill="${colorFor(record.state)}" stroke="#0d1522" stroke-width="1"><title>${escape(label.label)} · ${escape(date(record.time))}</title></rect>${width >= 50 ? `<text x="${(x+5).toFixed(2)}" y="23" font-size="13" fill="${foreground}">${escape(label.label.slice(0, Math.max(1, Math.floor((width-10)/8))))}${label.label.length > Math.floor((width-10)/8) ? '…' : ''}</text>` : ''}`;
                         }).join('');
                         html += `<svg class="hi-history-chart" viewBox="0 0 500 36" role="img" aria-label="${escape(item.label)} recorded states. Choose a recorded state below for its time and value.">${ribbons}</svg>${axis}`;
-                        html += `<div class="hi-history-legend">${[...new Set(records.map(record => record.state))].map(value => {const label=category(value,item.kind); return `<span><i style="background:${colorFor(value)}" aria-hidden="true"></i>${escape(label.label)}</span>`;}).join('')}</div>`;
+                        const legend = new Map();
+                        for (const {state} of records) {
+                          const key = item.kind === 'mode' ? category(state, item.kind).label : state;
+                          if (!legend.has(key)) legend.set(key, state);
+                        }
+                        html += `<div class="hi-history-legend">${[...legend.values()].map(value => {const label=category(value,item.kind); return `<span><i style="background:${colorFor(value)}" aria-hidden="true"></i>${escape(label.label)}</span>`;}).join('')}</div>`;
                       }
                       html += inspection(records,item.label,item.kind);
                       const updates = item.kind === 'numeric' || item.kind === 'reason' ? records.filter(record => !record.boundary) : transitions(records);
@@ -625,29 +667,41 @@ card:
                       let timedOut = false;
                       timer = setTimeout(() => {
                         if (disposed || !active || requestGeneration !== generation) return;
-                        timedOut = true; generation++;
-                        content.innerHTML = '<p>History took too long to load. Choose a range to try again, or open source details.</p>';
+                        timedOut = true;
+                        withSource(() => {
+                          if (disposed || !active || requestGeneration !== generation) return;
+                          content.innerHTML = '<p>History took too long to load. Choose a range to try again, or open source details.</p>';
+                        });
                       }, timeoutMs);
                       try {
                         const response = await hass.callWS({type:'history/history_during_period',start_time:new Date(start).toISOString(),end_time:new Date(end).toISOString(),entity_ids:requested,include_start_time_state:true,significant_changes_only:false,minimal_response:false,no_attributes:false});
-                        if (disposed || !active || timedOut || requestGeneration !== generation || !owner.isConnected || !dialog.isConnected) return;
+                        if (disposed || !active || timedOut || requestGeneration !== generation) return;
                         clearTimeout(timer);
-                        content.replaceChildren();
-                        const context = document.createElement('p'); context.className='hi-history-note';
-                        context.textContent = allowed.some(item=>item.kind==='numeric') ? 'Each chart shows a recorded house average. The mix of sensors can change over time. Details of that mix are unavailable for past readings. For CO emergencies, use dedicated CO safety information.' : allowed.some(item=>item.kind==='risk') ? 'Risk and room changes are recorded separately. “OK” reflects the room readings available at the time.' : 'Explore HI’s recorded modes and reasons. Each keeps its own timestamp. These records describe HI’s selected mode.';
-                        content.appendChild(context);
-                        const range = document.createElement('p'); range.className='hi-history-note';
-                        range.textContent = `${date(start)} — ${date(end)}. “State at start” shows the value carried into this period. Its timestamp marks the start of your selected range.`;
-                        content.appendChild(range);
-                        if (!response || typeof response !== 'object' || Array.isArray(response)) throw new Error('Invalid history response');
-                        for (const item of allowed) {
-                          // Ignore all unrequested response keys, even if the server supplied them.
-                          const model = requested.includes(item.id) ? normalize(Object.hasOwn(response,item.id) ? response[item.id] : undefined,start,end,item.kind) : {status:'unmapped',records:[]};
-                          content.appendChild(draw(model,item,start,end));
-                        }
+                        withSource(() => {
+                          if (disposed || !active || timedOut || requestGeneration !== generation || !owner.isConnected || !dialog.isConnected) return;
+                          content.replaceChildren();
+                          const context = document.createElement('p'); context.className='hi-history-note';
+                          context.textContent = allowed.some(item=>item.kind==='numeric') ? 'Each chart shows a recorded house average. The mix of sensors can change over time. Details of that mix are unavailable for past readings. For CO emergencies, use dedicated CO safety information.' : allowed.some(item=>item.kind==='risk') ? 'Risk and room changes are recorded separately. “OK” reflects the room readings available at the time.' : 'Explore HI’s recorded modes and reasons. Each keeps its own timestamp. These records describe HI’s selected mode.';
+                          content.appendChild(context);
+                          const range = document.createElement('p'); range.className='hi-history-note';
+                          range.textContent = `${date(start)} — ${date(end)}. “State at start” shows the value carried into this period. Its timestamp marks the start of your selected range.`;
+                          content.appendChild(range);
+                          if (!response || typeof response !== 'object' || Array.isArray(response)) {
+                            content.innerHTML = '<p>History is currently unavailable. Try another range or open source details.</p>'; return;
+                          }
+                          for (const item of allowed) {
+                            // Ignore all unrequested response keys, even if the server supplied them.
+                            const model = requested.includes(item.id) ? normalize(Object.hasOwn(response,item.id) ? response[item.id] : undefined,start,end,item.kind) : {status:'unmapped',records:[]};
+                            content.appendChild(draw(model,item,start,end));
+                          }
+                        });
                       } catch (_) {
                         if (disposed || !active || requestGeneration !== generation) return;
-                        clearTimeout(timer); content.innerHTML = '<p>History is currently unavailable. Try another range or open source details.</p>';
+                        clearTimeout(timer);
+                        withSource(() => {
+                          if (!disposed && active && !timedOut && requestGeneration === generation)
+                            content.innerHTML = '<p>History is currently unavailable. Try another range or open source details.</p>';
+                        });
                       }
                     }
                     return {
@@ -728,10 +782,38 @@ card:
                 const dialog = document.createElement('dialog');
                 if (typeof dialog.showModal !== 'function') { history(); return; }
                 const snapshot = source.innerHTML;
+                const binding = source.getAttribute('data-hi-binding');
+                if (!binding) { history(); return; }
+                const currentTemplate = () => owner.shadowRoot?.querySelector('template.hi-summary-template');
+                let bindingTimer;
+                let pendingActions = [];
+                // A button-card render can briefly remove its template. Hold completed history
+                // and clicks until the owner proves the same binding, or retire the dialog.
+                const withSource = action => {
+                  if (cleaned) return;
+                  const current = currentTemplate();
+                  if (!owner.isConnected || (current && current.getAttribute('data-hi-binding') !== binding)) {
+                    close(); return;
+                  }
+                  if (action) pendingActions.push(action);
+                  if (!current) {
+                    bindingTimer ??= setTimeout(() => {
+                      if (currentTemplate()) withSource(); else close();
+                    }, 80);
+                    return;
+                  }
+                  clearTimeout(bindingTimer);
+                  bindingTimer = undefined;
+                  const ready = pendingActions;
+                  pendingActions = [];
+                  for (const run of ready) { if (!cleaned) run(); }
+                };
                 dialog.className = 'hi-summary-details';
                 dialog.setAttribute('data-hi-summary-dialog', '');
                 dialog.setAttribute('aria-label', `${variables.hi_summary.title} details`);
                 dialog.innerHTML = snapshot;
+                const captured = new Date().toLocaleString();
+                dialog.querySelector('.hi-snapshot-time').textContent = `Snapshot captured at ${captured}. Close and reopen to refresh.`;
                 const previousFocus = owner.shadowRoot?.activeElement || document.activeElement;
                 let observer;
                 let idleDispose;
@@ -741,6 +823,8 @@ card:
                 const cleanup = () => {
                   if (cleaned) return;
                   cleaned = true;
+                  clearTimeout(bindingTimer);
+                  pendingActions = [];
                   idleDispose?.();
                   observer?.disconnect();
                   historyController?.dispose();
@@ -756,10 +840,10 @@ card:
                 dialog.querySelector('.hi-summary-close').addEventListener('click', close);
                 const historyButton = dialog.querySelector('.hi-summary-history');
                 historyButton.disabled = !variables.hi_summary.historyEntities.some(item => states[item.id]);
-                historyButton.addEventListener('click', () => {
-                  historyController ||= hiBadgeHistory.create({dialog, owner, title:variables.hi_summary.title, entities:variables.hi_summary.historyEntities, states, close, nativeLabel:nativeTarget?.label, nativeAvailable:Boolean(nativeEntityId), openEntity:history});
+                historyButton.addEventListener('click', () => withSource(() => {
+                  historyController ||= hiBadgeHistory.create({dialog, owner, title:variables.hi_summary.title, entities:variables.hi_summary.historyEntities, states, close, withSource, nativeLabel:nativeTarget?.label, nativeAvailable:Boolean(nativeEntityId), openEntity:history});
                   historyController.open();
-                });
+                }));
                 dialog.addEventListener('click', event => {
                   event.stopPropagation();
                   if (event.target !== dialog) return;
@@ -767,13 +851,10 @@ card:
                   if (event.clientX < bounds.left || event.clientX > bounds.right || event.clientY < bounds.top || event.clientY > bounds.bottom) close();
                 });
                 for (const name of ['location-changed', 'popstate', 'pagehide']) window.addEventListener(name, close);
-                observer = new MutationObserver(() => {
-                  const current = owner.shadowRoot?.querySelector('template.hi-summary-template');
-                  if (!owner.isConnected || !current || current.innerHTML !== snapshot) close();
-                });
+                observer = new MutationObserver(() => withSource());
                 let root = owner.shadowRoot;
                 while (root) {
-                  observer.observe(root, { childList: true, subtree: true, characterData: true });
+                  observer.observe(root, { childList: true, subtree: true, attributes: true, attributeFilter: ['data-hi-binding'] });
                   root = root.host ? root.host.getRootNode() : null;
                 }
                 document.body.appendChild(dialog);
@@ -815,7 +896,10 @@ card:
               - background: rgba(10,12,16,0.62)
               - border: |
                   [[[
-                    const r = (states['sensor.worst_room_condensation']?.attributes?.risk || '').toLowerCase();
+                    const source = states['sensor.worst_room_condensation'];
+                    const state = String(source?.state || '').trim().toLowerCase();
+                    const risk = state && !['unavailable', 'unknown'].includes(state) && typeof source.attributes?.risk === 'string' ? source.attributes.risk : '';
+                    const r = risk.toLowerCase();
                     if (!r) return '2px solid rgba(148,163,184,0.22)';
                     if (r.includes('danger') || r.includes('risk')) return '2px solid rgba(239,68,68,0.85)';
                     if (r.includes('watch') || r.includes('elev')) return '2px solid rgba(250,204,21,0.75)';
@@ -824,7 +908,10 @@ card:
                   ]]]
               - box-shadow: |
                   [[[
-                    const r = (states['sensor.worst_room_condensation']?.attributes?.risk || '').toLowerCase();
+                    const source = states['sensor.worst_room_condensation'];
+                    const state = String(source?.state || '').trim().toLowerCase();
+                    const risk = state && !['unavailable', 'unknown'].includes(state) && typeof source.attributes?.risk === 'string' ? source.attributes.risk : '';
+                    const r = risk.toLowerCase();
                     if (!r) return '0 3px 8px rgba(0,0,0,0.24), inset 0 1px 0 rgba(255,255,255,0.05), 0 0 16px rgba(148,163,184,0.18)';
                     if (r.includes('danger') || r.includes('risk')) return '0 3px 8px rgba(0,0,0,0.24), inset 0 1px 0 rgba(255,255,255,0.05), 0 0 24px rgba(239,68,68,0.22)';
                     if (r.includes('watch') || r.includes('elev')) return '0 3px 8px rgba(0,0,0,0.24), inset 0 1px 0 rgba(255,255,255,0.05), 0 0 24px rgba(250,204,21,0.22)';
@@ -846,7 +933,10 @@ card:
                   ]]]
               - color: |
                   [[[
-                    const r = (states['sensor.worst_room_condensation']?.attributes?.risk || '').toLowerCase();
+                    const source = states['sensor.worst_room_condensation'];
+                    const state = String(source?.state || '').trim().toLowerCase();
+                    const risk = state && !['unavailable', 'unknown'].includes(state) && typeof source.attributes?.risk === 'string' ? source.attributes.risk : '';
+                    const r = risk.toLowerCase();
                     if (!r) return '#94a3b8';
                     if (r.includes('danger') || r.includes('risk')) return '#ef4444';
                     if (r.includes('watch') || r.includes('elev')) return '#facc15';
@@ -871,7 +961,10 @@ card:
               - letter-spacing: 0.2px
               - color: |
                   [[[
-                    const r = (states['sensor.worst_room_condensation']?.attributes?.risk || '').toLowerCase();
+                    const source = states['sensor.worst_room_condensation'];
+                    const state = String(source?.state || '').trim().toLowerCase();
+                    const risk = state && !['unavailable', 'unknown'].includes(state) && typeof source.attributes?.risk === 'string' ? source.attributes.risk : '';
+                    const r = risk.toLowerCase();
                     if (!r) return '#94a3b8';
                     if (r.includes('danger') || r.includes('risk')) return '#ef4444';
                     if (r.includes('watch') || r.includes('elev')) return '#facc15';
@@ -899,7 +992,7 @@ card:
           entity: sensor.worst_room_mould
           variables:
             hi_summary: |
-              [[[ return {"title": "Mould", "history": "sensor.worst_room_mould", "description": "Shows the highest mould risk across rooms with available readings.", "historyNote": "Recorded risk and reported source room, on separate aligned timelines.", "kind": "risk", "historyEntities": [{"id": "sensor.worst_room_mould_risk", "label": "Highest reported risk", "kind": "risk"}, {"id": "sensor.worst_room_mould", "label": "Reported source room", "kind": "source"}]}; ]]]
+              [[[ return {"title": "Mould", "history": "sensor.worst_room_mould", "description": "Shows the highest mould risk across rooms with available readings.", "historyNote": "Recorded risk and reported source room, on separate aligned timelines.", "kind": "risk", "historyEntities": [{"id": "sensor.worst_room_mould_risk", "label": "Highest reported risk", "kind": "risk"}, {"id": "sensor.worst_room_mould", "label": "Reported source room", "kind": "source"}], "owner": "sensor.worst_room_mould"}; ]]]
           triggers_update:
             - sensor.worst_room_mould
             - sensor.worst_room_mould_risk
@@ -910,9 +1003,13 @@ card:
           show_label: false
           state_display: |
             [[[
-              const r = states['sensor.worst_room_mould']?.attributes?.risk;
-              if (!r || r === 'unknown' || r === 'unavailable') return '—';
-              return String(r);
+              const source = states['sensor.worst_room_mould'];
+              const state = String(source?.state || '').trim().toLowerCase();
+              if (!state || state === 'unavailable') return 'Unavailable';
+              if (state === 'unknown') return 'Unknown';
+              const r = source?.attributes?.risk;
+              if (typeof r !== 'string' || !r.trim()) return 'Unknown';
+              return r.trim().replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
             ]]]
           custom_fields:
             summary_open: |
@@ -920,7 +1017,7 @@ card:
                 const escapeHtml = value => String(value ?? '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#039;');
                 const raw = typeof entity?.state === 'string' ? entity.state.trim() : '';
                 const numeric = /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$/.test(raw) && Number.isFinite(Number(raw));
-                const current = variables.hi_summary.kind === 'humidity' ? (numeric ? raw + '%' : 'Unavailable') : (raw || 'Unavailable');
+                const current = variables.hi_summary.kind === 'mode' ? variables.hi_mode : variables.hi_summary.kind === 'humidity' ? (numeric ? raw + '%' : 'Unavailable') : (raw || 'Unavailable');
                 return `<button type="button" class="hi-summary-open" aria-label="${escapeHtml(variables.hi_summary.title)}: ${escapeHtml(current)}. Open details"></button>`;
               ]]]
             summary: |
@@ -929,18 +1026,14 @@ card:
                 const escapeHtml = value => String(value ?? '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#039;');
                 const readable = value => typeof value === 'string' && value.trim() ? value.trim() : 'Unavailable';
                 const current = readable(entity?.state);
-                const humidityText = typeof entity?.state === 'string' ? entity.state.trim() : '';
-                const humidityValid = /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$/.test(humidityText) && Number.isFinite(Number(humidityText));
                 const target = states[view.history];
                 const historyAvailable = view.historyEntities.some(item => states[item.id]);
                 const historyName = readable(target?.attributes?.friendly_name);
-                const reason = states['sensor.air_control_reason'];
-                const context = view.kind === 'risk'
-                  ? `Source: ${current}. Risk: ${readable(entity?.attributes?.risk)}.`
-                  : view.kind === 'mode'
-                    ? `Current mode: ${current}. Reason: ${readable(reason?.attributes?.full_reason || reason?.state)}.`
-                    : `Current humidity: ${humidityValid ? humidityText + '%' : 'Unavailable'}.`;
-                return `<template class="hi-summary-template">
+                const state = current.trim().toLowerCase();
+                const risk = ['unknown', 'unavailable'].includes(state) ? current : readable(entity?.attributes?.risk);
+                const context = `Source: ${escapeHtml(current)}. Risk: ${escapeHtml(risk)}.`;
+                const identity = JSON.stringify(['__HI_UI_REVISION_STAMP__', view.title, view.kind, entity?.entity_id || view.owner, view.reason, view.history, (view.historyEntities || []).map(item => [item.kind, item.id])]);
+                return `<template class="hi-summary-template" data-hi-binding="${escapeHtml(identity)}">
                   <style>dialog.hi-summary-details { box-sizing:border-box; width:min(520px,calc(100vw - 32px)); max-height:calc(100vh - 32px); max-height:calc(100dvh - 32px - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px)); top:env(safe-area-inset-top,0px); bottom:env(safe-area-inset-bottom,0px); overflow:auto; padding:20px; border:1px solid #354762; border-radius:20px; background:#0d1522; color:#e2e8f0; text-align:left; white-space:normal; font:14px/1.6 system-ui,sans-serif; }
                   dialog.hi-summary-details::backdrop { background:rgba(0,0,0,.55); }
                   dialog.hi-summary-details h2 { margin:0 0 16px; font-size:20px; }
@@ -950,8 +1043,9 @@ card:
                   dialog.hi-summary-details button:focus-visible { outline:2px solid #38bdf8; outline-offset:2px; }</style>
                   <button type="button" class="hi-summary-close" aria-label="Close" title="Close" autofocus><svg aria-hidden="true" viewBox="0 0 24 24" width="18" height="18"><path d="m6 6 12 12M18 6 6 18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
                   <h2>${escapeHtml(view.title)}</h2>
+                  <p class="hi-snapshot-time"></p>
                   <p>${escapeHtml(view.description)}</p>
-                  <p>${escapeHtml(context)}</p>
+                  <p>${context}</p>
                   <p>${historyAvailable ? escapeHtml(view.historyNote) : 'History sources are currently unavailable in Home Assistant.'}</p>
                   <p>Available history depends on Home Assistant Recorder and retention.</p>
                   <button type="button" class="hi-summary-history" ${historyAvailable ? '' : 'disabled'}>View history</button>
@@ -986,7 +1080,8 @@ card:
                       if (!Number.isFinite(time) || time > end || time < start) { invalid++; continue; }
                       const attrs = item.a && typeof item.a === 'object' ? item.a : item.attributes && typeof item.attributes === 'object' ? item.attributes : {};
                       const state = text(item.s ?? item.state);
-                      const value = kind === 'reason' ? text(attrs.full_reason) || state : state;
+                      const usable = state.trim() && !['unknown', 'unavailable'].includes(state.trim().toLowerCase());
+                      const value = kind === 'reason' && usable ? text(attrs.full_reason) || state : state.trim() || 'Unknown';
                       const unit = typeof attrs.unit_of_measurement === 'string' && attrs.unit_of_measurement.trim() ? text(attrs.unit_of_measurement.trim()) : null;
                       rows.push({time, state: value || 'Unknown', unit, number: numeric(value), boundary: time === start, conflict: false});
                     }
@@ -1004,6 +1099,12 @@ card:
                     unique.forEach((record, index) => {record.transition = index > 0 && (record.state !== unique[index - 1].state || record.conflict);});
                     return {records: unique.slice(omitted), status: unique.length ? 'ok' : 'empty', omitted, invalid};
                   }
+                  const modeColours = Object.freeze({
+                    normal: '#e5e7eb', cooking: '#38bdf8', bathroom: '#4ade80', bath: '#4ade80',
+                    air_quality: '#c084fc', global_gate: '#fbbf24', away: '#5eead4', paused: '#fde68a',
+                    manual_override: '#f9a8d4', disabled: '#a5b4fc', telemetry_unavailable: '#fdba74',
+                    alert: '#fb923c', danger: '#f87171', co_emergency: '#ef4444',
+                  });
                   function category(value, kind) {
                     if (kind === 'source' || kind === 'reason') return {label: value, tone: 'neutral'};
                     if (['unknown', 'unavailable', 'Conflicting records'].some(x => x.toLowerCase() === value.toLowerCase())) return {label: value, tone: 'unknown'};
@@ -1058,7 +1159,7 @@ card:
                     if (segment.length) segments.push(segment);
                     return {segments, points, min, max};
                   }
-                  function create({dialog, owner, title, entities, states, close, openEntity, nativeLabel = 'entity', nativeAvailable = true, now = () => Date.now(), timeoutMs = 15000}) {
+                  function create({dialog, owner, title, entities, states, close, openEntity, nativeLabel = 'entity', nativeAvailable = true, withSource = action => action(), now = () => Date.now(), timeoutMs = 15000}) {
                     const document = dialog.ownerDocument;
                     const allowed = entities.slice(0, 4).filter(item => item && typeof item.id === 'string' && /^sensor\.[a-z0-9_]+$/.test(item.id));
                     const requested = [...new Set(allowed.filter(item => states[item.id]).map(item => item.id))];
@@ -1103,12 +1204,13 @@ card:
                       dialog.scrollTop = 0;
                     };
                     section.querySelector('[data-back]').addEventListener('click', back);
-                    section.querySelector('[data-native]').addEventListener('click', () => { if (nativeAvailable) {close(); openEntity();} });
-                    for (const button of section.querySelectorAll('[data-hours]')) button.addEventListener('click', () => {
+                    section.querySelector('[data-native]').addEventListener('click', () => withSource(() => { if (nativeAvailable) {close(); openEntity();} }));
+                    for (const button of section.querySelectorAll('[data-hours]')) button.addEventListener('click', () => withSource(() => {
+                      if (disposed || !active) return;
                       hours = Number(button.dataset.hours);
                       for (const choice of section.querySelectorAll('[data-hours]')) choice.setAttribute('aria-pressed', String(Number(choice.dataset.hours) === hours));
                       load();
-                    });
+                    }));
                     function inspect(article, records) {
                       const select = article.querySelector('select');
                       if (!select) return;
@@ -1153,17 +1255,27 @@ card:
                         html += '<p class="hi-history-note">Lines join recorded values. A recorded state such as Unavailable, or a change of unit, creates a break.</p>';
                       } else if (item.kind !== 'reason') {
                         const colors = {ok:'#4ade80',watch:'#facc15',risk:'#fb923c',danger:'#f87171',unknown:'#64748b',neutral:'#7dd3fc'};
-                        const colorFor = value => item.kind === 'source' ? sourceColor(value, document) : colors[category(value, item.kind).tone];
+                        const colorFor = value => {
+                          if (item.kind === 'source') return sourceColor(value, document);
+                          if (item.kind === 'mode') return Object.hasOwn(modeColours, value) ? modeColours[value] : colors.unknown;
+                          return colors[category(value, item.kind).tone];
+                        };
                         if (item.kind === 'source') html += '<p class="hi-history-note">Colours identify rooms. The risk level is shown in the chart above.</p>';
                         const ribbons = records.map((record,index) => {
                           const next = records[index+1]?.time ?? end;
                           const x = 500 * (record.time-start) / Math.max(1,end-start);
                           const width = Math.max(0,500 * (next-record.time) / Math.max(1,end-start));
                           const label = category(record.state,item.kind);
-                          return `<rect x="${x.toFixed(2)}" y="0" width="${width.toFixed(2)}" height="36" fill="${colorFor(record.state)}" stroke="#0d1522" stroke-width="1"><title>${escape(label.label)} · ${escape(date(record.time))}</title></rect>${width >= 50 ? `<text x="${(x+5).toFixed(2)}" y="23" font-size="13" fill="#071523">${escape(label.label.slice(0, Math.max(1, Math.floor((width-10)/8))))}${label.label.length > Math.floor((width-10)/8) ? '…' : ''}</text>` : ''}`;
+                          const foreground = item.kind === 'mode' && label.tone === 'unknown' ? '#ffffff' : '#071523';
+                          return `<rect x="${x.toFixed(2)}" y="0" width="${width.toFixed(2)}" height="36" fill="${colorFor(record.state)}" stroke="#0d1522" stroke-width="1"><title>${escape(label.label)} · ${escape(date(record.time))}</title></rect>${width >= 50 ? `<text x="${(x+5).toFixed(2)}" y="23" font-size="13" fill="${foreground}">${escape(label.label.slice(0, Math.max(1, Math.floor((width-10)/8))))}${label.label.length > Math.floor((width-10)/8) ? '…' : ''}</text>` : ''}`;
                         }).join('');
                         html += `<svg class="hi-history-chart" viewBox="0 0 500 36" role="img" aria-label="${escape(item.label)} recorded states. Choose a recorded state below for its time and value.">${ribbons}</svg>${axis}`;
-                        html += `<div class="hi-history-legend">${[...new Set(records.map(record => record.state))].map(value => {const label=category(value,item.kind); return `<span><i style="background:${colorFor(value)}" aria-hidden="true"></i>${escape(label.label)}</span>`;}).join('')}</div>`;
+                        const legend = new Map();
+                        for (const {state} of records) {
+                          const key = item.kind === 'mode' ? category(state, item.kind).label : state;
+                          if (!legend.has(key)) legend.set(key, state);
+                        }
+                        html += `<div class="hi-history-legend">${[...legend.values()].map(value => {const label=category(value,item.kind); return `<span><i style="background:${colorFor(value)}" aria-hidden="true"></i>${escape(label.label)}</span>`;}).join('')}</div>`;
                       }
                       html += inspection(records,item.label,item.kind);
                       const updates = item.kind === 'numeric' || item.kind === 'reason' ? records.filter(record => !record.boundary) : transitions(records);
@@ -1180,29 +1292,41 @@ card:
                       let timedOut = false;
                       timer = setTimeout(() => {
                         if (disposed || !active || requestGeneration !== generation) return;
-                        timedOut = true; generation++;
-                        content.innerHTML = '<p>History took too long to load. Choose a range to try again, or open source details.</p>';
+                        timedOut = true;
+                        withSource(() => {
+                          if (disposed || !active || requestGeneration !== generation) return;
+                          content.innerHTML = '<p>History took too long to load. Choose a range to try again, or open source details.</p>';
+                        });
                       }, timeoutMs);
                       try {
                         const response = await hass.callWS({type:'history/history_during_period',start_time:new Date(start).toISOString(),end_time:new Date(end).toISOString(),entity_ids:requested,include_start_time_state:true,significant_changes_only:false,minimal_response:false,no_attributes:false});
-                        if (disposed || !active || timedOut || requestGeneration !== generation || !owner.isConnected || !dialog.isConnected) return;
+                        if (disposed || !active || timedOut || requestGeneration !== generation) return;
                         clearTimeout(timer);
-                        content.replaceChildren();
-                        const context = document.createElement('p'); context.className='hi-history-note';
-                        context.textContent = allowed.some(item=>item.kind==='numeric') ? 'Each chart shows a recorded house average. The mix of sensors can change over time. Details of that mix are unavailable for past readings. For CO emergencies, use dedicated CO safety information.' : allowed.some(item=>item.kind==='risk') ? 'Risk and room changes are recorded separately. “OK” reflects the room readings available at the time.' : 'Explore HI’s recorded modes and reasons. Each keeps its own timestamp. These records describe HI’s selected mode.';
-                        content.appendChild(context);
-                        const range = document.createElement('p'); range.className='hi-history-note';
-                        range.textContent = `${date(start)} — ${date(end)}. “State at start” shows the value carried into this period. Its timestamp marks the start of your selected range.`;
-                        content.appendChild(range);
-                        if (!response || typeof response !== 'object' || Array.isArray(response)) throw new Error('Invalid history response');
-                        for (const item of allowed) {
-                          // Ignore all unrequested response keys, even if the server supplied them.
-                          const model = requested.includes(item.id) ? normalize(Object.hasOwn(response,item.id) ? response[item.id] : undefined,start,end,item.kind) : {status:'unmapped',records:[]};
-                          content.appendChild(draw(model,item,start,end));
-                        }
+                        withSource(() => {
+                          if (disposed || !active || timedOut || requestGeneration !== generation || !owner.isConnected || !dialog.isConnected) return;
+                          content.replaceChildren();
+                          const context = document.createElement('p'); context.className='hi-history-note';
+                          context.textContent = allowed.some(item=>item.kind==='numeric') ? 'Each chart shows a recorded house average. The mix of sensors can change over time. Details of that mix are unavailable for past readings. For CO emergencies, use dedicated CO safety information.' : allowed.some(item=>item.kind==='risk') ? 'Risk and room changes are recorded separately. “OK” reflects the room readings available at the time.' : 'Explore HI’s recorded modes and reasons. Each keeps its own timestamp. These records describe HI’s selected mode.';
+                          content.appendChild(context);
+                          const range = document.createElement('p'); range.className='hi-history-note';
+                          range.textContent = `${date(start)} — ${date(end)}. “State at start” shows the value carried into this period. Its timestamp marks the start of your selected range.`;
+                          content.appendChild(range);
+                          if (!response || typeof response !== 'object' || Array.isArray(response)) {
+                            content.innerHTML = '<p>History is currently unavailable. Try another range or open source details.</p>'; return;
+                          }
+                          for (const item of allowed) {
+                            // Ignore all unrequested response keys, even if the server supplied them.
+                            const model = requested.includes(item.id) ? normalize(Object.hasOwn(response,item.id) ? response[item.id] : undefined,start,end,item.kind) : {status:'unmapped',records:[]};
+                            content.appendChild(draw(model,item,start,end));
+                          }
+                        });
                       } catch (_) {
                         if (disposed || !active || requestGeneration !== generation) return;
-                        clearTimeout(timer); content.innerHTML = '<p>History is currently unavailable. Try another range or open source details.</p>';
+                        clearTimeout(timer);
+                        withSource(() => {
+                          if (!disposed && active && !timedOut && requestGeneration === generation)
+                            content.innerHTML = '<p>History is currently unavailable. Try another range or open source details.</p>';
+                        });
                       }
                     }
                     return {
@@ -1283,10 +1407,38 @@ card:
                 const dialog = document.createElement('dialog');
                 if (typeof dialog.showModal !== 'function') { history(); return; }
                 const snapshot = source.innerHTML;
+                const binding = source.getAttribute('data-hi-binding');
+                if (!binding) { history(); return; }
+                const currentTemplate = () => owner.shadowRoot?.querySelector('template.hi-summary-template');
+                let bindingTimer;
+                let pendingActions = [];
+                // A button-card render can briefly remove its template. Hold completed history
+                // and clicks until the owner proves the same binding, or retire the dialog.
+                const withSource = action => {
+                  if (cleaned) return;
+                  const current = currentTemplate();
+                  if (!owner.isConnected || (current && current.getAttribute('data-hi-binding') !== binding)) {
+                    close(); return;
+                  }
+                  if (action) pendingActions.push(action);
+                  if (!current) {
+                    bindingTimer ??= setTimeout(() => {
+                      if (currentTemplate()) withSource(); else close();
+                    }, 80);
+                    return;
+                  }
+                  clearTimeout(bindingTimer);
+                  bindingTimer = undefined;
+                  const ready = pendingActions;
+                  pendingActions = [];
+                  for (const run of ready) { if (!cleaned) run(); }
+                };
                 dialog.className = 'hi-summary-details';
                 dialog.setAttribute('data-hi-summary-dialog', '');
                 dialog.setAttribute('aria-label', `${variables.hi_summary.title} details`);
                 dialog.innerHTML = snapshot;
+                const captured = new Date().toLocaleString();
+                dialog.querySelector('.hi-snapshot-time').textContent = `Snapshot captured at ${captured}. Close and reopen to refresh.`;
                 const previousFocus = owner.shadowRoot?.activeElement || document.activeElement;
                 let observer;
                 let idleDispose;
@@ -1296,6 +1448,8 @@ card:
                 const cleanup = () => {
                   if (cleaned) return;
                   cleaned = true;
+                  clearTimeout(bindingTimer);
+                  pendingActions = [];
                   idleDispose?.();
                   observer?.disconnect();
                   historyController?.dispose();
@@ -1311,10 +1465,10 @@ card:
                 dialog.querySelector('.hi-summary-close').addEventListener('click', close);
                 const historyButton = dialog.querySelector('.hi-summary-history');
                 historyButton.disabled = !variables.hi_summary.historyEntities.some(item => states[item.id]);
-                historyButton.addEventListener('click', () => {
-                  historyController ||= hiBadgeHistory.create({dialog, owner, title:variables.hi_summary.title, entities:variables.hi_summary.historyEntities, states, close, nativeLabel:nativeTarget?.label, nativeAvailable:Boolean(nativeEntityId), openEntity:history});
+                historyButton.addEventListener('click', () => withSource(() => {
+                  historyController ||= hiBadgeHistory.create({dialog, owner, title:variables.hi_summary.title, entities:variables.hi_summary.historyEntities, states, close, withSource, nativeLabel:nativeTarget?.label, nativeAvailable:Boolean(nativeEntityId), openEntity:history});
                   historyController.open();
-                });
+                }));
                 dialog.addEventListener('click', event => {
                   event.stopPropagation();
                   if (event.target !== dialog) return;
@@ -1322,13 +1476,10 @@ card:
                   if (event.clientX < bounds.left || event.clientX > bounds.right || event.clientY < bounds.top || event.clientY > bounds.bottom) close();
                 });
                 for (const name of ['location-changed', 'popstate', 'pagehide']) window.addEventListener(name, close);
-                observer = new MutationObserver(() => {
-                  const current = owner.shadowRoot?.querySelector('template.hi-summary-template');
-                  if (!owner.isConnected || !current || current.innerHTML !== snapshot) close();
-                });
+                observer = new MutationObserver(() => withSource());
                 let root = owner.shadowRoot;
                 while (root) {
-                  observer.observe(root, { childList: true, subtree: true, characterData: true });
+                  observer.observe(root, { childList: true, subtree: true, attributes: true, attributeFilter: ['data-hi-binding'] });
                   root = root.host ? root.host.getRootNode() : null;
                 }
                 document.body.appendChild(dialog);
@@ -1370,7 +1521,10 @@ card:
               - background: rgba(10,12,16,0.62)
               - border: |
                   [[[
-                    const r = (states['sensor.worst_room_mould']?.attributes?.risk || '').toLowerCase();
+                    const source = states['sensor.worst_room_mould'];
+                    const state = String(source?.state || '').trim().toLowerCase();
+                    const risk = state && !['unavailable', 'unknown'].includes(state) && typeof source.attributes?.risk === 'string' ? source.attributes.risk : '';
+                    const r = risk.toLowerCase();
                     if (!r) return '2px solid rgba(148,163,184,0.22)';
                     if (r.includes('danger') || r.includes('risk')) return '2px solid rgba(239,68,68,0.85)';
                     if (r.includes('watch') || r.includes('elev')) return '2px solid rgba(250,204,21,0.75)';
@@ -1379,7 +1533,10 @@ card:
                   ]]]
               - box-shadow: |
                   [[[
-                    const r = (states['sensor.worst_room_mould']?.attributes?.risk || '').toLowerCase();
+                    const source = states['sensor.worst_room_mould'];
+                    const state = String(source?.state || '').trim().toLowerCase();
+                    const risk = state && !['unavailable', 'unknown'].includes(state) && typeof source.attributes?.risk === 'string' ? source.attributes.risk : '';
+                    const r = risk.toLowerCase();
                     if (!r) return '0 3px 8px rgba(0,0,0,0.24), inset 0 1px 0 rgba(255,255,255,0.05), 0 0 16px rgba(148,163,184,0.18)';
                     if (r.includes('danger') || r.includes('risk')) return '0 3px 8px rgba(0,0,0,0.24), inset 0 1px 0 rgba(255,255,255,0.05), 0 0 24px rgba(239,68,68,0.22)';
                     if (r.includes('watch') || r.includes('elev')) return '0 3px 8px rgba(0,0,0,0.24), inset 0 1px 0 rgba(255,255,255,0.05), 0 0 24px rgba(250,204,21,0.22)';
@@ -1401,7 +1558,10 @@ card:
                   ]]]
               - color: |
                   [[[
-                    const r = (states['sensor.worst_room_mould']?.attributes?.risk || '').toLowerCase();
+                    const source = states['sensor.worst_room_mould'];
+                    const state = String(source?.state || '').trim().toLowerCase();
+                    const risk = state && !['unavailable', 'unknown'].includes(state) && typeof source.attributes?.risk === 'string' ? source.attributes.risk : '';
+                    const r = risk.toLowerCase();
                     if (!r) return '#94a3b8';
                     if (r.includes('danger') || r.includes('risk')) return '#ef4444';
                     if (r.includes('watch') || r.includes('elev')) return '#facc15';
@@ -1426,7 +1586,10 @@ card:
               - letter-spacing: 0.2px
               - color: |
                   [[[
-                    const r = (states['sensor.worst_room_mould']?.attributes?.risk || '').toLowerCase();
+                    const source = states['sensor.worst_room_mould'];
+                    const state = String(source?.state || '').trim().toLowerCase();
+                    const risk = state && !['unavailable', 'unknown'].includes(state) && typeof source.attributes?.risk === 'string' ? source.attributes.risk : '';
+                    const r = risk.toLowerCase();
                     if (!r) return '#94a3b8';
                     if (r.includes('danger') || r.includes('risk')) return '#ef4444';
                     if (r.includes('watch') || r.includes('elev')) return '#facc15';
@@ -1790,11 +1953,205 @@ card:
     - type: custom:button-card
       entity: sensor.air_control_mode
       variables:
+        hi_mode: &hi_mode |
+          [[[
+            const rawMode = String(states['sensor.air_control_mode']?.state || '').trim();
+            const mode = rawMode.toLowerCase();
+            const knownModes = new Set([
+              'normal',
+              'co_emergency',
+              'danger',
+              'air_quality',
+              'global_gate',
+              'away',
+              'cooking',
+              'bathroom',
+              'bath',
+              'paused',
+              'manual_override',
+              'disabled',
+              'telemetry_unavailable',
+            ]);
+            const modeKnown =
+              !!mode &&
+              mode !== 'unknown' &&
+              mode !== 'unavailable' &&
+              (knownModes.has(mode) || mode.includes('alert'));
+            if (!modeKnown) return mode === 'unavailable' || !mode ? 'Unavailable' : 'Unknown';
+            const display = states['sensor.air_control_mode']?.attributes?.display;
+            if (typeof display === 'string' && display.trim()) return display.trim();
+            return rawMode.replace(/_/g,' ').toUpperCase();
+          ]]]
+        hi_reason_html: &hi_reason_html |
+          [[[
+            const escapeHtml = (value) => String(value ?? '')
+              .replace(/&/g, '&amp;')
+              .replace(/</g, '&lt;')
+              .replace(/>/g, '&gt;')
+              .replace(/"/g, '&quot;')
+              .replace(/'/g, '&#39;');
+            const reasonState = states['sensor.air_control_reason'];
+            const ownerState = String(reasonState?.state ?? '').trim().toLowerCase();
+            if (ownerState === 'unknown') return 'Reason unknown.';
+            if (!ownerState || ownerState === 'unavailable') return 'Reason unavailable.';
+            const legacyReason = () => {
+              try {
+                const fullReason = String(reasonState?.attributes?.full_reason || '').trim();
+                if (fullReason) return fullReason;
+              } catch (e) {
+                // Continue to the bounded state fallback.
+              }
+              try {
+                const stateReason = String(reasonState?.state || '').trim();
+                if (stateReason && !['unknown', 'unavailable'].includes(stateReason.toLowerCase())) {
+                  return stateReason;
+                }
+              } catch (e) {
+                // Continue to the fixed final fallback.
+              }
+              return 'Reason unavailable.';
+            };
+            try {
+              const displayReason = reasonState?.attributes?.display_reason;
+              const isPlainObject = (value) =>
+                value !== null && typeof value === 'object' && !Array.isArray(value);
+              const hasOwn = (value, key) =>
+                Object.prototype.hasOwnProperty.call(value, key);
+              const hasExactKeys = (value, required, optional = []) => {
+                if (!isPlainObject(value)) return false;
+                const keys = Object.keys(value);
+                const allowed = new Set([...required, ...optional]);
+                return required.every((key) => hasOwn(value, key)) &&
+                  keys.every((key) => allowed.has(key)) &&
+                  keys.length >= required.length &&
+                  keys.length <= required.length + optional.length;
+              };
+              const codePointLength = (value) => Array.from(value).length;
+              const containsRawEntityId = (value) => {
+                const withoutBenignDots = value.replace(
+                  /\b(?:PM2\.5|v\d+(?:\.\d+){1,2})\b/giu,
+                  ''
+                );
+                return /(^|[^a-z0-9_])(?:[a-z_][a-z0-9_]*)\.[a-z0-9_]+(?![a-z0-9_])/u.test(
+                  withoutBenignDots
+                );
+              };
+              const validText = (value, maximum) =>
+                typeof value === 'string' &&
+                value.length > 0 &&
+                codePointLength(value) <= maximum &&
+                value === value.trim().replace(/\s+/gu, ' ') &&
+                !/\p{C}/u.test(value) &&
+                !/[<>]/u.test(value) &&
+                !value.includes(String.fromCharCode(96)) &&
+                !containsRawEntityId(value);
+              const validToken = (value) =>
+                typeof value === 'string' &&
+                codePointLength(value) <= 64 &&
+                /^[a-z][a-z0-9_]{0,63}$/u.test(value);
+              const validCode = (value) =>
+                typeof value === 'string' &&
+                codePointLength(value) <= 96 &&
+                /^[a-z][a-z0-9_]*(?:\.[a-z][a-z0-9_]*)+$/u.test(value);
+              const validArgs = (value) => {
+                if (!isPlainObject(value)) return false;
+                const keys = Object.keys(value);
+                if (keys.length > 6 || !keys.every(validToken)) return false;
+                return keys.every((key) => {
+                  const item = value[key];
+                  if (item === null || typeof item === 'boolean') return true;
+                  if (typeof item === 'number') return Number.isFinite(item);
+                  return typeof item === 'string' && validText(item, 64);
+                });
+              };
+              const validLine = (line) => {
+                if (!hasExactKeys(
+                  line,
+                  ['role', 'scope', 'code', 'truth', 'text'],
+                  ['args']
+                )) return false;
+                if (!new Set(['why', 'action', 'next', 'notice']).has(line.role)) return false;
+                if (!new Set(['system', 'safety', 'ventilation', 'humidifier']).has(line.scope)) return false;
+                if (!new Set([
+                  'selected',
+                  'blocked',
+                  'requested',
+                  'observed',
+                  'unavailable',
+                  'unmapped',
+                  'not_confirmed',
+                  'failed',
+                ]).has(line.truth)) return false;
+                if (!validCode(line.code) || !validText(line.text, 200)) return false;
+                return !hasOwn(line, 'args') || validArgs(line.args);
+              };
+              const validDisplayReason = (() => {
+                if (!hasExactKeys(displayReason, [
+                  'schema',
+                  'locale',
+                  'family',
+                  'variant',
+                  'attention',
+                  'truncated',
+                  'headline',
+                  'lines',
+                ])) return false;
+                if (displayReason.schema !== 'hi.reason.v1' || displayReason.locale !== 'en') return false;
+                if (!validToken(displayReason.family) || !validToken(displayReason.variant)) return false;
+                if (!new Set([
+                  'neutral',
+                  'active',
+                  'hold',
+                  'degraded',
+                  'critical',
+                  'unknown',
+                ]).has(displayReason.attention)) return false;
+                if (typeof displayReason.truncated !== 'boolean') return false;
+                if (!validText(displayReason.headline, 120)) return false;
+                if (!Array.isArray(displayReason.lines) ||
+                    displayReason.lines.length < 1 ||
+                    displayReason.lines.length > 8 ||
+                    !displayReason.lines.every(validLine)) return false;
+                try {
+                  return new TextEncoder().encode(JSON.stringify(displayReason)).length <= 4096;
+                } catch (e) {
+                  return false;
+                }
+              })();
+
+              if (!validDisplayReason) {
+                return escapeHtml(legacyReason());
+              }
+              const rendered = [
+                '<span class="cv-reason__headline">' +
+                  escapeHtml(displayReason.headline) +
+                  '</span>',
+                ...displayReason.lines.map((line) => escapeHtml(line.text)),
+              ];
+              return rendered.join('<br>');
+            } catch (e) {
+              return escapeHtml(legacyReason());
+            }
+          ]]]
         hi_summary: |
-          [[[ return {"title": "Current Air Control", "history": "sensor.air_control_mode", "description": "Shows HI’s current air-control mode. The reason explains what HI is responding to and any limits in effect.", "historyNote": "Explore recorded operating mode and reasons, each with its own timestamp.", "kind": "mode", "historyEntities": [{"id": "sensor.air_control_mode", "label": "Operating mode", "kind": "mode"}, {"id": "sensor.air_control_reason", "label": "Recorded reason", "kind": "reason"}]}; ]]]
+          [[[ return {"title": "Current Air Control", "history": "sensor.air_control_mode", "description": "Shows HI’s current air-control mode. The reason explains what HI is responding to and any limits in effect.", "historyNote": "Explore recorded operating mode and reasons, each with its own timestamp.", "kind": "mode", "historyEntities": [{"id": "sensor.air_control_mode", "label": "Operating mode", "kind": "mode"}, {"id": "sensor.air_control_reason", "label": "Recorded reason", "kind": "reason"}], "owner": "sensor.air_control_mode", "reason": "sensor.air_control_reason"}; ]]]
       triggers_update:
         - sensor.air_control_mode
         - sensor.air_control_reason
+        - sensor.hi_diagnostics
+        - sensor.hi_voc_index_sources
+        - sensor.air_control_house_iaq_average
+        - sensor.air_control_house_pm25_average
+        - sensor.air_control_house_voc_average
+        - sensor.air_control_house_co_average
+        - sensor.air_control_upstairs_iaq_average
+        - sensor.air_control_upstairs_pm25_average
+        - sensor.air_control_upstairs_voc_average
+        - sensor.air_control_upstairs_co_average
+        - sensor.air_control_downstairs_iaq_average
+        - sensor.air_control_downstairs_pm25_average
+        - sensor.air_control_downstairs_voc_average
+        - sensor.air_control_downstairs_co_average
       name: Current Air Control
       icon: mdi:eye
       show_icon: true
@@ -1802,34 +2159,7 @@ card:
       show_state: true
       show_label: true
       state_display: |
-        [[[
-          const rawMode = String(states['sensor.air_control_mode']?.state || '').trim();
-          const mode = rawMode.toLowerCase();
-          const knownModes = new Set([
-            'normal',
-            'co_emergency',
-            'danger',
-            'air_quality',
-            'global_gate',
-            'away',
-            'cooking',
-            'bathroom',
-            'bath',
-            'paused',
-            'manual_override',
-            'disabled',
-            'telemetry_unavailable',
-          ]);
-          const modeKnown =
-            !!mode &&
-            mode !== 'unknown' &&
-            mode !== 'unavailable' &&
-            (knownModes.has(mode) || mode.includes('alert'));
-          if (!modeKnown) return 'UNKNOWN';
-          const display = states['sensor.air_control_mode']?.attributes?.display;
-          if (display && String(display).trim()) return String(display);
-          return rawMode.replace(/_/g,' ').toUpperCase();
-        ]]]
+        [[[ return String(variables.hi_mode).replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;'); ]]]
       label: |
         [[[
           const finiteReading = (id) => {
@@ -1863,7 +2193,7 @@ card:
             const escapeHtml = value => String(value ?? '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#039;');
             const raw = typeof entity?.state === 'string' ? entity.state.trim() : '';
             const numeric = /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$/.test(raw) && Number.isFinite(Number(raw));
-            const current = variables.hi_summary.kind === 'humidity' ? (numeric ? raw + '%' : 'Unavailable') : (raw || 'Unavailable');
+            const current = variables.hi_summary.kind === 'mode' ? variables.hi_mode : variables.hi_summary.kind === 'humidity' ? (numeric ? raw + '%' : 'Unavailable') : (raw || 'Unavailable');
             return `<button type="button" class="hi-summary-open" aria-label="${escapeHtml(variables.hi_summary.title)}: ${escapeHtml(current)}. Open details"></button>`;
           ]]]
         summary: |
@@ -1871,19 +2201,12 @@ card:
             const view = variables.hi_summary;
             const escapeHtml = value => String(value ?? '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#039;');
             const readable = value => typeof value === 'string' && value.trim() ? value.trim() : 'Unavailable';
-            const current = readable(entity?.state);
-            const humidityText = typeof entity?.state === 'string' ? entity.state.trim() : '';
-            const humidityValid = /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$/.test(humidityText) && Number.isFinite(Number(humidityText));
             const target = states[view.history];
             const historyAvailable = view.historyEntities.some(item => states[item.id]);
             const historyName = readable(target?.attributes?.friendly_name);
-            const reason = states['sensor.air_control_reason'];
-            const context = view.kind === 'risk'
-              ? `Source: ${current}. Risk: ${readable(entity?.attributes?.risk)}.`
-              : view.kind === 'mode'
-                ? `Current mode: ${current}. Reason: ${readable(reason?.attributes?.full_reason || reason?.state)}.`
-                : `Current humidity: ${humidityValid ? humidityText + '%' : 'Unavailable'}.`;
-            return `<template class="hi-summary-template">
+            const context = `Mode: ${escapeHtml(variables.hi_mode)}. Reason: ${variables.hi_reason_html}`;
+            const identity = JSON.stringify(['__HI_UI_REVISION_STAMP__', view.title, view.kind, entity?.entity_id || view.owner, view.reason, view.history, (view.historyEntities || []).map(item => [item.kind, item.id])]);
+            return `<template class="hi-summary-template" data-hi-binding="${escapeHtml(identity)}">
               <style>dialog.hi-summary-details { box-sizing:border-box; width:min(520px,calc(100vw - 32px)); max-height:calc(100vh - 32px); max-height:calc(100dvh - 32px - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px)); top:env(safe-area-inset-top,0px); bottom:env(safe-area-inset-bottom,0px); overflow:auto; padding:20px; border:1px solid #354762; border-radius:20px; background:#0d1522; color:#e2e8f0; text-align:left; white-space:normal; font:14px/1.6 system-ui,sans-serif; }
               dialog.hi-summary-details::backdrop { background:rgba(0,0,0,.55); }
               dialog.hi-summary-details h2 { margin:0 0 16px; font-size:20px; }
@@ -1893,8 +2216,9 @@ card:
               dialog.hi-summary-details button:focus-visible { outline:2px solid #38bdf8; outline-offset:2px; }</style>
               <button type="button" class="hi-summary-close" aria-label="Close" title="Close" autofocus><svg aria-hidden="true" viewBox="0 0 24 24" width="18" height="18"><path d="m6 6 12 12M18 6 6 18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
               <h2>${escapeHtml(view.title)}</h2>
-              <p>${escapeHtml(view.description)}</p>
-              <p>${escapeHtml(context)}</p>
+              <p class="hi-snapshot-time"></p>
+                  <p>${escapeHtml(view.description)}</p>
+              <p>${context}</p>
               <p>${historyAvailable ? escapeHtml(view.historyNote) : 'History sources are currently unavailable in Home Assistant.'}</p>
               <p>Available history depends on Home Assistant Recorder and retention.</p>
               <button type="button" class="hi-summary-history" ${historyAvailable ? '' : 'disabled'}>View history</button>
@@ -2079,234 +2403,64 @@ card:
           ]]]
         reason: |
           [[[
-            const escapeHtml = (value) => String(value ?? '')
-              .replace(/&/g, '&amp;')
-              .replace(/</g, '&lt;')
-              .replace(/>/g, '&gt;')
-              .replace(/"/g, '&quot;')
-              .replace(/'/g, '&#39;');
-            const wrapReason = (content) =>
-              '<div class="cv-reason" role="region" aria-label="Current Air Control reason" tabindex="0">' +
-              content +
-              '</div>';
-            const reasonState = states['sensor.air_control_reason'];
-            const legacyReason = () => {
-              try {
-                const fullReason = String(reasonState?.attributes?.full_reason || '').trim();
-                if (fullReason) return fullReason;
-              } catch (e) {
-                // Continue to the bounded state fallback.
-              }
-              try {
-                const stateReason = String(reasonState?.state || '').trim();
-                if (stateReason && !['unknown', 'unavailable'].includes(stateReason.toLowerCase())) {
-                  return stateReason;
-                }
-              } catch (e) {
-                // Continue to the fixed final fallback.
-              }
-              return 'Reason unavailable.';
-            };
-            try {
-              const displayReason = reasonState?.attributes?.display_reason;
-              const isPlainObject = (value) =>
-                value !== null && typeof value === 'object' && !Array.isArray(value);
-              const hasOwn = (value, key) =>
-                Object.prototype.hasOwnProperty.call(value, key);
-              const hasExactKeys = (value, required, optional = []) => {
-                if (!isPlainObject(value)) return false;
-                const keys = Object.keys(value);
-                const allowed = new Set([...required, ...optional]);
-                return required.every((key) => hasOwn(value, key)) &&
-                  keys.every((key) => allowed.has(key)) &&
-                  keys.length >= required.length &&
-                  keys.length <= required.length + optional.length;
-              };
-              const codePointLength = (value) => Array.from(value).length;
-              const containsRawEntityId = (value) => {
-                const withoutBenignDots = value.replace(
-                  /\b(?:PM2\.5|v\d+(?:\.\d+){1,2})\b/giu,
-                  ''
-                );
-                return /(^|[^a-z0-9_])(?:[a-z_][a-z0-9_]*)\.[a-z0-9_]+(?![a-z0-9_])/u.test(
-                  withoutBenignDots
-                );
-              };
-              const validText = (value, maximum) =>
-                typeof value === 'string' &&
-                value.length > 0 &&
-                codePointLength(value) <= maximum &&
-                value === value.trim().replace(/\s+/gu, ' ') &&
-                !/\p{C}/u.test(value) &&
-                !/[<>]/u.test(value) &&
-                !value.includes(String.fromCharCode(96)) &&
-                !containsRawEntityId(value);
-              const validToken = (value) =>
-                typeof value === 'string' &&
-                codePointLength(value) <= 64 &&
-                /^[a-z][a-z0-9_]{0,63}$/u.test(value);
-              const validCode = (value) =>
-                typeof value === 'string' &&
-                codePointLength(value) <= 96 &&
-                /^[a-z][a-z0-9_]*(?:\.[a-z][a-z0-9_]*)+$/u.test(value);
-              const validArgs = (value) => {
-                if (!isPlainObject(value)) return false;
-                const keys = Object.keys(value);
-                if (keys.length > 6 || !keys.every(validToken)) return false;
-                return keys.every((key) => {
-                  const item = value[key];
-                  if (item === null || typeof item === 'boolean') return true;
-                  if (typeof item === 'number') return Number.isFinite(item);
-                  return typeof item === 'string' && validText(item, 64);
-                });
-              };
-              const validLine = (line) => {
-                if (!hasExactKeys(
-                  line,
-                  ['role', 'scope', 'code', 'truth', 'text'],
-                  ['args']
-                )) return false;
-                if (!new Set(['why', 'action', 'next', 'notice']).has(line.role)) return false;
-                if (!new Set(['system', 'safety', 'ventilation', 'humidifier']).has(line.scope)) return false;
-                if (!new Set([
-                  'selected',
-                  'blocked',
-                  'requested',
-                  'observed',
-                  'unavailable',
-                  'unmapped',
-                  'not_confirmed',
-                  'failed',
-                ]).has(line.truth)) return false;
-                if (!validCode(line.code) || !validText(line.text, 200)) return false;
-                return !hasOwn(line, 'args') || validArgs(line.args);
-              };
-              const validDisplayReason = (() => {
-                if (!hasExactKeys(displayReason, [
-                  'schema',
-                  'locale',
-                  'family',
-                  'variant',
-                  'attention',
-                  'truncated',
-                  'headline',
-                  'lines',
-                ])) return false;
-                if (displayReason.schema !== 'hi.reason.v1' || displayReason.locale !== 'en') return false;
-                if (!validToken(displayReason.family) || !validToken(displayReason.variant)) return false;
-                if (!new Set([
-                  'neutral',
-                  'active',
-                  'hold',
-                  'degraded',
-                  'critical',
-                  'unknown',
-                ]).has(displayReason.attention)) return false;
-                if (typeof displayReason.truncated !== 'boolean') return false;
-                if (!validText(displayReason.headline, 120)) return false;
-                if (!Array.isArray(displayReason.lines) ||
-                    displayReason.lines.length < 1 ||
-                    displayReason.lines.length > 8 ||
-                    !displayReason.lines.every(validLine)) return false;
-                try {
-                  return new TextEncoder().encode(JSON.stringify(displayReason)).length <= 4096;
-                } catch (e) {
-                  return false;
-                }
-              })();
-
-              if (!validDisplayReason) {
-                return wrapReason(escapeHtml(legacyReason()));
-              }
-              const rendered = [
-                '<span class="cv-reason__headline">' +
-                  escapeHtml(displayReason.headline) +
-                  '</span>',
-                ...displayReason.lines.map((line) => escapeHtml(line.text)),
-              ];
-              return wrapReason(rendered.join('<br>'));
-            } catch (e) {
-              return wrapReason(escapeHtml(legacyReason()));
-            }
+            return '<div class="cv-reason" role="region" aria-label="Current Air Control reason" tabindex="0">' +
+              variables.hi_reason_html + '</div>';
           ]]]
         aq: |
           [[[
-            const num = (id) => {
-              const v = parseFloat(states[id]?.state);
-              return isNaN(v) ? null : v;
-            };
-
-            // IAQ trigger is <=60; UI colours: <=50 bad (red), 51-60 warn (amber)
-            const cIAQ = (v) => {
-              if (v === null) return '#94a3b8';
-              if (v <= 50) return '#ef4444';
-              if (v <= 60) return '#facc15';
-              return '#4ade80';
-            };
-            // PM2.5 >=65 bad (red), >=35 warn (amber)
-            const cPM = (v) => {
-              if (v === null) return '#94a3b8';
-              if (v >= 65) return '#ef4444';
-              if (v >= 35) return '#facc15';
-              return '#4ade80';
-            };
-            // VOC >=60 bad (red), >=40 warn (amber)
-            const cVOC = (v) => {
-              if (v === null) return '#94a3b8';
-              if (v >= 60) return '#ef4444';
-              if (v >= 40) return '#facc15';
-              return '#4ade80';
-            };
-            // CO >=15 bad (red), >=10 warn (amber)
-            const cCO = (v) => {
-              if (v === null) return '#94a3b8';
-              if (v >= 15) return '#ef4444';
-              if (v >= 10) return '#facc15';
-              return '#4ade80';
-            };
-
-            const escapeHtml = (value) => String(value ?? '')
-              .replace(/&/g, '&amp;')
-              .replace(/</g, '&lt;')
-              .replace(/>/g, '&gt;')
-              .replace(/"/g, '&quot;')
-              .replace(/'/g, '&#39;');
-            const chip = (k, v, unit, c) => `
-              <span class="cv-chip" style="--cv:${c};">
-                <span class="k">${escapeHtml(k)}</span>
-                <span class="v" style="color:${c};">${escapeHtml(v === null ? '—' : `${v}${unit || ''}`)}</span>
-              </span>`;
-            const maybeChip = (k, v, unit, c) => (v === null ? '' : chip(k, v, unit, c));
-
-            const iaqU = num('sensor.air_control_upstairs_iaq_average');
-            const pmU  = num('sensor.air_control_upstairs_pm25_average');
-            const vocU = num('sensor.air_control_upstairs_voc_average');
-            const coU  = num('sensor.air_control_upstairs_co_average');
-
-            const iaqD = num('sensor.air_control_downstairs_iaq_average');
-            const pmD  = num('sensor.air_control_downstairs_pm25_average');
-            const vocD = num('sensor.air_control_downstairs_voc_average');
-            const coD  = num('sensor.air_control_downstairs_co_average');
-            const iaqH = num('sensor.air_control_house_iaq_average');
-            const pmH  = num('sensor.air_control_house_pm25_average');
-            const vocH = num('sensor.air_control_house_voc_average');
-            const coH  = num('sensor.air_control_house_co_average');
-
-            return `
-              <div class="cv-scroll">
-                ${maybeChip('House IAQ', iaqH, '', cIAQ(iaqH))}
-                ${maybeChip('House PM2.5', pmH, '', cPM(pmH))}
-                ${maybeChip('House VOC', vocH, '', cVOC(vocH))}
-                ${maybeChip('House CO', coH, '', cCO(coH))}
-                ${maybeChip('Upstairs IAQ', iaqU, '', cIAQ(iaqU))}
-                ${maybeChip('Upstairs PM2.5', pmU, '', cPM(pmU))}
-                ${maybeChip('Upstairs VOC', vocU, '', cVOC(vocU))}
-                ${maybeChip('Upstairs CO', coU, '', cCO(coU))}
-                ${maybeChip('Downs.. IAQ', iaqD, '', cIAQ(iaqD))}
-                ${maybeChip('Downs.. PM2.5', pmD, '', cPM(pmD))}
-                ${maybeChip('Downs.. VOC', vocD, '', cVOC(vocD))}
-                ${maybeChip('Downs.. CO', coD, '', cCO(coD))}
-              </div>`;
+            const diag = states['sensor.hi_diagnostics'];
+            const available = owner => typeof owner?.state === 'string' && !!owner.state.trim() && !['unknown','unavailable'].includes(owner.state.trim().toLowerCase());
+            const inventory = available(diag) ? diag.attributes?.config?.telemetry : null;
+            const metrics = [
+              ["", "iaq", "House IAQ", "sensor.air_control_house_iaq_average"],
+              ["", "pm25", "House PM2.5", "sensor.air_control_house_pm25_average"],
+              ["", "voc", "House VOC concentration", "sensor.air_control_house_voc_average"],
+              ["", "co", "House CO", "sensor.air_control_house_co_average"],
+              ["level2", "iaq", "Upstairs IAQ", "sensor.air_control_upstairs_iaq_average"],
+              ["level2", "pm25", "Upstairs PM2.5", "sensor.air_control_upstairs_pm25_average"],
+              ["level2", "voc", "Upstairs VOC concentration", "sensor.air_control_upstairs_voc_average"],
+              ["level2", "co", "Upstairs CO", "sensor.air_control_upstairs_co_average"],
+              ["level1", "iaq", "Downstairs IAQ", "sensor.air_control_downstairs_iaq_average"],
+              ["level1", "pm25", "Downstairs PM2.5", "sensor.air_control_downstairs_pm25_average"],
+              ["level1", "voc", "Downstairs VOC concentration", "sensor.air_control_downstairs_voc_average"],
+              ["level1", "co", "Downstairs CO", "sensor.air_control_downstairs_co_average"],
+            ];
+            const esc = text => String(text).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#39;');
+            const chip = (label, value) => `<span class="cv-chip" style="--cv:#94a3b8"><span class="k">${esc(label)}</span> <span class="v">${esc(value)}</span></span>`;
+            const chips = [];
+            if (Array.isArray(inventory)) {
+              for (const [level, kind, label, id] of metrics) {
+                if (!inventory.some(row => row?.sensor_type === kind && (!level || row.level === level))) continue;
+                const sensor = id ? states[id] : null;
+                const raw = String(sensor?.state ?? '').trim();
+                const numeric = /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:e[+-]?\d+)?$/i.test(raw) && Number.isFinite(Number(raw));
+                const unit = sensor?.attributes?.unit_of_measurement || (kind === 'iaq' &&
+                  diag.attributes?.diagnostics_summary?.aq_inputs?.by_type?.iaq?.unit === 'index' ? 'index' : null);
+                const missing = raw.toLowerCase() === 'unknown' ? 'Unknown' : 'Unavailable';
+                chips.push(chip(label, numeric ? `${raw} ${unit || '(unit not supplied)'}` : missing));
+              }
+              if (inventory.some(row => typeof row?.sensor_type !== 'string' || !row.level))
+                chips.push(chip('AQ configuration', 'Incomplete'));
+            } else {
+              chips.push(chip('AQ configuration', 'Unavailable'));
+            }
+            const indexInventory = []; // HI VOC index export inventory
+            const feed = states['sensor.hi_voc_index_sources'];
+            const readings = available(feed) && feed.attributes?.schema === 1 ? feed.attributes.readings : null;
+            const rows = readings && typeof readings === 'object' && !Array.isArray(readings) ? Object.values(readings) : [];
+            const validRow = row => typeof row?.label === 'string' && !!row.label.trim() &&
+              (row.status === 'available' ? Number.isFinite(row.value) :
+                ['unknown','unavailable','invalid','unsupported_unit'].includes(row.status) && row.value === null);
+            if (rows.length && rows.every(validRow) && String(rows.filter(row => row.status === 'available').length) === feed.state) {
+              for (const row of rows) {
+                const value = row.status === 'available' && Number.isFinite(row.value) ? row.value
+                  : row.status === 'unknown' ? 'Unknown' : 'Unavailable';
+                chips.push(chip(`${row.label} VOC index`, value));
+              }
+            } else {
+              for (const label of indexInventory) chips.push(chip(`${label} VOC index (exported source)`, 'Unavailable'));
+            }
+            return chips.length ? `<div class="cv-scroll">${chips.join('')}</div>` : '';
           ]]]
         humidity: |
           [[[
@@ -2549,7 +2703,8 @@ card:
                   if (!Number.isFinite(time) || time > end || time < start) { invalid++; continue; }
                   const attrs = item.a && typeof item.a === 'object' ? item.a : item.attributes && typeof item.attributes === 'object' ? item.attributes : {};
                   const state = text(item.s ?? item.state);
-                  const value = kind === 'reason' ? text(attrs.full_reason) || state : state;
+                  const usable = state.trim() && !['unknown', 'unavailable'].includes(state.trim().toLowerCase());
+                  const value = kind === 'reason' && usable ? text(attrs.full_reason) || state : state.trim() || 'Unknown';
                   const unit = typeof attrs.unit_of_measurement === 'string' && attrs.unit_of_measurement.trim() ? text(attrs.unit_of_measurement.trim()) : null;
                   rows.push({time, state: value || 'Unknown', unit, number: numeric(value), boundary: time === start, conflict: false});
                 }
@@ -2567,6 +2722,12 @@ card:
                 unique.forEach((record, index) => {record.transition = index > 0 && (record.state !== unique[index - 1].state || record.conflict);});
                 return {records: unique.slice(omitted), status: unique.length ? 'ok' : 'empty', omitted, invalid};
               }
+              const modeColours = Object.freeze({
+                normal: '#e5e7eb', cooking: '#38bdf8', bathroom: '#4ade80', bath: '#4ade80',
+                air_quality: '#c084fc', global_gate: '#fbbf24', away: '#5eead4', paused: '#fde68a',
+                manual_override: '#f9a8d4', disabled: '#a5b4fc', telemetry_unavailable: '#fdba74',
+                alert: '#fb923c', danger: '#f87171', co_emergency: '#ef4444',
+              });
               function category(value, kind) {
                 if (kind === 'source' || kind === 'reason') return {label: value, tone: 'neutral'};
                 if (['unknown', 'unavailable', 'Conflicting records'].some(x => x.toLowerCase() === value.toLowerCase())) return {label: value, tone: 'unknown'};
@@ -2621,7 +2782,7 @@ card:
                 if (segment.length) segments.push(segment);
                 return {segments, points, min, max};
               }
-              function create({dialog, owner, title, entities, states, close, openEntity, nativeLabel = 'entity', nativeAvailable = true, now = () => Date.now(), timeoutMs = 15000}) {
+              function create({dialog, owner, title, entities, states, close, openEntity, nativeLabel = 'entity', nativeAvailable = true, withSource = action => action(), now = () => Date.now(), timeoutMs = 15000}) {
                 const document = dialog.ownerDocument;
                 const allowed = entities.slice(0, 4).filter(item => item && typeof item.id === 'string' && /^sensor\.[a-z0-9_]+$/.test(item.id));
                 const requested = [...new Set(allowed.filter(item => states[item.id]).map(item => item.id))];
@@ -2666,12 +2827,13 @@ card:
                   dialog.scrollTop = 0;
                 };
                 section.querySelector('[data-back]').addEventListener('click', back);
-                section.querySelector('[data-native]').addEventListener('click', () => { if (nativeAvailable) {close(); openEntity();} });
-                for (const button of section.querySelectorAll('[data-hours]')) button.addEventListener('click', () => {
+                section.querySelector('[data-native]').addEventListener('click', () => withSource(() => { if (nativeAvailable) {close(); openEntity();} }));
+                for (const button of section.querySelectorAll('[data-hours]')) button.addEventListener('click', () => withSource(() => {
+                  if (disposed || !active) return;
                   hours = Number(button.dataset.hours);
                   for (const choice of section.querySelectorAll('[data-hours]')) choice.setAttribute('aria-pressed', String(Number(choice.dataset.hours) === hours));
                   load();
-                });
+                }));
                 function inspect(article, records) {
                   const select = article.querySelector('select');
                   if (!select) return;
@@ -2716,17 +2878,27 @@ card:
                     html += '<p class="hi-history-note">Lines join recorded values. A recorded state such as Unavailable, or a change of unit, creates a break.</p>';
                   } else if (item.kind !== 'reason') {
                     const colors = {ok:'#4ade80',watch:'#facc15',risk:'#fb923c',danger:'#f87171',unknown:'#64748b',neutral:'#7dd3fc'};
-                    const colorFor = value => item.kind === 'source' ? sourceColor(value, document) : colors[category(value, item.kind).tone];
+                    const colorFor = value => {
+                      if (item.kind === 'source') return sourceColor(value, document);
+                      if (item.kind === 'mode') return Object.hasOwn(modeColours, value) ? modeColours[value] : colors.unknown;
+                      return colors[category(value, item.kind).tone];
+                    };
                     if (item.kind === 'source') html += '<p class="hi-history-note">Colours identify rooms. The risk level is shown in the chart above.</p>';
                     const ribbons = records.map((record,index) => {
                       const next = records[index+1]?.time ?? end;
                       const x = 500 * (record.time-start) / Math.max(1,end-start);
                       const width = Math.max(0,500 * (next-record.time) / Math.max(1,end-start));
                       const label = category(record.state,item.kind);
-                      return `<rect x="${x.toFixed(2)}" y="0" width="${width.toFixed(2)}" height="36" fill="${colorFor(record.state)}" stroke="#0d1522" stroke-width="1"><title>${escape(label.label)} · ${escape(date(record.time))}</title></rect>${width >= 50 ? `<text x="${(x+5).toFixed(2)}" y="23" font-size="13" fill="#071523">${escape(label.label.slice(0, Math.max(1, Math.floor((width-10)/8))))}${label.label.length > Math.floor((width-10)/8) ? '…' : ''}</text>` : ''}`;
+                      const foreground = item.kind === 'mode' && label.tone === 'unknown' ? '#ffffff' : '#071523';
+                      return `<rect x="${x.toFixed(2)}" y="0" width="${width.toFixed(2)}" height="36" fill="${colorFor(record.state)}" stroke="#0d1522" stroke-width="1"><title>${escape(label.label)} · ${escape(date(record.time))}</title></rect>${width >= 50 ? `<text x="${(x+5).toFixed(2)}" y="23" font-size="13" fill="${foreground}">${escape(label.label.slice(0, Math.max(1, Math.floor((width-10)/8))))}${label.label.length > Math.floor((width-10)/8) ? '…' : ''}</text>` : ''}`;
                     }).join('');
                     html += `<svg class="hi-history-chart" viewBox="0 0 500 36" role="img" aria-label="${escape(item.label)} recorded states. Choose a recorded state below for its time and value.">${ribbons}</svg>${axis}`;
-                    html += `<div class="hi-history-legend">${[...new Set(records.map(record => record.state))].map(value => {const label=category(value,item.kind); return `<span><i style="background:${colorFor(value)}" aria-hidden="true"></i>${escape(label.label)}</span>`;}).join('')}</div>`;
+                    const legend = new Map();
+                    for (const {state} of records) {
+                      const key = item.kind === 'mode' ? category(state, item.kind).label : state;
+                      if (!legend.has(key)) legend.set(key, state);
+                    }
+                    html += `<div class="hi-history-legend">${[...legend.values()].map(value => {const label=category(value,item.kind); return `<span><i style="background:${colorFor(value)}" aria-hidden="true"></i>${escape(label.label)}</span>`;}).join('')}</div>`;
                   }
                   html += inspection(records,item.label,item.kind);
                   const updates = item.kind === 'numeric' || item.kind === 'reason' ? records.filter(record => !record.boundary) : transitions(records);
@@ -2743,29 +2915,41 @@ card:
                   let timedOut = false;
                   timer = setTimeout(() => {
                     if (disposed || !active || requestGeneration !== generation) return;
-                    timedOut = true; generation++;
-                    content.innerHTML = '<p>History took too long to load. Choose a range to try again, or open source details.</p>';
+                    timedOut = true;
+                    withSource(() => {
+                      if (disposed || !active || requestGeneration !== generation) return;
+                      content.innerHTML = '<p>History took too long to load. Choose a range to try again, or open source details.</p>';
+                    });
                   }, timeoutMs);
                   try {
                     const response = await hass.callWS({type:'history/history_during_period',start_time:new Date(start).toISOString(),end_time:new Date(end).toISOString(),entity_ids:requested,include_start_time_state:true,significant_changes_only:false,minimal_response:false,no_attributes:false});
-                    if (disposed || !active || timedOut || requestGeneration !== generation || !owner.isConnected || !dialog.isConnected) return;
+                    if (disposed || !active || timedOut || requestGeneration !== generation) return;
                     clearTimeout(timer);
-                    content.replaceChildren();
-                    const context = document.createElement('p'); context.className='hi-history-note';
-                    context.textContent = allowed.some(item=>item.kind==='numeric') ? 'Each chart shows a recorded house average. The mix of sensors can change over time. Details of that mix are unavailable for past readings. For CO emergencies, use dedicated CO safety information.' : allowed.some(item=>item.kind==='risk') ? 'Risk and room changes are recorded separately. “OK” reflects the room readings available at the time.' : 'Explore HI’s recorded modes and reasons. Each keeps its own timestamp. These records describe HI’s selected mode.';
-                    content.appendChild(context);
-                    const range = document.createElement('p'); range.className='hi-history-note';
-                    range.textContent = `${date(start)} — ${date(end)}. “State at start” shows the value carried into this period. Its timestamp marks the start of your selected range.`;
-                    content.appendChild(range);
-                    if (!response || typeof response !== 'object' || Array.isArray(response)) throw new Error('Invalid history response');
-                    for (const item of allowed) {
-                      // Ignore all unrequested response keys, even if the server supplied them.
-                      const model = requested.includes(item.id) ? normalize(Object.hasOwn(response,item.id) ? response[item.id] : undefined,start,end,item.kind) : {status:'unmapped',records:[]};
-                      content.appendChild(draw(model,item,start,end));
-                    }
+                    withSource(() => {
+                      if (disposed || !active || timedOut || requestGeneration !== generation || !owner.isConnected || !dialog.isConnected) return;
+                      content.replaceChildren();
+                      const context = document.createElement('p'); context.className='hi-history-note';
+                      context.textContent = allowed.some(item=>item.kind==='numeric') ? 'Each chart shows a recorded house average. The mix of sensors can change over time. Details of that mix are unavailable for past readings. For CO emergencies, use dedicated CO safety information.' : allowed.some(item=>item.kind==='risk') ? 'Risk and room changes are recorded separately. “OK” reflects the room readings available at the time.' : 'Explore HI’s recorded modes and reasons. Each keeps its own timestamp. These records describe HI’s selected mode.';
+                      content.appendChild(context);
+                      const range = document.createElement('p'); range.className='hi-history-note';
+                      range.textContent = `${date(start)} — ${date(end)}. “State at start” shows the value carried into this period. Its timestamp marks the start of your selected range.`;
+                      content.appendChild(range);
+                      if (!response || typeof response !== 'object' || Array.isArray(response)) {
+                        content.innerHTML = '<p>History is currently unavailable. Try another range or open source details.</p>'; return;
+                      }
+                      for (const item of allowed) {
+                        // Ignore all unrequested response keys, even if the server supplied them.
+                        const model = requested.includes(item.id) ? normalize(Object.hasOwn(response,item.id) ? response[item.id] : undefined,start,end,item.kind) : {status:'unmapped',records:[]};
+                        content.appendChild(draw(model,item,start,end));
+                      }
+                    });
                   } catch (_) {
                     if (disposed || !active || requestGeneration !== generation) return;
-                    clearTimeout(timer); content.innerHTML = '<p>History is currently unavailable. Try another range or open source details.</p>';
+                    clearTimeout(timer);
+                    withSource(() => {
+                      if (!disposed && active && !timedOut && requestGeneration === generation)
+                        content.innerHTML = '<p>History is currently unavailable. Try another range or open source details.</p>';
+                    });
                   }
                 }
                 return {
@@ -2846,10 +3030,38 @@ card:
             const dialog = document.createElement('dialog');
             if (typeof dialog.showModal !== 'function') { history(); return; }
             const snapshot = source.innerHTML;
+            const binding = source.getAttribute('data-hi-binding');
+            if (!binding) { history(); return; }
+            const currentTemplate = () => owner.shadowRoot?.querySelector('template.hi-summary-template');
+            let bindingTimer;
+            let pendingActions = [];
+            // A button-card render can briefly remove its template. Hold completed history
+            // and clicks until the owner proves the same binding, or retire the dialog.
+            const withSource = action => {
+              if (cleaned) return;
+              const current = currentTemplate();
+              if (!owner.isConnected || (current && current.getAttribute('data-hi-binding') !== binding)) {
+                close(); return;
+              }
+              if (action) pendingActions.push(action);
+              if (!current) {
+                bindingTimer ??= setTimeout(() => {
+                  if (currentTemplate()) withSource(); else close();
+                }, 80);
+                return;
+              }
+              clearTimeout(bindingTimer);
+              bindingTimer = undefined;
+              const ready = pendingActions;
+              pendingActions = [];
+              for (const run of ready) { if (!cleaned) run(); }
+            };
             dialog.className = 'hi-summary-details';
             dialog.setAttribute('data-hi-summary-dialog', '');
             dialog.setAttribute('aria-label', `${variables.hi_summary.title} details`);
             dialog.innerHTML = snapshot;
+            const captured = new Date().toLocaleString();
+            dialog.querySelector('.hi-snapshot-time').textContent = `Snapshot captured at ${captured}. Close and reopen to refresh.`;
             const previousFocus = owner.shadowRoot?.activeElement || document.activeElement;
             let observer;
             let idleDispose;
@@ -2859,6 +3071,8 @@ card:
             const cleanup = () => {
               if (cleaned) return;
               cleaned = true;
+              clearTimeout(bindingTimer);
+              pendingActions = [];
               idleDispose?.();
               observer?.disconnect();
               historyController?.dispose();
@@ -2874,10 +3088,10 @@ card:
             dialog.querySelector('.hi-summary-close').addEventListener('click', close);
             const historyButton = dialog.querySelector('.hi-summary-history');
             historyButton.disabled = !variables.hi_summary.historyEntities.some(item => states[item.id]);
-            historyButton.addEventListener('click', () => {
-              historyController ||= hiBadgeHistory.create({dialog, owner, title:variables.hi_summary.title, entities:variables.hi_summary.historyEntities, states, close, nativeLabel:nativeTarget?.label, nativeAvailable:Boolean(nativeEntityId), openEntity:history});
+            historyButton.addEventListener('click', () => withSource(() => {
+              historyController ||= hiBadgeHistory.create({dialog, owner, title:variables.hi_summary.title, entities:variables.hi_summary.historyEntities, states, close, withSource, nativeLabel:nativeTarget?.label, nativeAvailable:Boolean(nativeEntityId), openEntity:history});
               historyController.open();
-            });
+            }));
             dialog.addEventListener('click', event => {
               event.stopPropagation();
               if (event.target !== dialog) return;
@@ -2885,13 +3099,10 @@ card:
               if (event.clientX < bounds.left || event.clientX > bounds.right || event.clientY < bounds.top || event.clientY > bounds.bottom) close();
             });
             for (const name of ['location-changed', 'popstate', 'pagehide']) window.addEventListener(name, close);
-            observer = new MutationObserver(() => {
-              const current = owner.shadowRoot?.querySelector('template.hi-summary-template');
-              if (!owner.isConnected || !current || current.innerHTML !== snapshot) close();
-            });
+            observer = new MutationObserver(() => withSource());
             let root = owner.shadowRoot;
             while (root) {
-              observer.observe(root, { childList: true, subtree: true, characterData: true });
+              observer.observe(root, { childList: true, subtree: true, attributes: true, attributeFilter: ['data-hi-binding'] });
               root = root.host ? root.host.getRootNode() : null;
             }
             document.body.appendChild(dialog);
@@ -3130,8 +3341,10 @@ card:
         - type: custom:button-card
           entity: sensor.air_control_mode
           variables:
+            hi_mode: *hi_mode
+            hi_reason_html: *hi_reason_html
             hi_summary: |
-              [[[ return {"title": "Ready", "history": "sensor.house_average_humidity", "description": "Highlights HI’s normal mode. Individual sensor and output status remains available in their details.", "historyNote": "Explore recorded house-average humidity.", "kind": "mode"}; ]]]
+              [[[ return {"title": "Ready", "history": "sensor.house_average_humidity", "description": "Highlights HI’s normal mode. Individual sensor and output status remains available in their details.", "historyNote": "Explore recorded house-average humidity.", "kind": "mode", "owner": "sensor.air_control_mode", "reason": "sensor.air_control_reason"}; ]]]
           triggers_update:
             - sensor.house_average_humidity
             - sensor.air_control_reason
@@ -3144,7 +3357,7 @@ card:
                 const escapeHtml = value => String(value ?? '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#039;');
                 const raw = typeof entity?.state === 'string' ? entity.state.trim() : '';
                 const numeric = /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$/.test(raw) && Number.isFinite(Number(raw));
-                const current = variables.hi_summary.kind === 'humidity' ? (numeric ? raw + '%' : 'Unavailable') : (raw || 'Unavailable');
+                const current = variables.hi_summary.kind === 'mode' ? variables.hi_mode : variables.hi_summary.kind === 'humidity' ? (numeric ? raw + '%' : 'Unavailable') : (raw || 'Unavailable');
                 return `<button type="button" class="hi-summary-open" aria-label="${escapeHtml(variables.hi_summary.title)}: ${escapeHtml(current)}. Open details"></button>`;
               ]]]
             summary: |
@@ -3152,18 +3365,11 @@ card:
                 const view = variables.hi_summary;
                 const escapeHtml = value => String(value ?? '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#039;');
                 const readable = value => typeof value === 'string' && value.trim() ? value.trim() : 'Unavailable';
-                const current = readable(entity?.state);
-                const humidityText = typeof entity?.state === 'string' ? entity.state.trim() : '';
-                const humidityValid = /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$/.test(humidityText) && Number.isFinite(Number(humidityText));
                 const target = states[view.history];
                 const historyName = readable(target?.attributes?.friendly_name);
-                const reason = states['sensor.air_control_reason'];
-                const context = view.kind === 'risk'
-                  ? `Source: ${current}. Risk: ${readable(entity?.attributes?.risk)}.`
-                  : view.kind === 'mode'
-                    ? `Current mode: ${current}. Reason: ${readable(reason?.attributes?.full_reason || reason?.state)}.`
-                    : `Current humidity: ${humidityValid ? humidityText + '%' : 'Unavailable'}.`;
-                return `<template class="hi-summary-template">
+                const context = `Mode: ${escapeHtml(variables.hi_mode)}. Reason: ${variables.hi_reason_html}`;
+                const identity = JSON.stringify(['__HI_UI_REVISION_STAMP__', view.title, view.kind, entity?.entity_id || view.owner, view.reason, view.history, (view.historyEntities || []).map(item => [item.kind, item.id])]);
+                return `<template class="hi-summary-template" data-hi-binding="${escapeHtml(identity)}">
                   <style>dialog.hi-summary-details { box-sizing:border-box; width:min(520px,calc(100vw - 32px)); max-height:calc(100vh - 32px); max-height:calc(100dvh - 32px - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px)); top:env(safe-area-inset-top,0px); bottom:env(safe-area-inset-bottom,0px); overflow:auto; padding:20px; border:1px solid #354762; border-radius:20px; background:#0d1522; color:#e2e8f0; text-align:left; white-space:normal; font:14px/1.6 system-ui,sans-serif; }
                   dialog.hi-summary-details::backdrop { background:rgba(0,0,0,.55); }
                   dialog.hi-summary-details h2 { margin:0 0 16px; font-size:20px; }
@@ -3173,8 +3379,9 @@ card:
                   dialog.hi-summary-details button:focus-visible { outline:2px solid #38bdf8; outline-offset:2px; }</style>
                   <button type="button" class="hi-summary-close" aria-label="Close" title="Close" autofocus><svg aria-hidden="true" viewBox="0 0 24 24" width="18" height="18"><path d="m6 6 12 12M18 6 6 18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
                   <h2>${escapeHtml(view.title)}</h2>
+                  <p class="hi-snapshot-time"></p>
                   <p>${escapeHtml(view.description)}</p>
-                  <p>${escapeHtml(context)}</p>
+                  <p>${context}</p>
                   <p>${target ? `History: ${escapeHtml(historyName === 'Unavailable' ? 'mapped entity' : historyName)}. ${escapeHtml(view.historyNote)}` : 'This source is currently unavailable in Home Assistant.'}</p>
                   <p>Available history depends on Home Assistant Recorder and retention.</p>
                   <button type="button" class="hi-summary-history" ${target ? '' : 'disabled'}>View history</button>
@@ -3252,10 +3459,38 @@ card:
                 const dialog = document.createElement('dialog');
                 if (typeof dialog.showModal !== 'function') { history(); return; }
                 const snapshot = source.innerHTML;
+                const binding = source.getAttribute('data-hi-binding');
+                if (!binding) { history(); return; }
+                const currentTemplate = () => owner.shadowRoot?.querySelector('template.hi-summary-template');
+                let bindingTimer;
+                let pendingActions = [];
+                // A button-card render can briefly remove its template. Hold completed history
+                // and clicks until the owner proves the same binding, or retire the dialog.
+                const withSource = action => {
+                  if (cleaned) return;
+                  const current = currentTemplate();
+                  if (!owner.isConnected || (current && current.getAttribute('data-hi-binding') !== binding)) {
+                    close(); return;
+                  }
+                  if (action) pendingActions.push(action);
+                  if (!current) {
+                    bindingTimer ??= setTimeout(() => {
+                      if (currentTemplate()) withSource(); else close();
+                    }, 80);
+                    return;
+                  }
+                  clearTimeout(bindingTimer);
+                  bindingTimer = undefined;
+                  const ready = pendingActions;
+                  pendingActions = [];
+                  for (const run of ready) { if (!cleaned) run(); }
+                };
                 dialog.className = 'hi-summary-details';
                 dialog.setAttribute('data-hi-summary-dialog', '');
                 dialog.setAttribute('aria-label', `${variables.hi_summary.title} details`);
                 dialog.innerHTML = snapshot;
+                const captured = new Date().toLocaleString();
+                dialog.querySelector('.hi-snapshot-time').textContent = `Snapshot captured at ${captured}. Close and reopen to refresh.`;
                 const previousFocus = owner.shadowRoot?.activeElement || document.activeElement;
                 let observer;
                 let idleDispose;
@@ -3264,6 +3499,8 @@ card:
                 const cleanup = () => {
                   if (cleaned) return;
                   cleaned = true;
+                  clearTimeout(bindingTimer);
+                  pendingActions = [];
                   idleDispose?.();
                   observer?.disconnect();
                   for (const name of ['location-changed', 'popstate', 'pagehide']) window.removeEventListener(name, close);
@@ -3278,7 +3515,7 @@ card:
                 dialog.querySelector('.hi-summary-close').addEventListener('click', close);
                 const historyButton = dialog.querySelector('.hi-summary-history');
                 historyButton.disabled = !entityId || !states[entityId];
-                historyButton.addEventListener('click', () => { close(); history(); });
+                historyButton.addEventListener('click', () => withSource(() => { close(); history(); }));
                 dialog.addEventListener('click', event => {
                   event.stopPropagation();
                   if (event.target !== dialog) return;
@@ -3286,13 +3523,10 @@ card:
                   if (event.clientX < bounds.left || event.clientX > bounds.right || event.clientY < bounds.top || event.clientY > bounds.bottom) close();
                 });
                 for (const name of ['location-changed', 'popstate', 'pagehide']) window.addEventListener(name, close);
-                observer = new MutationObserver(() => {
-                  const current = owner.shadowRoot?.querySelector('template.hi-summary-template');
-                  if (!owner.isConnected || !current || current.innerHTML !== snapshot) close();
-                });
+                observer = new MutationObserver(() => withSource());
                 let root = owner.shadowRoot;
                 while (root) {
-                  observer.observe(root, { childList: true, subtree: true, characterData: true });
+                  observer.observe(root, { childList: true, subtree: true, attributes: true, attributeFilter: ['data-hi-binding'] });
                   root = root.host ? root.host.getRootNode() : null;
                 }
                 document.body.appendChild(dialog);
@@ -3389,8 +3623,10 @@ card:
         - type: custom:button-card
           entity: sensor.air_control_mode
           variables:
+            hi_mode: *hi_mode
+            hi_reason_html: *hi_reason_html
             hi_summary: |
-              [[[ return {"title": "Zone 1", "history": "sensor.kitchen_humidity", "description": "Highlights when HI is in Zone 1 mode. The current reason explains what HI is responding to.", "historyNote": "Explore recorded humidity from the mapped source shown here. A fallback source may supply this reading.", "kind": "mode"}; ]]]
+              [[[ return {"title": "Zone 1", "history": "sensor.kitchen_humidity", "description": "Highlights when HI is in Zone 1 mode. The current reason explains what HI is responding to.", "historyNote": "Explore recorded humidity from the mapped source shown here. A fallback source may supply this reading.", "kind": "mode", "owner": "sensor.air_control_mode", "reason": "sensor.air_control_reason"}; ]]]
           triggers_update:
             - sensor.kitchen_humidity
             - sensor.air_control_reason
@@ -3403,7 +3639,7 @@ card:
                 const escapeHtml = value => String(value ?? '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#039;');
                 const raw = typeof entity?.state === 'string' ? entity.state.trim() : '';
                 const numeric = /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$/.test(raw) && Number.isFinite(Number(raw));
-                const current = variables.hi_summary.kind === 'humidity' ? (numeric ? raw + '%' : 'Unavailable') : (raw || 'Unavailable');
+                const current = variables.hi_summary.kind === 'mode' ? variables.hi_mode : variables.hi_summary.kind === 'humidity' ? (numeric ? raw + '%' : 'Unavailable') : (raw || 'Unavailable');
                 return `<button type="button" class="hi-summary-open" aria-label="${escapeHtml(variables.hi_summary.title)}: ${escapeHtml(current)}. Open details"></button>`;
               ]]]
             summary: |
@@ -3411,18 +3647,11 @@ card:
                 const view = variables.hi_summary;
                 const escapeHtml = value => String(value ?? '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#039;');
                 const readable = value => typeof value === 'string' && value.trim() ? value.trim() : 'Unavailable';
-                const current = readable(entity?.state);
-                const humidityText = typeof entity?.state === 'string' ? entity.state.trim() : '';
-                const humidityValid = /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$/.test(humidityText) && Number.isFinite(Number(humidityText));
                 const target = states[view.history];
                 const historyName = readable(target?.attributes?.friendly_name);
-                const reason = states['sensor.air_control_reason'];
-                const context = view.kind === 'risk'
-                  ? `Source: ${current}. Risk: ${readable(entity?.attributes?.risk)}.`
-                  : view.kind === 'mode'
-                    ? `Current mode: ${current}. Reason: ${readable(reason?.attributes?.full_reason || reason?.state)}.`
-                    : `Current humidity: ${humidityValid ? humidityText + '%' : 'Unavailable'}.`;
-                return `<template class="hi-summary-template">
+                const context = `Mode: ${escapeHtml(variables.hi_mode)}. Reason: ${variables.hi_reason_html}`;
+                const identity = JSON.stringify(['__HI_UI_REVISION_STAMP__', view.title, view.kind, entity?.entity_id || view.owner, view.reason, view.history, (view.historyEntities || []).map(item => [item.kind, item.id])]);
+                return `<template class="hi-summary-template" data-hi-binding="${escapeHtml(identity)}">
                   <style>dialog.hi-summary-details { box-sizing:border-box; width:min(520px,calc(100vw - 32px)); max-height:calc(100vh - 32px); max-height:calc(100dvh - 32px - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px)); top:env(safe-area-inset-top,0px); bottom:env(safe-area-inset-bottom,0px); overflow:auto; padding:20px; border:1px solid #354762; border-radius:20px; background:#0d1522; color:#e2e8f0; text-align:left; white-space:normal; font:14px/1.6 system-ui,sans-serif; }
                   dialog.hi-summary-details::backdrop { background:rgba(0,0,0,.55); }
                   dialog.hi-summary-details h2 { margin:0 0 16px; font-size:20px; }
@@ -3432,8 +3661,9 @@ card:
                   dialog.hi-summary-details button:focus-visible { outline:2px solid #38bdf8; outline-offset:2px; }</style>
                   <button type="button" class="hi-summary-close" aria-label="Close" title="Close" autofocus><svg aria-hidden="true" viewBox="0 0 24 24" width="18" height="18"><path d="m6 6 12 12M18 6 6 18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
                   <h2>${escapeHtml(view.title)}</h2>
+                  <p class="hi-snapshot-time"></p>
                   <p>${escapeHtml(view.description)}</p>
-                  <p>${escapeHtml(context)}</p>
+                  <p>${context}</p>
                   <p>${target ? `History: ${escapeHtml(historyName === 'Unavailable' ? 'mapped entity' : historyName)}. ${escapeHtml(view.historyNote)}` : 'This source is currently unavailable in Home Assistant.'}</p>
                   <p>Available history depends on Home Assistant Recorder and retention.</p>
                   <button type="button" class="hi-summary-history" ${target ? '' : 'disabled'}>View history</button>
@@ -3511,10 +3741,38 @@ card:
                 const dialog = document.createElement('dialog');
                 if (typeof dialog.showModal !== 'function') { history(); return; }
                 const snapshot = source.innerHTML;
+                const binding = source.getAttribute('data-hi-binding');
+                if (!binding) { history(); return; }
+                const currentTemplate = () => owner.shadowRoot?.querySelector('template.hi-summary-template');
+                let bindingTimer;
+                let pendingActions = [];
+                // A button-card render can briefly remove its template. Hold completed history
+                // and clicks until the owner proves the same binding, or retire the dialog.
+                const withSource = action => {
+                  if (cleaned) return;
+                  const current = currentTemplate();
+                  if (!owner.isConnected || (current && current.getAttribute('data-hi-binding') !== binding)) {
+                    close(); return;
+                  }
+                  if (action) pendingActions.push(action);
+                  if (!current) {
+                    bindingTimer ??= setTimeout(() => {
+                      if (currentTemplate()) withSource(); else close();
+                    }, 80);
+                    return;
+                  }
+                  clearTimeout(bindingTimer);
+                  bindingTimer = undefined;
+                  const ready = pendingActions;
+                  pendingActions = [];
+                  for (const run of ready) { if (!cleaned) run(); }
+                };
                 dialog.className = 'hi-summary-details';
                 dialog.setAttribute('data-hi-summary-dialog', '');
                 dialog.setAttribute('aria-label', `${variables.hi_summary.title} details`);
                 dialog.innerHTML = snapshot;
+                const captured = new Date().toLocaleString();
+                dialog.querySelector('.hi-snapshot-time').textContent = `Snapshot captured at ${captured}. Close and reopen to refresh.`;
                 const previousFocus = owner.shadowRoot?.activeElement || document.activeElement;
                 let observer;
                 let idleDispose;
@@ -3523,6 +3781,8 @@ card:
                 const cleanup = () => {
                   if (cleaned) return;
                   cleaned = true;
+                  clearTimeout(bindingTimer);
+                  pendingActions = [];
                   idleDispose?.();
                   observer?.disconnect();
                   for (const name of ['location-changed', 'popstate', 'pagehide']) window.removeEventListener(name, close);
@@ -3537,7 +3797,7 @@ card:
                 dialog.querySelector('.hi-summary-close').addEventListener('click', close);
                 const historyButton = dialog.querySelector('.hi-summary-history');
                 historyButton.disabled = !entityId || !states[entityId];
-                historyButton.addEventListener('click', () => { close(); history(); });
+                historyButton.addEventListener('click', () => withSource(() => { close(); history(); }));
                 dialog.addEventListener('click', event => {
                   event.stopPropagation();
                   if (event.target !== dialog) return;
@@ -3545,13 +3805,10 @@ card:
                   if (event.clientX < bounds.left || event.clientX > bounds.right || event.clientY < bounds.top || event.clientY > bounds.bottom) close();
                 });
                 for (const name of ['location-changed', 'popstate', 'pagehide']) window.addEventListener(name, close);
-                observer = new MutationObserver(() => {
-                  const current = owner.shadowRoot?.querySelector('template.hi-summary-template');
-                  if (!owner.isConnected || !current || current.innerHTML !== snapshot) close();
-                });
+                observer = new MutationObserver(() => withSource());
                 let root = owner.shadowRoot;
                 while (root) {
-                  observer.observe(root, { childList: true, subtree: true, characterData: true });
+                  observer.observe(root, { childList: true, subtree: true, attributes: true, attributeFilter: ['data-hi-binding'] });
                   root = root.host ? root.host.getRootNode() : null;
                 }
                 document.body.appendChild(dialog);
@@ -3648,8 +3905,10 @@ card:
         - type: custom:button-card
           entity: sensor.air_control_mode
           variables:
+            hi_mode: *hi_mode
+            hi_reason_html: *hi_reason_html
             hi_summary: |
-              [[[ return {"title": "Zone 2", "history": "sensor.bathroom_humidity", "description": "Highlights when HI is in Zone 2 mode. The current reason explains what HI is responding to.", "historyNote": "Explore recorded humidity from the mapped source shown here. A fallback source may supply this reading.", "kind": "mode"}; ]]]
+              [[[ return {"title": "Zone 2", "history": "sensor.bathroom_humidity", "description": "Highlights when HI is in Zone 2 mode. The current reason explains what HI is responding to.", "historyNote": "Explore recorded humidity from the mapped source shown here. A fallback source may supply this reading.", "kind": "mode", "owner": "sensor.air_control_mode", "reason": "sensor.air_control_reason"}; ]]]
           triggers_update:
             - sensor.bathroom_humidity
             - sensor.air_control_reason
@@ -3662,7 +3921,7 @@ card:
                 const escapeHtml = value => String(value ?? '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#039;');
                 const raw = typeof entity?.state === 'string' ? entity.state.trim() : '';
                 const numeric = /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$/.test(raw) && Number.isFinite(Number(raw));
-                const current = variables.hi_summary.kind === 'humidity' ? (numeric ? raw + '%' : 'Unavailable') : (raw || 'Unavailable');
+                const current = variables.hi_summary.kind === 'mode' ? variables.hi_mode : variables.hi_summary.kind === 'humidity' ? (numeric ? raw + '%' : 'Unavailable') : (raw || 'Unavailable');
                 return `<button type="button" class="hi-summary-open" aria-label="${escapeHtml(variables.hi_summary.title)}: ${escapeHtml(current)}. Open details"></button>`;
               ]]]
             summary: |
@@ -3670,18 +3929,11 @@ card:
                 const view = variables.hi_summary;
                 const escapeHtml = value => String(value ?? '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#039;');
                 const readable = value => typeof value === 'string' && value.trim() ? value.trim() : 'Unavailable';
-                const current = readable(entity?.state);
-                const humidityText = typeof entity?.state === 'string' ? entity.state.trim() : '';
-                const humidityValid = /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$/.test(humidityText) && Number.isFinite(Number(humidityText));
                 const target = states[view.history];
                 const historyName = readable(target?.attributes?.friendly_name);
-                const reason = states['sensor.air_control_reason'];
-                const context = view.kind === 'risk'
-                  ? `Source: ${current}. Risk: ${readable(entity?.attributes?.risk)}.`
-                  : view.kind === 'mode'
-                    ? `Current mode: ${current}. Reason: ${readable(reason?.attributes?.full_reason || reason?.state)}.`
-                    : `Current humidity: ${humidityValid ? humidityText + '%' : 'Unavailable'}.`;
-                return `<template class="hi-summary-template">
+                const context = `Mode: ${escapeHtml(variables.hi_mode)}. Reason: ${variables.hi_reason_html}`;
+                const identity = JSON.stringify(['__HI_UI_REVISION_STAMP__', view.title, view.kind, entity?.entity_id || view.owner, view.reason, view.history, (view.historyEntities || []).map(item => [item.kind, item.id])]);
+                return `<template class="hi-summary-template" data-hi-binding="${escapeHtml(identity)}">
                   <style>dialog.hi-summary-details { box-sizing:border-box; width:min(520px,calc(100vw - 32px)); max-height:calc(100vh - 32px); max-height:calc(100dvh - 32px - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px)); top:env(safe-area-inset-top,0px); bottom:env(safe-area-inset-bottom,0px); overflow:auto; padding:20px; border:1px solid #354762; border-radius:20px; background:#0d1522; color:#e2e8f0; text-align:left; white-space:normal; font:14px/1.6 system-ui,sans-serif; }
                   dialog.hi-summary-details::backdrop { background:rgba(0,0,0,.55); }
                   dialog.hi-summary-details h2 { margin:0 0 16px; font-size:20px; }
@@ -3691,8 +3943,9 @@ card:
                   dialog.hi-summary-details button:focus-visible { outline:2px solid #38bdf8; outline-offset:2px; }</style>
                   <button type="button" class="hi-summary-close" aria-label="Close" title="Close" autofocus><svg aria-hidden="true" viewBox="0 0 24 24" width="18" height="18"><path d="m6 6 12 12M18 6 6 18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
                   <h2>${escapeHtml(view.title)}</h2>
+                  <p class="hi-snapshot-time"></p>
                   <p>${escapeHtml(view.description)}</p>
-                  <p>${escapeHtml(context)}</p>
+                  <p>${context}</p>
                   <p>${target ? `History: ${escapeHtml(historyName === 'Unavailable' ? 'mapped entity' : historyName)}. ${escapeHtml(view.historyNote)}` : 'This source is currently unavailable in Home Assistant.'}</p>
                   <p>Available history depends on Home Assistant Recorder and retention.</p>
                   <button type="button" class="hi-summary-history" ${target ? '' : 'disabled'}>View history</button>
@@ -3770,10 +4023,38 @@ card:
                 const dialog = document.createElement('dialog');
                 if (typeof dialog.showModal !== 'function') { history(); return; }
                 const snapshot = source.innerHTML;
+                const binding = source.getAttribute('data-hi-binding');
+                if (!binding) { history(); return; }
+                const currentTemplate = () => owner.shadowRoot?.querySelector('template.hi-summary-template');
+                let bindingTimer;
+                let pendingActions = [];
+                // A button-card render can briefly remove its template. Hold completed history
+                // and clicks until the owner proves the same binding, or retire the dialog.
+                const withSource = action => {
+                  if (cleaned) return;
+                  const current = currentTemplate();
+                  if (!owner.isConnected || (current && current.getAttribute('data-hi-binding') !== binding)) {
+                    close(); return;
+                  }
+                  if (action) pendingActions.push(action);
+                  if (!current) {
+                    bindingTimer ??= setTimeout(() => {
+                      if (currentTemplate()) withSource(); else close();
+                    }, 80);
+                    return;
+                  }
+                  clearTimeout(bindingTimer);
+                  bindingTimer = undefined;
+                  const ready = pendingActions;
+                  pendingActions = [];
+                  for (const run of ready) { if (!cleaned) run(); }
+                };
                 dialog.className = 'hi-summary-details';
                 dialog.setAttribute('data-hi-summary-dialog', '');
                 dialog.setAttribute('aria-label', `${variables.hi_summary.title} details`);
                 dialog.innerHTML = snapshot;
+                const captured = new Date().toLocaleString();
+                dialog.querySelector('.hi-snapshot-time').textContent = `Snapshot captured at ${captured}. Close and reopen to refresh.`;
                 const previousFocus = owner.shadowRoot?.activeElement || document.activeElement;
                 let observer;
                 let idleDispose;
@@ -3782,6 +4063,8 @@ card:
                 const cleanup = () => {
                   if (cleaned) return;
                   cleaned = true;
+                  clearTimeout(bindingTimer);
+                  pendingActions = [];
                   idleDispose?.();
                   observer?.disconnect();
                   for (const name of ['location-changed', 'popstate', 'pagehide']) window.removeEventListener(name, close);
@@ -3796,7 +4079,7 @@ card:
                 dialog.querySelector('.hi-summary-close').addEventListener('click', close);
                 const historyButton = dialog.querySelector('.hi-summary-history');
                 historyButton.disabled = !entityId || !states[entityId];
-                historyButton.addEventListener('click', () => { close(); history(); });
+                historyButton.addEventListener('click', () => withSource(() => { close(); history(); }));
                 dialog.addEventListener('click', event => {
                   event.stopPropagation();
                   if (event.target !== dialog) return;
@@ -3804,13 +4087,10 @@ card:
                   if (event.clientX < bounds.left || event.clientX > bounds.right || event.clientY < bounds.top || event.clientY > bounds.bottom) close();
                 });
                 for (const name of ['location-changed', 'popstate', 'pagehide']) window.addEventListener(name, close);
-                observer = new MutationObserver(() => {
-                  const current = owner.shadowRoot?.querySelector('template.hi-summary-template');
-                  if (!owner.isConnected || !current || current.innerHTML !== snapshot) close();
-                });
+                observer = new MutationObserver(() => withSource());
                 let root = owner.shadowRoot;
                 while (root) {
-                  observer.observe(root, { childList: true, subtree: true, characterData: true });
+                  observer.observe(root, { childList: true, subtree: true, attributes: true, attributeFilter: ['data-hi-binding'] });
                   root = root.host ? root.host.getRootNode() : null;
                 }
                 document.body.appendChild(dialog);
@@ -3914,8 +4194,10 @@ card:
         - type: custom:button-card
           entity: sensor.air_control_mode
           variables:
+            hi_mode: *hi_mode
+            hi_reason_html: *hi_reason_html
             hi_summary: |
-              [[[ return {"title": "AQ", "history": "sensor.air_control_house_iaq_average", "description": "Shows HI’s air-quality activity. Current Air Control shows which ventilation mode is selected.", "historyNote": "Explore separate charts for the available IAQ, PM2.5, VOC and CO averages. Units appear when they were recorded.", "kind": "mode", "historyEntities": [{"id": "sensor.air_control_house_iaq_average", "label": "House IAQ average", "kind": "numeric"}, {"id": "sensor.air_control_house_pm25_average", "label": "House PM2.5 average", "kind": "numeric"}, {"id": "sensor.air_control_house_voc_average", "label": "House VOC average", "kind": "numeric"}, {"id": "sensor.air_control_house_co_average", "label": "House CO average", "kind": "numeric"}]}; ]]]
+              [[[ return {"title": "AQ", "history": "sensor.air_control_house_iaq_average", "description": "Shows HI’s air-quality activity. Current Air Control shows which ventilation mode is selected.", "historyNote": "Explore separate charts for the available IAQ, PM2.5, VOC and CO averages. Units appear when they were recorded.", "kind": "mode", "historyEntities": [{"id": "sensor.air_control_house_iaq_average", "label": "House IAQ average", "kind": "numeric"}, {"id": "sensor.air_control_house_pm25_average", "label": "House PM2.5 average", "kind": "numeric"}, {"id": "sensor.air_control_house_voc_average", "label": "House VOC average", "kind": "numeric"}, {"id": "sensor.air_control_house_co_average", "label": "House CO average", "kind": "numeric"}], "owner": "sensor.air_control_mode", "reason": "sensor.air_control_reason"}; ]]]
           triggers_update:
             - sensor.air_control_house_iaq_average
             - sensor.air_control_reason
@@ -3931,7 +4213,7 @@ card:
                 const escapeHtml = value => String(value ?? '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#039;');
                 const raw = typeof entity?.state === 'string' ? entity.state.trim() : '';
                 const numeric = /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$/.test(raw) && Number.isFinite(Number(raw));
-                const current = variables.hi_summary.kind === 'humidity' ? (numeric ? raw + '%' : 'Unavailable') : (raw || 'Unavailable');
+                const current = variables.hi_summary.kind === 'mode' ? variables.hi_mode : variables.hi_summary.kind === 'humidity' ? (numeric ? raw + '%' : 'Unavailable') : (raw || 'Unavailable');
                 return `<button type="button" class="hi-summary-open" aria-label="${escapeHtml(variables.hi_summary.title)}: ${escapeHtml(current)}. Open details"></button>`;
               ]]]
             summary: |
@@ -3939,19 +4221,12 @@ card:
                 const view = variables.hi_summary;
                 const escapeHtml = value => String(value ?? '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#039;');
                 const readable = value => typeof value === 'string' && value.trim() ? value.trim() : 'Unavailable';
-                const current = readable(entity?.state);
-                const humidityText = typeof entity?.state === 'string' ? entity.state.trim() : '';
-                const humidityValid = /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$/.test(humidityText) && Number.isFinite(Number(humidityText));
                 const target = states[view.history];
                 const historyAvailable = view.historyEntities.some(item => states[item.id]);
                 const historyName = readable(target?.attributes?.friendly_name);
-                const reason = states['sensor.air_control_reason'];
-                const context = view.kind === 'risk'
-                  ? `Source: ${current}. Risk: ${readable(entity?.attributes?.risk)}.`
-                  : view.kind === 'mode'
-                    ? `Current mode: ${current}. Reason: ${readable(reason?.attributes?.full_reason || reason?.state)}.`
-                    : `Current humidity: ${humidityValid ? humidityText + '%' : 'Unavailable'}.`;
-                return `<template class="hi-summary-template">
+                const context = `Mode: ${escapeHtml(variables.hi_mode)}. Reason: ${variables.hi_reason_html}`;
+                const identity = JSON.stringify(['__HI_UI_REVISION_STAMP__', view.title, view.kind, entity?.entity_id || view.owner, view.reason, view.history, (view.historyEntities || []).map(item => [item.kind, item.id])]);
+                return `<template class="hi-summary-template" data-hi-binding="${escapeHtml(identity)}">
                   <style>dialog.hi-summary-details { box-sizing:border-box; width:min(520px,calc(100vw - 32px)); max-height:calc(100vh - 32px); max-height:calc(100dvh - 32px - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px)); top:env(safe-area-inset-top,0px); bottom:env(safe-area-inset-bottom,0px); overflow:auto; padding:20px; border:1px solid #354762; border-radius:20px; background:#0d1522; color:#e2e8f0; text-align:left; white-space:normal; font:14px/1.6 system-ui,sans-serif; }
                   dialog.hi-summary-details::backdrop { background:rgba(0,0,0,.55); }
                   dialog.hi-summary-details h2 { margin:0 0 16px; font-size:20px; }
@@ -3961,8 +4236,9 @@ card:
                   dialog.hi-summary-details button:focus-visible { outline:2px solid #38bdf8; outline-offset:2px; }</style>
                   <button type="button" class="hi-summary-close" aria-label="Close" title="Close" autofocus><svg aria-hidden="true" viewBox="0 0 24 24" width="18" height="18"><path d="m6 6 12 12M18 6 6 18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
                   <h2>${escapeHtml(view.title)}</h2>
+                  <p class="hi-snapshot-time"></p>
                   <p>${escapeHtml(view.description)}</p>
-                  <p>${escapeHtml(context)}</p>
+                  <p>${context}</p>
                   <p>${historyAvailable ? escapeHtml(view.historyNote) : 'History sources are currently unavailable in Home Assistant.'}</p>
                   <p>Available history depends on Home Assistant Recorder and retention.</p>
                   <button type="button" class="hi-summary-history" ${historyAvailable ? '' : 'disabled'}>View history</button>
@@ -3997,7 +4273,8 @@ card:
                       if (!Number.isFinite(time) || time > end || time < start) { invalid++; continue; }
                       const attrs = item.a && typeof item.a === 'object' ? item.a : item.attributes && typeof item.attributes === 'object' ? item.attributes : {};
                       const state = text(item.s ?? item.state);
-                      const value = kind === 'reason' ? text(attrs.full_reason) || state : state;
+                      const usable = state.trim() && !['unknown', 'unavailable'].includes(state.trim().toLowerCase());
+                      const value = kind === 'reason' && usable ? text(attrs.full_reason) || state : state.trim() || 'Unknown';
                       const unit = typeof attrs.unit_of_measurement === 'string' && attrs.unit_of_measurement.trim() ? text(attrs.unit_of_measurement.trim()) : null;
                       rows.push({time, state: value || 'Unknown', unit, number: numeric(value), boundary: time === start, conflict: false});
                     }
@@ -4015,6 +4292,12 @@ card:
                     unique.forEach((record, index) => {record.transition = index > 0 && (record.state !== unique[index - 1].state || record.conflict);});
                     return {records: unique.slice(omitted), status: unique.length ? 'ok' : 'empty', omitted, invalid};
                   }
+                  const modeColours = Object.freeze({
+                    normal: '#e5e7eb', cooking: '#38bdf8', bathroom: '#4ade80', bath: '#4ade80',
+                    air_quality: '#c084fc', global_gate: '#fbbf24', away: '#5eead4', paused: '#fde68a',
+                    manual_override: '#f9a8d4', disabled: '#a5b4fc', telemetry_unavailable: '#fdba74',
+                    alert: '#fb923c', danger: '#f87171', co_emergency: '#ef4444',
+                  });
                   function category(value, kind) {
                     if (kind === 'source' || kind === 'reason') return {label: value, tone: 'neutral'};
                     if (['unknown', 'unavailable', 'Conflicting records'].some(x => x.toLowerCase() === value.toLowerCase())) return {label: value, tone: 'unknown'};
@@ -4069,7 +4352,7 @@ card:
                     if (segment.length) segments.push(segment);
                     return {segments, points, min, max};
                   }
-                  function create({dialog, owner, title, entities, states, close, openEntity, nativeLabel = 'entity', nativeAvailable = true, now = () => Date.now(), timeoutMs = 15000}) {
+                  function create({dialog, owner, title, entities, states, close, openEntity, nativeLabel = 'entity', nativeAvailable = true, withSource = action => action(), now = () => Date.now(), timeoutMs = 15000}) {
                     const document = dialog.ownerDocument;
                     const allowed = entities.slice(0, 4).filter(item => item && typeof item.id === 'string' && /^sensor\.[a-z0-9_]+$/.test(item.id));
                     const requested = [...new Set(allowed.filter(item => states[item.id]).map(item => item.id))];
@@ -4114,12 +4397,13 @@ card:
                       dialog.scrollTop = 0;
                     };
                     section.querySelector('[data-back]').addEventListener('click', back);
-                    section.querySelector('[data-native]').addEventListener('click', () => { if (nativeAvailable) {close(); openEntity();} });
-                    for (const button of section.querySelectorAll('[data-hours]')) button.addEventListener('click', () => {
+                    section.querySelector('[data-native]').addEventListener('click', () => withSource(() => { if (nativeAvailable) {close(); openEntity();} }));
+                    for (const button of section.querySelectorAll('[data-hours]')) button.addEventListener('click', () => withSource(() => {
+                      if (disposed || !active) return;
                       hours = Number(button.dataset.hours);
                       for (const choice of section.querySelectorAll('[data-hours]')) choice.setAttribute('aria-pressed', String(Number(choice.dataset.hours) === hours));
                       load();
-                    });
+                    }));
                     function inspect(article, records) {
                       const select = article.querySelector('select');
                       if (!select) return;
@@ -4164,17 +4448,27 @@ card:
                         html += '<p class="hi-history-note">Lines join recorded values. A recorded state such as Unavailable, or a change of unit, creates a break.</p>';
                       } else if (item.kind !== 'reason') {
                         const colors = {ok:'#4ade80',watch:'#facc15',risk:'#fb923c',danger:'#f87171',unknown:'#64748b',neutral:'#7dd3fc'};
-                        const colorFor = value => item.kind === 'source' ? sourceColor(value, document) : colors[category(value, item.kind).tone];
+                        const colorFor = value => {
+                          if (item.kind === 'source') return sourceColor(value, document);
+                          if (item.kind === 'mode') return Object.hasOwn(modeColours, value) ? modeColours[value] : colors.unknown;
+                          return colors[category(value, item.kind).tone];
+                        };
                         if (item.kind === 'source') html += '<p class="hi-history-note">Colours identify rooms. The risk level is shown in the chart above.</p>';
                         const ribbons = records.map((record,index) => {
                           const next = records[index+1]?.time ?? end;
                           const x = 500 * (record.time-start) / Math.max(1,end-start);
                           const width = Math.max(0,500 * (next-record.time) / Math.max(1,end-start));
                           const label = category(record.state,item.kind);
-                          return `<rect x="${x.toFixed(2)}" y="0" width="${width.toFixed(2)}" height="36" fill="${colorFor(record.state)}" stroke="#0d1522" stroke-width="1"><title>${escape(label.label)} · ${escape(date(record.time))}</title></rect>${width >= 50 ? `<text x="${(x+5).toFixed(2)}" y="23" font-size="13" fill="#071523">${escape(label.label.slice(0, Math.max(1, Math.floor((width-10)/8))))}${label.label.length > Math.floor((width-10)/8) ? '…' : ''}</text>` : ''}`;
+                          const foreground = item.kind === 'mode' && label.tone === 'unknown' ? '#ffffff' : '#071523';
+                          return `<rect x="${x.toFixed(2)}" y="0" width="${width.toFixed(2)}" height="36" fill="${colorFor(record.state)}" stroke="#0d1522" stroke-width="1"><title>${escape(label.label)} · ${escape(date(record.time))}</title></rect>${width >= 50 ? `<text x="${(x+5).toFixed(2)}" y="23" font-size="13" fill="${foreground}">${escape(label.label.slice(0, Math.max(1, Math.floor((width-10)/8))))}${label.label.length > Math.floor((width-10)/8) ? '…' : ''}</text>` : ''}`;
                         }).join('');
                         html += `<svg class="hi-history-chart" viewBox="0 0 500 36" role="img" aria-label="${escape(item.label)} recorded states. Choose a recorded state below for its time and value.">${ribbons}</svg>${axis}`;
-                        html += `<div class="hi-history-legend">${[...new Set(records.map(record => record.state))].map(value => {const label=category(value,item.kind); return `<span><i style="background:${colorFor(value)}" aria-hidden="true"></i>${escape(label.label)}</span>`;}).join('')}</div>`;
+                        const legend = new Map();
+                        for (const {state} of records) {
+                          const key = item.kind === 'mode' ? category(state, item.kind).label : state;
+                          if (!legend.has(key)) legend.set(key, state);
+                        }
+                        html += `<div class="hi-history-legend">${[...legend.values()].map(value => {const label=category(value,item.kind); return `<span><i style="background:${colorFor(value)}" aria-hidden="true"></i>${escape(label.label)}</span>`;}).join('')}</div>`;
                       }
                       html += inspection(records,item.label,item.kind);
                       const updates = item.kind === 'numeric' || item.kind === 'reason' ? records.filter(record => !record.boundary) : transitions(records);
@@ -4191,29 +4485,41 @@ card:
                       let timedOut = false;
                       timer = setTimeout(() => {
                         if (disposed || !active || requestGeneration !== generation) return;
-                        timedOut = true; generation++;
-                        content.innerHTML = '<p>History took too long to load. Choose a range to try again, or open source details.</p>';
+                        timedOut = true;
+                        withSource(() => {
+                          if (disposed || !active || requestGeneration !== generation) return;
+                          content.innerHTML = '<p>History took too long to load. Choose a range to try again, or open source details.</p>';
+                        });
                       }, timeoutMs);
                       try {
                         const response = await hass.callWS({type:'history/history_during_period',start_time:new Date(start).toISOString(),end_time:new Date(end).toISOString(),entity_ids:requested,include_start_time_state:true,significant_changes_only:false,minimal_response:false,no_attributes:false});
-                        if (disposed || !active || timedOut || requestGeneration !== generation || !owner.isConnected || !dialog.isConnected) return;
+                        if (disposed || !active || timedOut || requestGeneration !== generation) return;
                         clearTimeout(timer);
-                        content.replaceChildren();
-                        const context = document.createElement('p'); context.className='hi-history-note';
-                        context.textContent = allowed.some(item=>item.kind==='numeric') ? 'Each chart shows a recorded house average. The mix of sensors can change over time. Details of that mix are unavailable for past readings. For CO emergencies, use dedicated CO safety information.' : allowed.some(item=>item.kind==='risk') ? 'Risk and room changes are recorded separately. “OK” reflects the room readings available at the time.' : 'Explore HI’s recorded modes and reasons. Each keeps its own timestamp. These records describe HI’s selected mode.';
-                        content.appendChild(context);
-                        const range = document.createElement('p'); range.className='hi-history-note';
-                        range.textContent = `${date(start)} — ${date(end)}. “State at start” shows the value carried into this period. Its timestamp marks the start of your selected range.`;
-                        content.appendChild(range);
-                        if (!response || typeof response !== 'object' || Array.isArray(response)) throw new Error('Invalid history response');
-                        for (const item of allowed) {
-                          // Ignore all unrequested response keys, even if the server supplied them.
-                          const model = requested.includes(item.id) ? normalize(Object.hasOwn(response,item.id) ? response[item.id] : undefined,start,end,item.kind) : {status:'unmapped',records:[]};
-                          content.appendChild(draw(model,item,start,end));
-                        }
+                        withSource(() => {
+                          if (disposed || !active || timedOut || requestGeneration !== generation || !owner.isConnected || !dialog.isConnected) return;
+                          content.replaceChildren();
+                          const context = document.createElement('p'); context.className='hi-history-note';
+                          context.textContent = allowed.some(item=>item.kind==='numeric') ? 'Each chart shows a recorded house average. The mix of sensors can change over time. Details of that mix are unavailable for past readings. For CO emergencies, use dedicated CO safety information.' : allowed.some(item=>item.kind==='risk') ? 'Risk and room changes are recorded separately. “OK” reflects the room readings available at the time.' : 'Explore HI’s recorded modes and reasons. Each keeps its own timestamp. These records describe HI’s selected mode.';
+                          content.appendChild(context);
+                          const range = document.createElement('p'); range.className='hi-history-note';
+                          range.textContent = `${date(start)} — ${date(end)}. “State at start” shows the value carried into this period. Its timestamp marks the start of your selected range.`;
+                          content.appendChild(range);
+                          if (!response || typeof response !== 'object' || Array.isArray(response)) {
+                            content.innerHTML = '<p>History is currently unavailable. Try another range or open source details.</p>'; return;
+                          }
+                          for (const item of allowed) {
+                            // Ignore all unrequested response keys, even if the server supplied them.
+                            const model = requested.includes(item.id) ? normalize(Object.hasOwn(response,item.id) ? response[item.id] : undefined,start,end,item.kind) : {status:'unmapped',records:[]};
+                            content.appendChild(draw(model,item,start,end));
+                          }
+                        });
                       } catch (_) {
                         if (disposed || !active || requestGeneration !== generation) return;
-                        clearTimeout(timer); content.innerHTML = '<p>History is currently unavailable. Try another range or open source details.</p>';
+                        clearTimeout(timer);
+                        withSource(() => {
+                          if (!disposed && active && !timedOut && requestGeneration === generation)
+                            content.innerHTML = '<p>History is currently unavailable. Try another range or open source details.</p>';
+                        });
                       }
                     }
                     return {
@@ -4294,10 +4600,38 @@ card:
                 const dialog = document.createElement('dialog');
                 if (typeof dialog.showModal !== 'function') { history(); return; }
                 const snapshot = source.innerHTML;
+                const binding = source.getAttribute('data-hi-binding');
+                if (!binding) { history(); return; }
+                const currentTemplate = () => owner.shadowRoot?.querySelector('template.hi-summary-template');
+                let bindingTimer;
+                let pendingActions = [];
+                // A button-card render can briefly remove its template. Hold completed history
+                // and clicks until the owner proves the same binding, or retire the dialog.
+                const withSource = action => {
+                  if (cleaned) return;
+                  const current = currentTemplate();
+                  if (!owner.isConnected || (current && current.getAttribute('data-hi-binding') !== binding)) {
+                    close(); return;
+                  }
+                  if (action) pendingActions.push(action);
+                  if (!current) {
+                    bindingTimer ??= setTimeout(() => {
+                      if (currentTemplate()) withSource(); else close();
+                    }, 80);
+                    return;
+                  }
+                  clearTimeout(bindingTimer);
+                  bindingTimer = undefined;
+                  const ready = pendingActions;
+                  pendingActions = [];
+                  for (const run of ready) { if (!cleaned) run(); }
+                };
                 dialog.className = 'hi-summary-details';
                 dialog.setAttribute('data-hi-summary-dialog', '');
                 dialog.setAttribute('aria-label', `${variables.hi_summary.title} details`);
                 dialog.innerHTML = snapshot;
+                const captured = new Date().toLocaleString();
+                dialog.querySelector('.hi-snapshot-time').textContent = `Snapshot captured at ${captured}. Close and reopen to refresh.`;
                 const previousFocus = owner.shadowRoot?.activeElement || document.activeElement;
                 let observer;
                 let idleDispose;
@@ -4307,6 +4641,8 @@ card:
                 const cleanup = () => {
                   if (cleaned) return;
                   cleaned = true;
+                  clearTimeout(bindingTimer);
+                  pendingActions = [];
                   idleDispose?.();
                   observer?.disconnect();
                   historyController?.dispose();
@@ -4322,10 +4658,10 @@ card:
                 dialog.querySelector('.hi-summary-close').addEventListener('click', close);
                 const historyButton = dialog.querySelector('.hi-summary-history');
                 historyButton.disabled = !variables.hi_summary.historyEntities.some(item => states[item.id]);
-                historyButton.addEventListener('click', () => {
-                  historyController ||= hiBadgeHistory.create({dialog, owner, title:variables.hi_summary.title, entities:variables.hi_summary.historyEntities, states, close, nativeLabel:nativeTarget?.label, nativeAvailable:Boolean(nativeEntityId), openEntity:history});
+                historyButton.addEventListener('click', () => withSource(() => {
+                  historyController ||= hiBadgeHistory.create({dialog, owner, title:variables.hi_summary.title, entities:variables.hi_summary.historyEntities, states, close, withSource, nativeLabel:nativeTarget?.label, nativeAvailable:Boolean(nativeEntityId), openEntity:history});
                   historyController.open();
-                });
+                }));
                 dialog.addEventListener('click', event => {
                   event.stopPropagation();
                   if (event.target !== dialog) return;
@@ -4333,13 +4669,10 @@ card:
                   if (event.clientX < bounds.left || event.clientX > bounds.right || event.clientY < bounds.top || event.clientY > bounds.bottom) close();
                 });
                 for (const name of ['location-changed', 'popstate', 'pagehide']) window.addEventListener(name, close);
-                observer = new MutationObserver(() => {
-                  const current = owner.shadowRoot?.querySelector('template.hi-summary-template');
-                  if (!owner.isConnected || !current || current.innerHTML !== snapshot) close();
-                });
+                observer = new MutationObserver(() => withSource());
                 let root = owner.shadowRoot;
                 while (root) {
-                  observer.observe(root, { childList: true, subtree: true, characterData: true });
+                  observer.observe(root, { childList: true, subtree: true, attributes: true, attributeFilter: ['data-hi-binding'] });
                   root = root.host ? root.host.getRootNode() : null;
                 }
                 document.body.appendChild(dialog);
@@ -5939,7 +6272,7 @@ card:
           - box-shadow: none
           - padding: 0
           - min-height: 44px
-          - margin-top: 4px
+          - margin-top: 0
           - overflow: visible
         grid:
           - grid-template-areas: '"revision"'
@@ -5962,7 +6295,7 @@ card:
         .hi-ui-revision[data-update-status="no_update_reported"] .hi-update-label { display: none; }
         .hi-ui-revision[data-update-status="reported_update"] .hi-update-label,
         .hi-ui-revision[data-update-status="in_progress"] .hi-update-label { color: #7dd3fc; }
-        .hi-ui-revision:focus-visible { outline: 2px solid #38bdf8; outline-offset: 3px; border-radius: 3px; }
+        .hi-ui-revision:focus-visible { outline: 2px solid #38bdf8; outline-offset: 3px; border-radius: 3px 3px 9px 9px; }
         .hi-ui-revision-led { width: 8px; height: 8px; flex: none; border-radius: 50%; background: #94a3b8; box-shadow: inset 0 1px 1px rgba(255,255,255,.28); }
         .hi-ui-revision[data-status="current"] .hi-ui-revision-led { background: #4ade80; }
         .hi-ui-revision[data-status="update"] .hi-ui-revision-led,

@@ -110,7 +110,11 @@ The [inactivity contract](ui-inactivity.md) remains authoritative: HI-owned deta
 close after two minutes without interaction; passive telemetry does not renew them.
 Adaptive child activity renews its own and its parent's deadline. Native Outputs
 keeps its shared backend timer measured from opening, and Home Assistant owns its
-native dialogs. Existing source-change dismissal remains in effect where supported.
+native dialogs. Revision 17 captures the V2 summary when opened and labels it with the client's capture
+time. Close and reopen for refreshed values. Routine telemetry keeps the same dialog,
+scroll position, focus, history range and inspected record. Back returns to the opening
+snapshot. A changed card owner, entry stamp, badge or mapped source retires the dialog.
+History retains its recorded timestamps and units.
 
 Renderer changes require synchronized mobile/tablet and gallery embeds, generated
 YAML validation and UI revision checks. Version 2.1.2 uses revision **16**;

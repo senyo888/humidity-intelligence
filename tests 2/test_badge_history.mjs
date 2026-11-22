@@ -142,3 +142,27 @@ test('source ribbons and labelled legends use matching individual room colours',
  for(const color of new Set(fills))assert.ok(html.includes(`background:${color}`));
  assert.match(html,/Colours identify rooms/);assert.match(html,/Room A/);assert.match(html,/Room B/);h.controller.dispose();
 });
+
+test('a retained reason cannot mask the state of its own recorded sample', () => {
+ const rows=['unknown','unavailable','available'].map((state,i)=>row(i+1,state,{full_reason:'retained'}));
+ assert.deepEqual(model.normalize(rows,start,end,'reason').records.map(r=>r.state),['unknown','unavailable','retained']);
+});
+
+test('mode ribbons and legend share 13 swatches and one entry for Zone 2 aliases', async () => {
+ const modes = ['normal','cooking','bathroom','bath','air_quality','global_gate','away','paused',
+   'manual_override','disabled','telemetry_unavailable','alert','danger','co_emergency','unavailable','unexpected'];
+ const h = harness({entities:[{id:'sensor.entry_mode',kind:'mode',label:'Mode'}]});
+ h.controller.open();
+ h.pending[0].resolve({'sensor.entry_mode': modes.map((state,i)=>row(i * 4000,state))});
+ await flush();
+ const html = h.content.children.find(node=>node.tagName==='ARTICLE').innerHTML;
+ const fills = [...html.matchAll(/height="36" fill="([^"]+)"/g)].map(m=>m[1]);
+ assert.equal(fills.length, modes.length);
+ assert.equal(fills[2],fills[3]);
+ assert.equal(new Set(fills.slice(0,-2)).size,13);
+ assert.equal(fills.at(-1),'#64748b');assert.equal(fills.at(-2),fills.at(-1));
+ const legend = html.split('class="hi-history-legend"')[1].split('</div>')[0];
+ assert.equal(legend.match(/Zone 2/g).length,1);
+ for (const fill of fills) assert.ok(legend.includes('background:'+fill));
+ h.controller.dispose();
+});

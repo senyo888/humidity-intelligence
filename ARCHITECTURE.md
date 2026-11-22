@@ -545,3 +545,7 @@ transaction; they introduce no control authority. See
 [custom monitoring meanings](docs/custom-monitoring-meanings.md).
 See [output observation](docs/output-observation.md) for lifecycle, limits,
 prototype migration, and rollback boundaries.
+
+## Display-only VOC indices
+
+Explicit VOC index bindings live in an entry-local collection outside control telemetry. A dedicated read-only sensor counts available providers and exposes each index separately. Its listener updates only that sensor. The [VOC contract](docs/releases/v2.1.3-beta.1.md) defines the mapping, units, privacy, compatibility and removal rules.

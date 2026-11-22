@@ -801,6 +801,8 @@ For ideas and wider changes, use the Community Ideas & Proposals issue form.
 
 ## Runtime Simulation Validation
 
+HA Lab evidence is advisory and optional. Its absence does not block promotion.
+
 Maintainer runtime validation includes a backend-consumed fake telemetry harness
 for `HI Air Control Mode` and `HI Air Control Reason` truth. It is test-only:
 no Home Assistant helpers, services, dashboards, automations, or fake fan output
@@ -820,6 +822,17 @@ CO emergency pressure. Details are in
 ---
 
 ## Release Notes
+
+### v2.1.3-beta.1 (Local candidate)
+
+V2 Mobile and Tablet show recorded modes in distinct colours, label AQ measurements
+with their units and keep configured unavailable readings visible. Risk and reason
+displays check their source first. Summary dialogs capture the opening values and
+keep your place in history as telemetry changes. The revision footer uses less space.
+
+**VOC index (display only)** adds an optional labelled reading for each provider.
+Existing VOC concentration mappings continue to use ppb/ppm. Both layouts advance
+to revision 17 and require fresh card exports. [Compatibility and downgrade](docs/releases/v2.1.3-beta.1.md)
 
 <a id="v212-stable-source-preparation"></a>
 

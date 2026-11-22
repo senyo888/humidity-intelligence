@@ -17,6 +17,7 @@ from homeassistant.helpers import config_validation as cv
 
 from .helpers.stability import stability_diagnostics_payload
 from .helpers.air_quality import aq_source_summary
+from .helpers.voc_index import source_counts
 from .helpers.update_observation import support_update_observation, update_observation
 from .const import CONF_SHOW_OUTPUT_ENTITY_DETAILS, DEFAULT_SHOW_OUTPUT_ENTITY_DETAILS, DOMAIN
 from .helpers.cleanup import (
@@ -128,7 +129,7 @@ _SAFE_FILENAME_RE = re.compile(r"^[A-Za-z0-9._-]{1,128}$")
 _OWNED_REPORT_FILENAME_PREFIX = "humidity_intelligence_"
 _OWNED_REPORT_FILENAME_SUFFIX = ".json"
 _RELEASE_CHECK_MANIFEST_VERSION_RE = re.compile(
-    r"^2\.(?:0\.(?:5|(?:[6-9]|1[0-2])(?:-(?:beta|rc)\.[1-9]\d*)?)|1\.[012](?:-(?:beta|rc)\.[1-9]\d*)?)$"
+    r"^2\.(?:0\.(?:5|(?:[6-9]|1[0-2])(?:-(?:beta|rc)\.[1-9]\d*)?)|1\.[012](?:-(?:beta|rc)\.[1-9]\d*)?|1\.3-beta\.1)$"
 )
 _SENSITIVE_ATTR_EXACT = {
     "access_token",
@@ -1167,6 +1168,7 @@ def _support_safe_diagnostics_summary(summary: dict) -> dict:
     )
     return {
         "aq_inputs": summary.get("aq_inputs", {}),
+        "voc_index_sources": summary.get("voc_index_sources", {}),
         "update_observation": support_update_observation(summary.get("update_observation", {})),
         "runtime_control": {
             "mode": runtime_control.get("mode"),
@@ -1414,6 +1416,7 @@ def _build_diagnostics_summary(
 
     summary = {
         "aq_inputs": aq_inputs,
+        "voc_index_sources": source_counts(hass, effective.get("voc_index_sources")),
         "update_observation": update_observation(hass),
         "runtime_control": runtime_control_summary(runtime_data),
         "target_profile": {
@@ -1707,11 +1710,11 @@ def _release_check_manifest_status(manifest_version: Optional[str]) -> Tuple[str
     if manifest_version and _RELEASE_CHECK_MANIFEST_VERSION_RE.fullmatch(manifest_version):
         return (
             "pass",
-            f"Manifest version is {version}; release-check contract accepts the v2.0.5-v2.0.12 and v2.1.0-v2.1.2 lines.",
+            f"Manifest version is {version}; release-check contract accepts the v2.0.5-v2.0.12 and v2.1.0-v2.1.2 lines, plus v2.1.3-beta.1.",
         )
     return (
         "fail",
-        f"Manifest version is {version}; expected v2.0.5, a v2.0.6-v2.0.12 beta/rc/stable version, or v2.1.0-v2.1.2 beta/rc/stable.",
+        f"Manifest version is {version}; expected v2.0.5, a v2.0.6-v2.0.12 beta/rc/stable version, v2.1.0-v2.1.2 beta/rc/stable, or v2.1.3-beta.1.",
     )
 
 

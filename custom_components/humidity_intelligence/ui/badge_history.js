@@ -22,7 +22,8 @@ const hiBadgeHistory = (() => {
       if (!Number.isFinite(time) || time > end || time < start) { invalid++; continue; }
       const attrs = item.a && typeof item.a === 'object' ? item.a : item.attributes && typeof item.attributes === 'object' ? item.attributes : {};
       const state = text(item.s ?? item.state);
-      const value = kind === 'reason' ? text(attrs.full_reason) || state : state;
+      const usable = state.trim() && !['unknown', 'unavailable'].includes(state.trim().toLowerCase());
+      const value = kind === 'reason' && usable ? text(attrs.full_reason) || state : state.trim() || 'Unknown';
       const unit = typeof attrs.unit_of_measurement === 'string' && attrs.unit_of_measurement.trim() ? text(attrs.unit_of_measurement.trim()) : null;
       rows.push({time, state: value || 'Unknown', unit, number: numeric(value), boundary: time === start, conflict: false});
     }
@@ -40,6 +41,12 @@ const hiBadgeHistory = (() => {
     unique.forEach((record, index) => {record.transition = index > 0 && (record.state !== unique[index - 1].state || record.conflict);});
     return {records: unique.slice(omitted), status: unique.length ? 'ok' : 'empty', omitted, invalid};
   }
+  const modeColours = Object.freeze({
+    normal: '#e5e7eb', cooking: '#38bdf8', bathroom: '#4ade80', bath: '#4ade80',
+    air_quality: '#c084fc', global_gate: '#fbbf24', away: '#5eead4', paused: '#fde68a',
+    manual_override: '#f9a8d4', disabled: '#a5b4fc', telemetry_unavailable: '#fdba74',
+    alert: '#fb923c', danger: '#f87171', co_emergency: '#ef4444',
+  });
   function category(value, kind) {
     if (kind === 'source' || kind === 'reason') return {label: value, tone: 'neutral'};
     if (['unknown', 'unavailable', 'Conflicting records'].some(x => x.toLowerCase() === value.toLowerCase())) return {label: value, tone: 'unknown'};
@@ -94,7 +101,7 @@ const hiBadgeHistory = (() => {
     if (segment.length) segments.push(segment);
     return {segments, points, min, max};
   }
-  function create({dialog, owner, title, entities, states, close, openEntity, nativeLabel = 'entity', nativeAvailable = true, now = () => Date.now(), timeoutMs = 15000}) {
+  function create({dialog, owner, title, entities, states, close, openEntity, nativeLabel = 'entity', nativeAvailable = true, withSource = action => action(), now = () => Date.now(), timeoutMs = 15000}) {
     const document = dialog.ownerDocument;
     const allowed = entities.slice(0, 4).filter(item => item && typeof item.id === 'string' && /^sensor\.[a-z0-9_]+$/.test(item.id));
     const requested = [...new Set(allowed.filter(item => states[item.id]).map(item => item.id))];
@@ -139,12 +146,13 @@ const hiBadgeHistory = (() => {
       dialog.scrollTop = 0;
     };
     section.querySelector('[data-back]').addEventListener('click', back);
-    section.querySelector('[data-native]').addEventListener('click', () => { if (nativeAvailable) {close(); openEntity();} });
-    for (const button of section.querySelectorAll('[data-hours]')) button.addEventListener('click', () => {
+    section.querySelector('[data-native]').addEventListener('click', () => withSource(() => { if (nativeAvailable) {close(); openEntity();} }));
+    for (const button of section.querySelectorAll('[data-hours]')) button.addEventListener('click', () => withSource(() => {
+      if (disposed || !active) return;
       hours = Number(button.dataset.hours);
       for (const choice of section.querySelectorAll('[data-hours]')) choice.setAttribute('aria-pressed', String(Number(choice.dataset.hours) === hours));
       load();
-    });
+    }));
     function inspect(article, records) {
       const select = article.querySelector('select');
       if (!select) return;
@@ -189,17 +197,27 @@ const hiBadgeHistory = (() => {
         html += '<p class="hi-history-note">Lines join recorded values. A recorded state such as Unavailable, or a change of unit, creates a break.</p>';
       } else if (item.kind !== 'reason') {
         const colors = {ok:'#4ade80',watch:'#facc15',risk:'#fb923c',danger:'#f87171',unknown:'#64748b',neutral:'#7dd3fc'};
-        const colorFor = value => item.kind === 'source' ? sourceColor(value, document) : colors[category(value, item.kind).tone];
+        const colorFor = value => {
+          if (item.kind === 'source') return sourceColor(value, document);
+          if (item.kind === 'mode') return Object.hasOwn(modeColours, value) ? modeColours[value] : colors.unknown;
+          return colors[category(value, item.kind).tone];
+        };
         if (item.kind === 'source') html += '<p class="hi-history-note">Colours identify rooms. The risk level is shown in the chart above.</p>';
         const ribbons = records.map((record,index) => {
           const next = records[index+1]?.time ?? end;
           const x = 500 * (record.time-start) / Math.max(1,end-start);
           const width = Math.max(0,500 * (next-record.time) / Math.max(1,end-start));
           const label = category(record.state,item.kind);
-          return `<rect x="${x.toFixed(2)}" y="0" width="${width.toFixed(2)}" height="36" fill="${colorFor(record.state)}" stroke="#0d1522" stroke-width="1"><title>${escape(label.label)} · ${escape(date(record.time))}</title></rect>${width >= 50 ? `<text x="${(x+5).toFixed(2)}" y="23" font-size="13" fill="#071523">${escape(label.label.slice(0, Math.max(1, Math.floor((width-10)/8))))}${label.label.length > Math.floor((width-10)/8) ? '…' : ''}</text>` : ''}`;
+          const foreground = item.kind === 'mode' && label.tone === 'unknown' ? '#ffffff' : '#071523';
+          return `<rect x="${x.toFixed(2)}" y="0" width="${width.toFixed(2)}" height="36" fill="${colorFor(record.state)}" stroke="#0d1522" stroke-width="1"><title>${escape(label.label)} · ${escape(date(record.time))}</title></rect>${width >= 50 ? `<text x="${(x+5).toFixed(2)}" y="23" font-size="13" fill="${foreground}">${escape(label.label.slice(0, Math.max(1, Math.floor((width-10)/8))))}${label.label.length > Math.floor((width-10)/8) ? '…' : ''}</text>` : ''}`;
         }).join('');
         html += `<svg class="hi-history-chart" viewBox="0 0 500 36" role="img" aria-label="${escape(item.label)} recorded states. Choose a recorded state below for its time and value.">${ribbons}</svg>${axis}`;
-        html += `<div class="hi-history-legend">${[...new Set(records.map(record => record.state))].map(value => {const label=category(value,item.kind); return `<span><i style="background:${colorFor(value)}" aria-hidden="true"></i>${escape(label.label)}</span>`;}).join('')}</div>`;
+        const legend = new Map();
+        for (const {state} of records) {
+          const key = item.kind === 'mode' ? category(state, item.kind).label : state;
+          if (!legend.has(key)) legend.set(key, state);
+        }
+        html += `<div class="hi-history-legend">${[...legend.values()].map(value => {const label=category(value,item.kind); return `<span><i style="background:${colorFor(value)}" aria-hidden="true"></i>${escape(label.label)}</span>`;}).join('')}</div>`;
       }
       html += inspection(records,item.label,item.kind);
       const updates = item.kind === 'numeric' || item.kind === 'reason' ? records.filter(record => !record.boundary) : transitions(records);
@@ -216,29 +234,41 @@ const hiBadgeHistory = (() => {
       let timedOut = false;
       timer = setTimeout(() => {
         if (disposed || !active || requestGeneration !== generation) return;
-        timedOut = true; generation++;
-        content.innerHTML = '<p>History took too long to load. Choose a range to try again, or open source details.</p>';
+        timedOut = true;
+        withSource(() => {
+          if (disposed || !active || requestGeneration !== generation) return;
+          content.innerHTML = '<p>History took too long to load. Choose a range to try again, or open source details.</p>';
+        });
       }, timeoutMs);
       try {
         const response = await hass.callWS({type:'history/history_during_period',start_time:new Date(start).toISOString(),end_time:new Date(end).toISOString(),entity_ids:requested,include_start_time_state:true,significant_changes_only:false,minimal_response:false,no_attributes:false});
-        if (disposed || !active || timedOut || requestGeneration !== generation || !owner.isConnected || !dialog.isConnected) return;
+        if (disposed || !active || timedOut || requestGeneration !== generation) return;
         clearTimeout(timer);
-        content.replaceChildren();
-        const context = document.createElement('p'); context.className='hi-history-note';
-        context.textContent = allowed.some(item=>item.kind==='numeric') ? 'Each chart shows a recorded house average. The mix of sensors can change over time. Details of that mix are unavailable for past readings. For CO emergencies, use dedicated CO safety information.' : allowed.some(item=>item.kind==='risk') ? 'Risk and room changes are recorded separately. “OK” reflects the room readings available at the time.' : 'Explore HI’s recorded modes and reasons. Each keeps its own timestamp. These records describe HI’s selected mode.';
-        content.appendChild(context);
-        const range = document.createElement('p'); range.className='hi-history-note';
-        range.textContent = `${date(start)} — ${date(end)}. “State at start” shows the value carried into this period. Its timestamp marks the start of your selected range.`;
-        content.appendChild(range);
-        if (!response || typeof response !== 'object' || Array.isArray(response)) throw new Error('Invalid history response');
-        for (const item of allowed) {
-          // Ignore all unrequested response keys, even if the server supplied them.
-          const model = requested.includes(item.id) ? normalize(Object.hasOwn(response,item.id) ? response[item.id] : undefined,start,end,item.kind) : {status:'unmapped',records:[]};
-          content.appendChild(draw(model,item,start,end));
-        }
+        withSource(() => {
+          if (disposed || !active || timedOut || requestGeneration !== generation || !owner.isConnected || !dialog.isConnected) return;
+          content.replaceChildren();
+          const context = document.createElement('p'); context.className='hi-history-note';
+          context.textContent = allowed.some(item=>item.kind==='numeric') ? 'Each chart shows a recorded house average. The mix of sensors can change over time. Details of that mix are unavailable for past readings. For CO emergencies, use dedicated CO safety information.' : allowed.some(item=>item.kind==='risk') ? 'Risk and room changes are recorded separately. “OK” reflects the room readings available at the time.' : 'Explore HI’s recorded modes and reasons. Each keeps its own timestamp. These records describe HI’s selected mode.';
+          content.appendChild(context);
+          const range = document.createElement('p'); range.className='hi-history-note';
+          range.textContent = `${date(start)} — ${date(end)}. “State at start” shows the value carried into this period. Its timestamp marks the start of your selected range.`;
+          content.appendChild(range);
+          if (!response || typeof response !== 'object' || Array.isArray(response)) {
+            content.innerHTML = '<p>History is currently unavailable. Try another range or open source details.</p>'; return;
+          }
+          for (const item of allowed) {
+            // Ignore all unrequested response keys, even if the server supplied them.
+            const model = requested.includes(item.id) ? normalize(Object.hasOwn(response,item.id) ? response[item.id] : undefined,start,end,item.kind) : {status:'unmapped',records:[]};
+            content.appendChild(draw(model,item,start,end));
+          }
+        });
       } catch (_) {
         if (disposed || !active || requestGeneration !== generation) return;
-        clearTimeout(timer); content.innerHTML = '<p>History is currently unavailable. Try another range or open source details.</p>';
+        clearTimeout(timer);
+        withSource(() => {
+          if (!disposed && active && !timedOut && requestGeneration === generation)
+            content.innerHTML = '<p>History is currently unavailable. Try another range or open source details.</p>';
+        });
       }
     }
     return {

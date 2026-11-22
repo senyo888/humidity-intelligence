@@ -229,6 +229,15 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
     runtime_data["stability_snapshot_unsub"] = _stop_stability_scheduler
     entry.async_on_unload(_stop_stability_scheduler)
 
+    index_section = _entry_section(entry, "voc_index_sources", None)
+    if index_section is not None:
+        try:
+            from .sensors.voc_index import async_setup_index_sensor
+
+            async_setup_index_sensor(hass, entry, async_add_entities, index_section)
+        except Exception:
+            _LOGGER.exception("Optional VOC index display setup failed; core sensors remain available")
+
     # Observation is optional and cannot prevent existing sensors or control setup.
     observation_settings = _entry_section(entry, "output_observation", {})
     if isinstance(observation_settings, dict) and observation_settings.get("enabled") is True:

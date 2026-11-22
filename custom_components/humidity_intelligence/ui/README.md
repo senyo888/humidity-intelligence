@@ -1,5 +1,8 @@
 # Humidity Intelligence V2 UI
 
+The local v2.1.3-beta.1 candidate advances both layouts to revision **17**.
+See [card replacement and VOC downgrade](../../../docs/releases/v2.1.3-beta.1.md).
+
 ## Canonical Runtime Presentation Layer
 
 ---

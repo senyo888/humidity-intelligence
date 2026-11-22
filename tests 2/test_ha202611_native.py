@@ -226,6 +226,176 @@ class NativeAlignmentTests(unittest.IsolatedAsyncioTestCase):
             cleanup.pop()()
             service_call.assert_not_called()
 
+    async def test_voc_index_setup_and_options_preserve_concentration_and_source_identity(self):
+        from uuid import UUID
+        setup = flow_module.HumidityIntelligenceConfigFlow()
+        setup.hass = self.hass
+        missing = {"sensor_type": "voc", "entity_id": "sensor.example_missing",
+                   "room": "Example", "friendly_name": "", "level": "level1"}
+        setup._data["telemetry"] = setup._telemetry = [missing.copy()]
+        result = await setup.async_step_telemetry_add({
+            "entity_id": "sensor.example_index", "sensor_type": "voc_index", "room": "Example",
+        })
+        self.assertEqual(result["step_id"], "voc_index_edit")
+        await setup.async_step_voc_index_edit({"entity_id": "sensor.example_index", "label": "Example"})
+        row = setup._data["voc_index_sources"][0].copy()
+        self.assertEqual(str(UUID(row["source_key"])), row["source_key"])
+        self.assertEqual(setup._telemetry, [missing])
+
+        flow, entry = self.options()
+        entry.data.update(copy.deepcopy(setup._data))
+        await flow.async_step_options_telemetry({"action": "voc_index"})
+        await flow.async_step_voc_index({"source": row["source_key"]})
+        await flow.async_step_voc_index_edit({"action": "cancel", "label": "Discard"})
+        self.assertNotIn("voc_index_sources", flow._options)
+        await flow.async_step_voc_index({"source": row["source_key"]})
+        await flow.async_step_voc_index_edit({"label": "Renamed", "entity_id": row["entity_id"]})
+        renamed = flow._options["voc_index_sources"][0]
+        self.assertEqual(renamed, dict(row, label="Renamed"))
+        await flow.async_step_voc_index({"source": "add"})
+        for label, entity_id, field in [
+            ("Second", missing["entity_id"], "entity_id"),
+            ("Second", row["entity_id"], "entity_id"),
+            ("Renamed", "sensor.example_other", "label"),
+        ]:
+            result = await flow.async_step_voc_index_edit({"entity_id": entity_id, "label": label})
+            self.assertIn(field, result["errors"])
+        await flow.async_step_voc_index_edit({"action": "cancel"})
+        await flow.async_step_voc_index({"source": row["source_key"]})
+        await flow.async_step_voc_index_edit({"label": "Rebound", "entity_id": "sensor.example_other"})
+        rebound = flow._options["voc_index_sources"][0]
+        self.assertNotEqual(row["source_key"], rebound["source_key"])
+        await flow.async_step_voc_index({"source": rebound["source_key"]})
+        await flow.async_step_voc_index_edit({"action": "delete"})
+        saved = await flow.async_step_options_done()
+        self.assertEqual(saved["data"]["voc_index_sources"], [])
+        self.assertNotIn("telemetry", saved["data"])
+        self.assertEqual(entry.data["telemetry"], [missing])
+        entry.options = saved["data"]
+        reopened = flow_module.HumidityIntelligenceOptionsFlow(entry)
+        self.assertEqual(reopened._effective_config()["voc_index_sources"], [])
+        self.assertEqual(reopened._effective_config()["telemetry"], [missing])
+
+    async def test_voc_index_registry_rename_and_reused_id(self):
+        from unittest.mock import patch
+        backend = importlib.import_module(PACKAGE + ".helpers.voc_index")
+        display = importlib.import_module(PACKAGE + ".sensors.voc_index")
+        registry = er.async_get(self.hass)
+        original = registry.async_get_or_create("sensor", "example", "voc-a", suggested_object_id="example_a")
+        new_id = "sensor.example_renamed"
+        flow, _ = self.options()
+        await flow.async_step_voc_index({"source": "add"})
+        await flow.async_step_voc_index_edit({"label": "A", "entity_id": original.entity_id})
+        row, = flow._options["voc_index_sources"]
+        self.assertNotEqual(row["provider_identity"], original.id)
+        self.hass.states.async_set(original.entity_id, "17")
+        sensor = display.HIVocIndexSources("hi_example_voc_index_sources", [row])
+        sensor.entity_id, sensor.hass = "sensor.example_index_feed", self.hass
+        cleanups = []
+        with patch.object(sensor, "async_write_ha_state") as write, patch.object(sensor, "async_on_remove", side_effect=cleanups.append):
+            await sensor.async_added_to_hass()
+            self.assertEqual(sensor.native_value, 1)
+            registry.async_update_entity(original.entity_id, new_entity_id=new_id)
+            await self.hass.async_block_till_done()
+            self.assertTrue(write.called)
+            self.assertEqual(sensor.native_value, 0)
+            flow._options["telemetry"] = [{"entity_id": "sensor.example_existing", "sensor_type": "iaq",
+                                           "level": "level1", "room": "Example"}]
+            for method in (flow.async_step_options_telemetry_add, flow.async_step_options_telemetry_edit):
+                rejected = await method({"entity_id": new_id, "sensor_type": "iaq", "action": "save"})
+                self.assertEqual(rejected["errors"].get("entity_id"), "duplicate_entity")
+            registry.async_get_or_create("sensor", "example", "voc-b", suggested_object_id="example_a")
+            self.hass.states.async_set(original.entity_id, "995")
+            self.assertEqual(backend.source_counts(self.hass, [row])["unavailable"], 1)
+            await flow.async_step_voc_index({"source": row["source_key"]})
+            await flow.async_step_voc_index_edit({"label": "Old", "entity_id": original.entity_id})
+            self.assertEqual(flow._options["voc_index_sources"][0]["provider_identity"], row["provider_identity"])
+            await flow.async_step_voc_index({"source": "add"})
+            duplicate = await flow.async_step_voc_index_edit({"label": "B", "entity_id": new_id})
+            self.assertEqual(duplicate["errors"]["entity_id"], "duplicate_entity")
+            await flow.async_step_voc_index({"source": row["source_key"]})
+            await flow.async_step_voc_index_edit({"label": "Renamed", "entity_id": new_id})
+            updated, = flow._options["voc_index_sources"]
+            self.assertEqual(updated, dict(row, label="Renamed", entity_id=new_id))
+            self.hass.states.async_set(new_id, "0")
+            reading = backend.source_readings(self.hass, [updated])[row["source_key"]]
+            self.assertEqual(reading, {"label": "Renamed", "status": "available", "value": 0})
+            # Another newly added mapping has an independent key and proof, even for the same provider.
+            second, _ = self.options()
+            await second.async_step_voc_index({"source": "add"})
+            await second.async_step_voc_index_edit({"label": "Separate", "entity_id": new_id})
+            distinct, = second._options["voc_index_sources"]
+            self.assertNotEqual(distinct["provider_identity"], updated["provider_identity"])
+            registry.async_update_entity(new_id, disabled_by=er.RegistryEntryDisabler.USER)
+            self.assertEqual(backend.source_counts(self.hass, [updated])["unavailable"], 1)
+            self.assertEqual(backend.source_counts(self.hass, [dict(updated, provider_identity=None)])["unavailable"], 1)
+            await flow.async_step_voc_index({"source": updated["source_key"]})
+            await flow.async_step_voc_index_edit({"action": "delete"})
+            await flow.async_step_voc_index({"source": "add"})
+            await flow.async_step_voc_index_edit({"label": "Replacement", "entity_id": original.entity_id})
+            replacement, = flow._options["voc_index_sources"]
+            self.assertNotEqual(replacement["source_key"], row["source_key"])
+            for cleanup in cleanups:
+                cleanup()
+
+    async def test_voc_index_observes_only_selected_sources_and_stops_on_removal(self):
+        from unittest.mock import AsyncMock, patch
+
+        display = importlib.import_module(PACKAGE + ".sensors.voc_index")
+        entry = SimpleNamespace(entry_id="example_index")
+        key = "00000000-0000-4000-8000-000000000005"
+        entity_id = "sensor.example_selected_index"
+        rows = [{"source_key": key, "entity_id": entity_id, "label": "Index A"}]
+        created = []
+        display.async_setup_index_sensor(self.hass, entry, created.extend, rows)
+        sensor, = created
+        sensor.hass = self.hass
+        sensor.entity_id = "sensor.example_index_sources"
+        self.assertEqual(sensor.unique_id, "hi_example_index_voc_index_sources")
+        self.assertIn("readings", sensor._unrecorded_attributes)
+        with patch.object(sensor, "async_write_ha_state") as write, patch.object(
+            type(self.hass.services), "async_call", new_callable=AsyncMock
+        ) as service, patch.object(sensor, "async_on_remove") as register_cleanup:
+            await sensor.async_added_to_hass()
+            self.assertEqual(sensor.native_value, 0)
+            self.assertEqual(sensor.extra_state_attributes["readings"][key]["status"], "unavailable")
+            self.hass.states.async_set("sensor.example_other_index", "25")
+            await self.hass.async_block_till_done()
+            write.assert_not_called()
+            self.hass.states.async_set(entity_id, "0")
+            await self.hass.async_block_till_done()
+            write.assert_called_once()
+            self.assertEqual(sensor.native_value, 1)
+            self.assertEqual(sensor.extra_state_attributes["readings"][key]["value"], 0)
+            register_cleanup.call_args.args[0]()
+            self.hass.states.async_set(entity_id, "20")
+            await self.hass.async_block_till_done()
+            write.assert_called_once()
+            service.assert_not_called()
+
+    async def test_voc_index_removal_retires_only_its_registered_sensor(self):
+        from types import MappingProxyType
+        from homeassistant.config_entries import ConfigEntry
+
+        display = importlib.import_module(PACKAGE + ".sensors.voc_index")
+        entry = ConfigEntry(domain="humidity_intelligence", version=1, minor_version=1,
+                            title="Example HI", source="user", unique_id=None,
+                            discovery_keys=MappingProxyType({}), subentries_data=[], data={}, options={})
+        self.hass.config_entries._entries[entry.entry_id] = entry
+        registry = er.async_get(self.hass)
+        unique_id = f"hi_{entry.entry_id}_voc_index_sources"
+        feed = registry.async_get_or_create("sensor", "humidity_intelligence", unique_id,
+                                            suggested_object_id="example_renamed_feed", config_entry=entry)
+        other = registry.async_get_or_create("sensor", "humidity_intelligence", unique_id + "_other",
+                                             suggested_object_id="example_other_feed", config_entry=entry)
+        created = []
+        display.async_setup_index_sensor(self.hass, entry, created.extend, None)
+        self.assertIsNotNone(registry.async_get(feed.entity_id))
+        display.async_setup_index_sensor(self.hass, entry, created.extend, [])
+        self.assertIsNone(registry.async_get(feed.entity_id))
+        self.assertIsNotNone(registry.async_get(other.entity_id))
+        self.assertFalse(created)
+
     async def test_visibility_uses_real_ha_schema_and_hidden_input_processing(self):
         for setup in (False, True):
             flow, _entry = self.options()
