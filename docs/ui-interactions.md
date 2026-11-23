@@ -117,11 +117,11 @@ snapshot. A changed card owner, entry stamp, badge or mapped source retires the 
 History retains its recorded timestamps and units.
 
 Renderer changes require synchronized Mobile, Tablet and gallery embeds. RC.1 now
-exports revision **20**. The final beta.1 and first RC.1 build exported revision
+exports revision **21**. The final beta.1 and first RC.1 build exported revision
 **18**, and published Stable v2.1.2 exported revision **16**. After installing the
 complete integration and restarting Home Assistant, refresh the mappings and export
-fresh cards. Replace the complete saved card for each layout at revision 19 or
-earlier. Saved revision-20 cards with current bindings can stay in place. Restart
+fresh cards. Replace the complete saved card for each layout at revision 20 or
+earlier. Saved revision-21 cards with current bindings can stay in place. Restart
 resets in-memory Stability history.
 
 Keep the previous complete package and saved cards together for rollback. For

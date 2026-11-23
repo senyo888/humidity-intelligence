@@ -2442,8 +2442,8 @@ card:
             const palette = ['#94a3b8', '#4ade80', '#facc15', '#ef4444'];
             const chip = (label, value, band = 0) => {
               const color = palette[band];
-              const bandText = band ? ` <span class="band">Band ${band} of 3</span>` : '';
-              return `<span class="cv-chip" style="--cv:${color}"><span class="k">${esc(label)}</span> <span class="v" style="color:${color}">${esc(value)}</span>${bandText}</span>`;
+              const range = band ? ` role="group" aria-label="HI display range ${band} of 3"` : '';
+              return `<span class="cv-chip"${range} style="--cv:${color}"><span class="k">${esc(label)}</span> <span class="v" style="color:${color}">${esc(value)}</span></span>`;
             };
             const chips = [];
             if (Array.isArray(inventory)) {

@@ -90,12 +90,14 @@ def test_generated_strip_uses_same_entry_config_units_and_source_status():
             attrs = {"unit_of_measurement": "ppb", "aq_display_band": band}
             colored = render(expr, {**states, key: {"state": "100", "attributes": attrs}})
             assert f'color:{color}">100 ppb' in colored
-            assert colored.count(f'>Band {band} of 3</span>') == 1
+            assert colored.count(f'role="group" aria-label="HI display range {band} of 3"') == 1
+            assert "Band " not in colored
+            assert '>100 ppb</span></span>' in colored
             for raw, unit in (("unavailable", "ppb"), ("100", "index")):
                 fallback = render(expr, {**states, key: {
                     "state": raw, "attributes": {**attrs, "unit_of_measurement": unit},
                 }})
-                assert ">Band " not in fallback
+                assert "HI display range" not in fallback
         for feed in [None, dict(states["sensor.hi_diagnostics"], state="unavailable"),
                      {"state": "1", "attributes": {"schema": 2, "entry": ENTRY_BINDING, "readings": {}}}]:
             fallback = render(expr, {**states, "sensor.hi_diagnostics": feed})

@@ -9,8 +9,9 @@ This project follows a practical changelog format for Home Assistant and HACS us
 ## Unreleased — v2.1.3-rc.1
 
 - Admit RC.1 to the controller package builder and the admin release check.
-- Advance Mobile and Tablet to revision 20. Show AQ bands in text, include valid
-  unlevelled AQ inputs in house averages and distinguish reported risk from room names.
+- Advance Mobile and Tablet to revision 21. AQ chips show the measurement in its
+  threshold colour and expose the range to screen readers. House averages include
+  valid unlevelled inputs. Risk badges distinguish reported risk from room names.
 - Require a matching entry on the display-only VOC index feed. Cancel queued
   dialog actions on dismissal and when the user leaves history. If a native details
   destination disappears, keep the current dialog open.
