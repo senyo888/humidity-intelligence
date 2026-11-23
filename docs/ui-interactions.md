@@ -47,7 +47,7 @@ row shows available readings. An unreadable telemetry inventory shows an AQ conf
 resumes when both families are confirmed. If a source was added since the last
 export and its feed is missing, refresh the mappings and replace the saved card.
 A preference read failure shows all configured readings. **Save unconfirmed**
-means Home Assistant could not confirm a change. Select **Retry** in AQ details to save that choice again. A read failure retries the subscription.
+means Home Assistant could not confirm a change. Select **Retry** in AQ details to save that choice again. A late confirmation clears the warning if you have not made another choice. A successful retry reconnects the preference subscription. If Diagnostics briefly disappears, the same account and HI entry recover the unconfirmed choice on the same connection. A read failure retries the subscription.
 
 ## Stability display preference
 
@@ -134,10 +134,10 @@ snapshot. A changed card owner, entry stamp, badge or mapped source retires the 
 History retains its recorded timestamps and units.
 
 Renderer changes require synchronized Mobile, Tablet and gallery embeds. RC.1 now
-exports revision **23**. The final beta.1 and first RC.1 build exported revision
+exports revision **24**. The final beta.1 and first RC.1 build exported revision
 **18**, and published Stable v2.1.2 exported revision **16**. After installing the
 complete integration and restarting Home Assistant, refresh the mappings and export
-fresh cards. Replace the complete saved card for each layout at revision 22 or
+fresh cards. Replace the complete saved card for each layout at revision 23 or
 earlier for the updated VOC preference handling. Restart
 resets in-memory Stability history.
 

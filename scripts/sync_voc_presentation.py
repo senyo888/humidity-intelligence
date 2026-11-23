@@ -15,6 +15,7 @@ TARGETS = (
 PATTERN = re.compile(
     r"^(?P<card_indent> +)name: (?P<owner>Current Air Control|AQ)\n"
     r"(?:(?P=card_indent)[^\n]*\n|\n)*?"
+    r"^(?P=card_indent)custom_fields:\n(?:(?P=card_indent) [^\n]*\n|\n)*?"
     r"^(?P<field_indent>(?P=card_indent)  )(?P<field>aq|summary): \|\n(?P=field_indent)  \[\[\[\n"
     r"(?P<block>(?P<indent>(?P=field_indent)    )// HI-VOC-PRESENTATION:START\n"
     r"(?:(?P=indent)[^\n]*\n|\n)*?^(?P=indent)// HI-VOC-PRESENTATION:END)\n"

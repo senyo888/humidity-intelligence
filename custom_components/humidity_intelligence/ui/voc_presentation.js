@@ -18,7 +18,7 @@ function hiVocScope(stamp, diag) {
 
 function hiPrepareVoc(owner, hass, stamp, diagId) {
   if (!owner?.shadowRoot || !hass || !globalThis.customElements) return;
-  const tag = 'hi-voc-presentation-v2';
+  const tag = 'hi-voc-presentation-v3';
   const contextKey = Symbol.for('humidity_intelligence.voc_chips.context.v1');
   const changed = 'hi-voc-presentation-context';
   const modes = ['all', 'indices', 'concentrations'];
@@ -34,8 +34,7 @@ function hiPrepareVoc(owner, hass, stamp, diagId) {
       if (!store) {
         const key = 'humidity_intelligence.voc_chips.v1.' + entry;
         const views = new Set();
-        let off, disposed = false, writeToken = 0, sequence = 0, attempt = 0, timer, writeTimer;
-        let subscribing = false;
+        let off, listening = false, subscribing = false, attempt = 0, sequence = 0, timer, writeTimer;
         const paint = () => { for (const node of views) node.paint(); };
         const fail = message => { store.value = null; store.status = message; paint(); };
         const waiting = () => {
@@ -44,84 +43,106 @@ function hiPrepareVoc(owner, hass, stamp, diagId) {
           timer = setTimeout(() => fail('Display preference unavailable'), 10000);
         };
         const receive = data => {
-          if (disposed || connection.connected !== true) return;
+          if (!listening || connection.connected !== true) return;
           clearTimeout(timer); sequence++;
           if (data?.value !== null && !modes.includes(data?.value)) {
             fail('Display preference unavailable'); return;
           }
           store.value = data.value ?? 'all'; store.status = ''; paint();
         };
+        const stopRead = () => {
+          attempt++; subscribing = false; clearTimeout(timer);
+          off?.(); off = null;
+        };
         const start = () => {
-          const token = ++attempt;
+          stopRead();
+          const token = attempt;
           subscribing = true;
           waiting();
           Promise.resolve().then(() => connection.subscribeMessage(data => {
             if (token === attempt) receive(data);
           }, {type:'frontend/subscribe_user_data', key})).then(unsub => {
-            if (disposed || token !== attempt) unsub();
+            if (token !== attempt) unsub();
             else { subscribing = false; off = unsub; }
           }).catch(() => {
-            if (!disposed && token === attempt) {
+            if (token === attempt) {
               subscribing = false; clearTimeout(timer); fail('Display preference unavailable');
             }
           });
         };
         const disconnected = () => {
-          writeToken++; clearTimeout(timer); clearTimeout(writeTimer);
-          if (store.pending) store.retryValue = store.desired;
-          store.pending = false; store.desired = null;
+          clearTimeout(timer); clearTimeout(writeTimer);
+          if (store.write) store.write.pending = false;
           fail('Display preference unavailable');
         };
         // HA automatically restores its subscriptions after reconnect.
         const ready = () => { if (off || subscribing) waiting(); else start(); };
-        store = {views, value:null, status:'', pending:false, retryValue:null,
+        store = {value:null, status:'', write:null,
+          get pending() { return this.write?.pending === true; },
+          get retryValue() { return this.pending ? null : this.write?.value; },
           retry(node) {
-            if (disposed || !connection.connected || store.pending) return;
+            if (!listening || !connection.connected || store.pending) return;
             if (store.retryValue) return store.save(node, store.retryValue);
-            off?.(); off = null; start();
+            start();
           },
           async save(node, next) {
-            if (disposed || !node.eligible() || !modes.includes(next) || (!store.value && next !== store.retryValue) ||
+            if (!listening || !node.eligible() || !modes.includes(next) || (!store.value && next !== store.retryValue) ||
                 store.pending || connection.connected !== true) return;
-            const token = ++writeToken, before = sequence;
-            const active = () => !disposed && token === writeToken;
+            const recovering = !!store.write;
+            const before = sequence;
+            // Only a newer write supersedes this command's eventual acknowledgement.
+            const write = {value:next, pending:true};
+            store.write = write;
             const unconfirmed = () => {
-              if (!active()) return;
-              writeToken++; clearTimeout(writeTimer);
-              store.pending = false; store.desired = null; store.retryValue = next;
+              if (store.write !== write || !write.pending) return;
+              clearTimeout(writeTimer);
+              write.pending = false;
               if (before === sequence) store.value = null;
               paint();
             };
-            store.desired = next; store.pending = true; paint();
+            paint();
             writeTimer = setTimeout(unconfirmed, 10000);
             try {
               await node.ha().callWS({type:'frontend/set_user_data', key, value:next});
-              if (!active()) return;
-              store.retryValue = null;
-              if (sequence === before) receive({value:next});
             } catch {
-              unconfirmed();
-            } finally {
-              if (active()) { clearTimeout(writeTimer); store.desired = null; store.pending = false; paint(); }
+              unconfirmed(); return;
             }
+            if (store.write !== write) return;
+            clearTimeout(writeTimer);
+            store.write = null;
+            if (!listening) { entries.delete(identity); return; }
+            if (connection.connected && (recovering || store.status)) {
+              start();
+            } else {
+              if (connection.connected && sequence === before) store.value = next;
+              paint();
+            }
+          },
+          attach(node) {
+            views.add(node);
+            if (listening) return;
+            listening = true;
+            connection.addEventListener?.('disconnected', disconnected);
+            connection.addEventListener?.('ready', ready);
+            if (connection.connected === true) start(); else disconnected();
           },
           release(node) {
             views.delete(node);
             // button-card may replace its HTML in the same render.
             queueMicrotask(() => {
-              if (views.size || disposed) return;
-              disposed = true; clearTimeout(timer); clearTimeout(writeTimer); off?.(); entries.delete(identity);
+              if (views.size || !listening) return;
+              listening = false; stopRead();
               connection.removeEventListener?.('disconnected', disconnected);
               connection.removeEventListener?.('ready', ready);
+              store.value = null; store.status = '';
+              // Keep only outstanding write intent for this connection, user and entry.
+              if (!store.write) entries.delete(identity);
             });
           }
         };
         entries.set(identity, store);
-        connection.addEventListener?.('disconnected', disconnected);
-        connection.addEventListener?.('ready', ready);
-        if (connection.connected === true) start(); else disconnected();
       }
-      store.views.add(view);
+      store.attach(view);
       return store;
     }
     customElements.define(tag, class extends HTMLElement {
@@ -187,7 +208,7 @@ function hiPrepareVoc(owner, hass, stamp, diagId) {
         for (const input of fields.querySelectorAll('input')) {
           if (input.value === this.store?.retryValue && input.labels?.length)
             retryLabel = 'Retry saving “' + input.labels[0].textContent.trim() + '”';
-          input.checked = input.value === (this.store?.desired ?? mode);
+          input.checked = input.value === (this.store?.pending ? this.store.write.value : mode);
           input.tabIndex = input.checked || (!mode && input.value === 'all') ? 0 : -1;
           input.setAttribute('aria-disabled', String(!mode || !!this.store?.pending));
         }

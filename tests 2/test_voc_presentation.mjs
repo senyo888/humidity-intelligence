@@ -61,7 +61,7 @@ function fixture() {
     };
     const render = () => prepare(owner, owner.hass, stamp, 'diagnostics');
     render();
-    const Presentation = elements.get('hi-voc-presentation-v2');
+    const Presentation = elements.get('hi-voc-presentation-v3');
     const row = new Presentation();
     row.host = owner;
     const chip = family => ({dataset: {voc: family}, style: {display: ''}});
@@ -227,9 +227,15 @@ test('a readback of a failed save keeps the attempted value retryable across lay
   assert.deepEqual(connection.writes[1].request, connection.writes[0].request);
   connection.writes[1].resolve();
   await settle();
+  assert.equal(subscription.active, false);
+  assert.equal(connection.subscriptions.length, 2);
+  assert.match(mobile.status.textContent, /Loading/);
+  const live = connection.subscriptions[1];
+  live.receive({value: 'indices'});
   assert.equal(mobile.status.textContent, '');
   assert.equal(tablet.retry.hidden, true);
-  assert.equal(connection.subscriptions.length, 1);
+  live.receive({value: 'concentrations'});
+  assert.deepEqual(mobile.visible(), [false, true, true]);
   mobile.remove(); tablet.remove();
   await settle();
 });
@@ -267,6 +273,8 @@ for (const lateOutcome of ['resolve', 'reject']) {
     assert.deepEqual(mobile.visible(), expected);
     connection.writes[1].resolve();
     await settle();
+    assert.equal(original.active, false);
+    connection.subscriptions.at(-1).receive({value: 'indices'});
     assert.equal(mobile.fields.attributes['aria-busy'], 'false');
     assert.deepEqual(tablet.visible(), [true, false, true]);
     mobile.remove();
@@ -275,3 +283,109 @@ for (const lateOutcome of ['resolve', 'reject']) {
     assert.equal(original.active, false);
   });
 }
+
+test('a late acknowledgement confirms the latest write without a second write', async () => {
+  const {mount, advance} = fixture();
+  const connection = new Connection();
+  const card = mount(connection, 'v2_mobile');
+  await settle();
+  connection.subscriptions[0].receive({value: null});
+  card.choose('indices');
+  advance(10000);
+  assert.equal(card.status.textContent, 'Save unconfirmed');
+  connection.writes[0].resolve();
+  await settle();
+  assert.equal(card.status.textContent, '');
+  assert.equal(card.retry.hidden, true);
+  assert.deepEqual(card.visible(), [true, false, true]);
+  assert.equal(connection.writes.length, 1);
+  card.remove();
+  await settle();
+});
+
+test('Diagnostics loss releases the read and restores only the same scoped retry', async () => {
+  const {mount} = fixture();
+  const connection = new Connection();
+  const tablet = mount(connection, 'v2_tablet');
+  await settle();
+  const original = connection.subscriptions[0];
+  original.receive({value: null});
+  tablet.choose('concentrations');
+  connection.writes[0].reject(new Error('Write failed'));
+  await settle();
+  const diag = tablet.owner.hass.states.diagnostics;
+  diag.state = 'unavailable';
+  tablet.render();
+  await settle();
+  assert.equal(original.active, false);
+  assert.equal(tablet.fields.hidden, true);
+  const otherConnection = new Connection();
+  const others = [mount(connection, 'v2_mobile', secondEntry), mount(connection, 'v2_mobile', entry, 'other'),
+    mount(otherConnection, 'v2_mobile')];
+  await settle();
+  for (const sub of [...connection.subscriptions.slice(1), ...otherConnection.subscriptions]) sub.receive({value: null});
+  assert.ok(others.every(card => card.retry.hidden));
+  diag.state = 'ok';
+  tablet.render();
+  await settle();
+  const restored = connection.subscriptions.at(-1);
+  restored.receive({value: 'concentrations'});
+  assert.equal(tablet.status.textContent, 'Save unconfirmed');
+  assert.match(tablet.retry.textContent, /Concentration averages only/);
+  assert.equal(connection.writes.length, 1);
+  tablet.retryPreference();
+  connection.writes[1].resolve();
+  await settle();
+  assert.equal(restored.active, false);
+  restored.receive({value: 'indices'});  // Retired callback cannot complete the new read.
+  assert.match(tablet.status.textContent, /Loading/);
+  connection.subscriptions.at(-1).receive({value: 'all'});
+  assert.equal(tablet.status.textContent, '');
+  assert.deepEqual(tablet.visible(), [true, true, true]);
+  for (const card of [tablet, ...others]) card.remove();
+  await settle();
+});
+
+test('a late acknowledgement clears the warning and keeps a newer live choice', async () => {
+  const {mount, advance} = fixture();
+  const connection = new Connection();
+  const card = mount(connection, 'v2_tablet');
+  await settle();
+  const live = connection.subscriptions[0];
+  live.receive({value: null});
+  card.choose('indices');
+  advance(10000);
+  live.receive({value: 'concentrations'});
+  assert.equal(card.status.textContent, 'Save unconfirmed');
+  connection.writes[0].resolve();
+  await settle();
+  assert.equal(card.status.textContent, '');
+  assert.deepEqual(card.visible(), [false, true, true]);
+  assert.equal(connection.subscriptions.length, 1);
+  card.remove();
+  await settle();
+});
+
+test('an unavailable read after a confirmed retry can be retried without another write', async () => {
+  const {mount, advance} = fixture();
+  const connection = new Connection();
+  const card = mount(connection, 'v2_mobile');
+  await settle();
+  connection.subscriptions[0].receive({value: null});
+  card.choose('indices');
+  connection.writes[0].reject(new Error('No acknowledgement'));
+  await settle();
+  card.retryPreference();
+  connection.writes[1].resolve();
+  await settle();
+  advance(10000);
+  assert.equal(card.status.textContent, 'Display preference unavailable');
+  assert.equal(card.retry.textContent, 'Retry');
+  card.retryPreference();
+  await settle();
+  assert.equal(connection.writes.length, 2);
+  connection.subscriptions.at(-1).receive({value: 'indices'});
+  assert.deepEqual(card.visible(), [true, false, true]);
+  card.remove();
+  await settle();
+});

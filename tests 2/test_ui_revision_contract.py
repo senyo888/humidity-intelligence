@@ -43,7 +43,7 @@ def generation(monkeypatch, *, unavailable=(), unresolved=False, entry_id=ENTRY_
     return register, hass, cards, runtime
 
 
-@pytest.mark.parametrize("damage", ["moved_end", "wrong_owner", "cross_field"])
+@pytest.mark.parametrize("damage", ["moved_end", "wrong_owner", "cross_field", "styles_aq", "styles_summary"])
 def test_voc_sync_rejects_misplaced_embeds_before_writing_any_target(tmp_path, damage):
     root = Path(__file__).resolve().parents[1]
     script = Path("scripts/sync_voc_presentation.py")
@@ -67,6 +67,18 @@ def test_voc_sync_rejects_misplaced_embeds_before_writing_any_target(tmp_path, d
     elif damage == "wrong_owner":
         owner = next(i for i, line in enumerate(lines) if line.strip() == "name: AQ")
         lines[owner] = lines[owner].replace("name: AQ", "name: Bathroom")
+    elif damage.startswith("styles_"):
+        owner_name = "Current Air Control" if damage == "styles_aq" else "AQ"
+        owner = next(i for i, line in enumerate(lines) if line.strip() == f"name: {owner_name}")
+        indent = lines[owner].split("name:")[0]
+        field = damage.removeprefix("styles_")
+        first = lines.index(f"{indent}  {field}: |\n", owner)
+        last = next(i for i in range(first + 1, len(lines))
+                    if lines[i].strip() and not lines[i].startswith(indent + "   "))
+        scalar = lines[first:last]
+        del lines[first:last]
+        styles = lines.index(indent + "styles:\n", owner)
+        lines[styles + 1:styles + 1] = scalar
     else:
         boundary = lines[end:end + 4]
         del lines[end:end + 4]
@@ -75,7 +87,7 @@ def test_voc_sync_rejects_misplaced_embeds_before_writing_any_target(tmp_path, d
     target.write_text("".join(lines))
     before = [(tmp_path / card).read_bytes() for card in cards]
     for args in (["--check"], []):
-        result = subprocess.run([sys.executable, tmp_path / script, *args], capture_output=True, text=True)
+        result = subprocess.run([sys.executable, tmp_path / script, *args], capture_output=True, text=True, timeout=10)
         assert result.returncode != 0 and "misplaced VOC preference helper" in result.stderr
         assert before == [(tmp_path / card).read_bytes() for card in cards]
 
@@ -92,10 +104,10 @@ def test_rendered_stamp_matches_backend_target_and_is_entry_scoped(monkeypatch):
         stamp = json.loads(raw)
         assert stamp == {
             "schema": 1, "entry": metadata["entry"], "layout": layout,
-            "revision": 23, "generator": 1,
+            "revision": 24, "generator": 1,
         }
         assert metadata["layouts"][layout] == {
-            "revision": 23, "generator": 1, "supersedes": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22],
+            "revision": 24, "generator": 1, "supersedes": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23],
         }
         assert STAMP not in cards[layout]
     module = sys.modules[f"{PKG}.ui.revision"]
