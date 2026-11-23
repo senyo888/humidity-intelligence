@@ -45,9 +45,9 @@ unknown or unavailable indication. When configuration cannot be verified, the
 row shows available readings. An unreadable telemetry inventory shows an AQ configuration warning. If only the VOC index configuration is unknown, its warning names VOC indices. Your choice
 resumes when both families are confirmed. If a source was added since the last
 export and its feed is missing, refresh the mappings and replace the saved card.
-While HI refreshes the preference, the chips keep the last verified filter for the same connection, account and HI entry. A read failure shows **Display preference unavailable**. Select **Retry** to read again. Until the first valid choice arrives, both VOC families remain visible.
+While HI refreshes the preference, the chips keep the last verified filter for the same connection, account and HI entry. A read failure shows **Display preference unavailable**. Select **Retry read** to refresh the preference. When Diagnostics confirms both VOC families after an outage, the previous filter reappears for that same connection, account and entry. A fresh valid read replaces it. Without a previously verified choice, both families remain visible.
 
-**Request accepted by Home Assistant** means Home Assistant acknowledged the request. If it cannot store the change, your previous choice may return after a restart. **Request unconfirmed** offers **Resend** for the attempted choice. A late acknowledgement clears that warning unless you have made a newer choice. If Diagnostics briefly disappears, the same connection, account and entry recover the unconfirmed request.
+**Request accepted by Home Assistant** means Home Assistant acknowledged the request. If it cannot store the change, your previous choice may return after a restart. **Request unconfirmed** offers **Resend** for the attempted choice. A late acknowledgement clears that warning unless you have made a newer choice. An unconfirmed request also returns for the same connection, account and HI entry when Diagnostics recovers. If the read also fails, both messages and actions appear. **Retry read** leaves the unconfirmed request available. **Resend** sends the displayed choice again and keeps a subscription that delivered a valid preference during the resend. Both actions are available when connected.
 
 ## Stability display preference
 
@@ -134,10 +134,10 @@ snapshot. A changed card owner, entry stamp, badge or mapped source retires the 
 History retains its recorded timestamps and units.
 
 Renderer changes require synchronized Mobile, Tablet and gallery embeds. RC.1 now
-exports revision **25**. The final beta.1 and first RC.1 build exported revision
+exports revision **26**. The final beta.1 and first RC.1 build exported revision
 **18**, and published Stable v2.1.2 exported revision **16**. After installing the
 complete integration and restarting Home Assistant, refresh the mappings and export
-fresh cards. Replace the complete saved card for each layout at revision 24 or
+fresh cards. Replace the complete saved card for each layout at revision 25 or
 earlier for the updated VOC preference handling. Restart
 resets in-memory Stability history.
 

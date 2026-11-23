@@ -18,10 +18,12 @@ function hiVocScope(stamp, diag) {
 
 function hiPrepareVoc(owner, hass, stamp, diagId) {
   if (!owner?.shadowRoot || !hass || !globalThis.customElements) return;
-  const tag = 'hi-voc-presentation-v4';
+  const tag = 'hi-voc-presentation-v5';
   const contextKey = Symbol.for('humidity_intelligence.voc_chips.context.v1');
   const changed = 'hi-voc-presentation-context';
   const modes = ['all', 'indices', 'concentrations'];
+  const loading = 'Loading display preference…';
+  const unavailable = 'Display preference unavailable';
   if (!customElements.get(tag)) {
     // Mounted rows and dialogs on the same connection share one HA subscription.
     const connections = new WeakMap();
@@ -30,28 +32,34 @@ function hiPrepareVoc(owner, hass, stamp, diagId) {
       const identity = hass.user.id + ':' + entry;
       let entries = connections.get(connection);
       if (!entries) { entries = new Map(); connections.set(connection, entries); }
-      let store = entries.get(identity);
+      let scope = entries.get(identity);
+      if (!scope) { scope = {value:null, store:null}; entries.set(identity, scope); }
+      let store = scope.store;
       if (!store) {
         const key = 'humidity_intelligence.voc_chips.v1.' + entry;
         const views = new Set();
         let off, listening = false, subscribing = false, attempt = 0, sequence = 0, timer, writeTimer;
         const paint = () => { for (const node of views) node.paint(); };
+        const releaseStore = () => {
+          scope.store = null;
+          if (scope.value === null) entries.delete(identity);
+        };
         const setReadStatus = message => { store.readStatus = message; paint(); };
         const waiting = () => {
           clearTimeout(timer);
-          setReadStatus('Loading display preference…');
-          timer = setTimeout(() => setReadStatus('Display preference unavailable'), 10000);
+          setReadStatus(loading);
+          timer = setTimeout(() => setReadStatus(unavailable), 10000);
         };
         const receive = data => {
           if (!listening || connection.connected !== true) return;
           clearTimeout(timer);
           if (data?.value !== null && !modes.includes(data?.value)) {
-            setReadStatus('Display preference unavailable'); return;
+            setReadStatus(unavailable); return;
           }
           sequence++;
           const value = data.value ?? 'all';
           if (value !== store.acceptedValue) store.acceptedValue = null;
-          store.value = value; setReadStatus('');
+          scope.value = value; setReadStatus('');
         };
         const stopRead = () => {
           attempt++; subscribing = false; clearTimeout(timer);
@@ -69,25 +77,24 @@ function hiPrepareVoc(owner, hass, stamp, diagId) {
             else { subscribing = false; off = unsub; }
           }).catch(() => {
             if (token === attempt) {
-              subscribing = false; clearTimeout(timer); setReadStatus('Display preference unavailable');
+              subscribing = false; clearTimeout(timer); setReadStatus(unavailable);
             }
           });
         };
         const disconnected = () => {
           clearTimeout(timer); clearTimeout(writeTimer);
           if (store.write) store.write.pending = false;
-          setReadStatus('Display preference unavailable');
+          setReadStatus(unavailable);
         };
         // HA automatically restores its subscriptions after reconnect.
         const ready = () => { if (off || subscribing) waiting(); else start(); };
-        store = {value:null, readStatus:'', write:null, acceptedValue:null,
+        store = {readStatus:'', write:null, acceptedValue:null,
+          get value() { return scope.value; },
           get pending() { return this.write?.pending === true; },
           get canChoose() { return !!this.value && !this.readStatus && !this.pending; },
           get retryValue() { return this.pending ? null : this.write?.value; },
-          retry(node) {
-            if (!listening || !connection.connected || store.pending) return;
-            if (store.retryValue) return store.save(node, store.retryValue);
-            start();
+          retryRead() {
+            if (listening && connection.connected && store.readStatus === unavailable) start();
           },
           async save(node, next) {
             if (!listening || !node.eligible() || !modes.includes(next) || (!store.canChoose && next !== store.retryValue) ||
@@ -114,13 +121,14 @@ function hiPrepareVoc(owner, hass, stamp, diagId) {
             if (store.write !== write) return;
             clearTimeout(writeTimer);
             store.write = null;
-            if (!listening) { entries.delete(identity); return; }
+            if (!listening) { releaseStore(); return; }
             // A successful command acknowledges the request. A newer live value takes precedence.
             store.acceptedValue = sequence === before || store.value === next ? next : null;
-            if (connection.connected && (recovering || store.readStatus)) {
+            const needsRead = store.readStatus === unavailable || (recovering && sequence === before);
+            if (connection.connected && needsRead && store.readStatus !== loading) {
               start();
             } else {
-              if (connection.connected && sequence === before) store.value = next;
+              if (connection.connected && !store.readStatus && sequence === before) scope.value = next;
               paint();
             }
           },
@@ -140,13 +148,13 @@ function hiPrepareVoc(owner, hass, stamp, diagId) {
               listening = false; stopRead();
               connection.removeEventListener?.('disconnected', disconnected);
               connection.removeEventListener?.('ready', ready);
-              store.value = null; store.readStatus = ''; store.acceptedValue = null;
-              // Keep only outstanding write intent for this connection, user and entry.
-              if (!store.write) entries.delete(identity);
+              store.readStatus = ''; store.acceptedValue = null;
+              // Only the scoped value outlives an idle store. An outstanding write still owns its acknowledgement.
+              if (!store.write) releaseStore();
             });
           }
         };
-        entries.set(identity, store);
+        scope.store = store;
       }
       store.attach(view);
       return store;
@@ -197,7 +205,9 @@ function hiPrepareVoc(owner, hass, stamp, diagId) {
           if (!this.store?.canChoose) this.paint();
           else this.store?.save(this, event.target.value);
         } else if (event.type === 'click' && event.target.matches('[data-voc-retry]')) {
-          this.store?.retry(this);
+          this.store?.retryRead();
+        } else if (event.type === 'click' && event.target.matches('[data-voc-resend]')) {
+          this.store?.save(this, this.store.retryValue);
         }
       }
       paint() {
@@ -210,22 +220,27 @@ function hiPrepareVoc(owner, hass, stamp, diagId) {
         if (!fields) return;
         fields.hidden = !this.mixed;
         fields.setAttribute('aria-busy', String(!!this.store?.pending));
-        let retryLabel = 'Retry';
+        let resendLabel = 'Resend';
         for (const input of fields.querySelectorAll('input')) {
           if (input.value === this.store?.retryValue && input.labels?.length)
-            retryLabel = 'Resend “' + input.labels[0].textContent.trim() + '”';
+            resendLabel = 'Resend “' + input.labels[0].textContent.trim() + '”';
           input.checked = input.value === (this.store?.pending ? this.store.write.value : mode);
           input.tabIndex = input.checked || (!mode && input.value === 'all') ? 0 : -1;
           input.setAttribute('aria-disabled', String(!this.store?.canChoose));
         }
-        const readStatus = this.store?.readStatus ?? 'Display preference unavailable';
-        const message = this.store?.pending ? 'Sending request…' : this.store?.retryValue ? 'Request unconfirmed'
-          : [this.store?.acceptedValue ? 'Request accepted by Home Assistant.' : '', readStatus].filter(Boolean).join(' ');
+        const readStatus = this.store?.readStatus ?? unavailable;
+        const writeStatus = this.store?.pending ? 'Sending request…' : this.store?.retryValue ? 'Request unconfirmed.'
+          : this.store?.acceptedValue ? 'Request accepted by Home Assistant.' : '';
+        const message = [writeStatus, readStatus].filter(Boolean).join(' ');
         const status = fields.querySelector('[role="status"]');
         if (status.textContent !== message) status.textContent = message;
         const retry = fields.querySelector('[data-voc-retry]');
-        retry.textContent = retryLabel;
-        retry.hidden = !this.store || this.store.pending || (!this.store.retryValue && readStatus !== 'Display preference unavailable');
+        retry.hidden = !this.store || readStatus !== unavailable;
+        retry.disabled = this.connection?.connected !== true;
+        const resend = fields.querySelector('[data-voc-resend]');
+        resend.textContent = resendLabel;
+        resend.hidden = !this.store?.retryValue;
+        resend.disabled = retry.disabled;
       }
     });
   }

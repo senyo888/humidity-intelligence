@@ -1,7 +1,7 @@
 # Humidity Intelligence V2 UI
 
-Both v2.1.3-rc.1 layouts use revision **25**, stamp schema **1** and generator
-contract **1**. Revision 24 and earlier require fresh exports and complete
+Both v2.1.3-rc.1 layouts use revision **26**, stamp schema **1** and generator
+contract **1**. Revision 25 and earlier require fresh exports and complete
 saved-card replacement. VOC index chips verify the owning entry in feed schema 2.
 See [RC compatibility and upgrade](../../../docs/releases/v2.1.3-rc.1.md).
 

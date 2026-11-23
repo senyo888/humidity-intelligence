@@ -104,10 +104,10 @@ def test_rendered_stamp_matches_backend_target_and_is_entry_scoped(monkeypatch):
         stamp = json.loads(raw)
         assert stamp == {
             "schema": 1, "entry": metadata["entry"], "layout": layout,
-            "revision": 25, "generator": 1,
+            "revision": 26, "generator": 1,
         }
         assert metadata["layouts"][layout] == {
-            "revision": 25, "generator": 1, "supersedes": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24],
+            "revision": 26, "generator": 1, "supersedes": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25],
         }
         assert STAMP not in cards[layout]
     module = sys.modules[f"{PKG}.ui.revision"]

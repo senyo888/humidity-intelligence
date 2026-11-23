@@ -62,7 +62,7 @@ function fixture() {
     };
     const render = () => prepare(owner, owner.hass, stamp, 'diagnostics');
     render();
-    const Presentation = elements.get('hi-voc-presentation-v4');
+    const Presentation = elements.get('hi-voc-presentation-v5');
     const row = new Presentation();
     row.host = owner;
     const chip = family => ({dataset: {voc: family}, style: {display: ''}});
@@ -76,18 +76,21 @@ function fixture() {
     const fields = new Element();
     const status = {};
     const retry = {matches: selector => selector === '[data-voc-retry]'};
+    const resend = {matches: selector => selector === '[data-voc-resend]'};
     const labels = {all:'All configured readings', indices:'Monitor indices only', concentrations:'Concentration averages only'};
     const radios = Object.entries(labels).map(([value, textContent]) => Object.assign(new Element(), {
       value, labels: [{textContent}], matches: selector => selector === 'input[name="hi-voc-choice"]',
     }));
-    fields.querySelector = selector => selector === '[role="status"]' ? status : retry;
+    const controls = {'[role="status"]': status, '[data-voc-retry]': retry, '[data-voc-resend]': resend};
+    fields.querySelector = selector => controls[selector];
     fields.querySelectorAll = () => radios;
     details.fields = fields;
     details.connectedCallback();
     return {
-      owner, render, dialog, fields, status, retry, radios,
+      owner, render, dialog, fields, status, retry, resend, radios,
       choose: mode => details.handleEvent({type: 'change', target: radios.find(radio => radio.value === mode)}),
-      retryPreference: () => details.handleEvent({type: 'click', target: retry}),
+      retryRead: () => details.handleEvent({type: 'click', target: retry}),
+      resendWrite: () => details.handleEvent({type: 'click', target: resend}),
       visible: () => row.chips.map(item => item.style.display !== 'none'),
       remove() {
         owner.isConnected = row.isConnected = details.isConnected = false;
@@ -200,7 +203,7 @@ test('ready reuses an in-flight subscription and read retry reopens a failed rea
   advance(10000);
   assert.equal(card.status.textContent, 'Display preference unavailable');
   connection.subscribeMessage = subscribe;
-  card.retryPreference();
+  card.retryRead();
   await settle();
   assert.equal(connection.subscriptions.length, 2);
   assert.equal(connection.subscriptions[0].active, false);
@@ -223,10 +226,10 @@ test('a readback of a failed save keeps the attempted value retryable across lay
   connection.writes[0].reject(new Error('Write failed'));
   await settle();
   subscription.receive({value: 'indices'});
-  assert.equal(tablet.status.textContent, 'Request unconfirmed');
-  assert.equal(tablet.retry.hidden, false);
-  assert.equal(tablet.retry.textContent, 'Resend “Monitor indices only”');
-  tablet.retryPreference();
+  assert.equal(tablet.status.textContent, 'Request unconfirmed.');
+  assert.equal(tablet.resend.hidden, false);
+  assert.equal(tablet.resend.textContent, 'Resend “Monitor indices only”');
+  tablet.resendWrite();
   assert.deepEqual(connection.writes[1].request, connection.writes[0].request);
   connection.writes[1].resolve();
   await settle();
@@ -243,7 +246,7 @@ test('a readback of a failed save keeps the attempted value retryable across lay
   const live = connection.subscriptions[1];
   live.receive({value: 'indices'});
   assert.equal(mobile.status.textContent, accepted);
-  assert.equal(tablet.retry.hidden, true);
+  assert.equal(tablet.resend.hidden, true);
   live.receive({value: 'concentrations'});
   assert.deepEqual(mobile.visible(), [false, true, true]);
   mobile.remove(); tablet.remove();
@@ -266,13 +269,13 @@ for (const lateOutcome of ['resolve', 'reject']) {
     assert.equal(tablet.fields.attributes['aria-busy'], 'true');
     if (lateOutcome === 'resolve') original.receive({value: 'concentrations'});
     advance(10000);
-    assert.equal(mobile.status.textContent, 'Request unconfirmed');
+    assert.equal(mobile.status.textContent, 'Request unconfirmed.');
     assert.equal(tablet.fields.attributes['aria-busy'], 'false');
-    assert.equal(mobile.retry.hidden, false);
+    assert.equal(mobile.resend.hidden, false);
     const expected = lateOutcome === 'resolve' ? [false, true, true] : [true, true, true];
     assert.deepEqual(tablet.visible(), expected);
 
-    mobile.retryPreference();
+    mobile.resendWrite();
     assert.equal(original.active, true);
     assert.equal(connection.writes.length, 2);
     assert.deepEqual(connection.writes[1].request, first.request);
@@ -303,11 +306,11 @@ test('a late acknowledgement confirms the latest write without a second write', 
   card.choose('indices');
   assert.equal(card.status.textContent, 'Sending request…');
   advance(10000);
-  assert.equal(card.status.textContent, 'Request unconfirmed');
+  assert.equal(card.status.textContent, 'Request unconfirmed.');
   connection.writes[0].resolve();
   await settle();
   assert.equal(card.status.textContent, accepted);
-  assert.equal(card.retry.hidden, true);
+  assert.equal(card.resend.hidden, true);
   assert.deepEqual(card.visible(), [true, false, true]);
   assert.equal(connection.writes.length, 1);
   card.remove();
@@ -335,16 +338,16 @@ test('Diagnostics loss releases the read and restores only the same scoped retry
     mount(otherConnection, 'v2_mobile')];
   await settle();
   for (const sub of [...connection.subscriptions.slice(1), ...otherConnection.subscriptions]) sub.receive({value: null});
-  assert.ok(others.every(card => card.retry.hidden));
+  assert.ok(others.every(card => card.resend.hidden));
   diag.state = 'ok';
   tablet.render();
   await settle();
   const restored = connection.subscriptions.at(-1);
   restored.receive({value: 'concentrations'});
-  assert.equal(tablet.status.textContent, 'Request unconfirmed');
-  assert.match(tablet.retry.textContent, /Concentration averages only/);
+  assert.equal(tablet.status.textContent, 'Request unconfirmed.');
+  assert.match(tablet.resend.textContent, /Concentration averages only/);
   assert.equal(connection.writes.length, 1);
-  tablet.retryPreference();
+  tablet.resendWrite();
   connection.writes[1].resolve();
   await settle();
   assert.equal(restored.active, false);
@@ -369,7 +372,7 @@ test('a late acknowledgement clears the warning and keeps a newer live choice', 
   assert.equal(card.status.textContent, 'Sending request…');
   advance(10000);
   live.receive({value: 'concentrations'});
-  assert.equal(card.status.textContent, 'Request unconfirmed');
+  assert.equal(card.status.textContent, 'Request unconfirmed.');
   connection.writes[0].resolve();
   await settle();
   assert.equal(card.status.textContent, '');
@@ -389,14 +392,13 @@ test('a failed reread keeps the last verified choice until a fresh valid value a
   mobile.choose('indices');
   connection.writes[0].reject(new Error('No acknowledgement'));
   await settle();
-  tablet.retryPreference();
+  tablet.resendWrite();
   connection.writes[1].resolve();
   await settle();
   advance(10000);
   for (const card of [mobile, tablet]) {
     assert.equal(card.status.textContent, accepted + ' Display preference unavailable');
     assert.deepEqual(card.visible(), [false, true, true]);
-    assert.equal(card.retry.textContent, 'Retry');
     assert.equal(card.retry.hidden, false);
   }
   const separate = [mount(connection, 'v2_mobile', secondEntry), mount(connection, 'v2_mobile', entry, 'other'),
@@ -406,7 +408,7 @@ test('a failed reread keeps the last verified choice until a fresh valid value a
     assert.ok(card.radios.every(radio => !radio.checked));
     assert.equal(card.status.textContent, 'Loading display preference…');
   }
-  mobile.retryPreference();
+  mobile.retryRead();
   await settle();
   const fresh = connection.subscriptions.at(-1);
   fresh.receive({value: 'unsupported'});
@@ -420,5 +422,147 @@ test('a failed reread keeps the last verified choice until a fresh valid value a
     assert.ok(card.radios.every(radio => radio.attributes['aria-disabled'] === 'false'));
   }
   for (const card of [mobile, tablet, ...separate]) card.remove();
+  await settle();
+});
+
+for (const value of ['indices', 'concentrations']) {
+  test('a valid ' + value + ' update during resend keeps its live subscription', async () => {
+    const {mount, advance} = fixture();
+    const connection = new Connection();
+    const mobile = mount(connection, 'v2_mobile');
+    const tablet = mount(connection, 'v2_tablet');
+    await settle();
+    const live = connection.subscriptions[0];
+    live.receive({value: 'all'});
+    mobile.choose('indices');
+    advance(10000);
+    tablet.resendWrite();
+    live.receive({value});
+    connection.writes[1].resolve();
+    await settle();
+    advance(10000);
+    assert.equal(connection.subscriptions.length, 1);
+    assert.ok(live.active);
+    for (const card of [mobile, tablet]) {
+      assert.equal(card.status.textContent, value === 'indices' ? accepted : '');
+      assert.equal(card.radios.find(radio => radio.checked)?.value, value);
+      assert.ok(card.radios.every(radio => radio.attributes['aria-disabled'] === 'false'));
+    }
+    live.receive({value: 'all'});
+    assert.deepEqual(tablet.visible(), [true, true, true]);
+    mobile.remove(); tablet.remove();
+    await settle();
+  });
+}
+
+test('Diagnostics recovery reuses the scoped filter after the last view releases its subscription', async () => {
+  const {mount, advance} = fixture();
+  const connection = new Connection();
+  const mobile = mount(connection, 'v2_mobile');
+  await settle();
+  const previous = connection.subscriptions[0];
+  previous.receive({value: 'indices'});
+  const diag = mobile.owner.hass.states.diagnostics;
+  diag.state = 'unavailable';
+  mobile.render();
+  await settle();
+  assert.equal(previous.active, false);
+  assert.deepEqual(mobile.visible(), [true, true, true]);
+  const others = [mount(connection, 'v2_mobile', secondEntry), mount(connection, 'v2_tablet', entry, 'other'),
+    mount(new Connection(), 'v2_mobile')];
+  assert.ok(others.every(card => card.radios.every(radio => !radio.checked)));
+  diag.state = 'ok';
+  diag.attributes.diagnostics_summary.voc_index_sources.configured = 0;
+  mobile.render();
+  assert.equal(mobile.fields.hidden, true);
+  diag.attributes.diagnostics_summary.voc_index_sources.configured = 1;
+  mobile.render();
+  await settle();
+  previous.receive({value: 'all'});
+  const tablet = mount(connection, 'v2_tablet');
+  advance(10000);
+  for (const card of [mobile, tablet]) {
+    assert.deepEqual(card.visible(), [true, false, true]);
+    assert.equal(card.status.textContent, 'Display preference unavailable');
+    assert.ok(card.radios.every(radio => radio.attributes['aria-disabled'] === 'true'));
+  }
+  connection.subscriptions.at(-1).receive({value: 'concentrations'});
+  assert.deepEqual(mobile.visible(), [false, true, true]);
+  assert.deepEqual(tablet.visible(), mobile.visible());
+  assert.equal(connection.writes.length, 0);
+  for (const card of [mobile, tablet, ...others]) card.remove();
+  await settle();
+});
+
+test('Retry read and Resend recover independently when both requests fail', async () => {
+  const {mount, advance} = fixture();
+  const connection = new Connection();
+  const mobile = mount(connection, 'v2_mobile');
+  const tablet = mount(connection, 'v2_tablet');
+  await settle();
+  connection.subscriptions[0].receive({value: 'indices'});
+  mobile.choose('concentrations');
+  connection.writes[0].reject(new Error('No acknowledgement'));
+  await settle();
+  connection.connected = false;
+  connection.dispatchEvent(new Event('disconnected'));
+  assert.ok(mobile.retry.disabled && mobile.resend.disabled);
+  mobile.retryRead();
+  mobile.resendWrite();
+  assert.equal(connection.writes.length, 1);
+  connection.connected = true;
+  connection.dispatchEvent(new Event('ready'));
+  advance(10000);
+  for (const card of [mobile, tablet]) {
+    assert.equal(card.status.textContent, 'Request unconfirmed. Display preference unavailable');
+    assert.ok(!card.retry.hidden && !card.resend.hidden && !card.retry.disabled && !card.resend.disabled);
+    assert.equal(card.resend.textContent, 'Resend “Concentration averages only”');
+  }
+  tablet.retryRead();
+  tablet.retryRead();
+  await settle();
+  assert.equal(connection.writes.length, 1);
+  assert.equal(connection.subscriptions.length, 2);
+  assert.ok(mobile.retry.hidden && !mobile.resend.hidden);
+  const live = connection.subscriptions[1];
+  live.receive({value: 'all'});
+  assert.equal(mobile.status.textContent, 'Request unconfirmed.');
+  assert.deepEqual(tablet.visible(), [true, true, true]);
+  mobile.resendWrite();
+  assert.deepEqual(connection.writes[1].request, connection.writes[0].request);
+  live.receive({value: 'concentrations'});
+  connection.writes[1].resolve();
+  await settle();
+  assert.ok(live.active);
+  assert.equal(tablet.status.textContent, accepted);
+  assert.ok(tablet.retry.hidden && tablet.resend.hidden);
+  mobile.remove(); tablet.remove();
+  await settle();
+});
+
+test('an acknowledgement during a read retry lets that pending read complete', async () => {
+  const {mount} = fixture();
+  const connection = new Connection();
+  const card = mount(connection, 'v2_mobile');
+  await settle();
+  const original = connection.subscriptions[0];
+  original.receive({value: 'indices'});
+  card.choose('concentrations');
+  connection.writes[0].reject(new Error('Write failed'));
+  await settle();
+  original.receive({value: 'invalid'});
+  card.resendWrite();
+  card.retryRead();
+  await settle();
+  const replacement = connection.subscriptions[1];
+  connection.writes[1].resolve();
+  await settle();
+  assert.ok(replacement.active);
+  assert.equal(connection.subscriptions.length, 2);
+  assert.deepEqual(card.visible(), [true, false, true]);
+  replacement.receive({value: 'concentrations'});
+  assert.equal(card.status.textContent, accepted);
+  assert.deepEqual(card.visible(), [false, true, true]);
+  card.remove();
   await settle();
 });

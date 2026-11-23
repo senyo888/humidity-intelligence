@@ -9,7 +9,7 @@ This project follows a practical changelog format for Home Assistant and HACS us
 ## Unreleased — v2.1.3-rc.1
 
 - Admit RC.1 to the controller package builder and the admin release check.
-- Revision 22 added the per-user VOC chip preference in AQ details. Revision 23 keeps failed saves retryable across reconnects and distinguishes index configuration from AQ telemetry availability. Revision 24 restores live updates after a retry, accepts late write confirmations, and keeps an unconfirmed choice across a temporary Diagnostics outage. Revision 25 retains the last verified VOC filter during a preference refresh and labels a successful request as accepted by Home Assistant. Existing concentrations and per-monitor indices keep their own units and roles.
+- Revision 22 added the per-user VOC chip preference in AQ details. Revision 23 keeps failed saves retryable across reconnects and distinguishes index configuration from AQ telemetry availability. Revision 24 restores live updates after a retry, accepts late write confirmations, and keeps an unconfirmed choice across a temporary Diagnostics outage. Revision 25 retains the last verified VOC filter during a preference refresh and labels a successful request as accepted by Home Assistant. Revision 26 restores that filter after Diagnostics recovers, keeps a working subscription after a resend and offers separate read and resend actions. Existing concentrations and per-monitor indices keep their own units and roles.
 - Advance Mobile and Tablet to revision 21. AQ chips show the measurement in its
   threshold colour and expose the range to screen readers. House averages include
   valid unlevelled inputs. Risk badges distinguish reported risk from room names.
