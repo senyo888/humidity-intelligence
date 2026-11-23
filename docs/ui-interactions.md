@@ -37,8 +37,7 @@ System/Manual toggle, operate an output, or turn a scroll into a tap.
 Open the **AQ** badge. When HI has both VOC concentrations and monitor indices
 configured, **VOC readings on your cards** appears below the snapshot. Choose
 **All configured readings** (the default), **Monitor indices only**, or
-**Concentration averages only**. Home Assistant saves the choice for your account
-and this HI installation across Mobile and Tablet. It affects only the current
+**Concentration averages only**. Your account uses the same choice for this HI installation across Mobile and Tablet. It affects only the current
 chip row. Each index uses its monitor’s own scale. Source mappings are in **Sensors**.
 
 A single configured family appears automatically. An offline source keeps its
@@ -46,8 +45,9 @@ unknown or unavailable indication. When configuration cannot be verified, the
 row shows available readings. An unreadable telemetry inventory shows an AQ configuration warning. If only the VOC index configuration is unknown, its warning names VOC indices. Your choice
 resumes when both families are confirmed. If a source was added since the last
 export and its feed is missing, refresh the mappings and replace the saved card.
-A preference read failure shows all configured readings. **Save unconfirmed**
-means Home Assistant could not confirm a change. Select **Retry** in AQ details to save that choice again. A late confirmation clears the warning if you have not made another choice. A successful retry reconnects the preference subscription. If Diagnostics briefly disappears, the same account and HI entry recover the unconfirmed choice on the same connection. A read failure retries the subscription.
+While HI refreshes the preference, the chips keep the last verified filter for the same connection, account and HI entry. A read failure shows **Display preference unavailable**. Select **Retry** to read again. Until the first valid choice arrives, both VOC families remain visible.
+
+**Request accepted by Home Assistant** means Home Assistant acknowledged the request. If it cannot store the change, your previous choice may return after a restart. **Request unconfirmed** offers **Resend** for the attempted choice. A late acknowledgement clears that warning unless you have made a newer choice. If Diagnostics briefly disappears, the same connection, account and entry recover the unconfirmed request.
 
 ## Stability display preference
 
@@ -134,10 +134,10 @@ snapshot. A changed card owner, entry stamp, badge or mapped source retires the 
 History retains its recorded timestamps and units.
 
 Renderer changes require synchronized Mobile, Tablet and gallery embeds. RC.1 now
-exports revision **24**. The final beta.1 and first RC.1 build exported revision
+exports revision **25**. The final beta.1 and first RC.1 build exported revision
 **18**, and published Stable v2.1.2 exported revision **16**. After installing the
 complete integration and restarting Home Assistant, refresh the mappings and export
-fresh cards. Replace the complete saved card for each layout at revision 23 or
+fresh cards. Replace the complete saved card for each layout at revision 24 or
 earlier for the updated VOC preference handling. Restart
 resets in-memory Stability history.
 

@@ -18,7 +18,7 @@ function hiVocScope(stamp, diag) {
 
 function hiPrepareVoc(owner, hass, stamp, diagId) {
   if (!owner?.shadowRoot || !hass || !globalThis.customElements) return;
-  const tag = 'hi-voc-presentation-v3';
+  const tag = 'hi-voc-presentation-v4';
   const contextKey = Symbol.for('humidity_intelligence.voc_chips.context.v1');
   const changed = 'hi-voc-presentation-context';
   const modes = ['all', 'indices', 'concentrations'];
@@ -36,19 +36,22 @@ function hiPrepareVoc(owner, hass, stamp, diagId) {
         const views = new Set();
         let off, listening = false, subscribing = false, attempt = 0, sequence = 0, timer, writeTimer;
         const paint = () => { for (const node of views) node.paint(); };
-        const fail = message => { store.value = null; store.status = message; paint(); };
+        const setReadStatus = message => { store.readStatus = message; paint(); };
         const waiting = () => {
           clearTimeout(timer);
-          store.value = null; store.status = 'Loading display preference…'; paint();
-          timer = setTimeout(() => fail('Display preference unavailable'), 10000);
+          setReadStatus('Loading display preference…');
+          timer = setTimeout(() => setReadStatus('Display preference unavailable'), 10000);
         };
         const receive = data => {
           if (!listening || connection.connected !== true) return;
-          clearTimeout(timer); sequence++;
+          clearTimeout(timer);
           if (data?.value !== null && !modes.includes(data?.value)) {
-            fail('Display preference unavailable'); return;
+            setReadStatus('Display preference unavailable'); return;
           }
-          store.value = data.value ?? 'all'; store.status = ''; paint();
+          sequence++;
+          const value = data.value ?? 'all';
+          if (value !== store.acceptedValue) store.acceptedValue = null;
+          store.value = value; setReadStatus('');
         };
         const stopRead = () => {
           attempt++; subscribing = false; clearTimeout(timer);
@@ -66,19 +69,20 @@ function hiPrepareVoc(owner, hass, stamp, diagId) {
             else { subscribing = false; off = unsub; }
           }).catch(() => {
             if (token === attempt) {
-              subscribing = false; clearTimeout(timer); fail('Display preference unavailable');
+              subscribing = false; clearTimeout(timer); setReadStatus('Display preference unavailable');
             }
           });
         };
         const disconnected = () => {
           clearTimeout(timer); clearTimeout(writeTimer);
           if (store.write) store.write.pending = false;
-          fail('Display preference unavailable');
+          setReadStatus('Display preference unavailable');
         };
         // HA automatically restores its subscriptions after reconnect.
         const ready = () => { if (off || subscribing) waiting(); else start(); };
-        store = {value:null, status:'', write:null,
+        store = {value:null, readStatus:'', write:null, acceptedValue:null,
           get pending() { return this.write?.pending === true; },
+          get canChoose() { return !!this.value && !this.readStatus && !this.pending; },
           get retryValue() { return this.pending ? null : this.write?.value; },
           retry(node) {
             if (!listening || !connection.connected || store.pending) return;
@@ -86,18 +90,18 @@ function hiPrepareVoc(owner, hass, stamp, diagId) {
             start();
           },
           async save(node, next) {
-            if (!listening || !node.eligible() || !modes.includes(next) || (!store.value && next !== store.retryValue) ||
+            if (!listening || !node.eligible() || !modes.includes(next) || (!store.canChoose && next !== store.retryValue) ||
                 store.pending || connection.connected !== true) return;
             const recovering = !!store.write;
             const before = sequence;
             // Only a newer write supersedes this command's eventual acknowledgement.
             const write = {value:next, pending:true};
             store.write = write;
+            store.acceptedValue = null;
             const unconfirmed = () => {
               if (store.write !== write || !write.pending) return;
               clearTimeout(writeTimer);
               write.pending = false;
-              if (before === sequence) store.value = null;
               paint();
             };
             paint();
@@ -111,7 +115,9 @@ function hiPrepareVoc(owner, hass, stamp, diagId) {
             clearTimeout(writeTimer);
             store.write = null;
             if (!listening) { entries.delete(identity); return; }
-            if (connection.connected && (recovering || store.status)) {
+            // A successful command acknowledges the request. A newer live value takes precedence.
+            store.acceptedValue = sequence === before || store.value === next ? next : null;
+            if (connection.connected && (recovering || store.readStatus)) {
               start();
             } else {
               if (connection.connected && sequence === before) store.value = next;
@@ -134,7 +140,7 @@ function hiPrepareVoc(owner, hass, stamp, diagId) {
               listening = false; stopRead();
               connection.removeEventListener?.('disconnected', disconnected);
               connection.removeEventListener?.('ready', ready);
-              store.value = null; store.status = '';
+              store.value = null; store.readStatus = ''; store.acceptedValue = null;
               // Keep only outstanding write intent for this connection, user and entry.
               if (!store.write) entries.delete(identity);
             });
@@ -188,7 +194,7 @@ function hiPrepareVoc(owner, hass, stamp, diagId) {
         if (event.type === changed) { this.refresh(); return; }
         if (!this.eligible() || !this.closest('dialog')?.open) return;
         if (event.type === 'change' && event.target.matches('input[name="hi-voc-choice"]')) {
-          if (!this.store?.value || this.store.pending) this.paint();
+          if (!this.store?.canChoose) this.paint();
           else this.store?.save(this, event.target.value);
         } else if (event.type === 'click' && event.target.matches('[data-voc-retry]')) {
           this.store?.retry(this);
@@ -207,17 +213,19 @@ function hiPrepareVoc(owner, hass, stamp, diagId) {
         let retryLabel = 'Retry';
         for (const input of fields.querySelectorAll('input')) {
           if (input.value === this.store?.retryValue && input.labels?.length)
-            retryLabel = 'Retry saving “' + input.labels[0].textContent.trim() + '”';
+            retryLabel = 'Resend “' + input.labels[0].textContent.trim() + '”';
           input.checked = input.value === (this.store?.pending ? this.store.write.value : mode);
           input.tabIndex = input.checked || (!mode && input.value === 'all') ? 0 : -1;
-          input.setAttribute('aria-disabled', String(!mode || !!this.store?.pending));
+          input.setAttribute('aria-disabled', String(!this.store?.canChoose));
         }
-        const message = this.store?.pending ? 'Saving…' : this.store?.retryValue ? 'Save unconfirmed'
-          : this.store?.status ?? 'Display preference unavailable';
-        fields.querySelector('[role="status"]').textContent = message;
+        const readStatus = this.store?.readStatus ?? 'Display preference unavailable';
+        const message = this.store?.pending ? 'Sending request…' : this.store?.retryValue ? 'Request unconfirmed'
+          : [this.store?.acceptedValue ? 'Request accepted by Home Assistant.' : '', readStatus].filter(Boolean).join(' ');
+        const status = fields.querySelector('[role="status"]');
+        if (status.textContent !== message) status.textContent = message;
         const retry = fields.querySelector('[data-voc-retry]');
         retry.textContent = retryLabel;
-        retry.hidden = !this.store || !['Display preference unavailable', 'Save unconfirmed'].includes(message);
+        retry.hidden = !this.store || this.store.pending || (!this.store.retryValue && readStatus !== 'Display preference unavailable');
       }
     });
   }
