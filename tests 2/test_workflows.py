@@ -29,7 +29,7 @@ class WorkflowConfigurationTests(unittest.TestCase):
         workflow = (ROOT / ".github/workflows/version-governance.yml").read_text()
         for required in (
             "fetch-depth: 0", "check_ui_revision_governance.py",
-            "sync_ui_revision.py --check", "sync_badge_history.py --check",
+            "sync_ui_revision.py --check", "sync_badge_history.py --check", "sync_voc_presentation.py --check",
             "test_ui_revision_governance.py", "test_ui_revision_contract.py",
             "test_adaptive_cards.py", "test_ui_revision_status.mjs",
             "sync_ui_inactivity.py --check", "test_ui_inactivity.mjs",

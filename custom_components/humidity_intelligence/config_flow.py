@@ -248,7 +248,11 @@ def _configured_zone_items(zones: Dict[str, Any]) -> List[Tuple[str, Dict[str, A
     return configured
 
 
-VOC_INDEX_CHOICE = {"value": "voc_index", "label": "VOC index (display only)"}
+ADD_SENSOR_TYPES = []
+for sensor_type in SENSOR_TYPES:
+    ADD_SENSOR_TYPES.append(sensor_type)
+    if sensor_type["value"] == "voc":
+        ADD_SENSOR_TYPES.append({"value": "voc_index", "label": "VOC index (display only)"})
 
 
 class VocIndexEditor:
@@ -703,7 +707,7 @@ class HumidityIntelligenceConfigFlow(VocIndexEditor, config_entries.ConfigFlow, 
             ),
             vol.Optional("sensor_type", default=SENSOR_TYPES[0]["value"]): selector.SelectSelector(
                 selector.SelectSelectorConfig(
-                    options=_value_label_options(SENSOR_TYPES + [VOC_INDEX_CHOICE]),
+                    options=_value_label_options(ADD_SENSOR_TYPES),
                     mode=selector.SelectSelectorMode.DROPDOWN,
                 )
             ),
@@ -2246,7 +2250,7 @@ class HumidityIntelligenceOptionsFlow(VocIndexEditor, OutputObservationOptionsMi
             ),
             vol.Optional("sensor_type", default=SENSOR_TYPES[0]["value"]): selector.SelectSelector(
                 selector.SelectSelectorConfig(
-                    options=[SelectOptionDict(value=o["value"], label=o["label"]) for o in SENSOR_TYPES + [VOC_INDEX_CHOICE]],
+                    options=[SelectOptionDict(value=o["value"], label=o["label"]) for o in ADD_SENSOR_TYPES],
                     mode=selector.SelectSelectorMode.DROPDOWN,
                 )
             ),

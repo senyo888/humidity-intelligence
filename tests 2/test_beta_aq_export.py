@@ -59,11 +59,19 @@ console.log(new Function('states', body)(states));"""],
     return result.stdout
 
 
+def diagnostics(telemetry, count, entry=ENTRY_BINDING):
+    return {"state": "ok", "attributes": {
+        "ui_revision": {"schema": 1, "entry": entry},
+        "config": {"telemetry": telemetry},
+        "diagnostics_summary": {"voc_index_sources": {"configured": count}},
+    }}
+
+
 def test_generated_strip_uses_same_entry_config_units_and_source_status():
     states = {
-        "sensor.example_diagnostics": {"state": "ok", "attributes": {"config": {"telemetry": [
+        "sensor.example_diagnostics": diagnostics([
             {"sensor_type": "voc", "level": "level1"}, {"sensor_type": "humidity", "level": None},
-        ]}}},
+        ], 1),
         "sensor.hi_house_voc_average": {"state": "100", "attributes": {"unit_of_measurement": "ppb"}},
         "sensor.hi_level1_voc_average": {"state": "unknown", "attributes": {}},
         "sensor.hi_house_co_average": {"state": "50", "attributes": {"unit_of_measurement": "ppm"}},
@@ -81,7 +89,7 @@ def test_generated_strip_uses_same_entry_config_units_and_source_status():
         assert ">House VOC</span>" in html and "VOC concentration" not in html
         assert "AQ configuration" not in html and "Test sensor.example_label ]]] &lt;index&gt; VOC index" in html
         unlevelled = {"sensor_type": "voc", "level": None}
-        diag = {"state": "ok", "attributes": {"config": {"telemetry": [unlevelled]}}}
+        diag = diagnostics([unlevelled], 1)
         incomplete = render(expr, {**states, "sensor.example_diagnostics": diag})
         assert "AQ configuration" in incomplete and "Incomplete" in incomplete and "House VOC" in incomplete
         assert '>0</span>' in html and "#ef4444" not in html
@@ -112,7 +120,7 @@ def test_unconfigured_feed_has_no_subscription_or_rows():
         assert "sensor.hi_voc_index_sources" not in card["triggers_update"]
         assert "sensor.hi_voc_index_sources" not in card["custom_fields"]["aq"]
         assert not render(card["custom_fields"]["aq"], {
-            "sensor.example_diagnostics": {"state": "ok", "attributes": {"config": {"telemetry": []}}},
+            "sensor.example_diagnostics": diagnostics([], 0),
         }).strip()
 
 
@@ -133,3 +141,33 @@ def test_saved_aq_strip_accepts_live_rows_only_from_its_stamped_entry():
         html = render(expr, {"sensor.hi_diagnostics": {"state": "1", "attributes": owned}})
         assert "Live source VOC index" in html and ">23</span>" in html
         assert "VOC index (exported source)" not in html
+
+
+def test_current_membership_overrides_saved_index_inventory_and_fallback_is_neutral():
+    feed = {"state": "1", "attributes": {"entry": ENTRY_BINDING, "schema": 2, "readings": {
+        KEY: {"label": "Live monitor", "status": "available", "value": 12},
+    }}}
+    telemetry = [{"sensor_type": "voc", "level": None}]
+    for card in exports([ROW]):
+        def output(diag, source=feed):
+            return render(card["custom_fields"]["aq"], {
+                "sensor.example_diagnostics": diag, "sensor.hi_diagnostics": source,
+                "sensor.hi_house_voc_average": {"state": "110", "attributes": {"unit_of_measurement": "ppb"}},
+            })
+
+        removed = output(diagnostics(telemetry, 0))
+        assert "110 ppb" in removed and "VOC index" not in removed
+        mismatch = output(diagnostics(telemetry, 2))
+        assert "VOC index (2 configured)" in mismatch and "Unavailable" in mismatch and "Live monitor" not in mismatch
+        for unknown in (None, True, 1.5, "1", -1):
+            degraded = output(diagnostics(telemetry, unknown))
+            assert "AQ configuration" in degraded and "110 ppb" in degraded and "Live monitor VOC index" in degraded
+        for diag in ({"state": "unavailable", "attributes": diagnostics(telemetry, 1)["attributes"]},
+                     diagnostics(telemetry, 1, "f" * 64)):
+            degraded = output(diag)
+            assert "AQ configuration" in degraded and "110 ppb" not in degraded and "Live monitor VOC index" in degraded
+        offline = output(diagnostics(telemetry, 1), {"state": "0", "attributes": {
+            "entry": ENTRY_BINDING, "schema": 2,
+            "readings": {KEY: {"label": "Live monitor", "status": "unknown", "value": None}},
+        }})
+        assert "Live monitor VOC index" in offline and "Unknown" in offline

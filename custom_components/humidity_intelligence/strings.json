@@ -411,7 +411,7 @@
       },
       "voc_index": {
         "title": "VOC index (display only)",
-        "description": "Choose a provider source to edit, or add a new source. Each index is displayed separately.",
+        "description": "Choose a provider source to edit, or add a new source. Each index is displayed separately. If both VOC concentrations and indices are configured, open the AQ badge on your dashboard to choose which readings appear on your cards.",
         "data": {
           "source": "Index source"
         }
@@ -915,7 +915,7 @@
       },
       "voc_index": {
         "title": "VOC index (display only)",
-        "description": "Choose a provider source to edit, or add a new source. Each index is displayed separately.",
+        "description": "Choose a provider source to edit, or add a new source. Each index is displayed separately. If both VOC concentrations and indices are configured, open the AQ badge on your dashboard to choose which readings appear on your cards.",
         "data": {
           "source": "Index source"
         }

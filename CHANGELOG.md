@@ -9,6 +9,7 @@ This project follows a practical changelog format for Home Assistant and HACS us
 ## Unreleased — v2.1.3-rc.1
 
 - Admit RC.1 to the controller package builder and the admin release check.
+- Advance both layouts to revision 22 for the per-user VOC chip preference in AQ details. Existing concentrations and per-monitor indices keep their own units and roles.
 - Advance Mobile and Tablet to revision 21. AQ chips show the measurement in its
   threshold colour and expose the range to screen readers. House averages include
   valid unlevelled inputs. Risk badges distinguish reported risk from room names.

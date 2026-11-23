@@ -1124,6 +1124,20 @@ def test_setup_zones_level_display_labels_editor_sanitizes_before_zone_config():
     }
 
 
+def test_voc_source_types_are_adjacent_in_both_add_sensor_forms():
+    config_flow = _load_config_flow_module()
+    setup = config_flow.HumidityIntelligenceConfigFlow()
+    options = config_flow.HumidityIntelligenceOptionsFlow(SimpleNamespace(data={}, options={}))
+    setup.hass = options.hass = SimpleNamespace()
+    for method in (setup.async_step_telemetry_add, options.async_step_options_telemetry_add):
+        form = asyncio.run(method())
+        values = _schema_select_values(form, "sensor_type")
+        labels = _schema_select_labels(form, "sensor_type")
+        i = values.index("voc")
+        assert values[i:i + 2] == ["voc", "voc_index"]
+        assert labels[i:i + 2] == ["VOC concentration", "VOC index (display only)"]
+
+
 def test_options_gates_flattens_advanced_section_and_preserves_visible_values():
     config_flow = _load_config_flow_module()
     entry = SimpleNamespace(data={"target_profile": "spring", "custom_target_low": 43, "custom_target_high": 57}, options={})

@@ -837,8 +837,8 @@ complete averages using HI display bands. Each monitor’s VOC index appears on 
 own display-only chip. Existing VOC concentration mappings keep their ppb or ppm
 units. Risk and reason displays follow the availability of their source.
 
-Both layouts now use revision 21. After upgrading, refresh the mappings, export
-each layout you use and replace saved cards at revision 20 or earlier.
+Both layouts now use revision 22. For installations with both VOC types, open the AQ badge to choose which readings appear on your cards. After upgrading, refresh the mappings, export
+each layout you use and replace saved cards at revision 21 or earlier.
 [RC compatibility and upgrade](docs/releases/v2.1.3-rc.1.md)
 
 <a id="v212-stable-source-preparation"></a>

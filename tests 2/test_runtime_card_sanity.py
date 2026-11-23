@@ -4584,6 +4584,17 @@ def test_diagnostics_summary_can_surface_shared_frontend_dependency_status_witho
     assert compact["runtime_control"] == full_summary["runtime_control"]
 
 
+def test_compact_diagnostics_keeps_only_a_verified_configured_index_count():
+    sensor = _load_sensor_platform_module()
+    for value, expected in ((0, {"configured": 0}), (2, {"configured": 2}),
+                            (None, {}), (True, {}), ("1", {}), (-1, {})):
+        compact = sensor._compact_diagnostics_summary({"voc_index_sources": {
+            "configured": value, "available": 0, "labels": ["Example"],
+        }})
+        assert compact["voc_index_sources"] == expected
+    assert sensor._compact_diagnostics_summary({})["voc_index_sources"] == {}
+
+
 def test_support_diagnostics_summary_uses_canonical_level_label_source():
     services_mod = _load_services_module()
     entry = SimpleNamespace(

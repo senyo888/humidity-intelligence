@@ -553,7 +553,10 @@ def _compact_diagnostics_summary(summary: dict) -> dict:
         for item in list(summary.get("active_alert_resolution") or [])[:5]
         if isinstance(item, dict)
     ]
+    index_counts = summary.get("voc_index_sources")
+    configured = index_counts.get("configured") if isinstance(index_counts, dict) else None
     return {
+        "voc_index_sources": {"configured": configured} if type(configured) is int and configured >= 0 else {},
         "aq_inputs": summary.get("aq_inputs", {}),
         "update_observation": summary.get("update_observation", {}),
         "runtime_control": summary.get("runtime_control", {}),
