@@ -43,11 +43,11 @@ chip row. Each index uses its monitor’s own scale. Source mappings are in **Se
 
 A single configured family appears automatically. An offline source keeps its
 unknown or unavailable indication. When configuration cannot be verified, the
-row shows available evidence and an AQ configuration warning. Your choice
+row shows available readings. An unreadable telemetry inventory shows an AQ configuration warning. If only the VOC index configuration is unknown, its warning names VOC indices. Your choice
 resumes when both families are confirmed. If a source was added since the last
 export and its feed is missing, refresh the mappings and replace the saved card.
 A preference read failure shows all configured readings. **Save unconfirmed**
-means Home Assistant could not confirm a change. Open AQ details to retry.
+means Home Assistant could not confirm a change. Select **Retry** in AQ details to save that choice again. A read failure retries the subscription.
 
 ## Stability display preference
 
@@ -134,11 +134,11 @@ snapshot. A changed card owner, entry stamp, badge or mapped source retires the 
 History retains its recorded timestamps and units.
 
 Renderer changes require synchronized Mobile, Tablet and gallery embeds. RC.1 now
-exports revision **22**. The final beta.1 and first RC.1 build exported revision
+exports revision **23**. The final beta.1 and first RC.1 build exported revision
 **18**, and published Stable v2.1.2 exported revision **16**. After installing the
 complete integration and restarting Home Assistant, refresh the mappings and export
-fresh cards. Replace the complete saved card for each layout at revision 21 or
-earlier to use the VOC choice. Restart
+fresh cards. Replace the complete saved card for each layout at revision 22 or
+earlier for the updated VOC preference handling. Restart
 resets in-memory Stability history.
 
 Keep the previous complete package and saved cards together for rollback. For

@@ -10,14 +10,15 @@ function hiVocScope(stamp, diag) {
   const owned = entry && available && metadata?.schema === 1 && metadata.entry === entry;
   const count = owned ? diag.attributes?.diagnostics_summary?.voc_index_sources?.configured : null;
   const indices = Number.isSafeInteger(count) && count >= 0 ? count : null;
-  const known = indices !== null && Array.isArray(inventory) &&
+  const inventoryKnown = Array.isArray(inventory) &&
     inventory.every(row => row && typeof row.sensor_type === 'string');
-  return {entry, indices, inventory, known, mixed: known && indices > 0 && inventory.some(row => row.sensor_type === 'voc')};
+  return {entry, indices, inventory, inventoryKnown,
+    mixed: inventoryKnown && indices > 0 && inventory.some(row => row.sensor_type === 'voc')};
 }
 
 function hiPrepareVoc(owner, hass, stamp, diagId) {
   if (!owner?.shadowRoot || !hass || !globalThis.customElements) return;
-  const tag = 'hi-voc-presentation-v1';
+  const tag = 'hi-voc-presentation-v2';
   const contextKey = Symbol.for('humidity_intelligence.voc_chips.context.v1');
   const changed = 'hi-voc-presentation-context';
   const modes = ['all', 'indices', 'concentrations'];
@@ -34,6 +35,7 @@ function hiPrepareVoc(owner, hass, stamp, diagId) {
         const key = 'humidity_intelligence.voc_chips.v1.' + entry;
         const views = new Set();
         let off, disposed = false, writeToken = 0, sequence = 0, attempt = 0, timer, writeTimer;
+        let subscribing = false;
         const paint = () => { for (const node of views) node.paint(); };
         const fail = message => { store.value = null; store.status = message; paint(); };
         const waiting = () => {
@@ -51,45 +53,51 @@ function hiPrepareVoc(owner, hass, stamp, diagId) {
         };
         const start = () => {
           const token = ++attempt;
+          subscribing = true;
           waiting();
           Promise.resolve().then(() => connection.subscribeMessage(data => {
             if (token === attempt) receive(data);
           }, {type:'frontend/subscribe_user_data', key})).then(unsub => {
-            if (disposed || token !== attempt) unsub(); else off = unsub;
+            if (disposed || token !== attempt) unsub();
+            else { subscribing = false; off = unsub; }
           }).catch(() => {
-            if (!disposed && token === attempt) { clearTimeout(timer); fail('Display preference unavailable'); }
+            if (!disposed && token === attempt) {
+              subscribing = false; clearTimeout(timer); fail('Display preference unavailable');
+            }
           });
         };
         const disconnected = () => {
           writeToken++; clearTimeout(timer); clearTimeout(writeTimer);
-          const wasWriting = store.pending;
+          if (store.pending) store.retryValue = store.desired;
           store.pending = false; store.desired = null;
-          fail(wasWriting ? 'Save unconfirmed' : 'Display preference unavailable');
+          fail('Display preference unavailable');
         };
         // HA automatically restores its subscriptions after reconnect.
-        const ready = () => { if (off) waiting(); else start(); };
-        store = {views, value:null, status:'', pending:false,
-          retry() {
+        const ready = () => { if (off || subscribing) waiting(); else start(); };
+        store = {views, value:null, status:'', pending:false, retryValue:null,
+          retry(node) {
             if (disposed || !connection.connected || store.pending) return;
+            if (store.retryValue) return store.save(node, store.retryValue);
             off?.(); off = null; start();
           },
           async save(node, next) {
-            if (disposed || !node.eligible() || !modes.includes(next) || !store.value ||
+            if (disposed || !node.eligible() || !modes.includes(next) || (!store.value && next !== store.retryValue) ||
                 store.pending || connection.connected !== true) return;
             const token = ++writeToken, before = sequence;
             const active = () => !disposed && token === writeToken;
             const unconfirmed = () => {
               if (!active()) return;
               writeToken++; clearTimeout(writeTimer);
-              store.pending = false; store.desired = null;
+              store.pending = false; store.desired = null; store.retryValue = next;
               if (before === sequence) store.value = null;
-              store.status = 'Save unconfirmed'; paint();
+              paint();
             };
-            store.desired = next; store.pending = true; store.status = 'Saving…'; paint();
+            store.desired = next; store.pending = true; paint();
             writeTimer = setTimeout(unconfirmed, 10000);
             try {
               await node.ha().callWS({type:'frontend/set_user_data', key, value:next});
               if (!active()) return;
+              store.retryValue = null;
               if (sequence === before) receive({value:next});
             } catch {
               unconfirmed();
@@ -162,7 +170,7 @@ function hiPrepareVoc(owner, hass, stamp, diagId) {
           if (!this.store?.value || this.store.pending) this.paint();
           else this.store?.save(this, event.target.value);
         } else if (event.type === 'click' && event.target.matches('[data-voc-retry]')) {
-          this.store?.retry();
+          this.store?.retry(this);
         }
       }
       paint() {
@@ -175,14 +183,20 @@ function hiPrepareVoc(owner, hass, stamp, diagId) {
         if (!fields) return;
         fields.hidden = !this.mixed;
         fields.setAttribute('aria-busy', String(!!this.store?.pending));
+        let retryLabel = 'Retry';
         for (const input of fields.querySelectorAll('input')) {
+          if (input.value === this.store?.retryValue && input.labels?.length)
+            retryLabel = 'Retry saving “' + input.labels[0].textContent.trim() + '”';
           input.checked = input.value === (this.store?.desired ?? mode);
           input.tabIndex = input.checked || (!mode && input.value === 'all') ? 0 : -1;
           input.setAttribute('aria-disabled', String(!mode || !!this.store?.pending));
         }
-        const message = this.store?.status ?? 'Display preference unavailable';
+        const message = this.store?.pending ? 'Saving…' : this.store?.retryValue ? 'Save unconfirmed'
+          : this.store?.status ?? 'Display preference unavailable';
         fields.querySelector('[role="status"]').textContent = message;
-        fields.querySelector('[data-voc-retry]').hidden = !this.store || !['Display preference unavailable', 'Save unconfirmed'].includes(message);
+        const retry = fields.querySelector('[data-voc-retry]');
+        retry.textContent = retryLabel;
+        retry.hidden = !this.store || !['Display preference unavailable', 'Save unconfirmed'].includes(message);
       }
     });
   }

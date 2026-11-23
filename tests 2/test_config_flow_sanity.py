@@ -908,9 +908,9 @@ def test_setup_surfaces_link_to_configuration_walkthrough():
         assert "Next step: Configuration Walkthrough" in ui_install_description
         assert "{walkthrough_url}" in ui_install_description
         assert walkthrough_url not in ui_install_description
+        assert "{dependencies}" in ui_install_description
 
     assert walkthrough_url in config_source
-    assert "{dependencies}" in ui_install_description
 
 
 def test_welcome_and_telemetry_copy_support_staged_setup_method():
@@ -1240,6 +1240,22 @@ def test_options_zone_picker_keeps_level_names_accessible_after_empty_slots():
     assert _schema_select_labels(form, "action")[2] == "Edit level names"
 
 
+def test_unreadable_saved_zones_are_visible_but_only_editable_slots_are_offered():
+    config_flow = _load_config_flow_module()
+    for zones, expected in (({"zone1": None}, ["zone2"]), (None, [])):
+        entry = SimpleNamespace(data={"zones": zones}, options={})
+        flow = config_flow.HumidityIntelligenceOptionsFlow(entry)
+        flow.hass = SimpleNamespace()
+        form = asyncio.run(flow.async_step_options_zones())
+        actions = [*expected, "level_labels", "done"]
+        assert _schema_select_values(form, "action") == actions
+        assert _schema_default(form, "action") == actions[0]
+        assert "Zone 1: saved settings unavailable" in form["description_placeholders"]["configured_zones"]
+        rejected = asyncio.run(flow.async_step_options_zones({"action": "zone1"}))
+        assert rejected["errors"]["base"] == "unrecognised_zone_settings"
+        assert "zones" not in flow._options and entry.data["zones"] == zones
+
+
 def test_options_zones_level_display_labels_editor_uses_existing_labels_and_allows_clearing():
     config_flow = _load_config_flow_module()
     entry = SimpleNamespace(
@@ -1290,6 +1306,8 @@ def test_profile_editor_keeps_zone_and_humidity_settings_through_temperature_edi
     entry = SimpleNamespace(
         data={
             "zones": {"zone1": dict(zone1)},
+            "target_profile_mode": "custom",
+            "target_custom": {"low": "43.5", "high": "57.5"},
             "temperature_comfort_mode": "auto",
             "temperature_comfort_custom_low": 19.5,
             "temperature_comfort_custom_high": 21.0,
@@ -1303,6 +1321,9 @@ def test_profile_editor_keeps_zone_and_humidity_settings_through_temperature_edi
     result = asyncio.run(
         flow.async_step_options_thresholds(
             {
+                "humidity_targets": {
+                    "target_profile": "custom", "custom_target_low": 43.5, "custom_target_high": 57.5,
+                },
                 "temperature_comfort": {
                     "temperature_comfort_mode": "custom",
                     "temperature_comfort_custom_low": 18.0,
@@ -1319,7 +1340,9 @@ def test_profile_editor_keeps_zone_and_humidity_settings_through_temperature_edi
     assert flow._options["temperature_comfort_custom_low"] == 18.0
     assert flow._options["temperature_comfort_custom_high"] == 22.0
     assert "zones" not in flow._options
-    assert "target_profile" not in flow._options
+    assert not {"target_profile", "custom_target_low", "custom_target_high", "target_profile_mode", "target_custom"} & flow._options.keys()
+    assert flow._effective_config()["target_profile_mode"] == "custom"
+    assert flow._effective_config()["target_custom"] == {"low": "43.5", "high": "57.5"}
     assert flow._effective_config()["zones"] == {"zone1": zone1}
 
 

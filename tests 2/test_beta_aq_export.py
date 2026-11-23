@@ -2,6 +2,7 @@
 import asyncio
 import hashlib
 import json
+from pathlib import Path
 import subprocess
 import sys
 from types import SimpleNamespace
@@ -143,11 +144,24 @@ def test_saved_aq_strip_accepts_live_rows_only_from_its_stamped_entry():
         assert "VOC index (exported source)" not in html
 
 
+def test_unstamped_gallery_cards_show_valid_telemetry_independently_of_index_configuration():
+    gallery = Path(__file__).resolve().parents[1] / "ui-gallery"
+    for name in ("default-v2-mobile-aq", "default-v2-tablet-zone-1-cooking"):
+        tree = yaml.safe_load((gallery / name / "card.yaml").read_text())
+        card = next(node for node in nodes(tree) if node.get("name") == "Current Air Control")
+        html = render(card["custom_fields"]["aq"], {
+            "sensor.hi_diagnostics": diagnostics([{"sensor_type": "voc", "level": "level1"}], 1),
+            "sensor.air_control_house_voc_average": {"state": "110", "attributes": {"unit_of_measurement": "ppb"}},
+        })
+        assert "110 ppb" in html and "AQ configuration" not in html
+        assert "VOC index configuration" in html and "Unavailable" in html
+
+
 def test_current_membership_overrides_saved_index_inventory_and_fallback_is_neutral():
     feed = {"state": "1", "attributes": {"entry": ENTRY_BINDING, "schema": 2, "readings": {
         KEY: {"label": "Live monitor", "status": "available", "value": 12},
     }}}
-    telemetry = [{"sensor_type": "voc", "level": None}]
+    telemetry = [{"sensor_type": "voc", "level": "level1"}]
     for card in exports([ROW]):
         def output(diag, source=feed):
             return render(card["custom_fields"]["aq"], {
@@ -161,7 +175,8 @@ def test_current_membership_overrides_saved_index_inventory_and_fallback_is_neut
         assert "VOC index (2 configured)" in mismatch and "Unavailable" in mismatch and "Live monitor" not in mismatch
         for unknown in (None, True, 1.5, "1", -1):
             degraded = output(diagnostics(telemetry, unknown))
-            assert "AQ configuration" in degraded and "110 ppb" in degraded and "Live monitor VOC index" in degraded
+            assert "AQ configuration" not in degraded and "VOC index configuration" in degraded
+            assert "110 ppb" in degraded and "Live monitor VOC index" in degraded
         for diag in ({"state": "unavailable", "attributes": diagnostics(telemetry, 1)["attributes"]},
                      diagnostics(telemetry, 1, "f" * 64)):
             degraded = output(diag)

@@ -2436,6 +2436,7 @@ class HumidityIntelligenceOptionsFlow(VocIndexEditor, OutputObservationOptionsMi
         configured = dict(_configured_zone_items(zones)) if readable else {}
         errors = {}
         slots = ("zone1", "zone2")
+        editable = [key for key in slots if readable and isinstance(zones.get(key, {}), dict)]
 
         if user_input is not None:
             action = user_input.get("action", "done")
@@ -2444,7 +2445,7 @@ class HumidityIntelligenceOptionsFlow(VocIndexEditor, OutputObservationOptionsMi
             if action == "level_labels":
                 return await self.async_step_options_level_labels()
             if action in slots:
-                if readable and isinstance(zones.get(action, {}), dict):
+                if action in editable:
                     self._pending_zone_key = action
                     return await self.async_step_options_zone_edit()
                 errors["base"] = "unrecognised_zone_settings"
@@ -2455,7 +2456,7 @@ class HumidityIntelligenceOptionsFlow(VocIndexEditor, OutputObservationOptionsMi
         ]
         options.extend(
             SelectOptionDict(value=key, label=f"Configure {_zone_title(key)}")
-            for key in slots if key not in configured
+            for key in editable if key not in configured
         )
         options.extend([
             SelectOptionDict(value="level_labels", label="Edit level names"),
@@ -2466,11 +2467,13 @@ class HumidityIntelligenceOptionsFlow(VocIndexEditor, OutputObservationOptionsMi
                 selector.SelectSelectorConfig(options=options, mode=selector.SelectSelectorMode.LIST)
             )
         })
+        unavailable = [f"{_zone_title(key)}: saved settings unavailable." for key in slots if key not in editable]
+        summary = [_render_zones_summary(configured, self._effective_config())] if configured or not unavailable else []
         return self.async_show_form(
             step_id="options_zones",
             errors=errors,
             data_schema=schema,
-            description_placeholders={"configured_zones": _render_zones_summary(configured, self._effective_config())},
+            description_placeholders={"configured_zones": "\n".join(summary + unavailable)},
         )
 
     async def async_step_options_level_labels(self, user_input: Optional[Dict[str, Any]] = None):

@@ -61,7 +61,7 @@ function fixture() {
     };
     const render = () => prepare(owner, owner.hass, stamp, 'diagnostics');
     render();
-    const Presentation = elements.get('hi-voc-presentation-v1');
+    const Presentation = elements.get('hi-voc-presentation-v2');
     const row = new Presentation();
     row.host = owner;
     const chip = family => ({dataset: {voc: family}, style: {display: ''}});
@@ -75,8 +75,9 @@ function fixture() {
     const fields = new Element();
     const status = {};
     const retry = {matches: selector => selector === '[data-voc-retry]'};
-    const radios = ['all', 'indices', 'concentrations'].map(value => Object.assign(new Element(), {
-      value, matches: selector => selector === 'input[name="hi-voc-choice"]',
+    const labels = {all:'All configured readings', indices:'Monitor indices only', concentrations:'Concentration averages only'};
+    const radios = Object.entries(labels).map(([value, textContent]) => Object.assign(new Element(), {
+      value, labels: [{textContent}], matches: selector => selector === 'input[name="hi-voc-choice"]',
     }));
     fields.querySelector = selector => selector === '[role="status"]' ? status : retry;
     fields.querySelectorAll = () => radios;
@@ -85,7 +86,7 @@ function fixture() {
     return {
       owner, render, dialog, fields, status, retry,
       choose: mode => details.handleEvent({type: 'change', target: radios.find(radio => radio.value === mode)}),
-      retryRead: () => details.handleEvent({type: 'click', target: retry}),
+      retryPreference: () => details.handleEvent({type: 'click', target: retry}),
       visible: () => row.chips.map(item => item.style.display !== 'none'),
       remove() {
         owner.isConnected = row.isConnected = details.isConnected = false;
@@ -173,6 +174,66 @@ test('reconnect restores the subscription and an account change invalidates an o
   await settle();
 });
 
+test('ready reuses an in-flight subscription and read retry reopens a failed read', async () => {
+  const {mount, advance} = fixture();
+  const connection = new Connection();
+  const subscribe = connection.subscribeMessage.bind(connection);
+  let acknowledge;
+  connection.subscribeMessage = async (...args) => {
+    const off = await subscribe(...args);
+    await new Promise(resolve => { acknowledge = resolve; });
+    return off;
+  };
+  const card = mount(connection, 'v2_mobile');
+  await settle();
+  connection.connected = false;
+  connection.dispatchEvent(new Event('disconnected'));
+  connection.connected = true;
+  connection.dispatchEvent(new Event('ready'));
+  await settle();
+  assert.equal(connection.subscriptions.length, 1);
+  acknowledge();
+  await settle();
+  advance(10000);
+  assert.equal(card.status.textContent, 'Display preference unavailable');
+  connection.subscribeMessage = subscribe;
+  card.retryPreference();
+  await settle();
+  assert.equal(connection.subscriptions.length, 2);
+  assert.equal(connection.subscriptions[0].active, false);
+  connection.subscriptions[1].receive({value: null});
+  assert.equal(card.status.textContent, '');
+  assert.equal(connection.writes.length, 0);
+  card.remove();
+  await settle();
+});
+
+test('a readback of a failed save keeps the attempted value retryable across layouts', async () => {
+  const {mount} = fixture();
+  const connection = new Connection();
+  const mobile = mount(connection, 'v2_mobile');
+  const tablet = mount(connection, 'v2_tablet');
+  await settle();
+  const subscription = connection.subscriptions[0];
+  subscription.receive({value: null});
+  mobile.choose('indices');
+  connection.writes[0].reject(new Error('Write failed'));
+  await settle();
+  subscription.receive({value: 'indices'});
+  assert.equal(tablet.status.textContent, 'Save unconfirmed');
+  assert.equal(tablet.retry.hidden, false);
+  assert.match(tablet.retry.textContent, /Monitor indices only/);
+  tablet.retryPreference();
+  assert.deepEqual(connection.writes[1].request, connection.writes[0].request);
+  connection.writes[1].resolve();
+  await settle();
+  assert.equal(mobile.status.textContent, '');
+  assert.equal(tablet.retry.hidden, true);
+  assert.equal(connection.subscriptions.length, 1);
+  mobile.remove(); tablet.remove();
+  await settle();
+});
+
 for (const lateOutcome of ['resolve', 'reject']) {
   test('timed-out write releases controls and ignores late ' + lateOutcome + ' after retry', async () => {
     const {mount, advance} = fixture();
@@ -195,25 +256,22 @@ for (const lateOutcome of ['resolve', 'reject']) {
     const expected = lateOutcome === 'resolve' ? [false, true, true] : [true, true, true];
     assert.deepEqual(tablet.visible(), expected);
 
-    mobile.retryRead();
-    await settle();
-    assert.equal(original.active, false);
-    const refreshed = connection.subscriptions.at(-1);
-    refreshed.receive({value: 'concentrations'});
-    tablet.choose('all');
+    mobile.retryPreference();
+    assert.equal(original.active, true);
     assert.equal(connection.writes.length, 2);
+    assert.deepEqual(connection.writes[1].request, first.request);
     if (lateOutcome === 'resolve') first.resolve();
     else first.reject(new Error('Late failure'));
     await settle();
     assert.equal(tablet.fields.attributes['aria-busy'], 'true');
-    assert.deepEqual(mobile.visible(), [false, true, true]);
+    assert.deepEqual(mobile.visible(), expected);
     connection.writes[1].resolve();
     await settle();
     assert.equal(mobile.fields.attributes['aria-busy'], 'false');
-    assert.deepEqual(tablet.visible(), [true, true, true]);
+    assert.deepEqual(tablet.visible(), [true, false, true]);
     mobile.remove();
     tablet.remove();
     await settle();
-    assert.equal(refreshed.active, false);
+    assert.equal(original.active, false);
   });
 }

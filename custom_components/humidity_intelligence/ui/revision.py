@@ -15,10 +15,10 @@ import json
 UI_REVISION_SCHEMA = 1
 UI_GENERATOR_CONTRACT = 1
 UI_REVISION_STAMP = "__HI_UI_REVISION_STAMP__"
-UI_LAYOUT_REVISIONS = {"v2_mobile": 22, "v2_tablet": 22}
+UI_LAYOUT_REVISIONS = {"v2_mobile": 23, "v2_tablet": 23}
 UI_LAYOUT_SUPERSEDES: dict[str, tuple[int, ...]] = {
-    "v2_mobile": (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21),
-    "v2_tablet": (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21),
+    "v2_mobile": (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22),
+    "v2_tablet": (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22),
 }
 
 
