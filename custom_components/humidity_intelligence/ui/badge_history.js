@@ -131,7 +131,7 @@ const hiBadgeHistory = (() => {
     </style><nav aria-label="History navigation"><button type="button" data-back>Back</button></nav><h2 tabindex="-1">${escape(title === 'Current Air Control' ? 'Operating mode history' : title === 'AQ' ? 'Air quality history' : title === 'Mould' ? 'Mould risk history' : title === 'Condensation' ? 'Condensation history' : 'Recorded history')}</h2><div class="hi-history-ranges" role="group" aria-label="History range"><button type="button" data-hours="24" aria-pressed="true">24 hours</button><button type="button" data-hours="168" aria-pressed="false">7 days</button></div><div class="hi-history-content" aria-live="polite"></div><button type="button" data-native ${nativeAvailable ? '' : 'disabled'}>Open ${escape(nativeLabel)} details</button>`;
     dialog.appendChild(section);
     const content = section.querySelector('.hi-history-content');
-    let hours = 24, generation = 0, active = false, disposed = false, timer;
+    let hours = 24, generation = 0, activeVisit = null, disposed = false, timer;
     const hass = owner.hass || owner._hass;
     const date = time => {
       try { return new Intl.DateTimeFormat(hass?.locale?.language || undefined, {timeZone: hass?.config?.time_zone || undefined, year:'numeric',month:'short',day:'numeric',hour:'2-digit',minute:'2-digit',second:'2-digit',timeZoneName:'shortOffset'}).format(time); }
@@ -140,15 +140,19 @@ const hiBadgeHistory = (() => {
     const invalidate = () => { generation++; clearTimeout(timer); };
     const restoreClose = () => { if (closeButton) {dialog.insertBefore(closeButton, dialog.firstChild); closeButton.style.margin = ''; } };
     const back = () => {
-      invalidate(); active = false; restoreClose(); section.hidden = true; dialog.scrollTop = 0;
+      invalidate(); activeVisit = null; restoreClose(); section.hidden = true; dialog.scrollTop = 0;
       summaryNodes.forEach(node => { node.hidden = false; });
       dialog.querySelector('.hi-summary-history')?.focus({preventScroll:true});
       dialog.scrollTop = 0;
     };
+    // A transient source replacement can defer a click past Back and into another visit.
+    const withVisit = action => {
+      const visit = activeVisit;
+      withSource(() => { if (visit && visit === activeVisit) action(); });
+    };
     section.querySelector('[data-back]').addEventListener('click', back);
-    section.querySelector('[data-native]').addEventListener('click', () => withSource(() => { if (nativeAvailable) {close(); openEntity();} }));
-    for (const button of section.querySelectorAll('[data-hours]')) button.addEventListener('click', () => withSource(() => {
-      if (disposed || !active) return;
+    section.querySelector('[data-native]').addEventListener('click', () => withVisit(() => { if (nativeAvailable) {close(); openEntity();} }));
+    for (const button of section.querySelectorAll('[data-hours]')) button.addEventListener('click', () => withVisit(() => {
       hours = Number(button.dataset.hours);
       for (const choice of section.querySelectorAll('[data-hours]')) choice.setAttribute('aria-pressed', String(Number(choice.dataset.hours) === hours));
       load();
@@ -233,19 +237,19 @@ const hiBadgeHistory = (() => {
       if (typeof hass?.callWS !== 'function') { content.innerHTML = '<p>Open entity details to access history in this client.</p>'; return; }
       let timedOut = false;
       timer = setTimeout(() => {
-        if (disposed || !active || requestGeneration !== generation) return;
+        if (disposed || !activeVisit || requestGeneration !== generation) return;
         timedOut = true;
         withSource(() => {
-          if (disposed || !active || requestGeneration !== generation) return;
+          if (disposed || !activeVisit || requestGeneration !== generation) return;
           content.innerHTML = '<p>History took too long to load. Choose a range to try again, or open source details.</p>';
         });
       }, timeoutMs);
       try {
         const response = await hass.callWS({type:'history/history_during_period',start_time:new Date(start).toISOString(),end_time:new Date(end).toISOString(),entity_ids:requested,include_start_time_state:true,significant_changes_only:false,minimal_response:false,no_attributes:false});
-        if (disposed || !active || timedOut || requestGeneration !== generation) return;
+        if (disposed || !activeVisit || timedOut || requestGeneration !== generation) return;
         clearTimeout(timer);
         withSource(() => {
-          if (disposed || !active || timedOut || requestGeneration !== generation || !owner.isConnected || !dialog.isConnected) return;
+          if (disposed || !activeVisit || timedOut || requestGeneration !== generation || !owner.isConnected || !dialog.isConnected) return;
           content.replaceChildren();
           const context = document.createElement('p'); context.className='hi-history-note';
           context.textContent = allowed.some(item=>item.kind==='numeric') ? 'Each chart shows a recorded house average. The mix of sensors can change over time. Details of that mix are unavailable for past readings. For CO emergencies, use dedicated CO safety information.' : allowed.some(item=>item.kind==='risk') ? 'Risk and room changes are recorded separately. “OK” reflects the room readings available at the time.' : 'Explore HI’s recorded modes and reasons. Each keeps its own timestamp. These records describe HI’s selected mode.';
@@ -263,17 +267,17 @@ const hiBadgeHistory = (() => {
           }
         });
       } catch (_) {
-        if (disposed || !active || requestGeneration !== generation) return;
+        if (disposed || !activeVisit || requestGeneration !== generation) return;
         clearTimeout(timer);
         withSource(() => {
-          if (!disposed && active && !timedOut && requestGeneration === generation)
+          if (!disposed && activeVisit && !timedOut && requestGeneration === generation)
             content.innerHTML = '<p>History is currently unavailable. Try another range or open source details.</p>';
         });
       }
     }
     return {
-      open() { if (disposed) return; active = true; summaryNodes.forEach(node => {node.hidden = true;}); section.hidden = false; if (closeButton) {section.querySelector('nav').appendChild(closeButton); closeButton.style.margin='0 0 0 auto';} dialog.scrollTop=0; section.querySelector('[data-back]').focus({preventScroll:true}); dialog.scrollTop=0; load(); },
-      dispose() { disposed = true; active = false; invalidate(); section.remove(); },
+      open() { if (disposed) return; activeVisit = Symbol(); summaryNodes.forEach(node => {node.hidden = true;}); section.hidden = false; if (closeButton) {section.querySelector('nav').appendChild(closeButton); closeButton.style.margin='0 0 0 auto';} dialog.scrollTop=0; section.querySelector('[data-back]').focus({preventScroll:true}); dialog.scrollTop=0; load(); },
+      dispose() { disposed = true; activeVisit = null; invalidate(); section.remove(); },
     };
   }
   return {normalize, numeric, category, transitions, seriesPaths, sourceColor, create};

@@ -260,7 +260,7 @@ def _install_package_scaffold() -> None:
     pkg.__path__ = [str(ROOT)]
     sys.modules[PKG] = pkg
 
-    for sub in ("automations", "helpers", "sensors"):
+    for sub in ("automations", "helpers", "sensors", "ui"):
         mod = types.ModuleType(f"{PKG}.{sub}")
         mod.__path__ = [str(INTEGRATION_ROOT / sub)]
         sys.modules[f"{PKG}.{sub}"] = mod

@@ -21,6 +21,35 @@ function expression(source, entity, key) {
 }
 for (const file of files) {
   const source = fs.readFileSync(path.join(root, file), 'utf8');
+  for (const kind of ['condensation', 'mould']) {
+    test(`${file}: ${kind} reads live severity independently of the room label`, () => {
+      const room = 'sensor.worst_room_' + kind;
+      const severity = room + '_risk';
+      const stamped = source.replaceAll('__HI_UI_REVISION_STAMP__', '{"entry":"example-entry"}');
+      const render = expression(stamped, room, 'hi_risk');
+      const states = {[room]: {state:'Unavailable', attributes:{risk:'Danger'}}, [severity]: {state:'OK'}};
+      assert.equal(render(undefined, states), 'Danger');
+      const marker = {entry:'example-entry', kind, room:'unavailable'};
+      states[room].state = 'unavailable';
+      states[severity] = {state:'Danger', attributes:{source_room_marker:marker}};
+      assert.equal(render(undefined, states), 'Danger');
+      for (const mismatch of [{entry:'another-entry'}, {kind:'other'}, {room:'unknown'}]) {
+        states[severity].attributes.source_room_marker = {...marker, ...mismatch};
+        assert.equal(render(undefined, states), 'Unavailable');
+      }
+      states[severity].attributes.source_room_marker = marker;
+      states[severity].state = 'unavailable';
+      assert.equal(render(undefined, states), 'Unavailable');
+      states[severity].state = 'OK';
+      states[room].state = 'unknown';
+      assert.equal(render(undefined, states), 'Unknown');
+      delete states[room];
+      assert.equal(render(undefined, states), 'Unavailable');
+      states[room] = {state:'Test room', attributes:{risk:'Watch'}};
+      delete states[severity];
+      assert.equal(render(undefined, states), 'Watch');
+    });
+  }
   test(`${file}: humidity chips use the real high-risk boundary and fail neutral without it`, () => {
     const field = source.indexOf('        humidity: |');
     const start = source.indexOf('[[[', field) + 3;

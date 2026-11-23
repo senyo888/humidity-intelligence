@@ -69,12 +69,12 @@ class Node extends EventTarget {
  querySelector(selector){return this.selectors?.get(selector)||this.children.find(node=>selector==='.'+node.className)||null;}
  querySelectorAll(selector){return selector==='[data-hours]'?[this.selectors.get('[data-hours="24"]'),this.selectors.get('[data-hours="168"]')]:[];}
 }
-function harness({timeoutMs=1000, entities=[{id:'sensor.entry_risk',label:'Highest reported risk',kind:'risk'},{id:'sensor.entry_source',label:'Reported source room',kind:'source'}], states, callWS, endTime=end}={}){
+function harness({timeoutMs=1000, withSource, entities=[{id:'sensor.entry_risk',label:'Highest reported risk',kind:'risk'},{id:'sensor.entry_source',label:'Reported source room',kind:'source'}], states, callWS, endTime=end}={}){
  const document={createElement(tag){return new Node(tag,document);}};const body=document.createElement('body');const dialog=body.appendChild(document.createElement('dialog'));
  const close=dialog.appendChild(document.createElement('button'));close.className='hi-summary-close';const title=dialog.appendChild(document.createElement('h2'));const button=dialog.appendChild(document.createElement('button'));button.className='hi-summary-history';
  const requests=[],pending=[];const owner={isConnected:true,hass:{config:{time_zone:'Europe/London'},locale:{language:'en-GB'},callWS:callWS||((request)=>{requests.push(request);return new Promise((resolve,reject)=>pending.push({resolve,reject}));})}};
  let native=0;let controller;
- controller=model.create({dialog,owner,entities,states:states||Object.fromEntries(entities.map(e=>[e.id,{state:'unknown'}])),now:()=>endTime,timeoutMs,close:()=>controller.dispose(),openEntity:()=>native++});
+ controller=model.create({dialog,owner,entities,states:states||Object.fromEntries(entities.map(e=>[e.id,{state:'unknown'}])),now:()=>endTime,timeoutMs,withSource,close:()=>controller.dispose(),openEntity:()=>native++});
  const section=dialog.children.find(n=>n.className==='hi-history');
  return {controller,document,dialog,section,owner,requests,pending,content:section.querySelector('.hi-history-content'),button,title,native:()=>native};
 }
@@ -108,6 +108,24 @@ test('numeric rendering uses historical units, separate charts, escaped inspecti
 });
 test('native secondary action disposes before opening existing entity details',()=>{
  const h=harness();h.controller.open();h.section.querySelector('[data-native]').dispatchEvent(new Event('click'));assert.equal(h.native(),1);assert.equal(h.section.isConnected,false);
+});
+
+test('deferred controls belong to the history visit that received the click', () => {
+ for (const exit of ['same visit', 'Back', 'Back and reopen', 'dispose']) {
+  const queued = [];
+  const h = harness({withSource: action => queued.push(action)});
+  h.controller.open();
+  h.section.querySelector('[data-hours="168"]').dispatchEvent(new Event('click'));
+  h.section.querySelector('[data-native]').dispatchEvent(new Event('click'));
+  if (exit.startsWith('Back')) h.section.querySelector('[data-back]').dispatchEvent(new Event('click'));
+  if (exit === 'Back and reopen') h.controller.open();
+  if (exit === 'dispose') h.controller.dispose();
+  const requests = h.requests.length;
+  for (const action of queued) action();
+  assert.equal(h.requests.length - requests, exit === 'same visit' ? 1 : 0, exit);
+  assert.equal(h.native(), exit === 'same visit' ? 1 : 0, exit);
+  h.controller.dispose();
+ }
 });
 
 test('truncation preserves predecessor evidence and never invents a first retained transition',()=>{

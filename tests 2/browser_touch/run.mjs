@@ -174,6 +174,45 @@ for(const engine of (process.env.BROWSERS||'chromium,webkit').split(',')){
    },page);
   }
   await check(prefix+'/all-custom-dialogs-touch-close',async()=>{await open(page,layout);for(const name of ['Humidity','Condensation','Mould','7 Day Drift','Current Air Control','Ready','Zone 1','Zone 2','AQ','Stability Score']){const card=page.locator(`button-card[data-hi-name="${name}"]`);await card.locator('#card').tap();await opened(page);assert.equal(await page.locator('dialog[open]').count(),1,name);await close(page);assert.equal(await page.locator('dialog[open]').count(),0,name);}assert.equal(await page.evaluate(()=>fixture.events.services.length),0);},page);
+  await check(prefix+'/queued-summary-attribute-only-retarget', async()=>{
+   await open(page,layout);
+   const owner=page.locator('button-card[data-hi-name="Humidity"]');
+   await owner.locator('#card').tap();
+   const dialog=page.locator('dialog[data-hi-summary-dialog]');
+   await dialog.waitFor();
+   await owner.locator('template.hi-summary-template').evaluate(template=>{
+    template.setAttribute('data-hi-binding','different-fixture-binding');
+   });
+   await dialog.waitFor({state:'detached',timeout:2000});
+   assert.equal(await page.evaluate(()=>fixture.events.moreInfo.length),0);
+  },page);
+  await check(prefix+'/queued-summary-Escape-before-close-event', async()=>{
+   await open(page,layout);
+   const owner=page.locator('button-card[data-hi-name="Humidity"]');
+   await owner.locator('#card').tap();
+   const dialog=page.locator('dialog[data-hi-summary-dialog]');
+   await dialog.waitFor();
+   // Queue the click during the transient removal. Restore its source as soon as
+   // native Escape clears the open attribute, before the queued close event.
+   await owner.locator('template.hi-summary-template').evaluate(template=>{
+    const dialog=document.querySelector('dialog[data-hi-summary-dialog]');
+    const parent=template.parentNode;
+    dialog.addEventListener('cancel',()=>{
+     template.remove();
+     dialog.querySelector('.hi-summary-history').click();
+     const observer=new MutationObserver(()=>{
+      observer.disconnect();
+      parent.append(template);
+      window.fixture.restoredBeforeClose=!dialog.open && dialog.isConnected;
+     });
+     observer.observe(dialog,{attributes:true,attributeFilter:['open']});
+    },{once:true});
+   });
+   await page.keyboard.press('Escape');
+   await dialog.waitFor({state:'detached'});
+   assert.equal(await page.evaluate(()=>fixture.restoredBeforeClose),true);
+   assert.equal(await page.evaluate(()=>fixture.events.moreInfo.length),0);
+  },page);
   await check(prefix+'/embedded-history-navigation',async()=>{await open(page,layout);await page.locator('button-card[data-hi-name="Condensation"] #card').tap();await page.getByRole('button',{name:'View history',exact:true}).tap();await page.locator('.hi-history').waitFor();assert.equal(await page.evaluate(()=>fixture.events.history.length),1);await page.locator('[data-hours="168"]').tap();assert.equal(await page.evaluate(()=>fixture.events.history.length),2);await page.locator('[data-back]').tap();await page.getByRole('button',{name:'View history',exact:true}).tap();await page.locator('[data-native]').tap();await page.locator('dialog[data-native-stub=true]').waitFor();await close(page);assert.equal(await page.evaluate(()=>fixture.events.services.length),0);},page);
   await check(prefix+'/System-Manual-exact-spies-valid-invalid',async()=>{await open(page,layout);for(const name of ['System','Manual']){const card=page.locator(`button-card[data-hi-name="${name}"]`);await card.locator('#card').tap();}const calls=await page.evaluate(()=>fixture.events.services);assert.equal(calls.length,2);assert.ok(calls.every(c=>c.service==='toggle'));await page.evaluate(()=>{fixture.setState('input_boolean.air_control_enabled','unavailable');fixture.setState('input_boolean.air_control_manual_override','unknown');fixture.reset();});await page.locator('button-card[data-hi-name="System"]').getByText('UNAVAILABLE',{exact:true}).waitFor();await page.locator('button-card[data-hi-name="Manual"]').getByText('UNKNOWN',{exact:true}).waitFor();for(const name of ['System','Manual'])await page.locator(`button-card[data-hi-name="${name}"] #card`).tap();assert.equal(await page.evaluate(()=>fixture.events.services.length),0);},page);
   await check(prefix+'/keyboard-rapid-reopen-Escape',async()=>{await open(page,layout);const b=page.locator('.hi-ui-revision');await b.focus();await page.keyboard.press('Enter');assert.equal(await page.locator('dialog[open]').count(),1);await page.keyboard.press('Escape');for(let i=0;i<3;i++){await b.tap();assert.equal(await page.locator('dialog[open]').count(),1);await close(page);}await b.focus();await page.keyboard.press('Space');assert.equal(await page.locator('dialog[open]').count(),1);await close(page);},page);

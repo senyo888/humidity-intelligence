@@ -9,8 +9,10 @@ This project follows a practical changelog format for Home Assistant and HACS us
 ## Unreleased — v2.1.3-rc.1
 
 - Admit RC.1 to the controller package builder and the admin release check.
-- Correct the packaged UI guide to revision 18. Mobile and Tablet retain the
-  revision-18 cards from the final beta.1.
+- Advance Mobile and Tablet to revision 19. Show AQ bands in text, include valid
+  unlevelled AQ inputs in house averages and distinguish reported risk from room names.
+- Require a matching entry on the display-only VOC index feed. Cancel queued
+  dialog actions on dismissal and when the user leaves history.
 
 See [RC compatibility and upgrade](docs/releases/v2.1.3-rc.1.md).
 

@@ -289,7 +289,9 @@ class NativeAlignmentTests(unittest.IsolatedAsyncioTestCase):
         row, = flow._options["voc_index_sources"]
         self.assertNotEqual(row["provider_identity"], original.id)
         self.hass.states.async_set(original.entity_id, "17")
-        sensor = display.HIVocIndexSources("hi_example_voc_index_sources", [row])
+        created = []
+        display.async_setup_index_sensor(self.hass, SimpleNamespace(entry_id="example"), created.extend, [row])
+        sensor, = created
         sensor.entity_id, sensor.hass = "sensor.example_index_feed", self.hass
         cleanups = []
         with patch.object(sensor, "async_write_ha_state") as write, patch.object(sensor, "async_on_remove", side_effect=cleanups.append):
@@ -352,13 +354,19 @@ class NativeAlignmentTests(unittest.IsolatedAsyncioTestCase):
         sensor.hass = self.hass
         sensor.entity_id = "sensor.example_index_sources"
         self.assertEqual(sensor.unique_id, "hi_example_index_voc_index_sources")
-        self.assertIn("readings", sensor._unrecorded_attributes)
+        self.assertTrue({"entry", "readings"} <= sensor._unrecorded_attributes)
         with patch.object(sensor, "async_write_ha_state") as write, patch.object(
             type(self.hass.services), "async_call", new_callable=AsyncMock
         ) as service, patch.object(sensor, "async_on_remove") as register_cleanup:
             await sensor.async_added_to_hass()
             self.assertEqual(sensor.native_value, 0)
-            self.assertEqual(sensor.extra_state_attributes["readings"][key]["status"], "unavailable")
+            revision = importlib.import_module(PACKAGE + ".ui.revision")
+            attrs = sensor.extra_state_attributes
+            self.assertEqual(set(attrs), {"schema", "entry", "readings"})
+            self.assertEqual(attrs["schema"], 2)
+            self.assertEqual(attrs["entry"], revision.revision_metadata(entry.entry_id)["entry"])
+            self.assertNotEqual(attrs["entry"], entry.entry_id)
+            self.assertEqual(attrs["readings"][key]["status"], "unavailable")
             self.hass.states.async_set("sensor.example_other_index", "25")
             await self.hass.async_block_till_done()
             write.assert_not_called()

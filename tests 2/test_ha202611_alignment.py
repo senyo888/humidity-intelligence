@@ -25,6 +25,30 @@ def environment(readings):
     return engine_mod, engine_mod.HIAutomationEngine(hass, entry), hass, entry
 
 
+@pytest.mark.parametrize("label", ["unknown", "unavailable", "Unavailable", "Example"])
+def test_worst_risk_source_distinguishes_reserved_room_labels(label):
+    _, _, hass, entry = environment([
+        ("sensor.example_rh", "humidity", 99, "%"),
+        ("sensor.example_temp", "temperature", 20, "°C"),
+    ])
+    for row in entry.data["telemetry"]:
+        row.update(room="example", friendly_name=label)
+    core = _load_core_module()._CoreComputations(hass, entry, entry.data["telemetry"])
+    for kind, read in (("condensation", core._compute_worst_condensation_risk), ("mould", core._compute_worst_mould_risk)):
+        risk, attrs = read()
+        assert risk == "Danger"
+        if label in ("unknown", "unavailable"):
+            marker = attrs["source_room_marker"]
+            binding = importlib.import_module(f"{PKG}.ui.revision").revision_metadata(entry.entry_id)["entry"]
+            assert marker == {"entry": binding, "kind": kind, "room": label}
+        else:
+            assert "source_room_marker" not in attrs
+    hass.states.get("sensor.example_rh").state = "unavailable"
+    for read in (core._compute_worst_condensation_risk, core._compute_worst_mould_risk):
+        risk, attrs = read()
+        assert risk == "Unknown" and "source_room_marker" not in attrs
+
+
 @pytest.mark.parametrize("kind,raw,unit,expected", [
     ("voc", .6, "ppm", 600), ("voc", 600, "ppb", 600),
     ("co", 14000, "ppb", 14), ("co2", 1200000, "ppb", 1200),
@@ -95,6 +119,21 @@ def test_display_band_uses_canonical_units_and_requires_complete_scope():
     entry.data["telemetry"][1]["level"] = None
     core = _load_core_module()._CoreComputations(hass, entry, entry.data["telemetry"])
     assert core._compute_house_voc_avg() == (40, {})
+
+
+def test_house_aq_averages_unlevelled_sources_without_changing_level_control():
+    _, engine, hass, entry = environment([
+        ("sensor.example_level_voc", "voc", 20, "ppb"),
+        ("sensor.example_unlevelled_voc", "voc", 0.06, "ppm"),
+    ])
+    del entry.data["telemetry"][1]["level"]
+    core = _load_core_module()._CoreComputations(hass, entry, entry.data["telemetry"])
+    assert core._compute_house_voc_avg() == (40, {"aq_display_band": 2})
+    assert core._compute_level_voc_avg("level1") == (20, {"aq_display_band": 1})
+    assert engine._level_avg("voc", "level1") == 20
+    hass.states.get("sensor.example_unlevelled_voc").state = "unavailable"
+    assert core._compute_house_voc_avg() == (20, {})
+    assert core._compute_level_voc_avg("level1") == (20, {"aq_display_band": 1})
 
 
 def test_nonfinite_aggregate_has_no_display_band():

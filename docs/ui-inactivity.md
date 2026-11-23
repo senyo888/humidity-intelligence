@@ -13,8 +13,8 @@ details without operating an output or changing integration options.
 |---|---|
 | Adaptive Outputs chevron | 120 seconds of client-local inactivity; chevron closes immediately |
 | Outputs controls, evidence and monitoring details | 120 seconds of inactivity; interaction also keeps the owning expansion open |
-| Current Air Control explanation and Ready/Zone/AQ chips | 120 seconds of trusted-interaction inactivity, or a changed owner or source binding |
-| Humidity, condensation and mould details, including embedded history | 120 seconds of trusted-interaction inactivity, or a changed owner or source binding |
+| Current Air Control explanation and Ready/Zone/AQ chips | 120 seconds of trusted-interaction inactivity, a changed owner or source binding, or a summary template still missing after the 80 ms grace period |
+| Humidity, condensation and mould details, including embedded history | 120 seconds of trusted-interaction inactivity, a changed owner or source binding, or a summary template still missing after the 80 ms grace period |
 | Drift, Stability and UI revision snapshot details | 120 seconds of inactivity; manual and lifecycle dismissal remain available |
 | Legacy/native Outputs expansion | Existing **120 seconds from opening**, controlled by the shared backend helper; interactions do not extend it |
 | Home Assistant native more-info/history | Home Assistant owns dismissal; HI adds no timer |

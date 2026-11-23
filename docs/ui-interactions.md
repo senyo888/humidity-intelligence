@@ -116,19 +116,19 @@ scroll position, focus, history range and inspected record. Back returns to the 
 snapshot. A changed card owner, entry stamp, badge or mapped source retires the dialog.
 History retains its recorded timestamps and units.
 
-Renderer changes require synchronized mobile/tablet and gallery embeds, generated
-YAML validation and UI revision checks. Version 2.1.2 uses revision **16**;
-package version alone does not update a pasted card. Install the complete package
-and fully restart Home Assistant. For older V2 revisions, refresh/export and replace
-the full saved Mobile and Tablet Manual-card YAML, then refresh clients as needed.
-Revision-14 beta cards need replacement for the optional-source correction;
-revision-13 cards also need the Marketplace update observation footer.
-Restart resets in-memory Stability history; no configuration or entity migration
-is required. See [the upgrade sequence](home-assistant-2026.11.md).
+Renderer changes require synchronized Mobile, Tablet and gallery embeds. RC.1 now
+exports revision **19**. The final beta.1 and first RC.1 build exported revision
+**18**, and published Stable v2.1.2 exported revision **16**. After installing the
+complete integration and restarting Home Assistant, refresh the mappings and export
+fresh cards. Replace the complete saved card for each layout at revision 18 or
+earlier. Saved revision-19 cards with current bindings can stay in place. Restart
+resets in-memory Stability history.
 
-Keep the previous complete package and saved card YAML for rollback. Restore both
-together so card expectations match the selected backend. Versions before the
-v2.1.0-beta.9 interaction repair retain their historical touch limitation.
+Keep the previous complete package and saved cards together for rollback. For
+software predating VOC index support, clear any configured index rows through
+Options in the supporting version first. Verify that all concentration mappings
+remain, then restore the previous package and its matching cards. [VOC downgrade steps](releases/v2.1.3-beta.1.md)
+Versions before v2.1.0-beta.9 retain their historical touch limitation.
 If rolling back across v2.1.0-beta.8 custom meanings, follow the
 [settings and custody rollback requirements](custom-monitoring-meanings.md#activation-and-rollback).
 Source validation, target activation and public release remain separate claims.

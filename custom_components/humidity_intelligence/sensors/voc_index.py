@@ -9,6 +9,7 @@ from homeassistant.helpers.event import async_track_entity_registry_updated_even
 
 from ..const import DOMAIN
 from ..helpers.voc_index import configured_sources, source_readings
+from ..ui.revision import revision_metadata
 
 
 @callback
@@ -16,7 +17,7 @@ def async_setup_index_sensor(hass, entry, add_entities, section):
     """Register the optional entity, or retire its exact record on explicit removal."""
     unique_id = f"hi_{entry.entry_id}_voc_index_sources"
     if sources := configured_sources(section):
-        add_entities([HIVocIndexSources(unique_id, sources)])
+        add_entities([HIVocIndexSources(unique_id, revision_metadata(entry.entry_id)["entry"], sources)])
     elif section == []:
         registry = er.async_get(hass)
         entity_id = registry.async_get_entity_id("sensor", DOMAIN, unique_id)
@@ -32,11 +33,12 @@ class HIVocIndexSources(SensorEntity):
     _attr_name = "HI VOC index sources available"
     _attr_native_unit_of_measurement = "sources"
     _attr_icon = "mdi:counter"
-    _unrecorded_attributes = frozenset({"readings"})
+    _unrecorded_attributes = frozenset({"entry", "readings"})
 
-    def __init__(self, unique_id, sources):
+    def __init__(self, unique_id, entry_binding, sources):
         self._attr_unique_id = unique_id
         self._attr_device_info = DeviceInfo(identifiers={(DOMAIN, "hi")}, name="Humidity Intelligence")
+        self._entry_binding = entry_binding
         self._sources = sources
 
     async def async_added_to_hass(self):
@@ -58,4 +60,4 @@ class HIVocIndexSources(SensorEntity):
     def _refresh(self):
         readings = source_readings(self.hass, self._sources)
         self._attr_native_value = sum(row["status"] == "available" for row in readings.values())
-        self._attr_extra_state_attributes = {"schema": 1, "readings": readings}
+        self._attr_extra_state_attributes = {"schema": 2, "entry": self._entry_binding, "readings": readings}

@@ -400,7 +400,7 @@ async def async_register_cards(hass: HomeAssistant, entry_id: str, mapping: Dict
         # Remove absent optional source placeholders before substituting mappings.
         # A configured entity may legitimately use a different placeholder's name.
         content = _prune_unresolved_entity_items(content, unresolved)
-        content = _neutralize_unresolved_optional_js(content, unresolved)
+        content = _neutralize_unresolved_js_sources(content, unresolved)
         # Resolve each original token once. A registry rename may itself equal
         # another placeholder, including the Diagnostics and VOC feed names.
         bindings = {key: value for key, value in mapping.items() if value}
@@ -590,14 +590,20 @@ def _is_optional_placeholder(placeholder: str) -> bool:
     )
 
 
-def _neutralize_unresolved_optional_js(content: str, unresolved: List[str]) -> str:
-    """Keep unconfigured optional sources absent even if legacy IDs exist in HA.
+def _neutralize_unresolved_js_sources(content: str, unresolved: List[str]) -> str:
+    """Prevent unresolved source literals from reading unrelated HA entities.
 
     Work on source literals inside button-card JavaScript only, before mapping.
     Resolved entities remain referenced regardless of current state availability.
     ``null`` is an absence value, not a fabricated Home Assistant entity.
     """
-    absent = {item for item in unresolved if _is_optional_placeholder(item)}
+    risk_sources = {
+        "sensor.worst_room_condensation", "sensor.worst_room_condensation_risk",
+        "sensor.worst_room_mould", "sensor.worst_room_mould_risk",
+    }
+    # The required risk badges keep their missing-binding diagnostic. Their JS
+    # must never read a different entity that occupies an unresolved template ID.
+    absent = {item for item in unresolved if _is_optional_placeholder(item) or item in risk_sources}
     if not absent:
         return content
     # Canonical templates use exact quoted entity IDs. Match those literals

@@ -197,7 +197,7 @@ card:
                   bindingTimer = undefined;
                   const ready = pendingActions;
                   pendingActions = [];
-                  for (const run of ready) { if (!cleaned) run(); }
+                  for (const run of ready) { if (!cleaned && dialog.open) run(); }
                 };
                 dialog.className = 'hi-summary-details';
                 dialog.setAttribute('data-hi-summary-dialog', '');
@@ -366,6 +366,23 @@ card:
         - type: custom:button-card
           entity: sensor.worst_room_condensation
           variables:
+            hi_risk: |
+              [[[
+                const source = states['sensor.worst_room_condensation'];
+                const room = source?.state;
+                if (typeof room !== 'string' || !room.trim()) return 'Unavailable';
+                const risk = source.attributes?.risk;
+                const known = ['OK', 'Watch', 'Risk', 'Danger'].includes(risk);
+                if (room !== 'unknown' && room !== 'unavailable') return known ? risk : 'Unknown';
+                const severity = states['sensor.worst_room_condensation_risk'];
+                const marker = severity?.attributes?.source_room_marker;
+                if (known && severity?.state === risk && marker?.room === room && marker.kind === 'condensation') {
+                  try {
+                    if (typeof marker.entry === 'string' && marker.entry && marker.entry === JSON.parse('__HI_UI_REVISION_STAMP__').entry) return risk;
+                  } catch { /* Unstamped gallery or saved card. */ }
+                }
+                return room === 'unavailable' ? 'Unavailable' : 'Unknown';
+              ]]]
             hi_summary: |
               [[[ return {"title": "Condensation", "history": "sensor.worst_room_condensation", "description": "Shows the highest condensation risk across rooms with available readings.", "historyNote": "Recorded risk and reported source room, on separate aligned timelines.", "kind": "risk", "historyEntities": [{"id": "sensor.worst_room_condensation_risk", "label": "Highest reported risk", "kind": "risk"}, {"id": "sensor.worst_room_condensation", "label": "Reported source room", "kind": "source"}], "owner": "sensor.worst_room_condensation"}; ]]]
           triggers_update:
@@ -378,21 +395,13 @@ card:
           show_label: false
           state_display: |
             [[[
-              const source = states['sensor.worst_room_condensation'];
-              const state = String(source?.state || '').trim().toLowerCase();
-              if (!state || state === 'unavailable') return 'Unavailable';
-              if (state === 'unknown') return 'Unknown';
-              const r = source?.attributes?.risk;
-              if (typeof r !== 'string' || !r.trim()) return 'Unknown';
-              return r.trim().replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
+              return variables.hi_risk;
             ]]]
           custom_fields:
             summary_open: |
               [[[
                 const escapeHtml = value => String(value ?? '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#039;');
-                const raw = typeof entity?.state === 'string' ? entity.state.trim() : '';
-                const numeric = /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$/.test(raw) && Number.isFinite(Number(raw));
-                const current = variables.hi_summary.kind === 'mode' ? variables.hi_mode : variables.hi_summary.kind === 'humidity' ? (numeric ? raw + '%' : 'Unavailable') : (raw || 'Unavailable');
+                const current = variables.hi_risk;
                 return `<button type="button" class="hi-summary-open" aria-label="${escapeHtml(variables.hi_summary.title)}: ${escapeHtml(current)}. Open details"></button>`;
               ]]]
             summary: |
@@ -400,12 +409,11 @@ card:
                 const view = variables.hi_summary;
                 const escapeHtml = value => String(value ?? '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#039;');
                 const readable = value => typeof value === 'string' && value.trim() ? value.trim() : 'Unavailable';
-                const current = readable(entity?.state);
+                const current = readable(states['sensor.worst_room_condensation']?.state);
                 const target = states[view.history];
                 const historyAvailable = view.historyEntities.some(item => states[item.id]);
                 const historyName = readable(target?.attributes?.friendly_name);
-                const state = current.trim().toLowerCase();
-                const risk = ['unknown', 'unavailable'].includes(state) ? current : readable(entity?.attributes?.risk);
+                const risk = variables.hi_risk;
                 const context = `Source: ${escapeHtml(current)}. Risk: ${escapeHtml(risk)}.`;
                 const identity = JSON.stringify(['__HI_UI_REVISION_STAMP__', view.title, view.kind, entity?.entity_id || view.owner, view.reason, view.history, (view.historyEntities || []).map(item => [item.kind, item.id])]);
                 return `<template class="hi-summary-template" data-hi-binding="${escapeHtml(identity)}">
@@ -564,7 +572,7 @@ card:
                     </style><nav aria-label="History navigation"><button type="button" data-back>Back</button></nav><h2 tabindex="-1">${escape(title === 'Current Air Control' ? 'Operating mode history' : title === 'AQ' ? 'Air quality history' : title === 'Mould' ? 'Mould risk history' : title === 'Condensation' ? 'Condensation history' : 'Recorded history')}</h2><div class="hi-history-ranges" role="group" aria-label="History range"><button type="button" data-hours="24" aria-pressed="true">24 hours</button><button type="button" data-hours="168" aria-pressed="false">7 days</button></div><div class="hi-history-content" aria-live="polite"></div><button type="button" data-native ${nativeAvailable ? '' : 'disabled'}>Open ${escape(nativeLabel)} details</button>`;
                     dialog.appendChild(section);
                     const content = section.querySelector('.hi-history-content');
-                    let hours = 24, generation = 0, active = false, disposed = false, timer;
+                    let hours = 24, generation = 0, activeVisit = null, disposed = false, timer;
                     const hass = owner.hass || owner._hass;
                     const date = time => {
                       try { return new Intl.DateTimeFormat(hass?.locale?.language || undefined, {timeZone: hass?.config?.time_zone || undefined, year:'numeric',month:'short',day:'numeric',hour:'2-digit',minute:'2-digit',second:'2-digit',timeZoneName:'shortOffset'}).format(time); }
@@ -573,15 +581,19 @@ card:
                     const invalidate = () => { generation++; clearTimeout(timer); };
                     const restoreClose = () => { if (closeButton) {dialog.insertBefore(closeButton, dialog.firstChild); closeButton.style.margin = ''; } };
                     const back = () => {
-                      invalidate(); active = false; restoreClose(); section.hidden = true; dialog.scrollTop = 0;
+                      invalidate(); activeVisit = null; restoreClose(); section.hidden = true; dialog.scrollTop = 0;
                       summaryNodes.forEach(node => { node.hidden = false; });
                       dialog.querySelector('.hi-summary-history')?.focus({preventScroll:true});
                       dialog.scrollTop = 0;
                     };
+                    // A transient source replacement can defer a click past Back and into another visit.
+                    const withVisit = action => {
+                      const visit = activeVisit;
+                      withSource(() => { if (visit && visit === activeVisit) action(); });
+                    };
                     section.querySelector('[data-back]').addEventListener('click', back);
-                    section.querySelector('[data-native]').addEventListener('click', () => withSource(() => { if (nativeAvailable) {close(); openEntity();} }));
-                    for (const button of section.querySelectorAll('[data-hours]')) button.addEventListener('click', () => withSource(() => {
-                      if (disposed || !active) return;
+                    section.querySelector('[data-native]').addEventListener('click', () => withVisit(() => { if (nativeAvailable) {close(); openEntity();} }));
+                    for (const button of section.querySelectorAll('[data-hours]')) button.addEventListener('click', () => withVisit(() => {
                       hours = Number(button.dataset.hours);
                       for (const choice of section.querySelectorAll('[data-hours]')) choice.setAttribute('aria-pressed', String(Number(choice.dataset.hours) === hours));
                       load();
@@ -666,19 +678,19 @@ card:
                       if (typeof hass?.callWS !== 'function') { content.innerHTML = '<p>Open entity details to access history in this client.</p>'; return; }
                       let timedOut = false;
                       timer = setTimeout(() => {
-                        if (disposed || !active || requestGeneration !== generation) return;
+                        if (disposed || !activeVisit || requestGeneration !== generation) return;
                         timedOut = true;
                         withSource(() => {
-                          if (disposed || !active || requestGeneration !== generation) return;
+                          if (disposed || !activeVisit || requestGeneration !== generation) return;
                           content.innerHTML = '<p>History took too long to load. Choose a range to try again, or open source details.</p>';
                         });
                       }, timeoutMs);
                       try {
                         const response = await hass.callWS({type:'history/history_during_period',start_time:new Date(start).toISOString(),end_time:new Date(end).toISOString(),entity_ids:requested,include_start_time_state:true,significant_changes_only:false,minimal_response:false,no_attributes:false});
-                        if (disposed || !active || timedOut || requestGeneration !== generation) return;
+                        if (disposed || !activeVisit || timedOut || requestGeneration !== generation) return;
                         clearTimeout(timer);
                         withSource(() => {
-                          if (disposed || !active || timedOut || requestGeneration !== generation || !owner.isConnected || !dialog.isConnected) return;
+                          if (disposed || !activeVisit || timedOut || requestGeneration !== generation || !owner.isConnected || !dialog.isConnected) return;
                           content.replaceChildren();
                           const context = document.createElement('p'); context.className='hi-history-note';
                           context.textContent = allowed.some(item=>item.kind==='numeric') ? 'Each chart shows a recorded house average. The mix of sensors can change over time. Details of that mix are unavailable for past readings. For CO emergencies, use dedicated CO safety information.' : allowed.some(item=>item.kind==='risk') ? 'Risk and room changes are recorded separately. “OK” reflects the room readings available at the time.' : 'Explore HI’s recorded modes and reasons. Each keeps its own timestamp. These records describe HI’s selected mode.';
@@ -696,17 +708,17 @@ card:
                           }
                         });
                       } catch (_) {
-                        if (disposed || !active || requestGeneration !== generation) return;
+                        if (disposed || !activeVisit || requestGeneration !== generation) return;
                         clearTimeout(timer);
                         withSource(() => {
-                          if (!disposed && active && !timedOut && requestGeneration === generation)
+                          if (!disposed && activeVisit && !timedOut && requestGeneration === generation)
                             content.innerHTML = '<p>History is currently unavailable. Try another range or open source details.</p>';
                         });
                       }
                     }
                     return {
-                      open() { if (disposed) return; active = true; summaryNodes.forEach(node => {node.hidden = true;}); section.hidden = false; if (closeButton) {section.querySelector('nav').appendChild(closeButton); closeButton.style.margin='0 0 0 auto';} dialog.scrollTop=0; section.querySelector('[data-back]').focus({preventScroll:true}); dialog.scrollTop=0; load(); },
-                      dispose() { disposed = true; active = false; invalidate(); section.remove(); },
+                      open() { if (disposed) return; activeVisit = Symbol(); summaryNodes.forEach(node => {node.hidden = true;}); section.hidden = false; if (closeButton) {section.querySelector('nav').appendChild(closeButton); closeButton.style.margin='0 0 0 auto';} dialog.scrollTop=0; section.querySelector('[data-back]').focus({preventScroll:true}); dialog.scrollTop=0; load(); },
+                      dispose() { disposed = true; activeVisit = null; invalidate(); section.remove(); },
                     };
                   }
                   return {normalize, numeric, category, transitions, seriesPaths, sourceColor, create};
@@ -806,7 +818,7 @@ card:
                   bindingTimer = undefined;
                   const ready = pendingActions;
                   pendingActions = [];
-                  for (const run of ready) { if (!cleaned) run(); }
+                  for (const run of ready) { if (!cleaned && dialog.open) run(); }
                 };
                 dialog.className = 'hi-summary-details';
                 dialog.setAttribute('data-hi-summary-dialog', '');
@@ -896,10 +908,7 @@ card:
               - background: rgba(10,12,16,0.62)
               - border: |
                   [[[
-                    const source = states['sensor.worst_room_condensation'];
-                    const state = String(source?.state || '').trim().toLowerCase();
-                    const risk = state && !['unavailable', 'unknown'].includes(state) && typeof source.attributes?.risk === 'string' ? source.attributes.risk : '';
-                    const r = risk.toLowerCase();
+                    const r = variables.hi_risk.toLowerCase();
                     if (!r) return '2px solid rgba(148,163,184,0.22)';
                     if (r.includes('danger') || r.includes('risk')) return '2px solid rgba(239,68,68,0.85)';
                     if (r.includes('watch') || r.includes('elev')) return '2px solid rgba(250,204,21,0.75)';
@@ -908,10 +917,7 @@ card:
                   ]]]
               - box-shadow: |
                   [[[
-                    const source = states['sensor.worst_room_condensation'];
-                    const state = String(source?.state || '').trim().toLowerCase();
-                    const risk = state && !['unavailable', 'unknown'].includes(state) && typeof source.attributes?.risk === 'string' ? source.attributes.risk : '';
-                    const r = risk.toLowerCase();
+                    const r = variables.hi_risk.toLowerCase();
                     if (!r) return '0 3px 8px rgba(0,0,0,0.24), inset 0 1px 0 rgba(255,255,255,0.05), 0 0 16px rgba(148,163,184,0.18)';
                     if (r.includes('danger') || r.includes('risk')) return '0 3px 8px rgba(0,0,0,0.24), inset 0 1px 0 rgba(255,255,255,0.05), 0 0 24px rgba(239,68,68,0.22)';
                     if (r.includes('watch') || r.includes('elev')) return '0 3px 8px rgba(0,0,0,0.24), inset 0 1px 0 rgba(255,255,255,0.05), 0 0 24px rgba(250,204,21,0.22)';
@@ -933,10 +939,7 @@ card:
                   ]]]
               - color: |
                   [[[
-                    const source = states['sensor.worst_room_condensation'];
-                    const state = String(source?.state || '').trim().toLowerCase();
-                    const risk = state && !['unavailable', 'unknown'].includes(state) && typeof source.attributes?.risk === 'string' ? source.attributes.risk : '';
-                    const r = risk.toLowerCase();
+                    const r = variables.hi_risk.toLowerCase();
                     if (!r) return '#94a3b8';
                     if (r.includes('danger') || r.includes('risk')) return '#ef4444';
                     if (r.includes('watch') || r.includes('elev')) return '#facc15';
@@ -961,10 +964,7 @@ card:
               - letter-spacing: 0.2px
               - color: |
                   [[[
-                    const source = states['sensor.worst_room_condensation'];
-                    const state = String(source?.state || '').trim().toLowerCase();
-                    const risk = state && !['unavailable', 'unknown'].includes(state) && typeof source.attributes?.risk === 'string' ? source.attributes.risk : '';
-                    const r = risk.toLowerCase();
+                    const r = variables.hi_risk.toLowerCase();
                     if (!r) return '#94a3b8';
                     if (r.includes('danger') || r.includes('risk')) return '#ef4444';
                     if (r.includes('watch') || r.includes('elev')) return '#facc15';
@@ -991,6 +991,23 @@ card:
         - type: custom:button-card
           entity: sensor.worst_room_mould
           variables:
+            hi_risk: |
+              [[[
+                const source = states['sensor.worst_room_mould'];
+                const room = source?.state;
+                if (typeof room !== 'string' || !room.trim()) return 'Unavailable';
+                const risk = source.attributes?.risk;
+                const known = ['OK', 'Watch', 'Risk', 'Danger'].includes(risk);
+                if (room !== 'unknown' && room !== 'unavailable') return known ? risk : 'Unknown';
+                const severity = states['sensor.worst_room_mould_risk'];
+                const marker = severity?.attributes?.source_room_marker;
+                if (known && severity?.state === risk && marker?.room === room && marker.kind === 'mould') {
+                  try {
+                    if (typeof marker.entry === 'string' && marker.entry && marker.entry === JSON.parse('__HI_UI_REVISION_STAMP__').entry) return risk;
+                  } catch { /* Unstamped gallery or saved card. */ }
+                }
+                return room === 'unavailable' ? 'Unavailable' : 'Unknown';
+              ]]]
             hi_summary: |
               [[[ return {"title": "Mould", "history": "sensor.worst_room_mould", "description": "Shows the highest mould risk across rooms with available readings.", "historyNote": "Recorded risk and reported source room, on separate aligned timelines.", "kind": "risk", "historyEntities": [{"id": "sensor.worst_room_mould_risk", "label": "Highest reported risk", "kind": "risk"}, {"id": "sensor.worst_room_mould", "label": "Reported source room", "kind": "source"}], "owner": "sensor.worst_room_mould"}; ]]]
           triggers_update:
@@ -1003,21 +1020,13 @@ card:
           show_label: false
           state_display: |
             [[[
-              const source = states['sensor.worst_room_mould'];
-              const state = String(source?.state || '').trim().toLowerCase();
-              if (!state || state === 'unavailable') return 'Unavailable';
-              if (state === 'unknown') return 'Unknown';
-              const r = source?.attributes?.risk;
-              if (typeof r !== 'string' || !r.trim()) return 'Unknown';
-              return r.trim().replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
+              return variables.hi_risk;
             ]]]
           custom_fields:
             summary_open: |
               [[[
                 const escapeHtml = value => String(value ?? '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#039;');
-                const raw = typeof entity?.state === 'string' ? entity.state.trim() : '';
-                const numeric = /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$/.test(raw) && Number.isFinite(Number(raw));
-                const current = variables.hi_summary.kind === 'mode' ? variables.hi_mode : variables.hi_summary.kind === 'humidity' ? (numeric ? raw + '%' : 'Unavailable') : (raw || 'Unavailable');
+                const current = variables.hi_risk;
                 return `<button type="button" class="hi-summary-open" aria-label="${escapeHtml(variables.hi_summary.title)}: ${escapeHtml(current)}. Open details"></button>`;
               ]]]
             summary: |
@@ -1025,12 +1034,11 @@ card:
                 const view = variables.hi_summary;
                 const escapeHtml = value => String(value ?? '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#039;');
                 const readable = value => typeof value === 'string' && value.trim() ? value.trim() : 'Unavailable';
-                const current = readable(entity?.state);
+                const current = readable(states['sensor.worst_room_mould']?.state);
                 const target = states[view.history];
                 const historyAvailable = view.historyEntities.some(item => states[item.id]);
                 const historyName = readable(target?.attributes?.friendly_name);
-                const state = current.trim().toLowerCase();
-                const risk = ['unknown', 'unavailable'].includes(state) ? current : readable(entity?.attributes?.risk);
+                const risk = variables.hi_risk;
                 const context = `Source: ${escapeHtml(current)}. Risk: ${escapeHtml(risk)}.`;
                 const identity = JSON.stringify(['__HI_UI_REVISION_STAMP__', view.title, view.kind, entity?.entity_id || view.owner, view.reason, view.history, (view.historyEntities || []).map(item => [item.kind, item.id])]);
                 return `<template class="hi-summary-template" data-hi-binding="${escapeHtml(identity)}">
@@ -1189,7 +1197,7 @@ card:
                     </style><nav aria-label="History navigation"><button type="button" data-back>Back</button></nav><h2 tabindex="-1">${escape(title === 'Current Air Control' ? 'Operating mode history' : title === 'AQ' ? 'Air quality history' : title === 'Mould' ? 'Mould risk history' : title === 'Condensation' ? 'Condensation history' : 'Recorded history')}</h2><div class="hi-history-ranges" role="group" aria-label="History range"><button type="button" data-hours="24" aria-pressed="true">24 hours</button><button type="button" data-hours="168" aria-pressed="false">7 days</button></div><div class="hi-history-content" aria-live="polite"></div><button type="button" data-native ${nativeAvailable ? '' : 'disabled'}>Open ${escape(nativeLabel)} details</button>`;
                     dialog.appendChild(section);
                     const content = section.querySelector('.hi-history-content');
-                    let hours = 24, generation = 0, active = false, disposed = false, timer;
+                    let hours = 24, generation = 0, activeVisit = null, disposed = false, timer;
                     const hass = owner.hass || owner._hass;
                     const date = time => {
                       try { return new Intl.DateTimeFormat(hass?.locale?.language || undefined, {timeZone: hass?.config?.time_zone || undefined, year:'numeric',month:'short',day:'numeric',hour:'2-digit',minute:'2-digit',second:'2-digit',timeZoneName:'shortOffset'}).format(time); }
@@ -1198,15 +1206,19 @@ card:
                     const invalidate = () => { generation++; clearTimeout(timer); };
                     const restoreClose = () => { if (closeButton) {dialog.insertBefore(closeButton, dialog.firstChild); closeButton.style.margin = ''; } };
                     const back = () => {
-                      invalidate(); active = false; restoreClose(); section.hidden = true; dialog.scrollTop = 0;
+                      invalidate(); activeVisit = null; restoreClose(); section.hidden = true; dialog.scrollTop = 0;
                       summaryNodes.forEach(node => { node.hidden = false; });
                       dialog.querySelector('.hi-summary-history')?.focus({preventScroll:true});
                       dialog.scrollTop = 0;
                     };
+                    // A transient source replacement can defer a click past Back and into another visit.
+                    const withVisit = action => {
+                      const visit = activeVisit;
+                      withSource(() => { if (visit && visit === activeVisit) action(); });
+                    };
                     section.querySelector('[data-back]').addEventListener('click', back);
-                    section.querySelector('[data-native]').addEventListener('click', () => withSource(() => { if (nativeAvailable) {close(); openEntity();} }));
-                    for (const button of section.querySelectorAll('[data-hours]')) button.addEventListener('click', () => withSource(() => {
-                      if (disposed || !active) return;
+                    section.querySelector('[data-native]').addEventListener('click', () => withVisit(() => { if (nativeAvailable) {close(); openEntity();} }));
+                    for (const button of section.querySelectorAll('[data-hours]')) button.addEventListener('click', () => withVisit(() => {
                       hours = Number(button.dataset.hours);
                       for (const choice of section.querySelectorAll('[data-hours]')) choice.setAttribute('aria-pressed', String(Number(choice.dataset.hours) === hours));
                       load();
@@ -1291,19 +1303,19 @@ card:
                       if (typeof hass?.callWS !== 'function') { content.innerHTML = '<p>Open entity details to access history in this client.</p>'; return; }
                       let timedOut = false;
                       timer = setTimeout(() => {
-                        if (disposed || !active || requestGeneration !== generation) return;
+                        if (disposed || !activeVisit || requestGeneration !== generation) return;
                         timedOut = true;
                         withSource(() => {
-                          if (disposed || !active || requestGeneration !== generation) return;
+                          if (disposed || !activeVisit || requestGeneration !== generation) return;
                           content.innerHTML = '<p>History took too long to load. Choose a range to try again, or open source details.</p>';
                         });
                       }, timeoutMs);
                       try {
                         const response = await hass.callWS({type:'history/history_during_period',start_time:new Date(start).toISOString(),end_time:new Date(end).toISOString(),entity_ids:requested,include_start_time_state:true,significant_changes_only:false,minimal_response:false,no_attributes:false});
-                        if (disposed || !active || timedOut || requestGeneration !== generation) return;
+                        if (disposed || !activeVisit || timedOut || requestGeneration !== generation) return;
                         clearTimeout(timer);
                         withSource(() => {
-                          if (disposed || !active || timedOut || requestGeneration !== generation || !owner.isConnected || !dialog.isConnected) return;
+                          if (disposed || !activeVisit || timedOut || requestGeneration !== generation || !owner.isConnected || !dialog.isConnected) return;
                           content.replaceChildren();
                           const context = document.createElement('p'); context.className='hi-history-note';
                           context.textContent = allowed.some(item=>item.kind==='numeric') ? 'Each chart shows a recorded house average. The mix of sensors can change over time. Details of that mix are unavailable for past readings. For CO emergencies, use dedicated CO safety information.' : allowed.some(item=>item.kind==='risk') ? 'Risk and room changes are recorded separately. “OK” reflects the room readings available at the time.' : 'Explore HI’s recorded modes and reasons. Each keeps its own timestamp. These records describe HI’s selected mode.';
@@ -1321,17 +1333,17 @@ card:
                           }
                         });
                       } catch (_) {
-                        if (disposed || !active || requestGeneration !== generation) return;
+                        if (disposed || !activeVisit || requestGeneration !== generation) return;
                         clearTimeout(timer);
                         withSource(() => {
-                          if (!disposed && active && !timedOut && requestGeneration === generation)
+                          if (!disposed && activeVisit && !timedOut && requestGeneration === generation)
                             content.innerHTML = '<p>History is currently unavailable. Try another range or open source details.</p>';
                         });
                       }
                     }
                     return {
-                      open() { if (disposed) return; active = true; summaryNodes.forEach(node => {node.hidden = true;}); section.hidden = false; if (closeButton) {section.querySelector('nav').appendChild(closeButton); closeButton.style.margin='0 0 0 auto';} dialog.scrollTop=0; section.querySelector('[data-back]').focus({preventScroll:true}); dialog.scrollTop=0; load(); },
-                      dispose() { disposed = true; active = false; invalidate(); section.remove(); },
+                      open() { if (disposed) return; activeVisit = Symbol(); summaryNodes.forEach(node => {node.hidden = true;}); section.hidden = false; if (closeButton) {section.querySelector('nav').appendChild(closeButton); closeButton.style.margin='0 0 0 auto';} dialog.scrollTop=0; section.querySelector('[data-back]').focus({preventScroll:true}); dialog.scrollTop=0; load(); },
+                      dispose() { disposed = true; activeVisit = null; invalidate(); section.remove(); },
                     };
                   }
                   return {normalize, numeric, category, transitions, seriesPaths, sourceColor, create};
@@ -1431,7 +1443,7 @@ card:
                   bindingTimer = undefined;
                   const ready = pendingActions;
                   pendingActions = [];
-                  for (const run of ready) { if (!cleaned) run(); }
+                  for (const run of ready) { if (!cleaned && dialog.open) run(); }
                 };
                 dialog.className = 'hi-summary-details';
                 dialog.setAttribute('data-hi-summary-dialog', '');
@@ -1521,10 +1533,7 @@ card:
               - background: rgba(10,12,16,0.62)
               - border: |
                   [[[
-                    const source = states['sensor.worst_room_mould'];
-                    const state = String(source?.state || '').trim().toLowerCase();
-                    const risk = state && !['unavailable', 'unknown'].includes(state) && typeof source.attributes?.risk === 'string' ? source.attributes.risk : '';
-                    const r = risk.toLowerCase();
+                    const r = variables.hi_risk.toLowerCase();
                     if (!r) return '2px solid rgba(148,163,184,0.22)';
                     if (r.includes('danger') || r.includes('risk')) return '2px solid rgba(239,68,68,0.85)';
                     if (r.includes('watch') || r.includes('elev')) return '2px solid rgba(250,204,21,0.75)';
@@ -1533,10 +1542,7 @@ card:
                   ]]]
               - box-shadow: |
                   [[[
-                    const source = states['sensor.worst_room_mould'];
-                    const state = String(source?.state || '').trim().toLowerCase();
-                    const risk = state && !['unavailable', 'unknown'].includes(state) && typeof source.attributes?.risk === 'string' ? source.attributes.risk : '';
-                    const r = risk.toLowerCase();
+                    const r = variables.hi_risk.toLowerCase();
                     if (!r) return '0 3px 8px rgba(0,0,0,0.24), inset 0 1px 0 rgba(255,255,255,0.05), 0 0 16px rgba(148,163,184,0.18)';
                     if (r.includes('danger') || r.includes('risk')) return '0 3px 8px rgba(0,0,0,0.24), inset 0 1px 0 rgba(255,255,255,0.05), 0 0 24px rgba(239,68,68,0.22)';
                     if (r.includes('watch') || r.includes('elev')) return '0 3px 8px rgba(0,0,0,0.24), inset 0 1px 0 rgba(255,255,255,0.05), 0 0 24px rgba(250,204,21,0.22)';
@@ -1558,10 +1564,7 @@ card:
                   ]]]
               - color: |
                   [[[
-                    const source = states['sensor.worst_room_mould'];
-                    const state = String(source?.state || '').trim().toLowerCase();
-                    const risk = state && !['unavailable', 'unknown'].includes(state) && typeof source.attributes?.risk === 'string' ? source.attributes.risk : '';
-                    const r = risk.toLowerCase();
+                    const r = variables.hi_risk.toLowerCase();
                     if (!r) return '#94a3b8';
                     if (r.includes('danger') || r.includes('risk')) return '#ef4444';
                     if (r.includes('watch') || r.includes('elev')) return '#facc15';
@@ -1586,10 +1589,7 @@ card:
               - letter-spacing: 0.2px
               - color: |
                   [[[
-                    const source = states['sensor.worst_room_mould'];
-                    const state = String(source?.state || '').trim().toLowerCase();
-                    const risk = state && !['unavailable', 'unknown'].includes(state) && typeof source.attributes?.risk === 'string' ? source.attributes.risk : '';
-                    const r = risk.toLowerCase();
+                    const r = variables.hi_risk.toLowerCase();
                     if (!r) return '#94a3b8';
                     if (r.includes('danger') || r.includes('risk')) return '#ef4444';
                     if (r.includes('watch') || r.includes('elev')) return '#facc15';
@@ -2429,8 +2429,8 @@ card:
             const palette = ['#94a3b8', '#4ade80', '#facc15', '#ef4444'];
             const chip = (label, value, band = 0) => {
               const color = palette[band];
-              const hint = band ? ` title="HI display band ${band} of 3" aria-label="${esc(label)}, ${esc(value)}, HI display band ${band} of 3"` : '';
-              return `<span class="cv-chip" style="--cv:${color}"${hint}><span class="k">${esc(label)}</span> <span class="v" style="color:${color}">${esc(value)}</span></span>`;
+              const bandText = band ? ` <span class="band">Band ${band} of 3</span>` : '';
+              return `<span class="cv-chip" style="--cv:${color}"><span class="k">${esc(label)}</span> <span class="v" style="color:${color}">${esc(value)}</span>${bandText}</span>`;
             };
             const chips = [];
             if (Array.isArray(inventory)) {
@@ -2448,14 +2448,17 @@ card:
                   unit.replace('μ','µ') === canonicalUnit && [1, 2, 3].includes(band);
                 chips.push(chip(label, numeric ? `${raw} ${unit || '(unit not supplied)'}` : missing, useBand ? band : 0));
               }
-              if (inventory.some(row => typeof row?.sensor_type !== 'string' || !row.level))
+              if (inventory.some(row => ['iaq', 'pm25', 'voc', 'co', 'co2'].includes(row?.sensor_type) && !['level1', 'level2'].includes(row.level)))
                 chips.push(chip('AQ configuration', 'Incomplete'));
             } else {
               chips.push(chip('AQ configuration', 'Unavailable'));
             }
             const indexInventory = []; // HI VOC index export inventory
             const feed = states['sensor.hi_voc_index_sources'];
-            const readings = available(feed) && feed.attributes?.schema === 1 ? feed.attributes.readings : null;
+            let owner;
+            try { owner = JSON.parse('__HI_UI_REVISION_STAMP__').entry; } catch { /* Unstamped card. */ }
+            const readings = available(feed) && owner && feed.attributes?.schema === 2 &&
+              feed.attributes.entry === owner ? feed.attributes.readings : null;
             const rows = readings && typeof readings === 'object' && !Array.isArray(readings) ? Object.values(readings) : [];
             const validRow = row => typeof row?.label === 'string' && !!row.label.trim() &&
               (row.status === 'available' ? Number.isFinite(row.value) :
@@ -2821,7 +2824,7 @@ card:
                 </style><nav aria-label="History navigation"><button type="button" data-back>Back</button></nav><h2 tabindex="-1">${escape(title === 'Current Air Control' ? 'Operating mode history' : title === 'AQ' ? 'Air quality history' : title === 'Mould' ? 'Mould risk history' : title === 'Condensation' ? 'Condensation history' : 'Recorded history')}</h2><div class="hi-history-ranges" role="group" aria-label="History range"><button type="button" data-hours="24" aria-pressed="true">24 hours</button><button type="button" data-hours="168" aria-pressed="false">7 days</button></div><div class="hi-history-content" aria-live="polite"></div><button type="button" data-native ${nativeAvailable ? '' : 'disabled'}>Open ${escape(nativeLabel)} details</button>`;
                 dialog.appendChild(section);
                 const content = section.querySelector('.hi-history-content');
-                let hours = 24, generation = 0, active = false, disposed = false, timer;
+                let hours = 24, generation = 0, activeVisit = null, disposed = false, timer;
                 const hass = owner.hass || owner._hass;
                 const date = time => {
                   try { return new Intl.DateTimeFormat(hass?.locale?.language || undefined, {timeZone: hass?.config?.time_zone || undefined, year:'numeric',month:'short',day:'numeric',hour:'2-digit',minute:'2-digit',second:'2-digit',timeZoneName:'shortOffset'}).format(time); }
@@ -2830,15 +2833,19 @@ card:
                 const invalidate = () => { generation++; clearTimeout(timer); };
                 const restoreClose = () => { if (closeButton) {dialog.insertBefore(closeButton, dialog.firstChild); closeButton.style.margin = ''; } };
                 const back = () => {
-                  invalidate(); active = false; restoreClose(); section.hidden = true; dialog.scrollTop = 0;
+                  invalidate(); activeVisit = null; restoreClose(); section.hidden = true; dialog.scrollTop = 0;
                   summaryNodes.forEach(node => { node.hidden = false; });
                   dialog.querySelector('.hi-summary-history')?.focus({preventScroll:true});
                   dialog.scrollTop = 0;
                 };
+                // A transient source replacement can defer a click past Back and into another visit.
+                const withVisit = action => {
+                  const visit = activeVisit;
+                  withSource(() => { if (visit && visit === activeVisit) action(); });
+                };
                 section.querySelector('[data-back]').addEventListener('click', back);
-                section.querySelector('[data-native]').addEventListener('click', () => withSource(() => { if (nativeAvailable) {close(); openEntity();} }));
-                for (const button of section.querySelectorAll('[data-hours]')) button.addEventListener('click', () => withSource(() => {
-                  if (disposed || !active) return;
+                section.querySelector('[data-native]').addEventListener('click', () => withVisit(() => { if (nativeAvailable) {close(); openEntity();} }));
+                for (const button of section.querySelectorAll('[data-hours]')) button.addEventListener('click', () => withVisit(() => {
                   hours = Number(button.dataset.hours);
                   for (const choice of section.querySelectorAll('[data-hours]')) choice.setAttribute('aria-pressed', String(Number(choice.dataset.hours) === hours));
                   load();
@@ -2923,19 +2930,19 @@ card:
                   if (typeof hass?.callWS !== 'function') { content.innerHTML = '<p>Open entity details to access history in this client.</p>'; return; }
                   let timedOut = false;
                   timer = setTimeout(() => {
-                    if (disposed || !active || requestGeneration !== generation) return;
+                    if (disposed || !activeVisit || requestGeneration !== generation) return;
                     timedOut = true;
                     withSource(() => {
-                      if (disposed || !active || requestGeneration !== generation) return;
+                      if (disposed || !activeVisit || requestGeneration !== generation) return;
                       content.innerHTML = '<p>History took too long to load. Choose a range to try again, or open source details.</p>';
                     });
                   }, timeoutMs);
                   try {
                     const response = await hass.callWS({type:'history/history_during_period',start_time:new Date(start).toISOString(),end_time:new Date(end).toISOString(),entity_ids:requested,include_start_time_state:true,significant_changes_only:false,minimal_response:false,no_attributes:false});
-                    if (disposed || !active || timedOut || requestGeneration !== generation) return;
+                    if (disposed || !activeVisit || timedOut || requestGeneration !== generation) return;
                     clearTimeout(timer);
                     withSource(() => {
-                      if (disposed || !active || timedOut || requestGeneration !== generation || !owner.isConnected || !dialog.isConnected) return;
+                      if (disposed || !activeVisit || timedOut || requestGeneration !== generation || !owner.isConnected || !dialog.isConnected) return;
                       content.replaceChildren();
                       const context = document.createElement('p'); context.className='hi-history-note';
                       context.textContent = allowed.some(item=>item.kind==='numeric') ? 'Each chart shows a recorded house average. The mix of sensors can change over time. Details of that mix are unavailable for past readings. For CO emergencies, use dedicated CO safety information.' : allowed.some(item=>item.kind==='risk') ? 'Risk and room changes are recorded separately. “OK” reflects the room readings available at the time.' : 'Explore HI’s recorded modes and reasons. Each keeps its own timestamp. These records describe HI’s selected mode.';
@@ -2953,17 +2960,17 @@ card:
                       }
                     });
                   } catch (_) {
-                    if (disposed || !active || requestGeneration !== generation) return;
+                    if (disposed || !activeVisit || requestGeneration !== generation) return;
                     clearTimeout(timer);
                     withSource(() => {
-                      if (!disposed && active && !timedOut && requestGeneration === generation)
+                      if (!disposed && activeVisit && !timedOut && requestGeneration === generation)
                         content.innerHTML = '<p>History is currently unavailable. Try another range or open source details.</p>';
                     });
                   }
                 }
                 return {
-                  open() { if (disposed) return; active = true; summaryNodes.forEach(node => {node.hidden = true;}); section.hidden = false; if (closeButton) {section.querySelector('nav').appendChild(closeButton); closeButton.style.margin='0 0 0 auto';} dialog.scrollTop=0; section.querySelector('[data-back]').focus({preventScroll:true}); dialog.scrollTop=0; load(); },
-                  dispose() { disposed = true; active = false; invalidate(); section.remove(); },
+                  open() { if (disposed) return; activeVisit = Symbol(); summaryNodes.forEach(node => {node.hidden = true;}); section.hidden = false; if (closeButton) {section.querySelector('nav').appendChild(closeButton); closeButton.style.margin='0 0 0 auto';} dialog.scrollTop=0; section.querySelector('[data-back]').focus({preventScroll:true}); dialog.scrollTop=0; load(); },
+                  dispose() { disposed = true; activeVisit = null; invalidate(); section.remove(); },
                 };
               }
               return {normalize, numeric, category, transitions, seriesPaths, sourceColor, create};
@@ -3063,7 +3070,7 @@ card:
               bindingTimer = undefined;
               const ready = pendingActions;
               pendingActions = [];
-              for (const run of ready) { if (!cleaned) run(); }
+              for (const run of ready) { if (!cleaned && dialog.open) run(); }
             };
             dialog.className = 'hi-summary-details';
             dialog.setAttribute('data-hi-summary-dialog', '');
@@ -3492,7 +3499,7 @@ card:
                   bindingTimer = undefined;
                   const ready = pendingActions;
                   pendingActions = [];
-                  for (const run of ready) { if (!cleaned) run(); }
+                  for (const run of ready) { if (!cleaned && dialog.open) run(); }
                 };
                 dialog.className = 'hi-summary-details';
                 dialog.setAttribute('data-hi-summary-dialog', '');
@@ -3774,7 +3781,7 @@ card:
                   bindingTimer = undefined;
                   const ready = pendingActions;
                   pendingActions = [];
-                  for (const run of ready) { if (!cleaned) run(); }
+                  for (const run of ready) { if (!cleaned && dialog.open) run(); }
                 };
                 dialog.className = 'hi-summary-details';
                 dialog.setAttribute('data-hi-summary-dialog', '');
@@ -4056,7 +4063,7 @@ card:
                   bindingTimer = undefined;
                   const ready = pendingActions;
                   pendingActions = [];
-                  for (const run of ready) { if (!cleaned) run(); }
+                  for (const run of ready) { if (!cleaned && dialog.open) run(); }
                 };
                 dialog.className = 'hi-summary-details';
                 dialog.setAttribute('data-hi-summary-dialog', '');
@@ -4391,7 +4398,7 @@ card:
                     </style><nav aria-label="History navigation"><button type="button" data-back>Back</button></nav><h2 tabindex="-1">${escape(title === 'Current Air Control' ? 'Operating mode history' : title === 'AQ' ? 'Air quality history' : title === 'Mould' ? 'Mould risk history' : title === 'Condensation' ? 'Condensation history' : 'Recorded history')}</h2><div class="hi-history-ranges" role="group" aria-label="History range"><button type="button" data-hours="24" aria-pressed="true">24 hours</button><button type="button" data-hours="168" aria-pressed="false">7 days</button></div><div class="hi-history-content" aria-live="polite"></div><button type="button" data-native ${nativeAvailable ? '' : 'disabled'}>Open ${escape(nativeLabel)} details</button>`;
                     dialog.appendChild(section);
                     const content = section.querySelector('.hi-history-content');
-                    let hours = 24, generation = 0, active = false, disposed = false, timer;
+                    let hours = 24, generation = 0, activeVisit = null, disposed = false, timer;
                     const hass = owner.hass || owner._hass;
                     const date = time => {
                       try { return new Intl.DateTimeFormat(hass?.locale?.language || undefined, {timeZone: hass?.config?.time_zone || undefined, year:'numeric',month:'short',day:'numeric',hour:'2-digit',minute:'2-digit',second:'2-digit',timeZoneName:'shortOffset'}).format(time); }
@@ -4400,15 +4407,19 @@ card:
                     const invalidate = () => { generation++; clearTimeout(timer); };
                     const restoreClose = () => { if (closeButton) {dialog.insertBefore(closeButton, dialog.firstChild); closeButton.style.margin = ''; } };
                     const back = () => {
-                      invalidate(); active = false; restoreClose(); section.hidden = true; dialog.scrollTop = 0;
+                      invalidate(); activeVisit = null; restoreClose(); section.hidden = true; dialog.scrollTop = 0;
                       summaryNodes.forEach(node => { node.hidden = false; });
                       dialog.querySelector('.hi-summary-history')?.focus({preventScroll:true});
                       dialog.scrollTop = 0;
                     };
+                    // A transient source replacement can defer a click past Back and into another visit.
+                    const withVisit = action => {
+                      const visit = activeVisit;
+                      withSource(() => { if (visit && visit === activeVisit) action(); });
+                    };
                     section.querySelector('[data-back]').addEventListener('click', back);
-                    section.querySelector('[data-native]').addEventListener('click', () => withSource(() => { if (nativeAvailable) {close(); openEntity();} }));
-                    for (const button of section.querySelectorAll('[data-hours]')) button.addEventListener('click', () => withSource(() => {
-                      if (disposed || !active) return;
+                    section.querySelector('[data-native]').addEventListener('click', () => withVisit(() => { if (nativeAvailable) {close(); openEntity();} }));
+                    for (const button of section.querySelectorAll('[data-hours]')) button.addEventListener('click', () => withVisit(() => {
                       hours = Number(button.dataset.hours);
                       for (const choice of section.querySelectorAll('[data-hours]')) choice.setAttribute('aria-pressed', String(Number(choice.dataset.hours) === hours));
                       load();
@@ -4493,19 +4504,19 @@ card:
                       if (typeof hass?.callWS !== 'function') { content.innerHTML = '<p>Open entity details to access history in this client.</p>'; return; }
                       let timedOut = false;
                       timer = setTimeout(() => {
-                        if (disposed || !active || requestGeneration !== generation) return;
+                        if (disposed || !activeVisit || requestGeneration !== generation) return;
                         timedOut = true;
                         withSource(() => {
-                          if (disposed || !active || requestGeneration !== generation) return;
+                          if (disposed || !activeVisit || requestGeneration !== generation) return;
                           content.innerHTML = '<p>History took too long to load. Choose a range to try again, or open source details.</p>';
                         });
                       }, timeoutMs);
                       try {
                         const response = await hass.callWS({type:'history/history_during_period',start_time:new Date(start).toISOString(),end_time:new Date(end).toISOString(),entity_ids:requested,include_start_time_state:true,significant_changes_only:false,minimal_response:false,no_attributes:false});
-                        if (disposed || !active || timedOut || requestGeneration !== generation) return;
+                        if (disposed || !activeVisit || timedOut || requestGeneration !== generation) return;
                         clearTimeout(timer);
                         withSource(() => {
-                          if (disposed || !active || timedOut || requestGeneration !== generation || !owner.isConnected || !dialog.isConnected) return;
+                          if (disposed || !activeVisit || timedOut || requestGeneration !== generation || !owner.isConnected || !dialog.isConnected) return;
                           content.replaceChildren();
                           const context = document.createElement('p'); context.className='hi-history-note';
                           context.textContent = allowed.some(item=>item.kind==='numeric') ? 'Each chart shows a recorded house average. The mix of sensors can change over time. Details of that mix are unavailable for past readings. For CO emergencies, use dedicated CO safety information.' : allowed.some(item=>item.kind==='risk') ? 'Risk and room changes are recorded separately. “OK” reflects the room readings available at the time.' : 'Explore HI’s recorded modes and reasons. Each keeps its own timestamp. These records describe HI’s selected mode.';
@@ -4523,17 +4534,17 @@ card:
                           }
                         });
                       } catch (_) {
-                        if (disposed || !active || requestGeneration !== generation) return;
+                        if (disposed || !activeVisit || requestGeneration !== generation) return;
                         clearTimeout(timer);
                         withSource(() => {
-                          if (!disposed && active && !timedOut && requestGeneration === generation)
+                          if (!disposed && activeVisit && !timedOut && requestGeneration === generation)
                             content.innerHTML = '<p>History is currently unavailable. Try another range or open source details.</p>';
                         });
                       }
                     }
                     return {
-                      open() { if (disposed) return; active = true; summaryNodes.forEach(node => {node.hidden = true;}); section.hidden = false; if (closeButton) {section.querySelector('nav').appendChild(closeButton); closeButton.style.margin='0 0 0 auto';} dialog.scrollTop=0; section.querySelector('[data-back]').focus({preventScroll:true}); dialog.scrollTop=0; load(); },
-                      dispose() { disposed = true; active = false; invalidate(); section.remove(); },
+                      open() { if (disposed) return; activeVisit = Symbol(); summaryNodes.forEach(node => {node.hidden = true;}); section.hidden = false; if (closeButton) {section.querySelector('nav').appendChild(closeButton); closeButton.style.margin='0 0 0 auto';} dialog.scrollTop=0; section.querySelector('[data-back]').focus({preventScroll:true}); dialog.scrollTop=0; load(); },
+                      dispose() { disposed = true; activeVisit = null; invalidate(); section.remove(); },
                     };
                   }
                   return {normalize, numeric, category, transitions, seriesPaths, sourceColor, create};
@@ -4633,7 +4644,7 @@ card:
                   bindingTimer = undefined;
                   const ready = pendingActions;
                   pendingActions = [];
-                  for (const run of ready) { if (!cleaned) run(); }
+                  for (const run of ready) { if (!cleaned && dialog.open) run(); }
                 };
                 dialog.className = 'hi-summary-details';
                 dialog.setAttribute('data-hi-summary-dialog', '');

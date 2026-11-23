@@ -6,7 +6,7 @@ import logging
 from dataclasses import dataclass
 from enum import StrEnum
 from math import isfinite
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple
 
 from homeassistant.core import HomeAssistant
 from homeassistant.config_entries import ConfigEntry
@@ -46,6 +46,7 @@ from ..helpers.seasonal import (
     temperature_comfort_state,
 )
 from ..helpers.zone_validation import detect_zone_mapping_duplicates, summarize_zone_mapping_duplicates
+from ..ui.revision import revision_metadata
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -66,6 +67,8 @@ _RISK_ORDER = {"OK": 0, "Watch": 1, "Risk": 2, "Danger": 3, "Unknown": -1}
 
 class HIComputedSensor(SensorEntity):
     """Sensor whose state is computed from other entities."""
+
+    _unrecorded_attributes = frozenset({"source_room_marker"})
 
     def __init__(
         self,
@@ -638,15 +641,15 @@ class _CoreComputations:
         }
 
     def _aq_average(self, kind: str, level: str | None = None) -> Tuple[Optional[float], Dict[str, Any]]:
-        values = self._collect_values(kind, level)
+        source_ids = [
+            row.get("entity_id") for row in self.telemetry
+            if row.get("sensor_type") == kind and (level is None or row.get("level") == level)
+        ]
+        values = self._read_values(kind, level, source_ids)
         value = _avg(values)
         if value is None or not isfinite(value):
             return None, {}
-        expected = sum(
-            1 for row in self.telemetry
-            if row.get("sensor_type") == kind and (level is None or row.get("level") == level)
-        )
-        if len(values) != expected:
+        if len(values) != len(source_ids):
             return value, {}
         return value, {"aq_display_band": aq_display_band(kind, value)}
 
@@ -783,19 +786,22 @@ class _CoreComputations:
             return None, {"slope_entity": slope_entity}
         return slope, {"slope_entity": slope_entity}
 
+    def _risk_sensor_value(self, kind: str, room: str, attrs: Dict[str, Any]) -> Tuple[str, Dict[str, Any]]:
+        risk = attrs.get("risk", "Unknown")
+        details = {"season": attrs.get("season"), "profile": attrs.get("profile")}
+        # A configured room can have the exact spelling of an HA state marker.
+        # Only expose those two reserved literals when live evidence identifies it.
+        if room in ("unknown", "unavailable") and risk in ("OK", "Watch", "Risk", "Danger"):
+            details["source_room_marker"] = {
+                "entry": revision_metadata(self.entry.entry_id)["entry"], "kind": kind, "room": room,
+            }
+        return risk, details
+
     def _compute_worst_condensation_risk(self) -> Tuple[str, Dict[str, Any]]:
-        _, attrs = self._compute_worst_condensation()
-        return attrs.get("risk", "Unknown"), {
-            "season": attrs.get("season"),
-            "profile": attrs.get("profile"),
-        }
+        return self._risk_sensor_value("condensation", *self._compute_worst_condensation())
 
     def _compute_worst_mould_risk(self) -> Tuple[str, Dict[str, Any]]:
-        _, attrs = self._compute_worst_mould()
-        return attrs.get("risk", "Unknown"), {
-            "season": attrs.get("season"),
-            "profile": attrs.get("profile"),
-        }
+        return self._risk_sensor_value("mould", *self._compute_worst_mould())
 
     def _compute_zone_mapping_duplicates(self) -> Tuple[str, Dict[str, Any]]:
         duplicates = detect_zone_mapping_duplicates(
@@ -859,6 +865,11 @@ class _CoreComputations:
         else:
             for lvl in self.levels.values():
                 entity_ids.extend(lvl.get(sensor_type, []))
+        return self._read_values(sensor_type, level, entity_ids)
+
+    def _read_values(
+        self, sensor_type: str, level: Optional[str], entity_ids: Iterable[Optional[str]]
+    ) -> List[float]:
         values: List[float] = []
         exclusions: List[Tuple[str, str]] = []
         expected_unit: Optional[str] = None

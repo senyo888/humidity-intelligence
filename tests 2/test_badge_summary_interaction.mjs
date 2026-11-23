@@ -194,10 +194,10 @@ test('renderer escapes dynamic risk, reason and history labels and qualifies exi
   const render=new Function('entity','variables','states',rendererBody(source,title,'summary'));
   const hostile='<img src=x onerror="bad()">';
   const entity={state:hostile,attributes:{risk:hostile}};
-  const states={[config.history]:{attributes:{friendly_name:hostile}},'sensor.air_control_reason':{state:hostile}};
-  const html=render(entity,{hi_summary:config,hi_mode:hostile,hi_reason_html:"Escaped reason"},states);
+  const states={[config.history]:{state:hostile,attributes:{friendly_name:hostile}},'sensor.air_control_reason':{state:hostile}};
+  const html=render(entity,{hi_summary:config,hi_risk:'Danger',hi_mode:hostile,hi_reason_html:"Escaped reason"},states);
   assert.ok(!html.includes(hostile),title);if(title !== 'Humidity') assert.match(html,/&lt;img/);assert.match(html,/Recorder and retention/);
-  const absent=render(undefined,{hi_summary:config,hi_mode:"Unavailable",hi_reason_html:"Reason unavailable."},{});assert.match(absent,/currently unavailable in Home Assistant/);assert.match(absent,/disabled/);assert.match(absent,/Unavailable/);
+  const absent=render(undefined,{hi_summary:config,hi_risk:'Unavailable',hi_mode:'Unavailable',hi_reason_html:"Reason unavailable."},{});assert.match(absent,/currently unavailable in Home Assistant/);assert.match(absent,/disabled/);assert.match(absent,/Unavailable/);
  }
 });
 test('compact badges preserve color expressions and icons are removed only from four cards',()=>{

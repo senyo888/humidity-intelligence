@@ -1,8 +1,8 @@
 # Humidity Intelligence V2 UI
 
-Both v2.1.3-rc.1 layouts use revision **18**, with stamp schema **1** and generator
-contract **1**. Saved revision-18 cards from the final beta.1 remain compatible.
-Revision 17 and earlier require fresh exports and complete saved-card replacement.
+Both v2.1.3-rc.1 layouts use revision **19**, stamp schema **1** and generator
+contract **1**. Revision 18 and earlier require fresh exports and complete
+saved-card replacement. VOC index chips verify the owning entry in feed schema 2.
 See [RC compatibility and upgrade](../../../docs/releases/v2.1.3-rc.1.md).
 
 ## Canonical Runtime Presentation Layer
