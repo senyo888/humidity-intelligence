@@ -798,7 +798,7 @@ def test_frontend_dependency_page_excludes_drift_helper_status_and_keeps_card_de
     assert "humidity_drift_dependency_status" not in dependency_source
     assert "_render_drift_statistics_status" not in dependency_source
     for payload in (strings, translations):
-        setup_description = payload["config"]["step"]["dependencies"]["description"]
+        setup_description = payload["config"]["step"]["ui_install"]["description"]
         options_description = payload["options"]["step"]["options_dependencies"]["description"]
         assert "House Humidity Mean 7d" not in setup_description
         assert "House Humidity Mean 7d" not in options_description
@@ -818,7 +818,6 @@ def test_walkthrough_placeholders_are_supplied_by_config_and_options_flow_result
     setup_flow = config_flow.HumidityIntelligenceConfigFlow()
     setup_flow.hass = SimpleNamespace(data={})
     welcome = asyncio.run(setup_flow.async_step_welcome())
-    dependencies = asyncio.run(setup_flow.async_step_dependencies())
     ui_install = asyncio.run(setup_flow.async_step_ui_install())
 
     entry = SimpleNamespace(data={}, options={})
@@ -826,12 +825,12 @@ def test_walkthrough_placeholders_are_supplied_by_config_and_options_flow_result
     options_flow.hass = SimpleNamespace(data={})
     options_dependencies = asyncio.run(options_flow.async_step_options_dependencies())
 
-    for result in (welcome, dependencies, ui_install, options_dependencies):
+    for result in (welcome, ui_install, options_dependencies):
         placeholders = result["description_placeholders"]
         assert placeholders["walkthrough_url"] == walkthrough_url
 
 
-def test_setup_starts_with_welcome_page_before_frontend_dependencies():
+def test_optional_dependencies_are_shown_at_card_export_after_setup():
     config_flow = _load_config_flow_module()
     flow = config_flow.HumidityIntelligenceConfigFlow()
     flow.hass = SimpleNamespace(data={})
@@ -846,9 +845,14 @@ def test_setup_starts_with_welcome_page_before_frontend_dependencies():
         == config_flow.CONFIGURATION_WALKTHROUGH_URL
     )
 
-    dependencies = asyncio.run(flow.async_step_welcome({}))
-    assert dependencies["type"] == "form"
-    assert dependencies["step_id"] == "dependencies"
+    assert asyncio.run(flow.async_step_welcome({}))["step_id"] == "gates"
+    final = asyncio.run(flow.async_step_alerts_done())
+    assert final["step_id"] == "ui_install"
+    assert "button-card" in final["description_placeholders"]["dependencies"]
+    for layouts in ([], ["v2_mobile"], ["v2_tablet"]):
+        result = asyncio.run(flow.async_step_ui_install({"ui_layouts": layouts, "skip": True}))
+        assert result["data"]["ui_layouts"] == layouts
+        assert result["data"]["skip_dependencies"] is True
 
 
 def test_dependency_schema_builder_sets_skip_default():
@@ -892,16 +896,12 @@ def test_setup_surfaces_link_to_configuration_walkthrough():
 
     for payload in (strings, translations):
         welcome_description = payload["config"]["step"]["welcome"]["description"]
-        setup_description = payload["config"]["step"]["dependencies"]["description"]
         options_description = payload["options"]["step"]["options_dependencies"]["description"]
         ui_install_description = payload["config"]["step"]["ui_install"]["description"]
 
         assert "Configuration Walkthrough" in welcome_description
         assert "{walkthrough_url}" in welcome_description
         assert walkthrough_url not in welcome_description
-        assert "Configuration Walkthrough" in setup_description
-        assert "{walkthrough_url}" in setup_description
-        assert walkthrough_url not in setup_description
         assert "Configuration Walkthrough" in options_description
         assert "{walkthrough_url}" in options_description
         assert walkthrough_url not in options_description
@@ -910,7 +910,7 @@ def test_setup_surfaces_link_to_configuration_walkthrough():
         assert walkthrough_url not in ui_install_description
 
     assert walkthrough_url in config_source
-    assert config_source.count('"walkthrough_url": CONFIGURATION_WALKTHROUGH_URL') == 4
+    assert "{dependencies}" in ui_install_description
 
 
 def test_welcome_and_telemetry_copy_support_staged_setup_method():
@@ -1126,7 +1126,7 @@ def test_setup_zones_level_display_labels_editor_sanitizes_before_zone_config():
 
 def test_options_gates_flattens_advanced_section_and_preserves_visible_values():
     config_flow = _load_config_flow_module()
-    entry = SimpleNamespace(data={}, options={})
+    entry = SimpleNamespace(data={"target_profile": "spring", "custom_target_low": 43, "custom_target_high": 57}, options={})
     flow = config_flow.HumidityIntelligenceOptionsFlow(entry)
     flow.hass = SimpleNamespace()
 
@@ -1164,12 +1164,11 @@ def test_options_gates_flattens_advanced_section_and_preserves_visible_values():
         "entities": [],
     }
     assert flow._options["alert_only_mode"] is True
-    assert flow._options["target_profile"] == "winter"
     assert flow._options["engine_interval_minutes"] == 11
     assert flow._options["auto_refresh_ui_on_startup"] is False
     assert flow._options["show_output_entity_details"] is False
-    assert flow._options["custom_target_low"] == 44.0
-    assert flow._options["custom_target_high"] == 59.0
+    assert not {"target_profile", "custom_target_low", "custom_target_high"}.intersection(flow._options)
+    assert all(flow._effective_config()[key] == value for key, value in entry.data.items())
 
 
 def test_options_gates_no_longer_exposes_or_mutates_level_display_labels():
@@ -1207,7 +1206,7 @@ def test_options_gates_no_longer_exposes_or_mutates_level_display_labels():
     assert "level_labels" not in flow._options
 
 
-def test_options_zone_options_offer_level_labels_before_zone_editing():
+def test_options_zone_picker_keeps_level_names_accessible_after_empty_slots():
     config_flow = _load_config_flow_module()
     entry = SimpleNamespace(
         data={"level_labels": {"level1": "Ground Floor", "level2": "Loft"}},
@@ -1219,12 +1218,12 @@ def test_options_zone_options_offer_level_labels_before_zone_editing():
     form = asyncio.run(flow.async_step_options_zones())
 
     assert _schema_select_values(form, "action") == [
-        "level_labels",
         "zone1",
         "zone2",
+        "level_labels",
         "done",
     ]
-    assert _schema_select_labels(form, "action")[0] == "Level display labels"
+    assert _schema_select_labels(form, "action")[2] == "Edit level names"
 
 
 def test_options_zones_level_display_labels_editor_uses_existing_labels_and_allows_clearing():
@@ -1259,7 +1258,7 @@ def test_options_zones_level_display_labels_editor_uses_existing_labels_and_allo
     }
 
 
-def test_options_thresholds_preserve_existing_zones_and_ignore_missing_zone_thresholds():
+def test_profile_editor_keeps_zone_and_humidity_settings_through_temperature_edit():
     config_flow = _load_config_flow_module()
     zone1 = {
         "enabled": True,
@@ -1290,8 +1289,8 @@ def test_options_thresholds_preserve_existing_zones_and_ignore_missing_zone_thre
     result = asyncio.run(
         flow.async_step_options_thresholds(
             {
-                "temperature_comfort_mode": "custom",
-                "show_advanced_options": {
+                "temperature_comfort": {
+                    "temperature_comfort_mode": "custom",
                     "temperature_comfort_custom_low": 18.0,
                     "temperature_comfort_custom_high": 22.0,
                 },
@@ -1300,14 +1299,14 @@ def test_options_thresholds_preserve_existing_zones_and_ignore_missing_zone_thre
     )
 
     assert result["step_id"] == "init"
-    assert _schema_has_field(form, "temperature_comfort_mode")
-    assert _advanced_schema_has_field(form, "zone1_threshold_humidity_high")
-    assert not _advanced_schema_has_field(form, "zone2_threshold_humidity_high")
+    assert _schema_has_field(form, "temperature_comfort")
+    assert _schema_has_field(form, "humidity_targets")
     assert flow._options["temperature_comfort_mode"] == "custom"
     assert flow._options["temperature_comfort_custom_low"] == 18.0
     assert flow._options["temperature_comfort_custom_high"] == 22.0
-    assert set(flow._options["zones"]) == {"zone1"}
-    assert flow._options["zones"]["zone1"]["thresholds"] == zone1["thresholds"]
+    assert "zones" not in flow._options
+    assert "target_profile" not in flow._options
+    assert flow._effective_config()["zones"] == {"zone1": zone1}
 
 
 def test_setup_alert_add_flattens_advanced_section_and_preserves_visible_values():
@@ -1619,7 +1618,8 @@ def test_v1_mobile_is_deprecated_but_available_in_candidate():
     assert 'value="create_dashboard"' not in config_source
 
     for payload in (strings, translations):
-        description = payload["config"]["step"]["ui_install"]["description"]
+        step = payload["config"]["step"]["ui_install"]
+        description = step["description"] + step["data_description"]["ui_layouts"]
         assert "V1 Mobile remains available in this candidate" in description
         assert "deprecated for new dashboards" in description
         assert "Use V2 Mobile for new dashboards" in description

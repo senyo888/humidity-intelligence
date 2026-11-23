@@ -10,6 +10,21 @@ a running Home Assistant instance or call device services.
 Cancel entry points, Return with unsubmitted values, nested staged changes, Close
 without saving, and rejection of a return destination that could invoke Save.
 
+The AQ cases use the native Options flow manager to add several triggers on one
+level, discard unfinished thresholds, retry an invalid value and apply the lane
+at the main save step. They check house-only sensors, a lost level selection,
+explicit threshold repair, and preservation of disabled lanes and legacy values.
+
+The zone cases exercise the configured-zone picker, tuning active and inactive
+thresholds, empty slots and the final save. They check that a zone with unreadable
+legacy settings cannot become runnable by enabling it or adding its first output.
+
+The profile cases submit both native sections, including their prefilled values.
+They verify legacy humidity keys, fixed seasons, dormant custom limits and
+independent temperature edits. A rejected edit leaves both groups unstaged.
+First-run coverage checks empty, Mobile and Tablet layout selections and the
+status shown when Home Assistant cannot inspect optional dashboard resources.
+
 The persistence case creates a custom monitoring meaning and detection rule,
 then uses HI's actual **Save changes** step and Home Assistant's unmodified
 options-flow finish handler. Changes must remain staged until that boundary.

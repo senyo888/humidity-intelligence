@@ -314,7 +314,7 @@ Interpretation now follows target-relative states:
 For Autumn, 50–60% is in target; above 60% is above target, and 64% or higher
 meets the humidity-danger threshold. These are HI profile boundaries, not universal
 safe cutoffs. Custom 50–60% derives a different danger threshold of 67.5%; see
-[profile settings](https://github.com/senyo888/humidity-intelligence/wiki/Configuration-Walkthrough#operating-schedule--limits).
+[profile settings](#post-configuration-workflow).
 
 Temperature comfort uses the same source-of-truth approach for display, so dashboard colours and chips follow backend comfort sensors rather than card-only assumptions:
 
@@ -657,15 +657,14 @@ First install follows a staged setup path. Essentials stay visible first; expert
 Setup shape:
 
 1. Welcome and setup strategy
-2. Dashboard add-ons
-3. Operating schedule & limits
-4. Sensors
-5. Temperature change settings
-6. Zones
-7. Humidifiers
-8. Air Quality
-9. Alerts and CO Emergency
-10. UI Cards
+2. Operating schedule & limits
+3. Sensors
+4. Temperature change settings
+5. Zones
+6. Humidifiers
+7. Air Quality
+8. Alerts and CO Emergency
+9. UI cards and optional dashboard add-on status
 
 Key setup guidance:
 
@@ -686,7 +685,7 @@ Key setup guidance:
 - use zone boost levels for alert escalation where alerts resolve to a mapped zone
 - use the generated dashboard export after setup or option changes
 
-The default first UI export is `v2_tablet`. `show_output_entity_details` is display-only and controls whether generated cards include the expandable output details panel.
+Tablet is preselected on the final setup page. Choosing any layout requests the cached set of Manual-card files. Clear the selection to skip the initial export. You can review dashboard add-ons later in Settings. `show_output_entity_details` is display-only and controls whether generated cards include the expandable output details panel.
 Level display labels are also display-only. Changing them updates generated-card/config-flow/support text after options are saved and cards are refreshed. Entity IDs, helpers, levels, zones, outputs, and runtime lanes keep their existing identities.
 
 Home Assistant Area and Label setup assistance is read-only. HI may suggest room or
@@ -743,11 +742,17 @@ Common post-configuration areas:
 
 - `Sensors`: add, edit, or delete telemetry rows; Area/Label suggestions are
   advisory defaults only and become HI truth only if saved into explicit fields
-- `Operating schedule & limits`: edit time, presence, alert-only, and target-profile behavior
-- `Zones`: edit display-only Level 1 / Level 2 labels before Zone 1 / Zone 2 configuration
-- `Comfort and thresholds`: review comfort mode and zone thresholds
+- `Operating schedule & limits`: edit time, presence, alert-only behaviour and advanced operating settings
+- `Zones`: choose a zone to edit its triggers, outputs and thresholds. **Edit level names** changes the labels used for each level.
+- `Humidity targets and temperature comfort`: the humidity profile guides control and risk evaluation. The temperature range describes comfort on the dashboard. Each group keeps its custom limits when you switch profiles.
 - `Humidifier control`: add or edit per-level humidifier lanes
-- `Air quality control`: add or edit AQ lanes, triggers, outputs, and thresholds
+- `Air quality control`: select a level, then choose its triggers and outputs.
+  Adding triggers opens one threshold review for that level. **Keep these thresholds**
+  stages the lane until **Save changes** on the main settings page. Returning to the
+  lane from the review discards that visit’s edits. In **Advanced tuning**, use
+  **Set thresholds for selected triggers** to set a missing threshold or replace
+  a saved value the editor cannot display.
+  Sensors without an assigned level can still contribute to house readings.
 - `Dashboard add-ons`: inspect optional frontend-card availability
 - `Temperature change settings`: configure temperature-trend calculation and source overrides
 - `Output monitoring`: configure optional reporting and exact source rules; use

@@ -6,7 +6,7 @@ import logging
 import re
 from copy import deepcopy
 from uuid import uuid4
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, NamedTuple, Optional, Tuple
 
 import voluptuous as vol
 from homeassistant import config_entries
@@ -20,6 +20,7 @@ from homeassistant.helpers import selector
 from homeassistant.helpers.selector import SelectOptionDict
 
 from .adaptive_output.options import OutputObservationOptionsMixin
+from .helpers.air_quality import AQ_CANONICAL_UNITS, AQ_TRIGGER_SPECS, _finite_float
 from .helpers.voc_index import provider_identity, same_provider
 from .helpers.slope_mapping import bindings_for_save
 from .helpers.frontend_dependencies import async_render_dependency_status
@@ -283,7 +284,7 @@ class VocIndexEditor:
                 self._index_defaults = None
                 return await self.async_step_voc_index_edit()
         choices = [{"value": row["source_key"], "label": row["label"]} for row in rows]
-        choices.extend([{"value": "add", "label": "Add a source"}, {"value": "done", "label": "Done"}])
+        choices.extend([{"value": "add", "label": "Add a source"}, {"value": "done", "label": "Back to sensors"}])
         return self.async_show_form(step_id="voc_index", data_schema=vol.Schema({
             vol.Required("source"): selector.SelectSelector(selector.SelectSelectorConfig(options=choices)),
         }))
@@ -374,30 +375,14 @@ class HumidityIntelligenceConfigFlow(VocIndexEditor, config_entries.ConfigFlow, 
         return await self.async_step_welcome()
 
     async def async_step_welcome(self, user_input: Optional[Dict[str, Any]] = None):
-        """Introduce setup strategy before optional frontend dependency checks."""
+        """Introduce the first-run configuration flow."""
         if user_input is not None:
-            return await self.async_step_dependencies()
+            return await self.async_step_gates()
 
         return self.async_show_form(
             step_id="welcome",
             data_schema=vol.Schema({}),
             description_placeholders={
-                "walkthrough_url": CONFIGURATION_WALKTHROUGH_URL,
-            },
-        )
-
-    async def async_step_dependencies(self, user_input: Optional[Dict[str, Any]] = None):
-        """Collect optional frontend dependency information and allow skipping."""
-        if user_input is not None:
-            self._data["skip_dependencies"] = user_input.get("skip", False)
-            return await self.async_step_gates()
-
-        dep_lines = await _render_dependency_status(self.hass)
-        return self.async_show_form(
-            step_id="dependencies",
-            data_schema=_dependency_schema(),
-            description_placeholders={
-                "dependencies": dep_lines,
                 "walkthrough_url": CONFIGURATION_WALKTHROUGH_URL,
             },
         )
@@ -645,8 +630,8 @@ class HumidityIntelligenceConfigFlow(VocIndexEditor, config_entries.ConfigFlow, 
         options.append(SelectOptionDict(value="voc_index", label="VOC index (display only)"))
         if self._telemetry:
             options.append(SelectOptionDict(value="manage", label="Manage sensors"))
-            options.append(SelectOptionDict(value="done", label="Continue"))
-        options.append(SelectOptionDict(value="back", label="Back"))
+            options.append(SelectOptionDict(value="done", label="Continue to temperature change settings"))
+        options.append(SelectOptionDict(value="back", label="Back to operating schedule and limits"))
 
         schema = vol.Schema({
             vol.Required("action", default="add"): selector.SelectSelector(
@@ -1639,6 +1624,7 @@ class HumidityIntelligenceConfigFlow(VocIndexEditor, config_entries.ConfigFlow, 
     async def async_step_ui_install(self, user_input: Optional[Dict[str, Any]] = None):
         """Final step: choose UI layouts to export."""
         if user_input is not None:
+            self._data["skip_dependencies"] = user_input.get("skip", False)
             self._data["ui_layouts"] = user_input.get("ui_layouts", [])
             return await self._async_create_entry()
 
@@ -1656,15 +1642,61 @@ class HumidityIntelligenceConfigFlow(VocIndexEditor, config_entries.ConfigFlow, 
                     mode=selector.SelectSelectorMode.DROPDOWN,
                 )
             ),
+            vol.Optional("skip", default=False): selector.BooleanSelector(),
         })
         return self.async_show_form(
             step_id="ui_install",
             data_schema=schema,
             description_placeholders={
+                "dependencies": await async_render_dependency_status(self.hass, include_links=False),
                 "configured_alerts": _render_alerts_summary(self._alerts),
                 "walkthrough_url": CONFIGURATION_WALKTHROUGH_URL,
             },
         )
+
+
+class _ProfileLimit(NamedTuple):
+    key: str
+    label: str
+    minimum: float
+    maximum: float
+    default: float
+
+
+class _OptionsProfile(NamedTuple):
+    group: str
+    mode_key: str
+    modes: list
+    unit: str
+    step: float
+    limits: tuple[_ProfileLimit, _ProfileLimit]
+    range_error: str
+
+
+_OPTIONS_PROFILES = (
+    _OptionsProfile(
+        "humidity_targets", "target_profile", TARGET_PROFILE_OPTIONS, "%", TARGET_CUSTOM_STEP,
+        (_ProfileLimit("custom_target_low", "Humidity lower limit", TARGET_CUSTOM_LOW_MIN, TARGET_CUSTOM_LOW_MAX, 45),
+         _ProfileLimit("custom_target_high", "Humidity upper limit", TARGET_CUSTOM_HIGH_MIN, TARGET_CUSTOM_HIGH_MAX, 55)),
+        "humidity_range_invalid",
+    ),
+    _OptionsProfile(
+        "temperature_comfort", "temperature_comfort_mode", TEMPERATURE_COMFORT_PROFILE_OPTIONS,
+        "°C", TEMPERATURE_COMFORT_CUSTOM_STEP,
+        (_ProfileLimit("temperature_comfort_custom_low", "Temperature lower limit", TEMPERATURE_COMFORT_CUSTOM_LOW_MIN,
+                       TEMPERATURE_COMFORT_CUSTOM_LOW_MAX, DEFAULT_TEMPERATURE_COMFORT_CUSTOM_LOW),
+         _ProfileLimit("temperature_comfort_custom_high", "Temperature upper limit", TEMPERATURE_COMFORT_CUSTOM_HIGH_MIN,
+                       TEMPERATURE_COMFORT_CUSTOM_HIGH_MAX, DEFAULT_TEMPERATURE_COMFORT_CUSTOM_HIGH)),
+        "temperature_range_invalid",
+    ),
+)
+
+
+class _AQThresholdReview(NamedTuple):
+    level: str
+    previous_lane: dict | None
+    lane: dict
+    triggers: list[str]
 
 
 class HumidityIntelligenceOptionsFlow(VocIndexEditor, OutputObservationOptionsMixin, config_entries.OptionsFlow):
@@ -1677,6 +1709,7 @@ class HumidityIntelligenceOptionsFlow(VocIndexEditor, OutputObservationOptionsMi
         self._pending_zone_key: Optional[str] = None
         self._pending_humidifier_level: Optional[str] = None
         self._pending_aq_level: Optional[str] = None
+        self._aq_review: _AQThresholdReview | None = None
         self._pending_alert_index: Optional[int] = None
         self._pending_presence_gate: Optional[Dict[str, Any]] = None
         self._cancel_return_step = "options_telemetry"
@@ -1814,10 +1847,11 @@ class HumidityIntelligenceOptionsFlow(VocIndexEditor, OutputObservationOptionsMi
         self._options["slope"] = slope
 
     async def async_step_init(self, user_input: Optional[Dict[str, Any]] = None):
+        self._pending_aq_level = None
+        self._aq_review = None
         return self.async_show_menu(
             step_id="init",
             menu_options=[
-                "options_dependencies",
                 "options_sensors",
                 "options_gates",
                 "options_thresholds",
@@ -1827,6 +1861,7 @@ class HumidityIntelligenceOptionsFlow(VocIndexEditor, OutputObservationOptionsMi
                 "options_alerts",
                 "options_slope",
                 "options_output_observation",
+                "options_dependencies",
                 "options_done",
             ],
         )
@@ -1861,33 +1896,6 @@ class HumidityIntelligenceOptionsFlow(VocIndexEditor, OutputObservationOptionsMi
         if user_input is not None:
             user_input = _flatten_advanced_section_input(user_input)
 
-            target_profile = _normalize_target_profile(
-                user_input.get("target_profile", self._section("target_profile", "auto"))
-            )
-            custom_low = _bounded_float(
-                user_input.get("custom_target_low"),
-                TARGET_CUSTOM_LOW_MIN,
-                TARGET_CUSTOM_LOW_MAX,
-                _bounded_float(
-                    self._section("custom_target_low", 45.0),
-                    TARGET_CUSTOM_LOW_MIN,
-                    TARGET_CUSTOM_LOW_MAX,
-                    45.0,
-                ),
-            )
-            custom_high = _bounded_float(
-                user_input.get("custom_target_high"),
-                TARGET_CUSTOM_HIGH_MIN,
-                TARGET_CUSTOM_HIGH_MAX,
-                _bounded_float(
-                    self._section("custom_target_high", 55.0),
-                    TARGET_CUSTOM_HIGH_MIN,
-                    TARGET_CUSTOM_HIGH_MAX,
-                    55.0,
-                ),
-            )
-            if custom_high <= custom_low:
-                custom_high = min(float(TARGET_CUSTOM_HIGH_MAX), custom_low + 1.0)
             self._options["time_gate"] = {
                 "enabled": user_input.get("enable_time_gate", False),
                 "start": user_input.get("start_time", time_gate.get("start", DEFAULT_TIME_START)),
@@ -1912,9 +1920,6 @@ class HumidityIntelligenceOptionsFlow(VocIndexEditor, OutputObservationOptionsMi
                 "engine_interval_minutes",
                 self._section("engine_interval_minutes", ENGINE_INTERVAL_MINUTES_DEFAULT),
             )
-            self._options["target_profile"] = target_profile
-            self._options["custom_target_low"] = custom_low
-            self._options["custom_target_high"] = custom_high
             presence_enabled = user_input.get("enable_presence_gate", False)
             entities = _sanitize_entity_ids(user_input.get("presence_entities", default_presence_entities))
             pending_presence = _presence_gate_for_entities(presence_gate, entities, presence_enabled)
@@ -1945,12 +1950,6 @@ class HumidityIntelligenceOptionsFlow(VocIndexEditor, OutputObservationOptionsMi
                 )
             ),
             vol.Optional("alert_only_mode", default=gates_default("alert_only_mode", self._section("alert_only_mode", False))): selector.BooleanSelector(),
-            vol.Optional("target_profile", default=gates_default("target_profile", self._section("target_profile", "auto"))): selector.SelectSelector(
-                selector.SelectSelectorConfig(
-                    options=[SelectOptionDict(value=o["value"], label=o["label"]) for o in TARGET_PROFILE_OPTIONS],
-                    mode=selector.SelectSelectorMode.DROPDOWN,
-                )
-            ),
             vol.Optional("enable_presence_gate", default=gates_default("enable_presence_gate", presence_gate.get("enabled", False))): selector.BooleanSelector(),
             _gate_optional("presence_entities", default=gates_default("presence_entities", default_presence_entities)): selector.EntitySelector(
                 selector.EntitySelectorConfig(multiple=True)
@@ -1989,30 +1988,6 @@ class HumidityIntelligenceOptionsFlow(VocIndexEditor, OutputObservationOptionsMi
                     _entry_show_output_entity_details_default(self._entry),
                 ),
             ): selector.BooleanSelector(),
-            vol.Optional(
-                "custom_target_low",
-                default=gates_default("custom_target_low", self._section("custom_target_low", 45.0)),
-            ): selector.NumberSelector(
-                selector.NumberSelectorConfig(
-                    min=TARGET_CUSTOM_LOW_MIN,
-                    max=TARGET_CUSTOM_LOW_MAX,
-                    step=TARGET_CUSTOM_STEP,
-                    mode=selector.NumberSelectorMode.BOX,
-                    unit_of_measurement="%",
-                )
-            ),
-            vol.Optional(
-                "custom_target_high",
-                default=gates_default("custom_target_high", self._section("custom_target_high", 55.0)),
-            ): selector.NumberSelector(
-                selector.NumberSelectorConfig(
-                    min=TARGET_CUSTOM_HIGH_MIN,
-                    max=TARGET_CUSTOM_HIGH_MAX,
-                    step=TARGET_CUSTOM_STEP,
-                    mode=selector.NumberSelectorMode.BOX,
-                    unit_of_measurement="%",
-                )
-            ),
         })
         gates_schema = vol.Schema(schema_fields)
         return self.async_show_form(
@@ -2087,136 +2062,86 @@ class HumidityIntelligenceOptionsFlow(VocIndexEditor, OutputObservationOptionsMi
         })
 
     async def async_step_options_thresholds(self, user_input: Optional[Dict[str, Any]] = None):
-        """Edit post-configuration zone thresholds and temperature comfort bands."""
-        zones = dict(self._section("zones", {}))
+        """Stage edits to the two independent profile groups in one transaction."""
+        config = self._effective_config()
+        # Match the backend's legacy humidity lookup order without migrating an entry on visit.
+        legacy_range = config.get("target_custom") or {}
+        if not isinstance(legacy_range, dict):
+            legacy_range = {}
+        config["target_profile"] = config.get("target_profile") or config.get("target_profile_mode")
+        for end in ("low", "high"):
+            key = f"custom_target_{end}"
+            config[key] = config.get(key) or config.get(f"target_custom_{end}") or legacy_range.get(end)
 
-        if user_input is not None:
-            user_input = _flatten_advanced_section_input(user_input)
-
-            temp_comfort_low = _bounded_float(
-                user_input.get("temperature_comfort_custom_low"),
-                TEMPERATURE_COMFORT_CUSTOM_LOW_MIN,
-                TEMPERATURE_COMFORT_CUSTOM_LOW_MAX,
-                _bounded_float(
-                    self._section("temperature_comfort_custom_low", DEFAULT_TEMPERATURE_COMFORT_CUSTOM_LOW),
-                    TEMPERATURE_COMFORT_CUSTOM_LOW_MIN,
-                    TEMPERATURE_COMFORT_CUSTOM_LOW_MAX,
-                    DEFAULT_TEMPERATURE_COMFORT_CUSTOM_LOW,
-                ),
-            )
-            temp_comfort_high = _bounded_float(
-                user_input.get("temperature_comfort_custom_high"),
-                TEMPERATURE_COMFORT_CUSTOM_HIGH_MIN,
-                TEMPERATURE_COMFORT_CUSTOM_HIGH_MAX,
-                _bounded_float(
-                    self._section("temperature_comfort_custom_high", DEFAULT_TEMPERATURE_COMFORT_CUSTOM_HIGH),
-                    TEMPERATURE_COMFORT_CUSTOM_HIGH_MIN,
-                    TEMPERATURE_COMFORT_CUSTOM_HIGH_MAX,
-                    DEFAULT_TEMPERATURE_COMFORT_CUSTOM_HIGH,
-                ),
-            )
-            if temp_comfort_high <= temp_comfort_low:
-                temp_comfort_high = min(float(TEMPERATURE_COMFORT_CUSTOM_HIGH_MAX), temp_comfort_low + 0.5)
-
-            self._options["temperature_comfort_mode"] = _normalize_temperature_comfort_mode(
-                user_input.get(
-                    "temperature_comfort_mode",
-                    self._section("temperature_comfort_mode", DEFAULT_TEMPERATURE_COMFORT_MODE),
+        fields = {}
+        changes = {}
+        errors = {}
+        notes = []
+        for profile in _OPTIONS_PROFILES:
+            submitted = (user_input or {}).get(profile.group, {})
+            mode = str(config.get(profile.mode_key) or "auto").strip().lower()
+            choices = [item["value"] for item in profile.modes]
+            if mode not in choices:
+                mode = "auto"
+            selected = submitted.get(profile.mode_key, mode)
+            if selected != mode:
+                changes[profile.mode_key] = selected
+            group_fields = {
+                vol.Optional(profile.mode_key, default=selected): selector.SelectSelector(
+                    selector.SelectSelectorConfig(options=_value_label_options(profile.modes),
+                                                  mode=selector.SelectSelectorMode.DROPDOWN)
                 )
-            )
-            self._options["temperature_comfort_custom_low"] = temp_comfort_low
-            self._options["temperature_comfort_custom_high"] = temp_comfort_high
+            }
+            limits = []
+            range_changed = False
+            activating_custom = selected == "custom" and mode != "custom"
+            for limit in profile.limits:
+                raw = config.get(limit.key)
+                saved = _finite_float(raw)
+                effective = saved
+                shown = saved
+                if raw is None and mode != "custom":
+                    shown = limit.default
+                elif raw is not None and (saved is None or not limit.minimum <= saved <= limit.maximum):
+                    shown = None
+                    prior = f"{saved} {profile.unit}" if saved is not None else "unreadable"
+                    notes.append(f"{limit.label} is {prior}. Leave it blank to keep the stored value.")
 
-            for zone_key, zone in _configured_zone_items(zones):
-                previous_thresholds = dict(zone.get("thresholds", {}))
-                thresholds: Dict[str, Any] = {}
-                for trig, trig_def in TRIGGER_DEFS.items():
-                    field = f"{zone_key}_threshold_{trig}"
-                    if field in user_input:
-                        thresholds[trig] = user_input[field]
-                    elif trig in previous_thresholds:
-                        thresholds[trig] = previous_thresholds[trig]
+                default = shown
+                value = submitted.get(limit.key)
+                if value is not None:
+                    number = _finite_float(value)
+                    if number is None or not limit.minimum <= number <= limit.maximum:
+                        errors["base"] = "profile_value_invalid"
                     else:
-                        thresholds[trig] = trig_def["default"]
-                zone["thresholds"] = thresholds
-                zones[zone_key] = zone
-            self._options["zones"] = zones
+                        default = effective = number
+                        if number != shown or (activating_custom and saved is None):
+                            changes[limit.key] = number
+                            range_changed = True
+                limits.append(effective)
+                marker = vol.Optional(limit.key) if default is None else vol.Optional(limit.key, default=default)
+                group_fields[marker] = selector.NumberSelector(selector.NumberSelectorConfig(
+                    min=limit.minimum, max=limit.maximum, step=profile.step,
+                    mode=selector.NumberSelectorMode.BOX, unit_of_measurement=profile.unit,
+                ))
+            low, high = limits
+            if activating_custom or range_changed:
+                valid_custom = all(
+                    value is not None and limit.minimum <= value <= limit.maximum
+                    for value, limit in zip(limits, profile.limits)
+                )
+                if (selected == "custom" and not valid_custom) or (
+                    low is not None and high is not None and low >= high
+                ):
+                    errors.setdefault("base", profile.range_error)
+            fields[vol.Optional(profile.group)] = section(vol.Schema(group_fields), {"collapsed": False})
+
+        if user_input is not None and not errors:
+            self._options.update(changes)
             return await self.async_step_init()
-
-        thresholds_default = lambda field, default: _form_input_default(user_input, field, default)
-        schema_fields: Dict[Any, Any] = {
-            vol.Optional(
-                "temperature_comfort_mode",
-                default=thresholds_default(
-                    "temperature_comfort_mode",
-                    self._section("temperature_comfort_mode", DEFAULT_TEMPERATURE_COMFORT_MODE),
-                ),
-            ): selector.SelectSelector(
-                selector.SelectSelectorConfig(
-                    options=[SelectOptionDict(value=o["value"], label=o["label"]) for o in TEMPERATURE_COMFORT_PROFILE_OPTIONS],
-                    mode=selector.SelectSelectorMode.DROPDOWN,
-                )
-            ),
-        }
-        advanced_fields: Dict[Any, Any] = {
-            vol.Optional(
-                "temperature_comfort_custom_low",
-                default=thresholds_default(
-                    "temperature_comfort_custom_low",
-                    self._section("temperature_comfort_custom_low", DEFAULT_TEMPERATURE_COMFORT_CUSTOM_LOW),
-                ),
-            ): selector.NumberSelector(
-                selector.NumberSelectorConfig(
-                    min=TEMPERATURE_COMFORT_CUSTOM_LOW_MIN,
-                    max=TEMPERATURE_COMFORT_CUSTOM_LOW_MAX,
-                    step=TEMPERATURE_COMFORT_CUSTOM_STEP,
-                    mode=selector.NumberSelectorMode.BOX,
-                    unit_of_measurement="°C",
-                )
-            ),
-            vol.Optional(
-                "temperature_comfort_custom_high",
-                default=thresholds_default(
-                    "temperature_comfort_custom_high",
-                    self._section("temperature_comfort_custom_high", DEFAULT_TEMPERATURE_COMFORT_CUSTOM_HIGH),
-                ),
-            ): selector.NumberSelector(
-                selector.NumberSelectorConfig(
-                    min=TEMPERATURE_COMFORT_CUSTOM_HIGH_MIN,
-                    max=TEMPERATURE_COMFORT_CUSTOM_HIGH_MAX,
-                    step=TEMPERATURE_COMFORT_CUSTOM_STEP,
-                    mode=selector.NumberSelectorMode.BOX,
-                    unit_of_measurement="°C",
-                )
-            ),
-        }
-        for zone_key, zone in _configured_zone_items(zones):
-            for trig, trig_def in TRIGGER_DEFS.items():
-                field = f"{zone_key}_threshold_{trig}"
-                advanced_fields[vol.Optional(
-                    field,
-                    default=thresholds_default(
-                        field,
-                        zone.get("thresholds", {}).get(trig, trig_def["default"]),
-                    ),
-                )] = selector.NumberSelector(
-                    selector.NumberSelectorConfig(
-                        min=trig_def["min"],
-                        max=trig_def["max"],
-                        step=trig_def.get("step", 1),
-                        mode=selector.NumberSelectorMode.SLIDER,
-                        unit_of_measurement=trig_def.get("unit", "%"),
-                    )
-                )
-        schema_fields[vol.Optional(ADVANCED_OPTIONS_FIELD)] = _advanced_section(advanced_fields)
-
         return self.async_show_form(
-            step_id="options_thresholds",
-            data_schema=vol.Schema(schema_fields),
-            description_placeholders={
-                "configured_zones": _render_zones_summary(zones, self._effective_config()),
-                "advanced_note": ADVANCED_DEFAULTS_NOTE,
-            },
+            step_id="options_thresholds", data_schema=vol.Schema(fields), errors=errors,
+            description_placeholders={"range_notes": "\n\n".join(notes)},
         )
 
     async def async_step_options_sensors(self, user_input: Optional[Dict[str, Any]] = None):
@@ -2244,7 +2169,7 @@ class HumidityIntelligenceOptionsFlow(VocIndexEditor, OutputObservationOptionsMi
         options.append(SelectOptionDict(value="voc_index", label="VOC index (display only)"))
         if telemetry:
             options.append(SelectOptionDict(value="manage", label="Edit or delete sensor"))
-        options.append(SelectOptionDict(value="done", label="Done"))
+        options.append(SelectOptionDict(value="done", label="Back to settings"))
         schema = vol.Schema({
             vol.Required("action", default="add"): selector.SelectSelector(
                 selector.SelectSelectorConfig(
@@ -2501,8 +2426,12 @@ class HumidityIntelligenceOptionsFlow(VocIndexEditor, OutputObservationOptionsMi
 
     async def async_step_options_zones(self, user_input: Optional[Dict[str, Any]] = None):
         """Choose a zone to edit."""
-        zones = dict(self._section("zones", {}))
-        zone_keys = ["zone1", "zone2"]
+        self._pending_zone_key = None
+        zones = self._section("zones", {})
+        readable = isinstance(zones, dict)
+        configured = dict(_configured_zone_items(zones)) if readable else {}
+        errors = {}
+        slots = ("zone1", "zone2")
 
         if user_input is not None:
             action = user_input.get("action", "done")
@@ -2510,31 +2439,34 @@ class HumidityIntelligenceOptionsFlow(VocIndexEditor, OutputObservationOptionsMi
                 return await self.async_step_init()
             if action == "level_labels":
                 return await self.async_step_options_level_labels()
-            if action in zone_keys:
-                self._pending_zone_key = action
-                return await self.async_step_options_zone_edit()
+            if action in slots:
+                if readable and isinstance(zones.get(action, {}), dict):
+                    self._pending_zone_key = action
+                    return await self.async_step_options_zone_edit()
+                errors["base"] = "unrecognised_zone_settings"
 
-        options = [SelectOptionDict(value="level_labels", label="Level display labels")]
+        options = [
+            SelectOptionDict(value=key, label=_zone_choice_label(key, zone, self._effective_config()))
+            for key, zone in configured.items()
+        ]
+        options.extend(
+            SelectOptionDict(value=key, label=f"Configure {_zone_title(key)}")
+            for key in slots if key not in configured
+        )
         options.extend([
-            SelectOptionDict(
-                value=key,
-                label=_zone_choice_label(key, zones.get(key, {}), self._effective_config()),
-            )
-            for key in zone_keys
+            SelectOptionDict(value="level_labels", label="Edit level names"),
+            SelectOptionDict(value="done", label="Back to settings"),
         ])
-        options.append(SelectOptionDict(value="done", label="Done"))
         schema = vol.Schema({
-            vol.Required("action", default="level_labels"): selector.SelectSelector(
-                selector.SelectSelectorConfig(
-                    options=options,
-                    mode=selector.SelectSelectorMode.LIST,
-                )
+            vol.Required("action", default=options[0]["value"]): selector.SelectSelector(
+                selector.SelectSelectorConfig(options=options, mode=selector.SelectSelectorMode.LIST)
             )
         })
         return self.async_show_form(
             step_id="options_zones",
+            errors=errors,
             data_schema=schema,
-            description_placeholders={"configured_zones": _render_zones_summary(zones, self._effective_config())},
+            description_placeholders={"configured_zones": _render_zones_summary(configured, self._effective_config())},
         )
 
     async def async_step_options_level_labels(self, user_input: Optional[Dict[str, Any]] = None):
@@ -2552,88 +2484,118 @@ class HumidityIntelligenceOptionsFlow(VocIndexEditor, OutputObservationOptionsMi
         )
 
     async def async_step_options_zone_edit(self, user_input: Optional[Dict[str, Any]] = None):
-        zones = dict(self._section("zones", {}))
-        zone_key = self._pending_zone_key or "zone1"
-        default_level = _default_zone_level(zone_key)
-        zone = zones.get(zone_key) or {
-            "enabled": False,
-            "level": default_level,
-            "rooms": [],
-            "triggers": [],
-            "outputs": [],
-            "output_level": ZONE_OUTPUT_LEVEL_DEFAULT,
-            "boost_output_level": ZONE_OUTPUT_LEVEL_BOOST_DEFAULT,
-            "ui_label": _default_zone_ui_label(zone_key),
-            "thresholds": {},
-        }
+        zone_key = self._pending_zone_key
+        if zone_key not in ("zone1", "zone2"):
+            return await self.async_step_options_zones()
+        zones = self._section("zones", {})
+        zone = zones.get(zone_key, {}) if isinstance(zones, dict) else None
+        if not isinstance(zone, dict):
+            return await self.async_step_options_zones()
+        if user_input is not None and user_input.get("action") == "back":
+            return await self.async_step_options_zones()
 
+        stored_triggers = zone.get("triggers", [])
         selected_triggers = [
-            trig for trig in (zone.get("triggers", []) or []) if trig in TRIGGER_DEFS
-        ]
-
+            trig for trig in stored_triggers if isinstance(trig, str) and trig in TRIGGER_DEFS
+        ] if isinstance(stored_triggers, list) else []
+        defaults = {
+            "enabled": bool(zone.get("enabled")),
+            "level": zone.get("level") or _default_zone_level(zone_key),
+            "rooms": zone.get("rooms") or [],
+            "triggers": selected_triggers,
+            "outputs": _sanitize_entity_ids(zone.get("outputs", [])),
+            "output_level": _normalize_fan_level_choice(zone.get("output_level"), ZONE_OUTPUT_LEVEL_DEFAULT),
+            "boost_output_level": _normalize_fan_level_choice(zone.get("boost_output_level"), ZONE_OUTPUT_LEVEL_BOOST_DEFAULT),
+            "ui_label": _sanitize_ui_label(zone.get("ui_label"), _default_zone_ui_label(zone_key)),
+        }
+        stored_thresholds = zone.get("thresholds", {})
+        thresholds = stored_thresholds if isinstance(stored_thresholds, dict) else {}
+        errors = {}
         if user_input is not None:
             user_input = _flatten_advanced_section_input(user_input)
-
-            selected_triggers = [
-                trig for trig in (user_input.get("triggers", selected_triggers) or []) if trig in TRIGGER_DEFS
-            ]
-            previous_thresholds = dict(zone.get("thresholds", {}))
-            thresholds: Dict[str, Any] = {}
-            for trig in TRIGGER_DEFS:
-                if trig in previous_thresholds:
-                    thresholds[trig] = previous_thresholds[trig]
-                else:
-                    thresholds[trig] = TRIGGER_DEFS[trig]["default"]
-            zones[zone_key] = {
-                **zone,
-                "enabled": user_input.get("enabled", zone.get("enabled", True)),
-                "level": user_input.get("level") or zone.get("level") or _default_zone_level(zone_key),
-                "rooms": user_input.get("rooms", zone.get("rooms", [])),
-                "triggers": selected_triggers,
-                "outputs": _sanitize_entity_ids(user_input.get("outputs", zone.get("outputs", []))),
-                "output_level": _normalize_fan_level_choice(
-                    user_input.get("output_level"),
-                    zone.get("output_level", ZONE_OUTPUT_LEVEL_DEFAULT),
-                ),
-                "boost_output_level": _normalize_fan_level_choice(
-                    user_input.get("boost_output_level"),
-                    zone.get("boost_output_level", ZONE_OUTPUT_LEVEL_BOOST_DEFAULT),
-                ),
-                "ui_label": _sanitize_ui_label(
-                    user_input.get("ui_label"),
-                    zone.get("ui_label") or _default_zone_ui_label(zone_key),
-                ),
-                "thresholds": thresholds,
+            changes = {
+                key: user_input[key] for key, default in defaults.items()
+                if key in user_input and user_input[key] != default
             }
-            self._options["zones"] = zones
-            boost_warning = _boost_level_warning(
-                zones[zone_key].get("output_level"),
-                zones[zone_key].get("boost_output_level"),
-            )
-            if boost_warning:
-                _LOGGER.warning("HI %s boost guidance: %s", zone_key, boost_warning)
-            duplicates = detect_zone_mapping_duplicates(self._section("telemetry", []), zones)
-            if duplicates:
-                _LOGGER.warning(
-                    "Zone mapping duplicates detected in options for %s: %s",
-                    zone_key,
-                    summarize_zone_mapping_duplicates(duplicates),
-                )
-            return await self.async_step_options_zones()
+            requested = changes.pop("triggers", selected_triggers)
+            additions = [trig for trig in requested if trig in TRIGGER_DEFS and trig not in selected_triggers]
+            if requested != selected_triggers and not isinstance(stored_triggers, list):
+                errors["base"] = "unrecognised_zone_settings"
+            elif requested != selected_triggers:
+                changes["triggers"] = [
+                    trig for trig in stored_triggers
+                    if trig not in selected_triggers or trig in requested
+                ] + additions
+            if "outputs" in changes:
+                changes["outputs"] = _sanitize_entity_ids(changes["outputs"])
+            if "ui_label" in changes:
+                changes["ui_label"] = _sanitize_ui_label(changes["ui_label"], defaults["ui_label"])
+
+            updated = dict(thresholds)
+            for trig, bounds in TRIGGER_DEFS.items():
+                field = f"threshold_{trig}"
+                raw = user_input.get(field)
+                if raw is None or raw == "":
+                    if trig in additions and trig not in thresholds:
+                        updated[trig] = bounds["default"]
+                    continue
+                value = _finite_float(raw)
+                if value is not None and value == _finite_float(thresholds.get(trig)):
+                    continue
+                if value is None or not bounds["min"] <= value <= bounds["max"]:
+                    errors[field] = "invalid_zone_threshold"
+                else:
+                    updated[trig] = value
+            if updated != thresholds:
+                if isinstance(stored_thresholds, dict):
+                    changes["thresholds"] = updated
+                else:
+                    errors["base"] = "unrecognised_zone_thresholds"
+            # The controller reads triggers and thresholds once a zone has all three inputs.
+            existing = zone if zone else {**defaults, "triggers": [], "thresholds": {}}
+            edited = {**existing, **changes}
+            enable_fields = ("enabled", "outputs", "triggers")
+            if all(edited.get(key) for key in enable_fields) and not all(zone.get(key) for key in enable_fields):
+                if not isinstance(edited.get("thresholds", {}), dict):
+                    errors["base"] = "unrecognised_zone_thresholds"
+                elif not isinstance(edited["triggers"], list) or not all(
+                    isinstance(trigger, str) for trigger in edited["triggers"]
+                ):
+                    errors["base"] = "unrecognised_zone_settings"
+            if not errors:
+                if changes:
+                    # Preserve raw representations and sparse legacy zones on unrelated edits.
+                    zones = {**zones, zone_key: edited}
+                    self._options["zones"] = zones
+                    boost_warning = _boost_level_warning(
+                        edited.get("output_level", ZONE_OUTPUT_LEVEL_DEFAULT),
+                        edited.get("boost_output_level", ZONE_OUTPUT_LEVEL_BOOST_DEFAULT),
+                    )
+                    if boost_warning:
+                        _LOGGER.warning("HI %s boost guidance: %s", zone_key, boost_warning)
+                    duplicates = detect_zone_mapping_duplicates(self._section("telemetry", []), zones)
+                    if duplicates:
+                        _LOGGER.warning(
+                            "Zone mapping duplicates detected in options for %s: %s",
+                            zone_key, summarize_zone_mapping_duplicates(duplicates),
+                        )
+                return await self.async_step_options_zones()
 
         room_options = [SelectOptionDict(value=room, label=room) for room in _rooms_all(self._section("telemetry", []))]
         level_options = _level_value_label_options(self._effective_config())
         zone_default = lambda field, default: _form_input_default(user_input, field, default)
-        selected_level_default = zone_default("level", zone.get("level"))
+        selected_level_default = zone_default("level", defaults["level"])
+        if defaults["level"] not in {option["value"] for option in level_options}:
+            level_options.append(SelectOptionDict(value=defaults["level"], label=defaults["level"]))
         schema_fields: Dict[Any, Any] = {
-            vol.Optional("enabled", default=zone_default("enabled", zone.get("enabled", True))): selector.BooleanSelector(),
+            vol.Optional("enabled", default=zone_default("enabled", defaults["enabled"])): selector.BooleanSelector(),
             vol.Optional("level", default=selected_level_default): selector.SelectSelector(
                 selector.SelectSelectorConfig(
                     options=level_options,
                     mode=selector.SelectSelectorMode.DROPDOWN,
                 )
             ),
-            vol.Optional("rooms", default=zone_default("rooms", zone.get("rooms", []))): selector.SelectSelector(
+            vol.Optional("rooms", default=zone_default("rooms", defaults["rooms"])): selector.SelectSelector(
                 selector.SelectSelectorConfig(
                     options=room_options,
                     multiple=True,
@@ -2652,17 +2614,14 @@ class HumidityIntelligenceOptionsFlow(VocIndexEditor, OutputObservationOptionsMi
                     mode=selector.SelectSelectorMode.DROPDOWN,
                 )
             ),
-            vol.Optional("outputs", default=zone_default("outputs", _sanitize_entity_ids(zone.get("outputs", [])))): selector.EntitySelector(
+            vol.Optional("outputs", default=zone_default("outputs", defaults["outputs"])): selector.EntitySelector(
                 selector.EntitySelectorConfig(domain=["fan", "switch"], multiple=True)
             ),
         }
-        schema_fields[vol.Optional(ADVANCED_OPTIONS_FIELD)] = _advanced_section({
+        advanced_fields = {
             vol.Optional(
                 "output_level",
-                default=_normalize_fan_level_choice(
-                    zone_default("output_level", zone.get("output_level", ZONE_OUTPUT_LEVEL_DEFAULT)),
-                    ZONE_OUTPUT_LEVEL_DEFAULT,
-                ),
+                default=zone_default("output_level", defaults["output_level"]),
             ): selector.SelectSelector(
                 selector.SelectSelectorConfig(
                     options=_fan_output_level_options(),
@@ -2671,27 +2630,36 @@ class HumidityIntelligenceOptionsFlow(VocIndexEditor, OutputObservationOptionsMi
             ),
             vol.Optional(
                 "boost_output_level",
-                default=_normalize_fan_level_choice(
-                    zone_default("boost_output_level", zone.get("boost_output_level", ZONE_OUTPUT_LEVEL_BOOST_DEFAULT)),
-                    ZONE_OUTPUT_LEVEL_BOOST_DEFAULT,
-                ),
+                default=zone_default("boost_output_level", defaults["boost_output_level"]),
             ): selector.SelectSelector(
                 selector.SelectSelectorConfig(
                     options=_fan_output_level_options(),
                     mode=selector.SelectSelectorMode.DROPDOWN,
                 )
             ),
-            vol.Optional("ui_label", default=zone_default("ui_label", zone.get("ui_label", _default_zone_ui_label(zone_key)))): selector.TextSelector(
+            vol.Optional("ui_label", default=zone_default("ui_label", defaults["ui_label"])): selector.TextSelector(
                 selector.TextSelectorConfig(type=selector.TextSelectorType.TEXT)
             ),
-        })
+        }
+        for trig in TRIGGER_DEFS:
+            field = f"threshold_{trig}"
+            saved = _finite_float(thresholds.get(trig))
+            suggested = zone_default(field, "" if saved is None else str(saved))
+            key = vol.Optional(field, default=suggested)
+            advanced_fields[key] = selector.TextSelector(selector.TextSelectorConfig(type="number"))
+        schema_fields[vol.Optional(ADVANCED_OPTIONS_FIELD)] = _advanced_section(advanced_fields)
+        schema_fields[vol.Required("action", default="apply")] = selector.SelectSelector(
+            selector.SelectSelectorConfig(
+                options=["apply", "back"], translation_key="zone_edit_action", mode=selector.SelectSelectorMode.LIST
+            )
+        )
         return self.async_show_form(
             step_id="options_zone_edit",
             data_schema=vol.Schema(schema_fields),
+            errors=errors,
             description_placeholders={
                 "zone_label": "Zone 1" if zone_key == "zone1" else "Zone 2",
                 "boost_guidance": _boost_guidance_for_zone(zone),
-                "advanced_note": ADVANCED_DEFAULTS_NOTE,
             },
         )
 
@@ -2723,7 +2691,7 @@ class HumidityIntelligenceOptionsFlow(VocIndexEditor, OutputObservationOptionsMi
             )
             for level in levels
         ]
-        options.append(SelectOptionDict(value="done", label="Done"))
+        options.append(SelectOptionDict(value="done", label="Back to settings"))
         schema = vol.Schema({
             vol.Required("action", default=levels[0]): selector.SelectSelector(
                 selector.SelectSelectorConfig(
@@ -2803,13 +2771,11 @@ class HumidityIntelligenceOptionsFlow(VocIndexEditor, OutputObservationOptionsMi
 
     async def async_step_options_aq(self, user_input: Optional[Dict[str, Any]] = None):
         """Choose an AQ lane to edit."""
+        self._pending_aq_level = None
+        self._aq_review = None
         aq = dict(self._section("aq", {}))
-        configured_levels = set(_levels_with_aq(self._section("telemetry", [])))
-        telemetry_levels = set(_configured_levels(self._section("telemetry", [])))
         known_levels = {item["value"] for item in LEVELS}
-        levels = sorted(set(aq.keys()).union(configured_levels).union(telemetry_levels).union(known_levels))
-        if not levels:
-            levels = _configured_levels(self._section("telemetry", [])) or [LEVELS[0]["value"]]
+        levels = sorted(known_levels.union(key for key in aq if isinstance(key, str) and key))
 
         if user_input is not None:
             action = user_input.get("action", "done")
@@ -2830,7 +2796,7 @@ class HumidityIntelligenceOptionsFlow(VocIndexEditor, OutputObservationOptionsMi
             )
             for level in levels
         ]
-        options.append(SelectOptionDict(value="done", label="Done"))
+        options.append(SelectOptionDict(value="done", label="Back to settings"))
         schema = vol.Schema({
             vol.Required("action", default=levels[0]): selector.SelectSelector(
                 selector.SelectSelectorConfig(
@@ -2852,8 +2818,8 @@ class HumidityIntelligenceOptionsFlow(VocIndexEditor, OutputObservationOptionsMi
 
     async def async_step_options_aq_edit(self, user_input: Optional[Dict[str, Any]] = None):
         aq = dict(self._section("aq", {}))
-        level = self._pending_aq_level or (sorted(aq.keys())[0] if aq else None)
-        if not level:
+        level = self._pending_aq_level
+        if not level or (level not in aq and level not in {item["value"] for item in LEVELS}):
             return await self.async_step_options_aq()
         cfg = aq.get(level, {
             "enabled": False,
@@ -2863,8 +2829,15 @@ class HumidityIntelligenceOptionsFlow(VocIndexEditor, OutputObservationOptionsMi
             "output_level": ZONE_OUTPUT_LEVEL_DEFAULT,
             "thresholds": {},
         })
-        lane_existed = level in aq
+        selected_triggers = cfg.get("triggers", []) or []
+        known_triggers = [trig for trig in selected_triggers if trig in AQ_TRIGGER_DEFS]
+        stored_thresholds = cfg.get("thresholds")
+        saved_thresholds = stored_thresholds if isinstance(stored_thresholds, dict) else {}
+        repairable = [
+            trig for trig in known_triggers if _aq_editable_threshold(trig, saved_thresholds.get(trig)) is None
+        ]
 
+        errors = {}
         if user_input is not None:
             user_input = _flatten_advanced_section_input(user_input)
 
@@ -2873,36 +2846,53 @@ class HumidityIntelligenceOptionsFlow(VocIndexEditor, OutputObservationOptionsMi
                 self._options["aq"] = aq
                 _LOGGER.info("Removed AQ lane for %s via options flow", level)
                 return await self.async_step_options_aq()
-            selected_triggers = user_input.get("triggers", cfg.get("triggers", [])) or []
-            thresholds = dict(cfg.get("thresholds", {}))
-            for trig in selected_triggers:
+            requested = user_input.get("triggers", selected_triggers) or []
+            # The selector only knows current trigger types. Retain legacy entries.
+            triggers = [trig for trig in selected_triggers if trig in requested or trig not in AQ_TRIGGER_DEFS]
+            additions = [
+                trig for trig in dict.fromkeys(requested) if trig in AQ_TRIGGER_DEFS and trig not in triggers
+            ]
+            triggers.extend(additions)
+            thresholds = dict(saved_thresholds)
+            for trig in requested:
                 field = f"threshold_{trig}"
-                if field in user_input:
-                    thresholds[trig] = user_input[field]
-            aq[level] = {
-                **cfg,
-                "enabled": user_input.get("enabled", cfg.get("enabled", False)),
-                "triggers": selected_triggers,
-                "outputs": _sanitize_entity_ids(user_input.get("outputs", cfg.get("outputs", []))),
-                "run_duration": user_input.get("run_duration", cfg.get("run_duration", 30)),
-                "output_level": _normalize_fan_level_choice(
-                    user_input.get("output_level"),
-                    cfg.get("output_level", ZONE_OUTPUT_LEVEL_DEFAULT),
-                ),
-                "thresholds": thresholds,
-            }
-            self._options["aq"] = aq
-            if lane_existed:
-                _LOGGER.info("Updated AQ lane for %s via options flow", level)
-            else:
-                _LOGGER.info("Added AQ lane for %s via options flow", level)
-            return await self.async_step_options_aq()
+                if trig not in known_triggers or field not in user_input:
+                    continue
+                prior = _aq_editable_threshold(trig, saved_thresholds.get(trig))
+                if prior is None:
+                    continue
+                value = _aq_editable_threshold(trig, user_input[field])
+                if value is None:
+                    errors[field] = "invalid_aq_threshold"
+                elif value != prior:
+                    thresholds[trig] = value
+            if not errors:
+                lane = {
+                    **cfg,
+                    "enabled": user_input.get("enabled", cfg.get("enabled", False)),
+                    "triggers": triggers,
+                    "outputs": _sanitize_entity_ids(user_input.get("outputs", cfg.get("outputs", []))),
+                    "run_duration": user_input.get("run_duration", cfg.get("run_duration", 30)),
+                    "output_level": _normalize_fan_level_choice(
+                        user_input.get("output_level"),
+                        cfg.get("output_level", ZONE_OUTPUT_LEVEL_DEFAULT),
+                    ),
+                }
+                if thresholds != saved_thresholds or level not in aq:
+                    lane["thresholds"] = thresholds
+                repairs = user_input.get("set_thresholds", [])
+                review = additions + [trig for trig in repairable if trig in repairs and trig in triggers]
+                if review:
+                    self._aq_review = _AQThresholdReview(level, deepcopy(aq.get(level)), lane, review)
+                    return await self.async_step_options_aq_thresholds()
+                aq[level] = lane
+                self._options["aq"] = aq
+                return await self.async_step_options_aq()
 
-        selected_triggers = cfg.get("triggers", []) or []
         aq_default = lambda field, default: _form_input_default(user_input, field, default)
         schema_fields: Dict[Any, Any] = {
             vol.Optional("enabled", default=aq_default("enabled", cfg.get("enabled", False))): selector.BooleanSelector(),
-            vol.Optional("triggers", default=aq_default("triggers", selected_triggers)): selector.SelectSelector(
+            vol.Optional("triggers", default=aq_default("triggers", known_triggers)): selector.SelectSelector(
                 selector.SelectSelectorConfig(
                     options=_aq_trigger_options(level, self._effective_config()),
                     multiple=True,
@@ -2937,32 +2927,97 @@ class HumidityIntelligenceOptionsFlow(VocIndexEditor, OutputObservationOptionsMi
                 )
             ),
         }
-        for trig in aq_default("triggers", selected_triggers):
-            trig_def = AQ_TRIGGER_DEFS.get(trig)
-            if not trig_def:
-                continue
-            field = f"threshold_{trig}"
-            advanced_fields[vol.Optional(
-                field,
-                default=aq_default(field, cfg.get("thresholds", {}).get(trig, trig_def["default"])),
-            )] = selector.NumberSelector(
-                selector.NumberSelectorConfig(
-                    min=trig_def["min"],
-                    max=trig_def["max"],
-                    step=trig_def.get("step", 1),
-                    mode=selector.NumberSelectorMode.SLIDER,
-                    unit_of_measurement=trig_def.get("unit"),
-                )
+        if repairable:
+            repair_key = vol.Optional("set_thresholds", default=aq_default("set_thresholds", []))
+            advanced_fields[repair_key] = selector.SelectSelector(
+                selector.SelectSelectorConfig(options=[
+                    SelectOptionDict(value=trig, label=_aq_threshold_note(trig, saved_thresholds.get(trig)))
+                    for trig in repairable
+                ], multiple=True)
             )
+        for trig in known_triggers:
+            if trig not in repairable:
+                field = f"threshold_{trig}"
+                current = _aq_editable_threshold(trig, saved_thresholds[trig])
+                default = current if field in errors else aq_default(field, current)
+                key = vol.Optional(field, default=default)
+                advanced_fields[key] = _aq_threshold_selector(trig)
         schema_fields[vol.Optional(ADVANCED_OPTIONS_FIELD)] = _advanced_section(advanced_fields)
         return self.async_show_form(
             step_id="options_aq_edit",
+            errors=errors,
             data_schema=vol.Schema(schema_fields),
             description_placeholders={
                 "level_label": _level_choice_label(level, self._effective_config()),
                 "advanced_note": ADVANCED_DEFAULTS_NOTE,
             },
         )
+
+    async def async_step_options_aq_thresholds(self, user_input: Optional[Dict[str, Any]] = None):
+        """Confirm new or explicitly requested thresholds before staging the lane."""
+        review = self._aq_review
+        if review is None or review.level != self._pending_aq_level:
+            return await self.async_step_options_aq()
+        level = review.level
+        lane = review.lane
+        aq = dict(self._section("aq", {}))
+        if aq.get(level) != review.previous_lane:
+            return await self.async_step_options_aq()
+        if user_input is not None and user_input.get("action") == "back":
+            self._aq_review = None
+            return await self.async_step_options_aq_edit()
+
+        stored = lane.get("thresholds")
+        if stored is not None and not isinstance(stored, dict):
+            return await self.async_step_options_aq_thresholds_unavailable()
+        thresholds = stored or {}
+        fields = {}
+        sources = []
+        values = {}
+        errors = {}
+        for trig in review.triggers:
+            key = f"threshold_{trig}"
+            saved = _aq_editable_threshold(trig, thresholds.get(trig))
+            default = saved if saved is not None else AQ_TRIGGER_DEFS[trig]["default"]
+            bounds = AQ_TRIGGER_DEFS[trig]
+            unit = AQ_CANONICAL_UNITS[AQ_TRIGGER_SPECS[trig]["sensor_type"]]
+            note = _aq_threshold_note(trig, thresholds.get(trig))
+            sources.append(f"- {note} Range {bounds['min']}–{bounds['max']} {unit}.")
+            if user_input is not None:
+                value = _aq_editable_threshold(trig, user_input.get(key))
+                if value is None:
+                    errors[key] = "invalid_aq_threshold"
+                else:
+                    values[trig] = thresholds[trig] if value == saved else value
+            # Validate limits only on confirmation, so Back also works with unfinished input.
+            suggested = str(default) if user_input is None else user_input.get(key, "")
+            marker = vol.Optional(key, description={"suggested_value": suggested})
+            fields[marker] = selector.TextSelector(selector.TextSelectorConfig(
+                type=selector.TextSelectorType.NUMBER, suffix=unit,
+            ))
+        if user_input is not None and user_input.get("action") == "confirm" and not errors:
+            aq[level] = {**lane, "thresholds": {**thresholds, **values}}
+            self._options["aq"] = aq
+            return await self.async_step_options_aq()
+        fields[vol.Required("action", default="confirm")] = selector.SelectSelector(
+            selector.SelectSelectorConfig(options=[
+                SelectOptionDict(value="confirm", label="Keep these thresholds"),
+                SelectOptionDict(value="back", label="Back to lane without these changes"),
+            ], mode=selector.SelectSelectorMode.LIST)
+        )
+        return self.async_show_form(
+            step_id="options_aq_thresholds", data_schema=vol.Schema(fields), errors=errors,
+            description_placeholders={
+                "level_label": _level_choice_label(level, self._effective_config()),
+                "threshold_sources": "\n".join(sources),
+            },
+        )
+
+    async def async_step_options_aq_thresholds_unavailable(self, user_input=None):
+        """Return without replacing an unrecognised threshold collection."""
+        if user_input is not None:
+            return await self.async_step_options_aq()
+        return self.async_show_form(step_id="options_aq_thresholds_unavailable", data_schema=vol.Schema({}))
 
     async def async_step_options_alerts(self, user_input: Optional[Dict[str, Any]] = None):
         """Choose an alert to edit."""
@@ -2995,7 +3050,7 @@ class HumidityIntelligenceOptionsFlow(VocIndexEditor, OutputObservationOptionsMi
             SelectOptionDict(value=str(idx), label=_alert_option_label(idx, alert))
             for idx, alert in enumerate(alerts)
         ])
-        options.append(SelectOptionDict(value="done", label="Done"))
+        options.append(SelectOptionDict(value="done", label="Back to settings"))
         default_action = "0" if alerts else "settings"
         schema = vol.Schema({
             vol.Required("action", default=default_action): selector.SelectSelector(
@@ -4035,11 +4090,38 @@ def _configured_levels(telemetry: List[Dict[str, Any]]) -> List[str]:
 
 def _levels_with_aq(telemetry: List[Dict[str, Any]]) -> List[str]:
     aq_types = {"co2", "voc", "iaq", "pm25", "co"}
-    levels = set()
-    for entry in telemetry:
-        if entry.get("sensor_type") in aq_types:
-            levels.add(entry.get("level"))
-    return sorted(levels)
+    return [item["value"] for item in LEVELS if any(
+        entry.get("sensor_type") in aq_types and entry.get("level") == item["value"]
+        for entry in telemetry
+    )]
+
+
+def _aq_editable_threshold(trig: str, value: Any) -> float | None:
+    """Present a saved threshold only when the native number control can edit it."""
+    number = _finite_float(value)
+    bounds = AQ_TRIGGER_DEFS[trig]
+    return number if number is not None and bounds["min"] <= number <= bounds["max"] else None
+
+
+def _aq_threshold_note(trig: str, value: Any) -> str:
+    """Describe a numeric legacy value without interpolating arbitrary stored text."""
+    label = AQ_TRIGGER_DEFS[trig]["label"]
+    number = _finite_float(value)
+    if number is None:
+        return f"{label}: no usable saved value. The editor suggests a default."
+    unit = AQ_CANONICAL_UNITS[AQ_TRIGGER_SPECS[trig]["sensor_type"]]
+    if _aq_editable_threshold(trig, number) is None:
+        return f"{label}: saved {number} {unit} is outside the editable range. Confirm to replace it."
+    return f"{label}: saved value {number} {unit}."
+
+
+def _aq_threshold_selector(trig: str) -> selector.NumberSelector:
+    bounds = AQ_TRIGGER_DEFS[trig]
+    return selector.NumberSelector(selector.NumberSelectorConfig(
+        min=bounds["min"], max=bounds["max"], step=bounds.get("step", 1),
+        mode=selector.NumberSelectorMode.SLIDER,
+        unit_of_measurement=AQ_CANONICAL_UNITS[AQ_TRIGGER_SPECS[trig]["sensor_type"]],
+    ))
 
 
 def _zone_trigger_context_label(

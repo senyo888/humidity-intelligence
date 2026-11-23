@@ -3650,7 +3650,6 @@ def test_startup_ui_refresh_contract_is_wired():
     assert "Show output entity details" in strings_source
     assert "['v2_tablet']" in config_source or 'default=["v2_tablet"]' in config_source
     assert "async_step_options_thresholds" in config_source
-    assert "zone1_threshold_humidity_high" in strings_source
     assert "temperature_comfort_mode" in strings_source
     assert "auto_refresh_ui_on_startup" in strings_source
     assert "recommended defaults" in config_source
@@ -3825,32 +3824,23 @@ def test_options_update_reports_export_failure_without_success_path():
     assert "files were written" not in notifications[0][2]["message"]
 
 
-def test_options_gates_keeps_custom_targets_behind_advanced():
-    config_source = (INTEGRATION_ROOT / "config_flow.py").read_text()
-    method_source = config_source.split("async def async_step_options_gates", 1)[1].split(
-        "async def async_step_options_presence_states", 1
-    )[0]
-    schema_source = method_source.split("schema_fields: Dict[Any, Any]", 1)[1]
-    visible_schema_source = schema_source.split("vol.Optional(ADVANCED_OPTIONS_FIELD", 1)[0]
-    advanced_schema_source = schema_source.split("vol.Optional(ADVANCED_OPTIONS_FIELD", 1)[1]
-
-    assert 'vol.Optional("target_profile"' in visible_schema_source
-    assert '"custom_target_low"' not in visible_schema_source
-    assert '"custom_target_high"' not in visible_schema_source
-    assert '"custom_target_low"' in advanced_schema_source
-    assert '"custom_target_high"' in advanced_schema_source
-
-
-def test_options_thresholds_only_persists_real_zone_configs():
-    config_source = (INTEGRATION_ROOT / "config_flow.py").read_text()
-    method_source = config_source.split("async def async_step_options_thresholds", 1)[1].split(
-        "async def async_step_options_sensors", 1
-    )[0]
-
-    assert "_configured_zone_items(zones)" in method_source
-    assert 'for zone_key in ("zone1", "zone2")' not in method_source
-    assert "zones[zone_key] = zone" in method_source
-    assert "zone[\"thresholds\"] = thresholds" in method_source
+def test_profile_and_zone_labels_belong_to_their_own_settings():
+    for filename in ("strings.json", "translations/en.json"):
+        steps = json.loads((INTEGRATION_ROOT / filename).read_text())["options"]["step"]
+        sections = steps["options_thresholds"]["sections"]
+        assert set(sections["humidity_targets"]["data"]) == {
+            "target_profile", "custom_target_low", "custom_target_high",
+        }
+        assert set(sections["temperature_comfort"]["data"]) == {
+            "temperature_comfort_mode", "temperature_comfort_custom_low", "temperature_comfort_custom_high",
+        }
+        gates = steps["options_gates"]
+        assert set(sections["humidity_targets"]["data"]).isdisjoint(gates["data"])
+        assert set(sections["humidity_targets"]["data"]).isdisjoint(gates["sections"]["show_advanced_options"]["data"])
+        zone = steps["options_zone_edit"]["sections"]["show_advanced_options"]
+        assert set(zone["data_description"]) == {
+            "threshold_humidity_high", "threshold_mould_risk", "threshold_condensation_risk", "threshold_air_quality_bad",
+        }
 
 
 def test_advanced_tuning_uses_collapsible_sections_not_submit_reveal():
@@ -3878,7 +3868,6 @@ def test_advanced_tuning_uses_collapsible_sections_not_submit_reveal():
         "async_step_aq_thresholds",
         "async_step_alert_add",
         "async_step_options_gates",
-        "async_step_options_thresholds",
         "async_step_options_zone_edit",
         "async_step_options_humidifier_edit",
         "async_step_options_aq_edit",
@@ -4518,7 +4507,7 @@ def test_config_flow_dependency_pages_keep_drift_statistics_status_out_of_fronte
     assert "drift_statistics" not in config_source
     assert "_render_drift_statistics_status" not in config_source
     for payload in (strings, translations):
-        setup_description = payload["config"]["step"]["dependencies"]["description"]
+        setup_description = payload["config"]["step"]["ui_install"]["description"]
         options_description = payload["options"]["step"]["options_dependencies"]["description"]
         assert "House Humidity Mean 7d" not in setup_description
         assert "House Humidity Mean 7d" not in options_description
@@ -5883,7 +5872,8 @@ def test_owned_ui_path_discovery_and_legacy_cleanup_guidance_is_explicit():
     assert "does not write a file" in support_source
 
     for data in (strings_data, translations_data):
-        description = data["config"]["step"]["ui_install"]["description"]
+        step = data["config"]["step"]["ui_install"]
+        description = step["description"] + step["data_description"]["ui_layouts"]
         assert "/config/humidity_intelligence/ui/" in description
         assert "/config/humidity_intelligence_cards_v2_mobile.yaml" in description
         assert "retained legacy root file" in description
