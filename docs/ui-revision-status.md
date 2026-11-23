@@ -1,7 +1,8 @@
 # Rendered UI revision
 
-The original v2.1.3-beta.1 candidate exported revision **17**. The AQ colour follow-up advances both layouts to revision **18**.
-See [card replacement and VOC downgrade](releases/v2.1.3-beta.1.md).
+Both v2.1.3-rc.1 layouts retain revision **18**, stamp schema **1** and generator
+contract **1** from the final beta.1. Its original export used revision **17**.
+See [RC card compatibility and upgrade](releases/v2.1.3-rc.1.md).
 
 The v2.1.1 Stable release uses revision **13** in both V2 layouts, with stamp schema
 **1** and generator contract **1**. Revisions 1–12 require fresh exports and full

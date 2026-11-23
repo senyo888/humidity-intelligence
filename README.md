@@ -823,17 +823,18 @@ CO emergency pressure. Details are in
 
 ## Release Notes
 
-### v2.1.3-beta.1 (Local candidate)
+### v2.1.3-rc.1 (Release candidate)
 
-V2 Mobile and Tablet show recorded modes in distinct colours, label AQ measurements
-with their units and keep configured unavailable readings visible. Risk and reason
-displays check their source first. Summary dialogs capture the opening values and
-keep your place in history as telemetry changes. The revision footer uses less space.
+Mobile and Tablet keep summary dialogs open during telemetry updates, label their
+opening snapshots and preserve the selected history range. History colours distinguish
+operating modes. AQ chips show units, retain configured missing readings and colour
+complete averages using HI display bands. Each monitor’s VOC index appears on its
+own display-only chip. Existing VOC concentration mappings keep their ppb or ppm
+units. Risk and reason displays follow the availability of their source.
 
-**VOC index (display only)** adds an optional labelled reading for each provider.
-Existing VOC mappings continue to use ppb/ppm. The AQ colour follow-up advances
-both layouts from revision 17 to 18. Fresh exports colour complete measurements
-using HI display bands and label concentration chips **VOC**. [Compatibility and downgrade](docs/releases/v2.1.3-beta.1.md)
+Both layouts retain revision 18 from the final beta.1. Those saved cards work with
+RC.1. Revision 17 and earlier need fresh exports and full saved-card replacement.
+[RC compatibility and upgrade](docs/releases/v2.1.3-rc.1.md)
 
 <a id="v212-stable-source-preparation"></a>
 
@@ -860,6 +861,18 @@ installation problem in [#145](https://github.com/senyo888/humidity-intelligence
 under Previous Releases; CHANGELOG.md retains the complete detailed history. -->
 <details>
 <summary>Previous Releases</summary>
+
+### v2.1.3-beta.1 (Earlier unpublished candidate)
+
+V2 Mobile and Tablet show recorded modes in distinct colours, label AQ measurements
+with their units and keep configured unavailable readings visible. Risk and reason
+displays check their source first. Summary dialogs capture the opening values and
+keep your place in history as telemetry changes. The revision footer uses less space.
+
+**VOC index (display only)** adds an optional labelled reading for each provider.
+Existing VOC mappings continue to use ppb/ppm. The AQ colour follow-up advances
+both layouts from revision 17 to 18. Fresh exports colour complete measurements
+using HI display bands and label concentration chips **VOC**. [Compatibility and downgrade](docs/releases/v2.1.3-beta.1.md)
 
 <a id="v211-stable-source-preparation"></a>
 

@@ -6,7 +6,15 @@ All notable changes to Humidity Intelligence will be documented in this file.
 
 This project follows a practical changelog format for Home Assistant and HACS users. Add new entries under a fresh `Unreleased` section before publishing a future release.
 
-## Unreleased — v2.1.3-beta.1
+## Unreleased — v2.1.3-rc.1
+
+- Admit RC.1 to the controller package builder and the admin release check.
+- Correct the packaged UI guide to revision 18. Mobile and Tablet retain the
+  revision-18 cards from the final beta.1.
+
+See [RC compatibility and upgrade](docs/releases/v2.1.3-rc.1.md).
+
+## v2.1.3-beta.1 — earlier unpublished candidate
 
 - Use a fixed mode palette in V2 history ribbons and legends. Preserve aliases and recorded unavailable states.
 - Revision 18 restores HI display-band colours for complete AQ averages and shortens concentration chip labels to VOC. Both layouts show the owning units and keep partial or unavailable measurements neutral.

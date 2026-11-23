@@ -204,7 +204,7 @@ def _contract_for_version(version: str) -> str:
     """Select the public package contract for an admitted manifest version."""
     if SEMANTIC_VERSION.fullmatch(version) and version.startswith("2.0."):
         return CONTRACT_ID
-    if version == "2.1.3-beta.1" or re.fullmatch(
+    if version in {"2.1.3-beta.1", "2.1.3-rc.1"} or re.fullmatch(
         r"2\.1\.[012](?:-(?:beta|rc)\.[1-9]\d*)?", version
     ):
         return V21_CONTRACT_ID

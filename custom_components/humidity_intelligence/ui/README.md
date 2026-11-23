@@ -1,7 +1,9 @@
 # Humidity Intelligence V2 UI
 
-The local v2.1.3-beta.1 candidate advances both layouts to revision **17**.
-See [card replacement and VOC downgrade](../../../docs/releases/v2.1.3-beta.1.md).
+Both v2.1.3-rc.1 layouts use revision **18**, with stamp schema **1** and generator
+contract **1**. Saved revision-18 cards from the final beta.1 remain compatible.
+Revision 17 and earlier require fresh exports and complete saved-card replacement.
+See [RC compatibility and upgrade](../../../docs/releases/v2.1.3-rc.1.md).
 
 ## Canonical Runtime Presentation Layer
 
