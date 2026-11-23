@@ -1,6 +1,6 @@
 # Rendered UI revision
 
-The local v2.1.3-beta.1 candidate advances both layouts to revision **17**.
+The original v2.1.3-beta.1 candidate exported revision **17**. The AQ colour follow-up advances both layouts to revision **18**.
 See [card replacement and VOC downgrade](releases/v2.1.3-beta.1.md).
 
 The v2.1.1 Stable release uses revision **13** in both V2 layouts, with stamp schema

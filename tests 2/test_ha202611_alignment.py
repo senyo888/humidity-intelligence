@@ -66,6 +66,46 @@ def test_conversion_overflow_and_dimensions():
     assert not aq.aq_source_summary(SimpleNamespace(states={}), {})["complete"]
 
 
+@pytest.mark.parametrize("kind,unit,values", [
+    ("iaq", None, (60.1, 60, 50.1, 50)),
+    ("pm25", "µg/m³", (34.9, 35, 64.9, 65)),
+    ("voc", "ppb", (39.9, 40, 59.9, 60)),
+    ("co", "ppm", (9.9, 10, 14.9, 15)),
+])
+def test_aq_display_bands_follow_displayed_mean(kind, unit, values):
+    for raw, expected in zip(values, (1, 2, 2, 3), strict=True):
+        _, _, hass, entry = environment([("sensor.example_a", kind, raw, unit)])
+        core = _load_core_module()._CoreComputations(hass, entry, entry.data["telemetry"])
+        for scope in (None, "level1"):
+            assert core._aq_average(kind, scope) == (raw, {"aq_display_band": expected})
+
+
+def test_display_band_uses_canonical_units_and_requires_complete_scope():
+    _, _, hass, entry = environment([
+        ("sensor.example_voc_a", "voc", 0.03999, "ppm"),
+        ("sensor.example_voc_b", "voc", 1, "index"),
+    ])
+    entry.data["telemetry"][1]["level"] = "level2"
+    core = _load_core_module()._CoreComputations(hass, entry, entry.data["telemetry"])
+    assert core._compute_level_voc_avg("level1") == (40, {"aq_display_band": 2})
+    assert core._compute_level_voc_avg("level2") == (None, {})
+    assert core._compute_house_voc_avg() == (40, {})
+
+    # Old entries may contain a source without a level. The house still owns it.
+    entry.data["telemetry"][1]["level"] = None
+    core = _load_core_module()._CoreComputations(hass, entry, entry.data["telemetry"])
+    assert core._compute_house_voc_avg() == (40, {})
+
+
+def test_nonfinite_aggregate_has_no_display_band():
+    _, _, hass, entry = environment([
+        ("sensor.example_iaq_a", "iaq", 1e308, "index"),
+        ("sensor.example_iaq_b", "iaq", 1e308, "index"),
+    ])
+    core = _load_core_module()._CoreComputations(hass, entry, entry.data["telemetry"])
+    assert core._compute_house_iaq_avg() == (None, {})
+
+
 def test_mixed_units_runtime_aggregate_and_stability_agree():
     readings = [("sensor.example_voc_a", "voc", .6, "ppm"),
                 ("sensor.example_voc_b", "voc", 700, "ppb")]

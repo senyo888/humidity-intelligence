@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass
 from enum import StrEnum
+from math import isfinite
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
 from homeassistant.core import HomeAssistant
@@ -25,7 +26,7 @@ from homeassistant.components.binary_sensor import BinarySensorEntity
 from homeassistant.util import slugify
 
 from ..const import DOMAIN
-from ..helpers.air_quality import AQ_CANONICAL_UNITS, parse_aq_value
+from ..helpers.air_quality import AQ_CANONICAL_UNITS, aq_display_band, parse_aq_value
 from ..helpers.drift import (
     HOUSE_HUMIDITY_MEAN_7D_ENTITY,
     house_drift_unavailable_attributes,
@@ -636,37 +637,42 @@ class _CoreComputations:
             "spread_risk_threshold": profile.mould_spread_risk,
         }
 
+    def _aq_average(self, kind: str, level: str | None = None) -> Tuple[Optional[float], Dict[str, Any]]:
+        values = self._collect_values(kind, level)
+        value = _avg(values)
+        if value is None or not isfinite(value):
+            return None, {}
+        expected = sum(
+            1 for row in self.telemetry
+            if row.get("sensor_type") == kind and (level is None or row.get("level") == level)
+        )
+        if len(values) != expected:
+            return value, {}
+        return value, {"aq_display_band": aq_display_band(kind, value)}
+
     def _compute_house_iaq_avg(self) -> Tuple[Optional[float], Dict[str, Any]]:
-        values = self._collect_values("iaq")
-        return _avg(values), {}
+        return self._aq_average("iaq")
 
     def _compute_house_pm25_avg(self) -> Tuple[Optional[float], Dict[str, Any]]:
-        values = self._collect_values("pm25")
-        return _avg(values), {}
+        return self._aq_average("pm25")
 
     def _compute_house_voc_avg(self) -> Tuple[Optional[float], Dict[str, Any]]:
-        values = self._collect_values("voc")
-        return _avg(values), {}
+        return self._aq_average("voc")
 
     def _compute_house_co_avg(self) -> Tuple[Optional[float], Dict[str, Any]]:
-        values = self._collect_values("co")
-        return _avg(values), {}
+        return self._aq_average("co")
 
     def _compute_level_iaq_avg(self, level: str) -> Tuple[Optional[float], Dict[str, Any]]:
-        values = self._collect_values("iaq", level)
-        return _avg(values), {}
+        return self._aq_average("iaq", level)
 
     def _compute_level_pm25_avg(self, level: str) -> Tuple[Optional[float], Dict[str, Any]]:
-        values = self._collect_values("pm25", level)
-        return _avg(values), {}
+        return self._aq_average("pm25", level)
 
     def _compute_level_voc_avg(self, level: str) -> Tuple[Optional[float], Dict[str, Any]]:
-        values = self._collect_values("voc", level)
-        return _avg(values), {}
+        return self._aq_average("voc", level)
 
     def _compute_level_co_avg(self, level: str) -> Tuple[Optional[float], Dict[str, Any]]:
-        values = self._collect_values("co", level)
-        return _avg(values), {}
+        return self._aq_average("co", level)
 
     def _compute_house_drift_7d(self) -> Tuple[Optional[float], Dict[str, Any]]:
         current = self._compute_house_avg_humidity()[0]

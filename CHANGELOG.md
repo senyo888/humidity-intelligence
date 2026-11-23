@@ -9,7 +9,7 @@ This project follows a practical changelog format for Home Assistant and HACS us
 ## Unreleased — v2.1.3-beta.1
 
 - Use a fixed mode palette in V2 history ribbons and legends. Preserve aliases and recorded unavailable states.
-- Use owning units and neutral AQ values. Show configured missing measurements by entry and level.
+- Revision 18 restores HI display-band colours for complete AQ averages and shortens concentration chip labels to VOC. Both layouts show the owning units and keep partial or unavailable measurements neutral.
 - Share the current mode and validated reason presentation across V2 summaries. Guard retained risk and reason attributes in current details and recorded reason samples.
 - Match Tablet Risk icons to the red borders, tighten revision-footer spacing and retain the full focusable target.
 - Keep labelled opening snapshots and inspected history through routine telemetry. Close a dialog when its owner or source binding changes.

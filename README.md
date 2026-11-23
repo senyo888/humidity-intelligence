@@ -831,8 +831,9 @@ displays check their source first. Summary dialogs capture the opening values an
 keep your place in history as telemetry changes. The revision footer uses less space.
 
 **VOC index (display only)** adds an optional labelled reading for each provider.
-Existing VOC concentration mappings continue to use ppb/ppm. Both layouts advance
-to revision 17 and require fresh card exports. [Compatibility and downgrade](docs/releases/v2.1.3-beta.1.md)
+Existing VOC mappings continue to use ppb/ppm. The AQ colour follow-up advances
+both layouts from revision 17 to 18. Fresh exports colour complete measurements
+using HI display bands and label concentration chips **VOC**. [Compatibility and downgrade](docs/releases/v2.1.3-beta.1.md)
 
 <a id="v212-stable-source-preparation"></a>
 

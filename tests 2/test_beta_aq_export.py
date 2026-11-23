@@ -76,8 +76,20 @@ def test_generated_strip_uses_same_entry_config_units_and_source_status():
         assert "sensor.example_label" not in expr
         html = render(expr, states)
         assert "100 ppb" in html and "Unknown" in html and "House CO" not in html
+        assert ">House VOC</span>" in html and "VOC concentration" not in html
         assert "Incomplete" in html and "Test sensor.example_label ]]] &lt;index&gt; VOC index" in html
         assert '>0</span>' in html and "#ef4444" not in html
+        key = "sensor.hi_house_voc_average"
+        for band, color in ((1, "#4ade80"), (2, "#facc15"), (3, "#ef4444")):
+            attrs = {"unit_of_measurement": "ppb", "aq_display_band": band}
+            colored = render(expr, {**states, key: {"state": "100", "attributes": attrs}})
+            assert f'color:{color}">100 ppb' in colored and f"HI display band {band} of 3" in colored
+            assert colored.count("HI display band") == 2  # One chip's title and accessible name.
+            for raw, unit in (("unavailable", "ppb"), ("100", "index")):
+                fallback = render(expr, {**states, key: {
+                    "state": raw, "attributes": {**attrs, "unit_of_measurement": unit},
+                }})
+                assert "HI display band" not in fallback
         for feed in [None, dict(states["sensor.hi_diagnostics"], state="unavailable"),
                      {"state": "1", "attributes": {"schema": 1, "readings": {}}}]:
             fallback = render(expr, {**states, "sensor.hi_diagnostics": feed})

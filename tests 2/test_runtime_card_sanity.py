@@ -5378,7 +5378,7 @@ def test_generated_v2_cards_escape_dynamic_html_text():
         assert "displayReason.lines.map((line) => escapeHtml(line.text))" in source, path
         assert "return escapeHtml(legacyReason())" in source, path
         assert "${escapeHtml(k)}" in source, path
-        assert "${esc(label)}</span> <span class=\"v\">${esc(value)}" in source, path
+        assert "${esc(label)}</span>" in source and ">${esc(value)}</span>" in source, path
 
 
 def test_diagnostics_summary_surfaces_temperature_comfort_warm_boundary():

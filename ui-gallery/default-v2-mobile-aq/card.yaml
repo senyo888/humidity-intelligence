@@ -2414,19 +2414,24 @@ card:
             const metrics = [
               ["", "iaq", "House IAQ", "sensor.air_control_house_iaq_average"],
               ["", "pm25", "House PM2.5", "sensor.air_control_house_pm25_average"],
-              ["", "voc", "House VOC concentration", "sensor.air_control_house_voc_average"],
+              ["", "voc", "House VOC", "sensor.air_control_house_voc_average"],
               ["", "co", "House CO", "sensor.air_control_house_co_average"],
               ["level2", "iaq", "Upstairs IAQ", "sensor.air_control_upstairs_iaq_average"],
               ["level2", "pm25", "Upstairs PM2.5", "sensor.air_control_upstairs_pm25_average"],
-              ["level2", "voc", "Upstairs VOC concentration", "sensor.air_control_upstairs_voc_average"],
+              ["level2", "voc", "Upstairs VOC", "sensor.air_control_upstairs_voc_average"],
               ["level2", "co", "Upstairs CO", "sensor.air_control_upstairs_co_average"],
               ["level1", "iaq", "Downstairs IAQ", "sensor.air_control_downstairs_iaq_average"],
               ["level1", "pm25", "Downstairs PM2.5", "sensor.air_control_downstairs_pm25_average"],
-              ["level1", "voc", "Downstairs VOC concentration", "sensor.air_control_downstairs_voc_average"],
+              ["level1", "voc", "Downstairs VOC", "sensor.air_control_downstairs_voc_average"],
               ["level1", "co", "Downstairs CO", "sensor.air_control_downstairs_co_average"],
             ];
             const esc = text => String(text).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#39;');
-            const chip = (label, value) => `<span class="cv-chip" style="--cv:#94a3b8"><span class="k">${esc(label)}</span> <span class="v">${esc(value)}</span></span>`;
+            const palette = ['#94a3b8', '#4ade80', '#facc15', '#ef4444'];
+            const chip = (label, value, band = 0) => {
+              const color = palette[band];
+              const hint = band ? ` title="HI display band ${band} of 3" aria-label="${esc(label)}, ${esc(value)}, HI display band ${band} of 3"` : '';
+              return `<span class="cv-chip" style="--cv:${color}"${hint}><span class="k">${esc(label)}</span> <span class="v" style="color:${color}">${esc(value)}</span></span>`;
+            };
             const chips = [];
             if (Array.isArray(inventory)) {
               for (const [level, kind, label, id] of metrics) {
@@ -2437,7 +2442,11 @@ card:
                 const unit = sensor?.attributes?.unit_of_measurement || (kind === 'iaq' &&
                   diag.attributes?.diagnostics_summary?.aq_inputs?.by_type?.iaq?.unit === 'index' ? 'index' : null);
                 const missing = raw.toLowerCase() === 'unknown' ? 'Unknown' : 'Unavailable';
-                chips.push(chip(label, numeric ? `${raw} ${unit || '(unit not supplied)'}` : missing));
+                const band = sensor?.attributes?.aq_display_band;
+                const canonicalUnit = {iaq:'index', pm25:'µg/m³', voc:'ppb', co:'ppm'}[kind];
+                const useBand = numeric && Number(raw) >= 0 && typeof unit === 'string' &&
+                  unit.replace('μ','µ') === canonicalUnit && [1, 2, 3].includes(band);
+                chips.push(chip(label, numeric ? `${raw} ${unit || '(unit not supplied)'}` : missing, useBand ? band : 0));
               }
               if (inventory.some(row => typeof row?.sensor_type !== 'string' || !row.level))
                 chips.push(chip('AQ configuration', 'Incomplete'));
@@ -4197,7 +4206,7 @@ card:
             hi_mode: *hi_mode
             hi_reason_html: *hi_reason_html
             hi_summary: |
-              [[[ return {"title": "AQ", "history": "sensor.air_control_house_iaq_average", "description": "Shows HI’s air-quality activity. Current Air Control shows which ventilation mode is selected.", "historyNote": "Explore separate charts for the available IAQ, PM2.5, VOC and CO averages. Units appear when they were recorded.", "kind": "mode", "historyEntities": [{"id": "sensor.air_control_house_iaq_average", "label": "House IAQ average", "kind": "numeric"}, {"id": "sensor.air_control_house_pm25_average", "label": "House PM2.5 average", "kind": "numeric"}, {"id": "sensor.air_control_house_voc_average", "label": "House VOC average", "kind": "numeric"}, {"id": "sensor.air_control_house_co_average", "label": "House CO average", "kind": "numeric"}], "owner": "sensor.air_control_mode", "reason": "sensor.air_control_reason"}; ]]]
+              [[[ return {"title": "AQ", "history": "sensor.air_control_house_iaq_average", "description": "AQ chip colours show HI display bands for each complete average. An individual CO reading can trigger an emergency even when the house average is green. Current Air Control shows the selected ventilation mode.", "historyNote": "Explore separate charts for the available IAQ, PM2.5, VOC and CO averages. Units appear when they were recorded.", "kind": "mode", "historyEntities": [{"id": "sensor.air_control_house_iaq_average", "label": "House IAQ average", "kind": "numeric"}, {"id": "sensor.air_control_house_pm25_average", "label": "House PM2.5 average", "kind": "numeric"}, {"id": "sensor.air_control_house_voc_average", "label": "House VOC average", "kind": "numeric"}, {"id": "sensor.air_control_house_co_average", "label": "House CO average", "kind": "numeric"}], "owner": "sensor.air_control_mode", "reason": "sensor.air_control_reason"}; ]]]
           triggers_update:
             - sensor.air_control_house_iaq_average
             - sensor.air_control_reason
