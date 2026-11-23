@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Deterministically embed the owned history renderer into self-contained V2 cards.
+"""Embed the history renderer and its live mode palette into self-contained V2 cards.
 
 Run with --check in validation. No Home Assistant mutation or resource registration.
 """
@@ -8,6 +8,7 @@ import argparse
 from pathlib import Path
 import re
 import sys
+import textwrap
 
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE = ROOT / 'custom_components/humidity_intelligence/ui/badge_history.js'
@@ -17,23 +18,41 @@ TARGETS = (
     'ui-gallery/default-v2-mobile-aq/card.yaml',
     'ui-gallery/default-v2-tablet-zone-1-cooking/card.yaml',
 )
-PATTERN = re.compile(r'(?m)^( +)// HI-HISTORY-RENDERER:START\n.*?^\1// HI-HISTORY-RENDERER:END$', re.S)
+
+
+def marked_block(marker):
+    return re.compile(
+        rf'^( +)// HI-{marker}:START\n(.*?)^\1// HI-{marker}:END$', re.M | re.S
+    )
+
+
+def embed(card, marker, source, expected, name):
+    def replace(match):
+        indent = match[1]
+        return (f'{indent}// HI-{marker}:START\n'
+                f'{textwrap.indent(source, indent)}\n{indent}// HI-{marker}:END')
+
+    updated, count = marked_block(marker).subn(replace, card)
+    if count != expected:
+        raise SystemExit(f'{name}: expected {expected} {marker} blocks, found {count}')
+    return updated
+
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--check', action='store_true')
     args = parser.parse_args()
     source = SOURCE.read_text().rstrip()
+    palettes = marked_block('MODE-PALETTE').findall(source)
+    if len(palettes) != 1:
+        raise SystemExit('Expected one canonical mode palette in the history renderer')
+    palette = textwrap.dedent(palettes[0][1]).rstrip()
     stale = []
     for name in TARGETS:
         path = ROOT / name
         original = path.read_text()
-        def embed(match):
-            indent = match.group(1)
-            return indent + '// HI-HISTORY-RENDERER:START\n' + '\n'.join(indent + line if line else indent.rstrip() for line in source.splitlines()) + '\n' + indent + '// HI-HISTORY-RENDERER:END'
-        updated, count = PATTERN.subn(embed, original)
-        if count != 4:
-            raise SystemExit(f'{name}: expected four renderer markers, found {count}')
+        updated = embed(original, 'HISTORY-RENDERER', source, 4, name)
+        updated = embed(updated, 'LIVE-MODE-PALETTE', palette, 1, name)
         if updated != original:
             stale.append(name)
             if not args.check:

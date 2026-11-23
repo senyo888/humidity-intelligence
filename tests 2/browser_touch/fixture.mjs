@@ -91,7 +91,12 @@ window.fixture={events,layout,publish,all,mapping:input.mapping,
  scoreCase(name){this.score(structuredClone(input.stability_cases[name]));},
  preferenceSubscribers:()=>preferenceSubscribers.size,
  score(value){const old=hass.states[diag];hass={...hass,states:{...hass.states,[diag]:{...old,attributes:{...old.attributes,stability_score:value}}}};publish();},
- setState(key,state){const id=input.mapping[key]||key;hass={...hass,states:{...hass.states,[id]:{...hass.states[id],state}}};publish();},
+ setState(key,state,attributes){
+  const id=input.mapping[key]||key,next={...hass.states};
+  if(state===null)delete next[id];
+  else next[id]={...next[id],entity_id:id,state,attributes:attributes??next[id]?.attributes??{}};
+  hass={...hass,states:next};publish();
+ },
  disconnect(){connection.connected=false;connection.dispatchEvent(new Event('disconnected'));publish(false);},
  ready(){connection.connected=true;connection.dispatchEvent(new Event('ready'));publish(false);},
  fresh(){publish();},remove(){document.querySelector('#fixture').replaceChildren();},

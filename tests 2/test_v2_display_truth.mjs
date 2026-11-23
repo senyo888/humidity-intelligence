@@ -38,6 +38,8 @@ for (const file of files) {
         assert.equal(render(undefined, states), 'Unavailable');
       }
       states[severity].attributes.source_room_marker = marker;
+      states[severity].state = 'Watch';
+      assert.equal(render(undefined, states), 'Unavailable');
       states[severity].state = 'unavailable';
       assert.equal(render(undefined, states), 'Unavailable');
       states[severity].state = 'OK';

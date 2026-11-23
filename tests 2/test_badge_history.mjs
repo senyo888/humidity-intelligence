@@ -62,7 +62,7 @@ class Node extends EventTarget {
  focus(){this.ownerDocument.activeElement=this;}
  set innerHTML(html){this.replaceChildren();this._html=html;this.selectors=new Map();
   const add=(selector,tag='button')=>{const node=new Node(tag,this.ownerDocument);this.selectors.set(selector,node);this.appendChild(node);return node;};
-  if(html.includes('data-back')){add('nav','nav');add('[data-back]');add('[data-native]');const day=add('[data-hours="24"]');day.dataset.hours='24';const week=add('[data-hours="168"]');week.dataset.hours='168';const c=add('.hi-history-content','div');c.className='hi-history-content';}
+  if(html.includes('data-back')){add('nav','nav');add('[data-back]');add('[data-native]');add('[data-native-status]','div');const day=add('[data-hours="24"]');day.dataset.hours='24';const week=add('[data-hours="168"]');week.dataset.hours='168';const c=add('.hi-history-content','div');c.className='hi-history-content';}
   if(html.includes('<select')){add('select','select');add('output','output');}
  }
  get innerHTML(){return this._html||'';}
@@ -74,7 +74,7 @@ function harness({timeoutMs=1000, withSource, entities=[{id:'sensor.entry_risk',
  const close=dialog.appendChild(document.createElement('button'));close.className='hi-summary-close';const title=dialog.appendChild(document.createElement('h2'));const button=dialog.appendChild(document.createElement('button'));button.className='hi-summary-history';
  const requests=[],pending=[];const owner={isConnected:true,hass:{config:{time_zone:'Europe/London'},locale:{language:'en-GB'},callWS:callWS||((request)=>{requests.push(request);return new Promise((resolve,reject)=>pending.push({resolve,reject}));})}};
  let native=0;let controller;
- controller=model.create({dialog,owner,entities,states:states||Object.fromEntries(entities.map(e=>[e.id,{state:'unknown'}])),now:()=>endTime,timeoutMs,withSource,close:()=>controller.dispose(),openEntity:()=>native++});
+ controller=model.create({dialog,owner,entities,states:states||Object.fromEntries(entities.map(e=>[e.id,{state:'unknown'}])),now:()=>endTime,timeoutMs,withSource,close:()=>controller.dispose(),openEntity:beforeOpen=>{beforeOpen();native++;return true;}});
  const section=dialog.children.find(n=>n.className==='hi-history');
  return {controller,document,dialog,section,owner,requests,pending,content:section.querySelector('.hi-history-content'),button,title,native:()=>native};
 }
@@ -166,7 +166,7 @@ test('a retained reason cannot mask the state of its own recorded sample', () =>
  assert.deepEqual(model.normalize(rows,start,end,'reason').records.map(r=>r.state),['unknown','unavailable','retained']);
 });
 
-test('mode ribbons and legend share 13 swatches and one entry for Zone 2 aliases', async () => {
+test('live chips, mode ribbons and legend agree across both layouts and Zone 2 aliases', async () => {
  const modes = ['normal','cooking','bathroom','bath','air_quality','global_gate','away','paused',
    'manual_override','disabled','telemetry_unavailable','alert','danger','co_emergency','unavailable','unexpected'];
  const h = harness({entities:[{id:'sensor.entry_mode',kind:'mode',label:'Mode'}]});
@@ -182,5 +182,21 @@ test('mode ribbons and legend share 13 swatches and one entry for Zone 2 aliases
  const legend = html.split('class="hi-history-legend"')[1].split('</div>')[0];
  assert.equal(legend.match(/Zone 2/g).length,1);
  for (const fill of fills) assert.ok(legend.includes('background:'+fill));
+ const surfaces = [
+   'custom_components/humidity_intelligence/ui/cards/v2_mobile.yaml',
+   'custom_components/humidity_intelligence/ui/cards/v2_tablet.yaml',
+   'ui-gallery/default-v2-mobile-aq/card.yaml',
+   'ui-gallery/default-v2-tablet-zone-1-cooking/card.yaml',
+ ];
+ for (const file of surfaces) {
+   const card = fs.readFileSync(path.join(ROOT, file), 'utf8');
+   const body = card.match(/^        status: \|\n          \[\[\[\n(.*?)^          \]\]\]/ms);
+   assert.ok(body, file);
+   const render = new Function('states', body[1]);
+   for (const [index, mode] of modes.entries()) {
+     const live = render({'sensor.air_control_mode': {state: mode}});
+     assert.equal(live.match(/style="--cv:(#[a-f0-9]{6});/)[1], fills[index], file + ': ' + mode);
+   }
+ }
  h.controller.dispose();
 });

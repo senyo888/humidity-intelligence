@@ -125,6 +125,33 @@ test('all four V2 surfaces carry one identical status renderer', () => {
   assert.equal(new Set(STATUS_BODIES).size, 1);
 });
 
+test('live safety and AQ status retain their colours when they override an exact mode', () => {
+  const co = {'input_boolean.air_co_emergency_active': {state: 'on'}};
+  const aq = {'input_boolean.air_aq_upstairs_active': {state: 'on'}};
+  const alert = {'switch.alert_active': {state: 'on', attributes: {alert_index: 1, trigger_type: 'humidity'}}};
+  const cases = [
+    ['manual_override', co, 'ALERT', '#ef4444'],
+    ['alert', co, 'ALERT', '#ef4444'],
+    ['disabled', alert, 'ALERT', '#ef4444'],
+    ['normal', aq, 'AQ', '#a855f7'],
+    ['danger', aq, 'AQ', '#ef4444'],
+    ['cooking', aq, 'ZONE 1', '#38bdf8'],
+    ['away', alert, 'GATE', '#5eead4'],
+    ['telemetry_unavailable', co, 'TELEMETRY UNAVAILABLE', '#fdba74'],
+    ['unknown', co, 'UNKNOWN', '#64748b'],
+    ['unavailable', aq, 'UNKNOWN', '#64748b'],
+    ['constructor', aq, 'UNKNOWN', '#64748b'],
+  ];
+  for (const [mode, flags, text, colour] of cases) {
+    const states = {'sensor.air_control_mode': {state: mode}, ...flags};
+    const output = assertIdentical(STATUS_RENDERERS.map(render => render(states)));
+    const leading = output.match(/style="--cv:(#[a-f0-9]{6});[^"]*">\s*<span class="t">([^<]+)</);
+    assert.deepEqual(leading.slice(1), [colour, text], mode);
+    if (flags === co) assert.match(output, /style="--cv:#ef4444;[^"]*">\s*<span class="t">CO EMERGENCY</);
+    if (flags === aq) assert.match(output, /style="--cv:#a855f7;[^"]*">\s*<span class="t">AQ Upstairs</);
+  }
+});
+
 test('humidity danger chip stops after the resolved zone', () => {
   const states = {
     'sensor.air_control_mode': { state: 'alert', attributes: {} },

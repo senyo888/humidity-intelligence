@@ -101,8 +101,10 @@ function harness({ supported = true, deferredClose = false, showThrows = false, 
     const routes = {Humidity:'sensor.house_average_humidity',Condensation:'sensor.worst_room_condensation',Mould:'sensor.worst_room_mould','Current Air Control':'sensor.air_control_mode',Ready:'sensor.house_average_humidity','Zone 1':'sensor.kitchen_humidity','Zone 2':'sensor.bathroom_humidity',AQ:'sensor.air_control_house_iaq_average'};
     const history = routes[title] || (title === 'Stability Score' ? 'sensor.hi_diagnostics' : 'sensor.house_humidity_drift_7d');
     const summary = routes[title] ? new Function(rendererBody(source,title,'hi_summary'))() : {history,title};
+    const mountedStates = statesOverride || (missing ? {} : {[history]:{state:'normal'}});
+    card.hass = {connection,states:mountedStates};
     new Function('document', 'window', 'MutationObserver', 'CustomEvent', 'entity', 'variables', 'states', 'hass', 'setTimeout', 'clearTimeout', body)
-      .call(card, document, window, Observer, DetailEvent, { entity_id: history }, {hi_summary:summary}, statesOverride || (missing ? {} : {[history]:{state:'normal'}}), {connection}, schedule, id => timers.delete(id));
+      .call(card, document, window, Observer, DetailEvent, { entity_id: history }, {hi_summary:summary}, mountedStates, card.hass, schedule, id => timers.delete(id));
   }
   return { document, window, owner, invoke, observers, timers, connection,
     dialogs: () => document.querySelectorAll('[data-hi-summary-dialog]'),
@@ -143,6 +145,22 @@ test('every summary opens and closes before dispatching its explicit history rou
     assert.equal(h.observers.size,0);
   }
 });
+test('direct history uses the latest owner states even if the opening states still contain the target',()=>{
+  for(const source of SURFACES)for(const title of ['Humidity','Ready','Zone 1','Zone 2']){
+    const h=harness();const owner=h.owner();const events=[];
+    owner.addEventListener('hass-more-info',e=>events.push(e.detail.entityId));
+    h.invoke(owner,source,title);const [dialog]=h.dialogs(),button=dialog.querySelector('.hi-summary-history');
+    const opened=owner.hass;
+    owner._hass={...opened,states:{}};delete owner.hass;
+    button.focus();button.dispatchEvent(new Event('click'));
+    assert.equal(h.dialogs()[0],dialog);assert.equal(h.document.activeElement,button);assert.deepEqual(events,[]);
+    const status=dialog.children.find(child=>child.getAttribute('role')==='status');
+    assert.equal(status.textContent,'This entity is no longer present in Home Assistant.');
+    owner._hass=opened;button.dispatchEvent(new Event('click'));
+    assert.deepEqual(events,Object.keys(opened.states));assert.equal(h.dialogs().length,0);
+  }
+});
+
 test('Close, native Escape close, navigation, backdrop and removal clean up',()=>{
   for (const exit of ['close','native-close','pagehide','popstate','location-changed','backdrop','remove']) {
     const h=harness(); const card=h.owner(); h.invoke(card); const [d]=h.dialogs();
@@ -185,7 +203,8 @@ test('missing mapping disables history while explanation remains accessible',()=
 function rendererBody(source,title,key){
  const text=fs.readFileSync(path.join(ROOT,source),'utf8');
  const titleAt=text.indexOf(`name: ${title}\n`);
- const begin=key==='hi_summary'?text.lastIndexOf('hi_summary: |',titleAt):text.indexOf(`${key}: |`,titleAt);
+ const begin=key==='hi_reason_html' ? text.indexOf('hi_reason_html: &hi_reason_html |') :
+   key==='hi_summary'?text.lastIndexOf('hi_summary: |',titleAt):text.indexOf(`${key}: |`,titleAt);
  const start=text.indexOf('[[[',begin);return text.slice(start+3,text.indexOf(']]]',start));
 }
 test('renderer escapes dynamic risk, reason and history labels and qualifies existing routes',()=>{
@@ -194,10 +213,12 @@ test('renderer escapes dynamic risk, reason and history labels and qualifies exi
   const render=new Function('entity','variables','states',rendererBody(source,title,'summary'));
   const hostile='<img src=x onerror="bad()">';
   const entity={state:hostile,attributes:{risk:hostile}};
-  const states={[config.history]:{state:hostile,attributes:{friendly_name:hostile}},'sensor.air_control_reason':{state:hostile}};
-  const html=render(entity,{hi_summary:config,hi_risk:'Danger',hi_mode:hostile,hi_reason_html:"Escaped reason"},states);
+  const states={[config.history]:{state:hostile,attributes:{friendly_name:hostile}},'sensor.air_control_reason':{state:'Inspect <valve> & confirm'}};
+  const presentReason=new Function('states',rendererBody(source,title,'hi_reason_html'));
+  const html=render(entity,{hi_summary:config,hi_risk:'Danger',hi_mode:hostile,hi_reason_html:presentReason(states)},states);
+  if(config.kind==='mode') assert.equal(html.split('Reason: Inspect &lt;valve&gt; &amp; confirm').length,2,title);
   assert.ok(!html.includes(hostile),title);if(title !== 'Humidity') assert.match(html,/&lt;img/);assert.match(html,/Recorder and retention/);
-  const absent=render(undefined,{hi_summary:config,hi_risk:'Unavailable',hi_mode:'Unavailable',hi_reason_html:"Reason unavailable."},{});assert.match(absent,/currently unavailable in Home Assistant/);assert.match(absent,/disabled/);assert.match(absent,/Unavailable/);
+  const absent=render(undefined,{hi_summary:config,hi_risk:'Unavailable',hi_mode:'Unavailable',hi_reason_html:presentReason({})},{});assert.match(absent,/currently unavailable in Home Assistant/);assert.match(absent,/disabled/);assert.match(absent,/Unavailable/);
  }
 });
 test('compact badges preserve color expressions and icons are removed only from four cards',()=>{

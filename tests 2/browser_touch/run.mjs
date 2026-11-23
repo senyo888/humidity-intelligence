@@ -213,6 +213,56 @@ for(const engine of (process.env.BROWSERS||'chromium,webkit').split(',')){
    assert.equal(await page.evaluate(()=>fixture.restoredBeforeClose),true);
    assert.equal(await page.evaluate(()=>fixture.events.moreInfo.length),0);
   },page);
+  await check(prefix+'/summary-literal-reason',async()=>{
+   await open(page,layout);
+   const reason='Inspect <valve> & confirm';
+   await page.evaluate(reason=>fixture.setState('sensor.air_control_reason','reported',{full_reason:reason}),reason);
+   await page.locator('button-card[data-hi-name="Current Air Control"] #card').tap();
+   const dialog=page.locator('dialog.hi-summary-details[open]');await dialog.waitFor();
+   assert.equal((await dialog.innerText()).split(reason).length,2,'literal reason appears exactly once');
+   assert.equal(await dialog.locator('valve').count(),0);
+   await close(page);
+  },page);
+  for(const [title,key,embedded] of [
+   ['Humidity','sensor.house_average_humidity',false],['AQ','sensor.air_control_house_iaq_average',true],
+  ])await check(prefix+'/missing-native-destination/'+title,async()=>{
+   await open(page,layout);
+   const owner=page.locator('button-card[data-hi-name="'+title+'"]');
+   await owner.locator('#card').tap();
+   const dialog=page.locator('dialog.hi-summary-details[open]');
+   if(embedded){
+    await dialog.locator('.hi-summary-history').tap();
+    await dialog.locator('[data-hours="168"]').tap();
+    await dialog.locator('select').first().waitFor();
+   }
+   const selector=embedded?'[data-native]':'.hi-summary-history';
+   const button=dialog.locator(selector);await button.scrollIntoViewIfNeeded();
+   // Remove the target while this click is waiting for the original binding.
+   await owner.locator('template.hi-summary-template').evaluate((template,{selector,key})=>{
+    const d=document.querySelector('dialog.hi-summary-details'),control=d.querySelector(selector);
+    const parent=template.parentNode;
+    control.focus({preventScroll:true});
+    const inspection=d.querySelector('select');
+    window.fixture.nativeVisit={dialog:d,control,scroll:d.scrollTop,inspection,value:inspection?.value};
+    template.remove();control.click();fixture.setState(key,null);parent.append(template);
+   },{selector,key});
+   await dialog.getByRole('status').filter({hasText:'This entity is no longer present in Home Assistant.'}).waitFor({timeout:2000});
+   const stillOpen=await page.evaluate(()=>{
+    const v=fixture.nativeVisit;
+    return v.dialog.open && v.dialog.isConnected && document.activeElement===v.control &&
+      v.dialog.scrollTop===v.scroll && (!v.inspection || (v.inspection.isConnected && v.inspection.value===v.value));
+   });
+   assert.equal(stillOpen,true,'same view, focus, scroll and inspection retained');
+   if(embedded)assert.equal(await dialog.locator('[data-hours="168"]').getAttribute('aria-pressed'),'true');
+   assert.equal(await page.evaluate(()=>fixture.events.moreInfo.length),0);
+   // Restoring this exact entity, even with an unknown state, permits a retry.
+   await page.evaluate(key=>fixture.setState(key,'unknown'),key);
+   await button.tap();await page.locator('dialog[data-native-stub=true][open]').waitFor();
+   assert.equal(await dialog.count(),0);
+   assert.deepEqual(await page.evaluate(()=>fixture.events.moreInfo.map(item=>item.entityId)),[await page.evaluate(key=>fixture.mapping[key],key)]);
+   assert.equal(await page.evaluate(()=>fixture.events.services.length),0);
+   await close(page);
+  },page);
   await check(prefix+'/embedded-history-navigation',async()=>{await open(page,layout);await page.locator('button-card[data-hi-name="Condensation"] #card').tap();await page.getByRole('button',{name:'View history',exact:true}).tap();await page.locator('.hi-history').waitFor();assert.equal(await page.evaluate(()=>fixture.events.history.length),1);await page.locator('[data-hours="168"]').tap();assert.equal(await page.evaluate(()=>fixture.events.history.length),2);await page.locator('[data-back]').tap();await page.getByRole('button',{name:'View history',exact:true}).tap();await page.locator('[data-native]').tap();await page.locator('dialog[data-native-stub=true]').waitFor();await close(page);assert.equal(await page.evaluate(()=>fixture.events.services.length),0);},page);
   await check(prefix+'/System-Manual-exact-spies-valid-invalid',async()=>{await open(page,layout);for(const name of ['System','Manual']){const card=page.locator(`button-card[data-hi-name="${name}"]`);await card.locator('#card').tap();}const calls=await page.evaluate(()=>fixture.events.services);assert.equal(calls.length,2);assert.ok(calls.every(c=>c.service==='toggle'));await page.evaluate(()=>{fixture.setState('input_boolean.air_control_enabled','unavailable');fixture.setState('input_boolean.air_control_manual_override','unknown');fixture.reset();});await page.locator('button-card[data-hi-name="System"]').getByText('UNAVAILABLE',{exact:true}).waitFor();await page.locator('button-card[data-hi-name="Manual"]').getByText('UNKNOWN',{exact:true}).waitFor();for(const name of ['System','Manual'])await page.locator(`button-card[data-hi-name="${name}"] #card`).tap();assert.equal(await page.evaluate(()=>fixture.events.services.length),0);},page);
   await check(prefix+'/keyboard-rapid-reopen-Escape',async()=>{await open(page,layout);const b=page.locator('.hi-ui-revision');await b.focus();await page.keyboard.press('Enter');assert.equal(await page.locator('dialog[open]').count(),1);await page.keyboard.press('Escape');for(let i=0;i<3;i++){await b.tap();assert.equal(await page.locator('dialog[open]').count(),1);await close(page);}await b.focus();await page.keyboard.press('Space');assert.equal(await page.locator('dialog[open]').count(),1);await close(page);},page);

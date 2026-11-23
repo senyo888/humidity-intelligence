@@ -65,7 +65,7 @@ class BadgeSummaryExportTests(unittest.TestCase):
                         for key in HISTORY_SOURCES[config['title']]:
                             self.assertNotIn(key, raw)
                         self.assertLessEqual(len(config['historyEntities']), 4)
-                self.assertIn('states[entityId]', source)
+                self.assertIn('!hasEntity(entityId)', source)
                 self.assertIn('historyButton.disabled', source)
                 self.assertIn('window.__hiBadgeDetailsDispose', source)
                 self.assertEqual(source.count('// HI-HISTORY-RENDERER:START'), 4)

@@ -162,10 +162,14 @@ card:
                 // HI-INACTIVITY:END
                 const owner = this;
                 const entityId = variables.hi_summary.history;
-                const history = () => {
-                  if (entityId && states[entityId] && owner.isConnected) owner.dispatchEvent(new CustomEvent('hass-more-info', {
+                const hasEntity = id => Boolean(id && (owner.hass || owner._hass)?.states?.[id]);
+                const history = beforeOpen => {
+                  if (!owner.isConnected || !hasEntity(entityId)) return false;
+                  beforeOpen?.();
+                  owner.dispatchEvent(new CustomEvent('hass-more-info', {
                     detail: { entityId }, bubbles: true, composed: true
                   }));
+                  return true;
                 };
                 const source = owner.shadowRoot?.querySelector('template.hi-summary-template');
                 window.__hiBadgeDetailsDispose?.(false);
@@ -228,8 +232,13 @@ card:
                 dialog.addEventListener('close', cleanup, { once: true });
                 dialog.querySelector('.hi-summary-close').addEventListener('click', close);
                 const historyButton = dialog.querySelector('.hi-summary-history');
-                historyButton.disabled = !entityId || !states[entityId];
-                historyButton.addEventListener('click', () => withSource(() => { close(); history(); }));
+                historyButton.disabled = !hasEntity(entityId);
+                const historyStatus = document.createElement('div');
+                historyStatus.setAttribute('role', 'status');
+                dialog.appendChild(historyStatus);
+                historyButton.addEventListener('click', () => withSource(() => {
+                  if (!history(close)) historyStatus.textContent = 'This entity is no longer present in Home Assistant.';
+                }));
                 dialog.addEventListener('click', event => {
                   event.stopPropagation();
                   if (event.target !== dialog) return;
@@ -482,12 +491,15 @@ card:
                     unique.forEach((record, index) => {record.transition = index > 0 && (record.state !== unique[index - 1].state || record.conflict);});
                     return {records: unique.slice(omitted), status: unique.length ? 'ok' : 'empty', omitted, invalid};
                   }
+                  // HI-MODE-PALETTE:START
                   const modeColours = Object.freeze({
                     normal: '#e5e7eb', cooking: '#38bdf8', bathroom: '#4ade80', bath: '#4ade80',
                     air_quality: '#c084fc', global_gate: '#fbbf24', away: '#5eead4', paused: '#fde68a',
                     manual_override: '#f9a8d4', disabled: '#a5b4fc', telemetry_unavailable: '#fdba74',
                     alert: '#fb923c', danger: '#f87171', co_emergency: '#ef4444',
                   });
+                  const modeColour = mode => Object.hasOwn(modeColours, mode) ? modeColours[mode] : '#64748b';
+                  // HI-MODE-PALETTE:END
                   function category(value, kind) {
                     if (kind === 'source' || kind === 'reason') return {label: value, tone: 'neutral'};
                     if (['unknown', 'unavailable', 'Conflicting records'].some(x => x.toLowerCase() === value.toLowerCase())) return {label: value, tone: 'unknown'};
@@ -569,7 +581,7 @@ card:
                       .hi-history .hi-history-legend i { display:inline-block; width:10px; height:10px; border-radius:3px; margin-right:5px; }
                       .hi-history .hi-history-note { color:#bdcad9; font-size:12px; }
                       .hi-history button:focus-visible,.hi-history select:focus-visible,.hi-history summary:focus-visible { outline:2px solid #38bdf8; outline-offset:2px; }
-                    </style><nav aria-label="History navigation"><button type="button" data-back>Back</button></nav><h2 tabindex="-1">${escape(title === 'Current Air Control' ? 'Operating mode history' : title === 'AQ' ? 'Air quality history' : title === 'Mould' ? 'Mould risk history' : title === 'Condensation' ? 'Condensation history' : 'Recorded history')}</h2><div class="hi-history-ranges" role="group" aria-label="History range"><button type="button" data-hours="24" aria-pressed="true">24 hours</button><button type="button" data-hours="168" aria-pressed="false">7 days</button></div><div class="hi-history-content" aria-live="polite"></div><button type="button" data-native ${nativeAvailable ? '' : 'disabled'}>Open ${escape(nativeLabel)} details</button>`;
+                    </style><nav aria-label="History navigation"><button type="button" data-back>Back</button></nav><h2 tabindex="-1">${escape(title === 'Current Air Control' ? 'Operating mode history' : title === 'AQ' ? 'Air quality history' : title === 'Mould' ? 'Mould risk history' : title === 'Condensation' ? 'Condensation history' : 'Recorded history')}</h2><div class="hi-history-ranges" role="group" aria-label="History range"><button type="button" data-hours="24" aria-pressed="true">24 hours</button><button type="button" data-hours="168" aria-pressed="false">7 days</button></div><div class="hi-history-content" aria-live="polite"></div><button type="button" data-native ${nativeAvailable ? '' : 'disabled'}>Open ${escape(nativeLabel)} details</button><div role="status" data-native-status></div>`;
                     dialog.appendChild(section);
                     const content = section.querySelector('.hi-history-content');
                     let hours = 24, generation = 0, activeVisit = null, disposed = false, timer;
@@ -592,7 +604,10 @@ card:
                       withSource(() => { if (visit && visit === activeVisit) action(); });
                     };
                     section.querySelector('[data-back]').addEventListener('click', back);
-                    section.querySelector('[data-native]').addEventListener('click', () => withVisit(() => { if (nativeAvailable) {close(); openEntity();} }));
+                    const nativeStatus = section.querySelector('[data-native-status]');
+                    section.querySelector('[data-native]').addEventListener('click', () => withVisit(() => {
+                      if (nativeAvailable && !openEntity(close)) nativeStatus.textContent = 'This entity is no longer present in Home Assistant.';
+                    }));
                     for (const button of section.querySelectorAll('[data-hours]')) button.addEventListener('click', () => withVisit(() => {
                       hours = Number(button.dataset.hours);
                       for (const choice of section.querySelectorAll('[data-hours]')) choice.setAttribute('aria-pressed', String(Number(choice.dataset.hours) === hours));
@@ -644,7 +659,7 @@ card:
                         const colors = {ok:'#4ade80',watch:'#facc15',risk:'#fb923c',danger:'#f87171',unknown:'#64748b',neutral:'#7dd3fc'};
                         const colorFor = value => {
                           if (item.kind === 'source') return sourceColor(value, document);
-                          if (item.kind === 'mode') return Object.hasOwn(modeColours, value) ? modeColours[value] : colors.unknown;
+                          if (item.kind === 'mode') return modeColour(value);
                           return colors[category(value, item.kind).tone];
                         };
                         if (item.kind === 'source') html += '<p class="hi-history-note">Colours identify rooms. The risk level is shown in the chart above.</p>';
@@ -717,7 +732,7 @@ card:
                       }
                     }
                     return {
-                      open() { if (disposed) return; activeVisit = Symbol(); summaryNodes.forEach(node => {node.hidden = true;}); section.hidden = false; if (closeButton) {section.querySelector('nav').appendChild(closeButton); closeButton.style.margin='0 0 0 auto';} dialog.scrollTop=0; section.querySelector('[data-back]').focus({preventScroll:true}); dialog.scrollTop=0; load(); },
+                      open() { if (disposed) return; activeVisit = Symbol(); nativeStatus.textContent = ''; summaryNodes.forEach(node => {node.hidden = true;}); section.hidden = false; if (closeButton) {section.querySelector('nav').appendChild(closeButton); closeButton.style.margin='0 0 0 auto';} dialog.scrollTop=0; section.querySelector('[data-back]').focus({preventScroll:true}); dialog.scrollTop=0; load(); },
                       dispose() { disposed = true; activeVisit = null; invalidate(); section.remove(); },
                     };
                   }
@@ -781,12 +796,16 @@ card:
                 // HI-INACTIVITY:END
                 const owner = this;
                 const entityId = variables.hi_summary.history;
-                const nativeTarget = variables.hi_summary.historyEntities.find(item => item.id === entityId && states[item.id]) || variables.hi_summary.historyEntities.find(item => states[item.id]);
+                const hasEntity = id => Boolean(id && (owner.hass || owner._hass)?.states?.[id]);
+                const nativeTarget = variables.hi_summary.historyEntities.find(item => item.id === entityId && hasEntity(item.id)) || variables.hi_summary.historyEntities.find(item => hasEntity(item.id));
                 const nativeEntityId = nativeTarget?.id;
-                const history = () => {
-                  if (nativeEntityId && states[nativeEntityId] && owner.isConnected) owner.dispatchEvent(new CustomEvent('hass-more-info', {
+                const history = beforeOpen => {
+                  if (!owner.isConnected || !hasEntity(nativeEntityId)) return false;
+                  beforeOpen?.();
+                  owner.dispatchEvent(new CustomEvent('hass-more-info', {
                     detail: { entityId: nativeEntityId }, bubbles: true, composed: true
                   }));
+                  return true;
                 };
                 const source = owner.shadowRoot?.querySelector('template.hi-summary-template');
                 window.__hiBadgeDetailsDispose?.(false);
@@ -851,7 +870,7 @@ card:
                 dialog.addEventListener('close', cleanup, { once: true });
                 dialog.querySelector('.hi-summary-close').addEventListener('click', close);
                 const historyButton = dialog.querySelector('.hi-summary-history');
-                historyButton.disabled = !variables.hi_summary.historyEntities.some(item => states[item.id]);
+                historyButton.disabled = !variables.hi_summary.historyEntities.some(item => hasEntity(item.id));
                 historyButton.addEventListener('click', () => withSource(() => {
                   historyController ||= hiBadgeHistory.create({dialog, owner, title:variables.hi_summary.title, entities:variables.hi_summary.historyEntities, states, close, withSource, nativeLabel:nativeTarget?.label, nativeAvailable:Boolean(nativeEntityId), openEntity:history});
                   historyController.open();
@@ -1107,12 +1126,15 @@ card:
                     unique.forEach((record, index) => {record.transition = index > 0 && (record.state !== unique[index - 1].state || record.conflict);});
                     return {records: unique.slice(omitted), status: unique.length ? 'ok' : 'empty', omitted, invalid};
                   }
+                  // HI-MODE-PALETTE:START
                   const modeColours = Object.freeze({
                     normal: '#e5e7eb', cooking: '#38bdf8', bathroom: '#4ade80', bath: '#4ade80',
                     air_quality: '#c084fc', global_gate: '#fbbf24', away: '#5eead4', paused: '#fde68a',
                     manual_override: '#f9a8d4', disabled: '#a5b4fc', telemetry_unavailable: '#fdba74',
                     alert: '#fb923c', danger: '#f87171', co_emergency: '#ef4444',
                   });
+                  const modeColour = mode => Object.hasOwn(modeColours, mode) ? modeColours[mode] : '#64748b';
+                  // HI-MODE-PALETTE:END
                   function category(value, kind) {
                     if (kind === 'source' || kind === 'reason') return {label: value, tone: 'neutral'};
                     if (['unknown', 'unavailable', 'Conflicting records'].some(x => x.toLowerCase() === value.toLowerCase())) return {label: value, tone: 'unknown'};
@@ -1194,7 +1216,7 @@ card:
                       .hi-history .hi-history-legend i { display:inline-block; width:10px; height:10px; border-radius:3px; margin-right:5px; }
                       .hi-history .hi-history-note { color:#bdcad9; font-size:12px; }
                       .hi-history button:focus-visible,.hi-history select:focus-visible,.hi-history summary:focus-visible { outline:2px solid #38bdf8; outline-offset:2px; }
-                    </style><nav aria-label="History navigation"><button type="button" data-back>Back</button></nav><h2 tabindex="-1">${escape(title === 'Current Air Control' ? 'Operating mode history' : title === 'AQ' ? 'Air quality history' : title === 'Mould' ? 'Mould risk history' : title === 'Condensation' ? 'Condensation history' : 'Recorded history')}</h2><div class="hi-history-ranges" role="group" aria-label="History range"><button type="button" data-hours="24" aria-pressed="true">24 hours</button><button type="button" data-hours="168" aria-pressed="false">7 days</button></div><div class="hi-history-content" aria-live="polite"></div><button type="button" data-native ${nativeAvailable ? '' : 'disabled'}>Open ${escape(nativeLabel)} details</button>`;
+                    </style><nav aria-label="History navigation"><button type="button" data-back>Back</button></nav><h2 tabindex="-1">${escape(title === 'Current Air Control' ? 'Operating mode history' : title === 'AQ' ? 'Air quality history' : title === 'Mould' ? 'Mould risk history' : title === 'Condensation' ? 'Condensation history' : 'Recorded history')}</h2><div class="hi-history-ranges" role="group" aria-label="History range"><button type="button" data-hours="24" aria-pressed="true">24 hours</button><button type="button" data-hours="168" aria-pressed="false">7 days</button></div><div class="hi-history-content" aria-live="polite"></div><button type="button" data-native ${nativeAvailable ? '' : 'disabled'}>Open ${escape(nativeLabel)} details</button><div role="status" data-native-status></div>`;
                     dialog.appendChild(section);
                     const content = section.querySelector('.hi-history-content');
                     let hours = 24, generation = 0, activeVisit = null, disposed = false, timer;
@@ -1217,7 +1239,10 @@ card:
                       withSource(() => { if (visit && visit === activeVisit) action(); });
                     };
                     section.querySelector('[data-back]').addEventListener('click', back);
-                    section.querySelector('[data-native]').addEventListener('click', () => withVisit(() => { if (nativeAvailable) {close(); openEntity();} }));
+                    const nativeStatus = section.querySelector('[data-native-status]');
+                    section.querySelector('[data-native]').addEventListener('click', () => withVisit(() => {
+                      if (nativeAvailable && !openEntity(close)) nativeStatus.textContent = 'This entity is no longer present in Home Assistant.';
+                    }));
                     for (const button of section.querySelectorAll('[data-hours]')) button.addEventListener('click', () => withVisit(() => {
                       hours = Number(button.dataset.hours);
                       for (const choice of section.querySelectorAll('[data-hours]')) choice.setAttribute('aria-pressed', String(Number(choice.dataset.hours) === hours));
@@ -1269,7 +1294,7 @@ card:
                         const colors = {ok:'#4ade80',watch:'#facc15',risk:'#fb923c',danger:'#f87171',unknown:'#64748b',neutral:'#7dd3fc'};
                         const colorFor = value => {
                           if (item.kind === 'source') return sourceColor(value, document);
-                          if (item.kind === 'mode') return Object.hasOwn(modeColours, value) ? modeColours[value] : colors.unknown;
+                          if (item.kind === 'mode') return modeColour(value);
                           return colors[category(value, item.kind).tone];
                         };
                         if (item.kind === 'source') html += '<p class="hi-history-note">Colours identify rooms. The risk level is shown in the chart above.</p>';
@@ -1342,7 +1367,7 @@ card:
                       }
                     }
                     return {
-                      open() { if (disposed) return; activeVisit = Symbol(); summaryNodes.forEach(node => {node.hidden = true;}); section.hidden = false; if (closeButton) {section.querySelector('nav').appendChild(closeButton); closeButton.style.margin='0 0 0 auto';} dialog.scrollTop=0; section.querySelector('[data-back]').focus({preventScroll:true}); dialog.scrollTop=0; load(); },
+                      open() { if (disposed) return; activeVisit = Symbol(); nativeStatus.textContent = ''; summaryNodes.forEach(node => {node.hidden = true;}); section.hidden = false; if (closeButton) {section.querySelector('nav').appendChild(closeButton); closeButton.style.margin='0 0 0 auto';} dialog.scrollTop=0; section.querySelector('[data-back]').focus({preventScroll:true}); dialog.scrollTop=0; load(); },
                       dispose() { disposed = true; activeVisit = null; invalidate(); section.remove(); },
                     };
                   }
@@ -1406,12 +1431,16 @@ card:
                 // HI-INACTIVITY:END
                 const owner = this;
                 const entityId = variables.hi_summary.history;
-                const nativeTarget = variables.hi_summary.historyEntities.find(item => item.id === entityId && states[item.id]) || variables.hi_summary.historyEntities.find(item => states[item.id]);
+                const hasEntity = id => Boolean(id && (owner.hass || owner._hass)?.states?.[id]);
+                const nativeTarget = variables.hi_summary.historyEntities.find(item => item.id === entityId && hasEntity(item.id)) || variables.hi_summary.historyEntities.find(item => hasEntity(item.id));
                 const nativeEntityId = nativeTarget?.id;
-                const history = () => {
-                  if (nativeEntityId && states[nativeEntityId] && owner.isConnected) owner.dispatchEvent(new CustomEvent('hass-more-info', {
+                const history = beforeOpen => {
+                  if (!owner.isConnected || !hasEntity(nativeEntityId)) return false;
+                  beforeOpen?.();
+                  owner.dispatchEvent(new CustomEvent('hass-more-info', {
                     detail: { entityId: nativeEntityId }, bubbles: true, composed: true
                   }));
+                  return true;
                 };
                 const source = owner.shadowRoot?.querySelector('template.hi-summary-template');
                 window.__hiBadgeDetailsDispose?.(false);
@@ -1476,7 +1505,7 @@ card:
                 dialog.addEventListener('close', cleanup, { once: true });
                 dialog.querySelector('.hi-summary-close').addEventListener('click', close);
                 const historyButton = dialog.querySelector('.hi-summary-history');
-                historyButton.disabled = !variables.hi_summary.historyEntities.some(item => states[item.id]);
+                historyButton.disabled = !variables.hi_summary.historyEntities.some(item => hasEntity(item.id));
                 historyButton.addEventListener('click', () => withSource(() => {
                   historyController ||= hiBadgeHistory.create({dialog, owner, title:variables.hi_summary.title, entities:variables.hi_summary.historyEntities, states, close, withSource, nativeLabel:nativeTarget?.label, nativeAvailable:Boolean(nativeEntityId), openEntity:history});
                   historyController.open();
@@ -2227,26 +2256,17 @@ card:
         status: |
           [[[
             const rawMode = String(states['sensor.air_control_mode']?.state || '').trim().toLowerCase();
-            const knownModes = new Set([
-              'normal',
-              'co_emergency',
-              'danger',
-              'air_quality',
-              'global_gate',
-              'away',
-              'cooking',
-              'bathroom',
-              'bath',
-              'paused',
-              'manual_override',
-              'disabled',
-              'telemetry_unavailable',
-            ]);
+            // HI-LIVE-MODE-PALETTE:START
+            const modeColours = Object.freeze({
+              normal: '#e5e7eb', cooking: '#38bdf8', bathroom: '#4ade80', bath: '#4ade80',
+              air_quality: '#c084fc', global_gate: '#fbbf24', away: '#5eead4', paused: '#fde68a',
+              manual_override: '#f9a8d4', disabled: '#a5b4fc', telemetry_unavailable: '#fdba74',
+              alert: '#fb923c', danger: '#f87171', co_emergency: '#ef4444',
+            });
+            const modeColour = mode => Object.hasOwn(modeColours, mode) ? modeColours[mode] : '#64748b';
+            // HI-LIVE-MODE-PALETTE:END
             const modeKnown =
-              !!rawMode &&
-              rawMode !== 'unknown' &&
-              rawMode !== 'unavailable' &&
-              (knownModes.has(rawMode) || rawMode.includes('alert'));
+              Object.hasOwn(modeColours, rawMode) || rawMode.includes('alert');
             const mode = modeKnown ? rawMode : 'unknown';
 
             const coE  = states['input_boolean.air_co_emergency_active']?.state === 'on';
@@ -2344,30 +2364,24 @@ card:
               );
             };
 
-            const cMode = (() => {
-              if (mode === 'telemetry_unavailable') return '#f59e0b';
-              if (!modeKnown) return '#94a3b8';
-              if (red || coE || mode === 'co_emergency' || mode.includes('alert') || mode === 'danger') return '#ef4444';
-              if (gateActive) return '#f59e0b';
-              if (zone1) return '#38bdf8';
-              if (zone2) return '#4ade80';
-              if (aqActive) return '#a855f7';
-              if (ready) return '#e5e7eb';
-              if (mode === 'paused') return '#facc15';
-              if (mode === 'manual_override') return '#a855f7';
-              if (mode === 'disabled') return '#94a3b8';
-              return '#94a3b8';
-            })();
-            const modeBadgeLabel = (() => {
-              if (mode === 'telemetry_unavailable') return 'TELEMETRY UNAVAILABLE';
-              if (!modeKnown) return 'UNKNOWN';
-              if (red) return 'ALERT';
-              if (gateActive) return 'GATE';
-              if (zone1) return 'ZONE 1';
-              if (zone2) return 'ZONE 2';
-              if (aqActive) return 'AQ';
-              if (ready) return 'READY';
-              return mode.replace(/_/g,' ').toUpperCase();
+            const [modeBadgeLabel, cMode] = (() => {
+              const colour = modeColour(mode);
+              if (mode === 'telemetry_unavailable') return ['TELEMETRY UNAVAILABLE', colour];
+              if (!modeKnown) return ['UNKNOWN', colour];
+              if (red) {
+                // An independent alert or CO override retains its live warning colour.
+                const exactMode = mode === 'co_emergency' || (mode === 'alert' && !coE);
+                return ['ALERT', exactMode ? colour : '#ef4444'];
+              }
+              if (gateActive) return ['GATE', colour];
+              if (zone1) return ['ZONE 1', colour];
+              if (zone2) return ['ZONE 2', colour];
+              if (aqActive) {
+                if (mode === 'air_quality') return ['AQ', colour];
+                return ['AQ', mode === 'danger' ? '#ef4444' : '#a855f7'];
+              }
+              if (ready) return ['READY', colour];
+              return [mode.replace(/_/g,' ').toUpperCase(), colour];
             })();
 
             const out = [];
@@ -2734,12 +2748,15 @@ card:
                 unique.forEach((record, index) => {record.transition = index > 0 && (record.state !== unique[index - 1].state || record.conflict);});
                 return {records: unique.slice(omitted), status: unique.length ? 'ok' : 'empty', omitted, invalid};
               }
+              // HI-MODE-PALETTE:START
               const modeColours = Object.freeze({
                 normal: '#e5e7eb', cooking: '#38bdf8', bathroom: '#4ade80', bath: '#4ade80',
                 air_quality: '#c084fc', global_gate: '#fbbf24', away: '#5eead4', paused: '#fde68a',
                 manual_override: '#f9a8d4', disabled: '#a5b4fc', telemetry_unavailable: '#fdba74',
                 alert: '#fb923c', danger: '#f87171', co_emergency: '#ef4444',
               });
+              const modeColour = mode => Object.hasOwn(modeColours, mode) ? modeColours[mode] : '#64748b';
+              // HI-MODE-PALETTE:END
               function category(value, kind) {
                 if (kind === 'source' || kind === 'reason') return {label: value, tone: 'neutral'};
                 if (['unknown', 'unavailable', 'Conflicting records'].some(x => x.toLowerCase() === value.toLowerCase())) return {label: value, tone: 'unknown'};
@@ -2821,7 +2838,7 @@ card:
                   .hi-history .hi-history-legend i { display:inline-block; width:10px; height:10px; border-radius:3px; margin-right:5px; }
                   .hi-history .hi-history-note { color:#bdcad9; font-size:12px; }
                   .hi-history button:focus-visible,.hi-history select:focus-visible,.hi-history summary:focus-visible { outline:2px solid #38bdf8; outline-offset:2px; }
-                </style><nav aria-label="History navigation"><button type="button" data-back>Back</button></nav><h2 tabindex="-1">${escape(title === 'Current Air Control' ? 'Operating mode history' : title === 'AQ' ? 'Air quality history' : title === 'Mould' ? 'Mould risk history' : title === 'Condensation' ? 'Condensation history' : 'Recorded history')}</h2><div class="hi-history-ranges" role="group" aria-label="History range"><button type="button" data-hours="24" aria-pressed="true">24 hours</button><button type="button" data-hours="168" aria-pressed="false">7 days</button></div><div class="hi-history-content" aria-live="polite"></div><button type="button" data-native ${nativeAvailable ? '' : 'disabled'}>Open ${escape(nativeLabel)} details</button>`;
+                </style><nav aria-label="History navigation"><button type="button" data-back>Back</button></nav><h2 tabindex="-1">${escape(title === 'Current Air Control' ? 'Operating mode history' : title === 'AQ' ? 'Air quality history' : title === 'Mould' ? 'Mould risk history' : title === 'Condensation' ? 'Condensation history' : 'Recorded history')}</h2><div class="hi-history-ranges" role="group" aria-label="History range"><button type="button" data-hours="24" aria-pressed="true">24 hours</button><button type="button" data-hours="168" aria-pressed="false">7 days</button></div><div class="hi-history-content" aria-live="polite"></div><button type="button" data-native ${nativeAvailable ? '' : 'disabled'}>Open ${escape(nativeLabel)} details</button><div role="status" data-native-status></div>`;
                 dialog.appendChild(section);
                 const content = section.querySelector('.hi-history-content');
                 let hours = 24, generation = 0, activeVisit = null, disposed = false, timer;
@@ -2844,7 +2861,10 @@ card:
                   withSource(() => { if (visit && visit === activeVisit) action(); });
                 };
                 section.querySelector('[data-back]').addEventListener('click', back);
-                section.querySelector('[data-native]').addEventListener('click', () => withVisit(() => { if (nativeAvailable) {close(); openEntity();} }));
+                const nativeStatus = section.querySelector('[data-native-status]');
+                section.querySelector('[data-native]').addEventListener('click', () => withVisit(() => {
+                  if (nativeAvailable && !openEntity(close)) nativeStatus.textContent = 'This entity is no longer present in Home Assistant.';
+                }));
                 for (const button of section.querySelectorAll('[data-hours]')) button.addEventListener('click', () => withVisit(() => {
                   hours = Number(button.dataset.hours);
                   for (const choice of section.querySelectorAll('[data-hours]')) choice.setAttribute('aria-pressed', String(Number(choice.dataset.hours) === hours));
@@ -2896,7 +2916,7 @@ card:
                     const colors = {ok:'#4ade80',watch:'#facc15',risk:'#fb923c',danger:'#f87171',unknown:'#64748b',neutral:'#7dd3fc'};
                     const colorFor = value => {
                       if (item.kind === 'source') return sourceColor(value, document);
-                      if (item.kind === 'mode') return Object.hasOwn(modeColours, value) ? modeColours[value] : colors.unknown;
+                      if (item.kind === 'mode') return modeColour(value);
                       return colors[category(value, item.kind).tone];
                     };
                     if (item.kind === 'source') html += '<p class="hi-history-note">Colours identify rooms. The risk level is shown in the chart above.</p>';
@@ -2969,7 +2989,7 @@ card:
                   }
                 }
                 return {
-                  open() { if (disposed) return; activeVisit = Symbol(); summaryNodes.forEach(node => {node.hidden = true;}); section.hidden = false; if (closeButton) {section.querySelector('nav').appendChild(closeButton); closeButton.style.margin='0 0 0 auto';} dialog.scrollTop=0; section.querySelector('[data-back]').focus({preventScroll:true}); dialog.scrollTop=0; load(); },
+                  open() { if (disposed) return; activeVisit = Symbol(); nativeStatus.textContent = ''; summaryNodes.forEach(node => {node.hidden = true;}); section.hidden = false; if (closeButton) {section.querySelector('nav').appendChild(closeButton); closeButton.style.margin='0 0 0 auto';} dialog.scrollTop=0; section.querySelector('[data-back]').focus({preventScroll:true}); dialog.scrollTop=0; load(); },
                   dispose() { disposed = true; activeVisit = null; invalidate(); section.remove(); },
                 };
               }
@@ -3033,12 +3053,16 @@ card:
             // HI-INACTIVITY:END
             const owner = this;
             const entityId = variables.hi_summary.history;
-            const nativeTarget = variables.hi_summary.historyEntities.find(item => item.id === entityId && states[item.id]) || variables.hi_summary.historyEntities.find(item => states[item.id]);
+            const hasEntity = id => Boolean(id && (owner.hass || owner._hass)?.states?.[id]);
+            const nativeTarget = variables.hi_summary.historyEntities.find(item => item.id === entityId && hasEntity(item.id)) || variables.hi_summary.historyEntities.find(item => hasEntity(item.id));
             const nativeEntityId = nativeTarget?.id;
-            const history = () => {
-              if (nativeEntityId && states[nativeEntityId] && owner.isConnected) owner.dispatchEvent(new CustomEvent('hass-more-info', {
+            const history = beforeOpen => {
+              if (!owner.isConnected || !hasEntity(nativeEntityId)) return false;
+              beforeOpen?.();
+              owner.dispatchEvent(new CustomEvent('hass-more-info', {
                 detail: { entityId: nativeEntityId }, bubbles: true, composed: true
               }));
+              return true;
             };
             const source = owner.shadowRoot?.querySelector('template.hi-summary-template');
             window.__hiBadgeDetailsDispose?.(false);
@@ -3103,7 +3127,7 @@ card:
             dialog.addEventListener('close', cleanup, { once: true });
             dialog.querySelector('.hi-summary-close').addEventListener('click', close);
             const historyButton = dialog.querySelector('.hi-summary-history');
-            historyButton.disabled = !variables.hi_summary.historyEntities.some(item => states[item.id]);
+            historyButton.disabled = !variables.hi_summary.historyEntities.some(item => hasEntity(item.id));
             historyButton.addEventListener('click', () => withSource(() => {
               historyController ||= hiBadgeHistory.create({dialog, owner, title:variables.hi_summary.title, entities:variables.hi_summary.historyEntities, states, close, withSource, nativeLabel:nativeTarget?.label, nativeAvailable:Boolean(nativeEntityId), openEntity:history});
               historyController.open();
@@ -3464,10 +3488,14 @@ card:
                 // HI-INACTIVITY:END
                 const owner = this;
                 const entityId = variables.hi_summary.history;
-                const history = () => {
-                  if (entityId && states[entityId] && owner.isConnected) owner.dispatchEvent(new CustomEvent('hass-more-info', {
+                const hasEntity = id => Boolean(id && (owner.hass || owner._hass)?.states?.[id]);
+                const history = beforeOpen => {
+                  if (!owner.isConnected || !hasEntity(entityId)) return false;
+                  beforeOpen?.();
+                  owner.dispatchEvent(new CustomEvent('hass-more-info', {
                     detail: { entityId }, bubbles: true, composed: true
                   }));
+                  return true;
                 };
                 const source = owner.shadowRoot?.querySelector('template.hi-summary-template');
                 window.__hiBadgeDetailsDispose?.(false);
@@ -3530,8 +3558,13 @@ card:
                 dialog.addEventListener('close', cleanup, { once: true });
                 dialog.querySelector('.hi-summary-close').addEventListener('click', close);
                 const historyButton = dialog.querySelector('.hi-summary-history');
-                historyButton.disabled = !entityId || !states[entityId];
-                historyButton.addEventListener('click', () => withSource(() => { close(); history(); }));
+                historyButton.disabled = !hasEntity(entityId);
+                const historyStatus = document.createElement('div');
+                historyStatus.setAttribute('role', 'status');
+                dialog.appendChild(historyStatus);
+                historyButton.addEventListener('click', () => withSource(() => {
+                  if (!history(close)) historyStatus.textContent = 'This entity is no longer present in Home Assistant.';
+                }));
                 dialog.addEventListener('click', event => {
                   event.stopPropagation();
                   if (event.target !== dialog) return;
@@ -3746,10 +3779,14 @@ card:
                 // HI-INACTIVITY:END
                 const owner = this;
                 const entityId = variables.hi_summary.history;
-                const history = () => {
-                  if (entityId && states[entityId] && owner.isConnected) owner.dispatchEvent(new CustomEvent('hass-more-info', {
+                const hasEntity = id => Boolean(id && (owner.hass || owner._hass)?.states?.[id]);
+                const history = beforeOpen => {
+                  if (!owner.isConnected || !hasEntity(entityId)) return false;
+                  beforeOpen?.();
+                  owner.dispatchEvent(new CustomEvent('hass-more-info', {
                     detail: { entityId }, bubbles: true, composed: true
                   }));
+                  return true;
                 };
                 const source = owner.shadowRoot?.querySelector('template.hi-summary-template');
                 window.__hiBadgeDetailsDispose?.(false);
@@ -3812,8 +3849,13 @@ card:
                 dialog.addEventListener('close', cleanup, { once: true });
                 dialog.querySelector('.hi-summary-close').addEventListener('click', close);
                 const historyButton = dialog.querySelector('.hi-summary-history');
-                historyButton.disabled = !entityId || !states[entityId];
-                historyButton.addEventListener('click', () => withSource(() => { close(); history(); }));
+                historyButton.disabled = !hasEntity(entityId);
+                const historyStatus = document.createElement('div');
+                historyStatus.setAttribute('role', 'status');
+                dialog.appendChild(historyStatus);
+                historyButton.addEventListener('click', () => withSource(() => {
+                  if (!history(close)) historyStatus.textContent = 'This entity is no longer present in Home Assistant.';
+                }));
                 dialog.addEventListener('click', event => {
                   event.stopPropagation();
                   if (event.target !== dialog) return;
@@ -4028,10 +4070,14 @@ card:
                 // HI-INACTIVITY:END
                 const owner = this;
                 const entityId = variables.hi_summary.history;
-                const history = () => {
-                  if (entityId && states[entityId] && owner.isConnected) owner.dispatchEvent(new CustomEvent('hass-more-info', {
+                const hasEntity = id => Boolean(id && (owner.hass || owner._hass)?.states?.[id]);
+                const history = beforeOpen => {
+                  if (!owner.isConnected || !hasEntity(entityId)) return false;
+                  beforeOpen?.();
+                  owner.dispatchEvent(new CustomEvent('hass-more-info', {
                     detail: { entityId }, bubbles: true, composed: true
                   }));
+                  return true;
                 };
                 const source = owner.shadowRoot?.querySelector('template.hi-summary-template');
                 window.__hiBadgeDetailsDispose?.(false);
@@ -4094,8 +4140,13 @@ card:
                 dialog.addEventListener('close', cleanup, { once: true });
                 dialog.querySelector('.hi-summary-close').addEventListener('click', close);
                 const historyButton = dialog.querySelector('.hi-summary-history');
-                historyButton.disabled = !entityId || !states[entityId];
-                historyButton.addEventListener('click', () => withSource(() => { close(); history(); }));
+                historyButton.disabled = !hasEntity(entityId);
+                const historyStatus = document.createElement('div');
+                historyStatus.setAttribute('role', 'status');
+                dialog.appendChild(historyStatus);
+                historyButton.addEventListener('click', () => withSource(() => {
+                  if (!history(close)) historyStatus.textContent = 'This entity is no longer present in Home Assistant.';
+                }));
                 dialog.addEventListener('click', event => {
                   event.stopPropagation();
                   if (event.target !== dialog) return;
@@ -4308,12 +4359,15 @@ card:
                     unique.forEach((record, index) => {record.transition = index > 0 && (record.state !== unique[index - 1].state || record.conflict);});
                     return {records: unique.slice(omitted), status: unique.length ? 'ok' : 'empty', omitted, invalid};
                   }
+                  // HI-MODE-PALETTE:START
                   const modeColours = Object.freeze({
                     normal: '#e5e7eb', cooking: '#38bdf8', bathroom: '#4ade80', bath: '#4ade80',
                     air_quality: '#c084fc', global_gate: '#fbbf24', away: '#5eead4', paused: '#fde68a',
                     manual_override: '#f9a8d4', disabled: '#a5b4fc', telemetry_unavailable: '#fdba74',
                     alert: '#fb923c', danger: '#f87171', co_emergency: '#ef4444',
                   });
+                  const modeColour = mode => Object.hasOwn(modeColours, mode) ? modeColours[mode] : '#64748b';
+                  // HI-MODE-PALETTE:END
                   function category(value, kind) {
                     if (kind === 'source' || kind === 'reason') return {label: value, tone: 'neutral'};
                     if (['unknown', 'unavailable', 'Conflicting records'].some(x => x.toLowerCase() === value.toLowerCase())) return {label: value, tone: 'unknown'};
@@ -4395,7 +4449,7 @@ card:
                       .hi-history .hi-history-legend i { display:inline-block; width:10px; height:10px; border-radius:3px; margin-right:5px; }
                       .hi-history .hi-history-note { color:#bdcad9; font-size:12px; }
                       .hi-history button:focus-visible,.hi-history select:focus-visible,.hi-history summary:focus-visible { outline:2px solid #38bdf8; outline-offset:2px; }
-                    </style><nav aria-label="History navigation"><button type="button" data-back>Back</button></nav><h2 tabindex="-1">${escape(title === 'Current Air Control' ? 'Operating mode history' : title === 'AQ' ? 'Air quality history' : title === 'Mould' ? 'Mould risk history' : title === 'Condensation' ? 'Condensation history' : 'Recorded history')}</h2><div class="hi-history-ranges" role="group" aria-label="History range"><button type="button" data-hours="24" aria-pressed="true">24 hours</button><button type="button" data-hours="168" aria-pressed="false">7 days</button></div><div class="hi-history-content" aria-live="polite"></div><button type="button" data-native ${nativeAvailable ? '' : 'disabled'}>Open ${escape(nativeLabel)} details</button>`;
+                    </style><nav aria-label="History navigation"><button type="button" data-back>Back</button></nav><h2 tabindex="-1">${escape(title === 'Current Air Control' ? 'Operating mode history' : title === 'AQ' ? 'Air quality history' : title === 'Mould' ? 'Mould risk history' : title === 'Condensation' ? 'Condensation history' : 'Recorded history')}</h2><div class="hi-history-ranges" role="group" aria-label="History range"><button type="button" data-hours="24" aria-pressed="true">24 hours</button><button type="button" data-hours="168" aria-pressed="false">7 days</button></div><div class="hi-history-content" aria-live="polite"></div><button type="button" data-native ${nativeAvailable ? '' : 'disabled'}>Open ${escape(nativeLabel)} details</button><div role="status" data-native-status></div>`;
                     dialog.appendChild(section);
                     const content = section.querySelector('.hi-history-content');
                     let hours = 24, generation = 0, activeVisit = null, disposed = false, timer;
@@ -4418,7 +4472,10 @@ card:
                       withSource(() => { if (visit && visit === activeVisit) action(); });
                     };
                     section.querySelector('[data-back]').addEventListener('click', back);
-                    section.querySelector('[data-native]').addEventListener('click', () => withVisit(() => { if (nativeAvailable) {close(); openEntity();} }));
+                    const nativeStatus = section.querySelector('[data-native-status]');
+                    section.querySelector('[data-native]').addEventListener('click', () => withVisit(() => {
+                      if (nativeAvailable && !openEntity(close)) nativeStatus.textContent = 'This entity is no longer present in Home Assistant.';
+                    }));
                     for (const button of section.querySelectorAll('[data-hours]')) button.addEventListener('click', () => withVisit(() => {
                       hours = Number(button.dataset.hours);
                       for (const choice of section.querySelectorAll('[data-hours]')) choice.setAttribute('aria-pressed', String(Number(choice.dataset.hours) === hours));
@@ -4470,7 +4527,7 @@ card:
                         const colors = {ok:'#4ade80',watch:'#facc15',risk:'#fb923c',danger:'#f87171',unknown:'#64748b',neutral:'#7dd3fc'};
                         const colorFor = value => {
                           if (item.kind === 'source') return sourceColor(value, document);
-                          if (item.kind === 'mode') return Object.hasOwn(modeColours, value) ? modeColours[value] : colors.unknown;
+                          if (item.kind === 'mode') return modeColour(value);
                           return colors[category(value, item.kind).tone];
                         };
                         if (item.kind === 'source') html += '<p class="hi-history-note">Colours identify rooms. The risk level is shown in the chart above.</p>';
@@ -4543,7 +4600,7 @@ card:
                       }
                     }
                     return {
-                      open() { if (disposed) return; activeVisit = Symbol(); summaryNodes.forEach(node => {node.hidden = true;}); section.hidden = false; if (closeButton) {section.querySelector('nav').appendChild(closeButton); closeButton.style.margin='0 0 0 auto';} dialog.scrollTop=0; section.querySelector('[data-back]').focus({preventScroll:true}); dialog.scrollTop=0; load(); },
+                      open() { if (disposed) return; activeVisit = Symbol(); nativeStatus.textContent = ''; summaryNodes.forEach(node => {node.hidden = true;}); section.hidden = false; if (closeButton) {section.querySelector('nav').appendChild(closeButton); closeButton.style.margin='0 0 0 auto';} dialog.scrollTop=0; section.querySelector('[data-back]').focus({preventScroll:true}); dialog.scrollTop=0; load(); },
                       dispose() { disposed = true; activeVisit = null; invalidate(); section.remove(); },
                     };
                   }
@@ -4607,12 +4664,16 @@ card:
                 // HI-INACTIVITY:END
                 const owner = this;
                 const entityId = variables.hi_summary.history;
-                const nativeTarget = variables.hi_summary.historyEntities.find(item => item.id === entityId && states[item.id]) || variables.hi_summary.historyEntities.find(item => states[item.id]);
+                const hasEntity = id => Boolean(id && (owner.hass || owner._hass)?.states?.[id]);
+                const nativeTarget = variables.hi_summary.historyEntities.find(item => item.id === entityId && hasEntity(item.id)) || variables.hi_summary.historyEntities.find(item => hasEntity(item.id));
                 const nativeEntityId = nativeTarget?.id;
-                const history = () => {
-                  if (nativeEntityId && states[nativeEntityId] && owner.isConnected) owner.dispatchEvent(new CustomEvent('hass-more-info', {
+                const history = beforeOpen => {
+                  if (!owner.isConnected || !hasEntity(nativeEntityId)) return false;
+                  beforeOpen?.();
+                  owner.dispatchEvent(new CustomEvent('hass-more-info', {
                     detail: { entityId: nativeEntityId }, bubbles: true, composed: true
                   }));
+                  return true;
                 };
                 const source = owner.shadowRoot?.querySelector('template.hi-summary-template');
                 window.__hiBadgeDetailsDispose?.(false);
@@ -4677,7 +4738,7 @@ card:
                 dialog.addEventListener('close', cleanup, { once: true });
                 dialog.querySelector('.hi-summary-close').addEventListener('click', close);
                 const historyButton = dialog.querySelector('.hi-summary-history');
-                historyButton.disabled = !variables.hi_summary.historyEntities.some(item => states[item.id]);
+                historyButton.disabled = !variables.hi_summary.historyEntities.some(item => hasEntity(item.id));
                 historyButton.addEventListener('click', () => withSource(() => {
                   historyController ||= hiBadgeHistory.create({dialog, owner, title:variables.hi_summary.title, entities:variables.hi_summary.historyEntities, states, close, withSource, nativeLabel:nativeTarget?.label, nativeAvailable:Boolean(nativeEntityId), openEntity:history});
                   historyController.open();
