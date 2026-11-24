@@ -42,7 +42,7 @@ function harness({ supported = true, deferredClose = false, showThrows = false, 
     get innerHTML() { return this._html || ''; }
     set innerHTML(html) {
       this._html = html; this.replaceChildren();
-      for (const name of ['hi-summary-close','hi-summary-history','hi-stability-close','hi-drift-close','hi-drift-history']) if (html.includes(name)) { const button = new Node('button'); button.className = name; this.appendChild(button); }
+      for (const name of ['hi-snapshot-time','hi-summary-close','hi-summary-history','hi-stability-close','hi-drift-close','hi-drift-history']) if (html.includes(name)) { const button = new Node('button'); button.className = name; this.appendChild(button); }
     }
     get isConnected() { return this === document.body || Boolean(this.parentNode?.isConnected); }
     getRootNode() { return this.parentNode ? this.parentNode.getRootNode() : this; }
@@ -56,6 +56,7 @@ function harness({ supported = true, deferredClose = false, showThrows = false, 
     getAttribute(key) { return this.attributes[key] ?? null; }
     hasAttribute(key) { return key in this.attributes; }
     matches(selector) {
+      if (selector === '.hi-snapshot-time') return this.className === 'hi-snapshot-time';
       if (selector.includes('close') || selector.includes('history')) return this.className === selector.replace(/^\./, '');
       if (selector.includes('template')) return this.tagName === 'TEMPLATE' && selector.includes(this.className);
       if (selector.includes('dialog')) return this.tagName === 'DIALOG' && Object.keys(this.attributes).some(key => selector.includes(key));
@@ -87,7 +88,8 @@ function harness({ supported = true, deferredClose = false, showThrows = false, 
     const card = new Node('button-card'); card.shadowRoot = new Node('shadow-root');
     const button = new Node('ha-card'); button.setAttribute('id', 'card'); card.shadowRoot.appendChild(button);
     const template = new Node('template'); template.className = `hi-${kind}-${kind === 'summary' ? '' : 'details-'}template`;
-    template.innerHTML = `<button class="hi-${kind}-close">Close</button><button class="hi-${kind}-history">View history</button>`;
+    template.setAttribute('data-hi-binding', 'entry-layout-history');
+    template.innerHTML = `<p class="hi-snapshot-time"></p><button class="hi-${kind}-close">Close</button><button class="hi-${kind}-history">View history</button>`;
     template.content = new Node('fragment');
     const close = new Node('button'); close.className = 'hi-stability-close';
     template.content.appendChild(close); card.shadowRoot.appendChild(template);
@@ -99,8 +101,10 @@ function harness({ supported = true, deferredClose = false, showThrows = false, 
     const routes = {Humidity:'sensor.house_average_humidity',Condensation:'sensor.worst_room_condensation',Mould:'sensor.worst_room_mould','Current Air Control':'sensor.air_control_mode',Ready:'sensor.house_average_humidity','Zone 1':'sensor.kitchen_humidity','Zone 2':'sensor.bathroom_humidity',AQ:'sensor.air_control_house_iaq_average'};
     const history = routes[title] || (title === 'Stability Score' ? 'sensor.hi_diagnostics' : 'sensor.house_humidity_drift_7d');
     const summary = routes[title] ? new Function(rendererBody(source,title,'hi_summary'))() : {history,title};
+    const mountedStates = statesOverride || (missing ? {} : {[history]:{state:'normal'}});
+    card.hass = {connection,states:mountedStates};
     new Function('document', 'window', 'MutationObserver', 'CustomEvent', 'entity', 'variables', 'states', 'hass', 'setTimeout', 'clearTimeout', body)
-      .call(card, document, window, Observer, DetailEvent, { entity_id: history }, {hi_summary:summary}, statesOverride || (missing ? {} : {[history]:{state:'normal'}}), {connection}, schedule, id => timers.delete(id));
+      .call(card, document, window, Observer, DetailEvent, { entity_id: history }, {hi_summary:summary}, mountedStates, card.hass, schedule, id => timers.delete(id));
   }
   return { document, window, owner, invoke, observers, timers, connection,
     dialogs: () => document.querySelectorAll('[data-hi-summary-dialog]'),
@@ -141,6 +145,22 @@ test('every summary opens and closes before dispatching its explicit history rou
     assert.equal(h.observers.size,0);
   }
 });
+test('direct history uses the latest owner states even if the opening states still contain the target',()=>{
+  for(const source of SURFACES)for(const title of ['Humidity','Ready','Zone 1','Zone 2']){
+    const h=harness();const owner=h.owner();const events=[];
+    owner.addEventListener('hass-more-info',e=>events.push(e.detail.entityId));
+    h.invoke(owner,source,title);const [dialog]=h.dialogs(),button=dialog.querySelector('.hi-summary-history');
+    const opened=owner.hass;
+    owner._hass={...opened,states:{}};delete owner.hass;
+    button.focus();button.dispatchEvent(new Event('click'));
+    assert.equal(h.dialogs()[0],dialog);assert.equal(h.document.activeElement,button);assert.deepEqual(events,[]);
+    const status=dialog.children.find(child=>child.getAttribute('role')==='status');
+    assert.equal(status.textContent,'This entity is no longer present in Home Assistant.');
+    owner._hass=opened;button.dispatchEvent(new Event('click'));
+    assert.deepEqual(events,Object.keys(opened.states));assert.equal(h.dialogs().length,0);
+  }
+});
+
 test('Close, native Escape close, navigation, backdrop and removal clean up',()=>{
   for (const exit of ['close','native-close','pagehide','popstate','location-changed','backdrop','remove']) {
     const h=harness(); const card=h.owner(); h.invoke(card); const [d]=h.dialogs();
@@ -152,9 +172,16 @@ test('Close, native Escape close, navigation, backdrop and removal clean up',()=
     assert.equal(h.dialogs().length,0,exit);assert.equal(h.observers.size,0,exit);assert.equal(h.window.__hiBadgeDetailsDispose,undefined,exit);
   }
 });
-test('relevant rendered evidence changes close summary; unchanged evidence remains open',()=>{
+test('telemetry retains opening snapshot and inactivity deadline, equal-text retarget closes',()=>{
   const h=harness();const card=h.owner();h.invoke(card);h.flushObservers();assert.equal(h.dialogs().length,1);
-  card.shadowRoot.querySelector('template.hi-summary-template').innerHTML += 'changed source';
+  const d=h.dialogs()[0], deadline=[...h.timers.keys()], focus=h.document.activeElement;
+  const source=card.shadowRoot.querySelector('template.hi-summary-template');
+  const captured=d.querySelector('.hi-snapshot-time').textContent;
+  source.innerHTML += 'changed source';
+  h.flushObservers();assert.equal(h.dialogs()[0],d);assert.equal(h.document.activeElement,focus);
+  assert.deepEqual([...h.timers.keys()],deadline);assert.equal(d.querySelector('.hi-snapshot-time').textContent,captured);
+  assert.match(captured,/Snapshot captured at .*reopen to refresh/);assert.doesNotMatch(d.innerHTML,/changed source/);
+  source.setAttribute('data-hi-binding','changed entry or source');
   h.flushObservers();assert.equal(h.dialogs().length,0);assert.equal(h.observers.size,0);
 });
 test('cross-badge replacement owns one dialog and deferred cleanup cannot steal focus',()=>{
@@ -176,7 +203,8 @@ test('missing mapping disables history while explanation remains accessible',()=
 function rendererBody(source,title,key){
  const text=fs.readFileSync(path.join(ROOT,source),'utf8');
  const titleAt=text.indexOf(`name: ${title}\n`);
- const begin=key==='hi_summary'?text.lastIndexOf('hi_summary: |',titleAt):text.indexOf(`${key}: |`,titleAt);
+ const begin=key==='hi_reason_html' ? text.indexOf('hi_reason_html: &hi_reason_html |') :
+   key==='hi_summary'?text.lastIndexOf('hi_summary: |',titleAt):text.indexOf(`${key}: |`,titleAt);
  const start=text.indexOf('[[[',begin);return text.slice(start+3,text.indexOf(']]]',start));
 }
 test('renderer escapes dynamic risk, reason and history labels and qualifies existing routes',()=>{
@@ -185,10 +213,12 @@ test('renderer escapes dynamic risk, reason and history labels and qualifies exi
   const render=new Function('entity','variables','states',rendererBody(source,title,'summary'));
   const hostile='<img src=x onerror="bad()">';
   const entity={state:hostile,attributes:{risk:hostile}};
-  const states={[config.history]:{attributes:{friendly_name:hostile}},'sensor.air_control_reason':{state:hostile}};
-  const html=render(entity,{hi_summary:config},states);
-  assert.ok(!html.includes(hostile),title);assert.match(html,/&lt;img/);assert.match(html,/Recorder and retention/);
-  const absent=render(undefined,{hi_summary:config},{});assert.match(absent,/currently unavailable in Home Assistant/);assert.match(absent,/disabled/);assert.match(absent,/Unavailable/);
+  const states={[config.history]:{state:hostile,attributes:{friendly_name:hostile}},'sensor.air_control_reason':{state:'Inspect <valve> & confirm'}};
+  const presentReason=new Function('states',rendererBody(source,title,'hi_reason_html'));
+  const html=render(entity,{hi_summary:config,hi_risk:'Danger',hi_mode:hostile,hi_reason_html:presentReason(states)},states);
+  if(config.kind==='mode') assert.equal(html.split('Reason: Inspect &lt;valve&gt; &amp; confirm').length,2,title);
+  assert.ok(!html.includes(hostile),title);if(title !== 'Humidity') assert.match(html,/&lt;img/);assert.match(html,/Recorder and retention/);
+  const absent=render(undefined,{hi_summary:config,hi_risk:'Unavailable',hi_mode:'Unavailable',hi_reason_html:presentReason({})},{});assert.match(absent,/currently unavailable in Home Assistant/);assert.match(absent,/disabled/);assert.match(absent,/Unavailable/);
  }
 });
 test('compact badges preserve color expressions and icons are removed only from four cards',()=>{
@@ -224,11 +254,11 @@ test('humidity summary accepts strict finite numeric strings and rejects malform
   const render=new Function('entity','variables','states',rendererBody(source,'Humidity','summary'));
   for(const value of ['NaN','Infinity','-Infinity','bad','48bad','',' ','unknown','unavailable','true','0x10',true,false,48,NaN,Infinity,null,undefined]){
    const html=render({state:value},{hi_summary:config},{});
-   assert.match(html,/Current humidity: Unavailable\./,String(value));
+   assert.match(html,/Humidity: Unavailable\./,String(value));
   }
   for(const value of ['0','-2.5','48','48.5','+1','.5','1e2']){
    const html=render({state:value},{hi_summary:config},{});
-   assert.ok(html.includes(`Current humidity: ${value}%.`),value);
+   assert.ok(html.includes(`Humidity: ${value}%.`),value);
   }
  }
 });

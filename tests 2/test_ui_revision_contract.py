@@ -4,6 +4,8 @@ import asyncio
 import json
 from pathlib import Path
 import re
+import shutil
+import subprocess
 import sys
 from types import SimpleNamespace
 
@@ -41,6 +43,55 @@ def generation(monkeypatch, *, unavailable=(), unresolved=False, entry_id=ENTRY_
     return register, hass, cards, runtime
 
 
+@pytest.mark.parametrize("damage", ["moved_end", "wrong_owner", "cross_field", "styles_aq", "styles_summary"])
+def test_voc_sync_rejects_misplaced_embeds_before_writing_any_target(tmp_path, damage):
+    root = Path(__file__).resolve().parents[1]
+    script = Path("scripts/sync_voc_presentation.py")
+    ui = Path("custom_components/humidity_intelligence/ui")
+    helper = ui / "voc_presentation.js"
+    cards = [ui / "cards/v2_mobile.yaml", ui / "cards/v2_tablet.yaml",
+             Path("ui-gallery/default-v2-mobile-aq/card.yaml"),
+             Path("ui-gallery/default-v2-tablet-zone-1-cooking/card.yaml")]
+    for relative in [script, helper, *cards]:
+        target = tmp_path / relative
+        target.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(root / relative, target)
+    # An earlier target would be rewritten if validation and writes were interleaved.
+    with (tmp_path / helper).open("a") as handle:
+        handle.write("\n// Updated helper.\n")
+    target = tmp_path / cards[-1]
+    lines = target.read_text().splitlines(keepends=True)
+    end = next(i for i, line in enumerate(lines) if line.strip() == "// HI-VOC-PRESENTATION:END")
+    if damage == "moved_end":
+        lines.insert(end + 3, lines.pop(end))
+    elif damage == "wrong_owner":
+        owner = next(i for i, line in enumerate(lines) if line.strip() == "name: AQ")
+        lines[owner] = lines[owner].replace("name: AQ", "name: Bathroom")
+    elif damage.startswith("styles_"):
+        owner_name = "Current Air Control" if damage == "styles_aq" else "AQ"
+        owner = next(i for i, line in enumerate(lines) if line.strip() == f"name: {owner_name}")
+        indent = lines[owner].split("name:")[0]
+        field = damage.removeprefix("styles_")
+        first = lines.index(f"{indent}  {field}: |\n", owner)
+        last = next(i for i in range(first + 1, len(lines))
+                    if lines[i].strip() and not lines[i].startswith(indent + "   "))
+        scalar = lines[first:last]
+        del lines[first:last]
+        styles = lines.index(indent + "styles:\n", owner)
+        lines[styles + 1:styles + 1] = scalar
+    else:
+        boundary = lines[end:end + 4]
+        del lines[end:end + 4]
+        close = next(i for i in range(end, len(lines)) if lines[i].strip() == "]]]")
+        lines[close + 3:close + 3] = boundary
+    target.write_text("".join(lines))
+    before = [(tmp_path / card).read_bytes() for card in cards]
+    for args in (["--check"], []):
+        result = subprocess.run([sys.executable, tmp_path / script, *args], capture_output=True, text=True, timeout=10)
+        assert result.returncode != 0 and "misplaced VOC preference helper" in result.stderr
+        assert before == [(tmp_path / card).read_bytes() for card in cards]
+
+
 def test_rendered_stamp_matches_backend_target_and_is_entry_scoped(monkeypatch):
     _, _, cards, runtime = generation(monkeypatch)
     metadata = runtime["ui_revision"]
@@ -53,10 +104,10 @@ def test_rendered_stamp_matches_backend_target_and_is_entry_scoped(monkeypatch):
         stamp = json.loads(raw)
         assert stamp == {
             "schema": 1, "entry": metadata["entry"], "layout": layout,
-            "revision": 16, "generator": 1,
+            "revision": 26, "generator": 1,
         }
         assert metadata["layouts"][layout] == {
-            "revision": 16, "generator": 1, "supersedes": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
+            "revision": 26, "generator": 1, "supersedes": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25],
         }
         assert STAMP not in cards[layout]
     module = sys.modules[f"{PKG}.ui.revision"]
@@ -103,7 +154,7 @@ def test_unstamped_template_remains_unverified_and_revisions_are_not_configurati
     assert first != second
     assert target == other_target
     target["supersedes"].append(99)
-    assert other_target["supersedes"] == [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
+    assert other_target["supersedes"] == list(module.UI_LAYOUT_SUPERSEDES["v2_mobile"])
 
 
 def test_diagnostics_publishes_revision_without_changing_primary_state(monkeypatch):

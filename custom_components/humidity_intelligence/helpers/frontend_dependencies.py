@@ -94,18 +94,20 @@ async def async_frontend_dependency_status(hass: HomeAssistant) -> dict:
     return frontend_dependency_status_from_urls(urls)
 
 
-async def async_render_dependency_status(hass: HomeAssistant) -> str:
+async def async_render_dependency_status(hass: HomeAssistant, *, include_links: bool = True) -> str:
     """Render setup/options dependency status from the shared resource truth."""
     frontend_status = await async_frontend_dependency_status(hass)
-    return render_dependency_status(frontend_status)
+    return render_dependency_status(frontend_status, include_links=include_links)
 
 
-def render_dependency_status(frontend_status: dict, custom_components_path: Path | None = None) -> str:
+def render_dependency_status(
+    frontend_status: dict, custom_components_path: Path | None = None, *, include_links: bool = True,
+) -> str:
     """Render dependency status lines for Home Assistant config-flow forms."""
     lines: List[str] = []
     for dep in DEPENDENCIES:
         status = _dependency_display_status(dep, frontend_status, custom_components_path)
-        suffix = f" | repo: {dep['url']}" if dep.get("url") else ""
+        suffix = f" | repo: {dep['url']}" if include_links and dep.get("url") else ""
         lines.append(f"- {dep['name']}: {status}{suffix}")
     return "\n".join(lines)
 

@@ -32,6 +32,23 @@ The interaction repair is scoped to HI-owned native buttons. Existing button-car
 service actions retain their owner; touch handling must not synthesize a second
 System/Manual toggle, operate an output, or turn a scroll into a tap.
 
+## VOC readings on your cards
+
+Open the **AQ** badge. When HI has both VOC concentrations and monitor indices
+configured, **VOC readings on your cards** appears below the snapshot. Choose
+**All configured readings** (the default), **Monitor indices only**, or
+**Concentration averages only**. Your account uses the same choice for this HI installation across Mobile and Tablet. It affects only the current
+chip row. Each index uses its monitor’s own scale. Source mappings are in **Sensors**.
+
+A single configured family appears automatically. An offline source keeps its
+unknown or unavailable indication. When configuration cannot be verified, the
+row shows available readings. An unreadable telemetry inventory shows an AQ configuration warning. If only the VOC index configuration is unknown, its warning names VOC indices. Your choice
+resumes when both families are confirmed. If a source was added since the last
+export and its feed is missing, refresh the mappings and replace the saved card.
+While HI refreshes the preference, the chips keep the last verified filter for the same connection, account and HI entry. A read failure shows **Display preference unavailable**. Select **Retry read** to refresh the preference. When Diagnostics confirms both VOC families after an outage, the previous filter reappears for that same connection, account and entry. A fresh valid read replaces it. Without a previously verified choice, both families remain visible.
+
+**Request accepted by Home Assistant** means Home Assistant acknowledged the request. If it cannot store the change, your previous choice may return after a restart. **Request unconfirmed** offers **Resend** for the attempted choice. A late acknowledgement clears that warning unless you have made a newer choice. An unconfirmed request also returns for the same connection, account and HI entry when Diagnostics recovers. If the read also fails, both messages and actions appear. **Retry read** leaves the unconfirmed request available. **Resend** sends the displayed choice again and keeps a subscription that delivered a valid preference during the resend. Both actions are available when connected.
+
 ## Stability display preference
 
 Hold the existing Stability badge to switch its presentation off or on. Disabled
@@ -110,21 +127,26 @@ The [inactivity contract](ui-inactivity.md) remains authoritative: HI-owned deta
 close after two minutes without interaction; passive telemetry does not renew them.
 Adaptive child activity renews its own and its parent's deadline. Native Outputs
 keeps its shared backend timer measured from opening, and Home Assistant owns its
-native dialogs. Existing source-change dismissal remains in effect where supported.
+native dialogs. Revision 17 captures the V2 summary when opened and labels it with the client's capture
+time. Close and reopen for refreshed values. Routine telemetry keeps the same dialog,
+scroll position, focus, history range and inspected record. Back returns to the opening
+snapshot. A changed card owner, entry stamp, badge or mapped source retires the dialog.
+History retains its recorded timestamps and units.
 
-Renderer changes require synchronized mobile/tablet and gallery embeds, generated
-YAML validation and UI revision checks. Version 2.1.2 uses revision **16**;
-package version alone does not update a pasted card. Install the complete package
-and fully restart Home Assistant. For older V2 revisions, refresh/export and replace
-the full saved Mobile and Tablet Manual-card YAML, then refresh clients as needed.
-Revision-14 beta cards need replacement for the optional-source correction;
-revision-13 cards also need the Marketplace update observation footer.
-Restart resets in-memory Stability history; no configuration or entity migration
-is required. See [the upgrade sequence](home-assistant-2026.11.md).
+Renderer changes require synchronized Mobile, Tablet and gallery embeds. RC.1 now
+exports revision **26**. The final beta.1 and first RC.1 build exported revision
+**18**, and published Stable v2.1.2 exported revision **16**. After installing the
+complete integration and restarting Home Assistant, refresh the mappings and export
+fresh cards. Replace the complete saved card for each layout at revision 25 or
+earlier for the updated VOC preference handling. Restart
+resets in-memory Stability history.
 
-Keep the previous complete package and saved card YAML for rollback. Restore both
-together so card expectations match the selected backend. Versions before the
-v2.1.0-beta.9 interaction repair retain their historical touch limitation.
+Keep the previous complete package and saved cards together for rollback. For
+software predating VOC index support, clear any configured index rows through
+Options in the supporting version first. Verify that all concentration mappings
+remain. Restore the previous package, restart Home Assistant to load it, then
+restore its matching saved cards. [VOC downgrade steps](releases/v2.1.3-beta.1.md)
+Versions before v2.1.0-beta.9 retain their historical touch limitation.
 If rolling back across v2.1.0-beta.8 custom meanings, follow the
 [settings and custody rollback requirements](custom-monitoring-meanings.md#activation-and-rollback).
 Source validation, target activation and public release remain separate claims.

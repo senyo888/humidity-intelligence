@@ -131,32 +131,35 @@ def run_air_control_simulation(
     for method in ("_handle_alerts", "_handle_humidifiers", "_handle_zone_by_key", "_handle_aq"):
         _wrap_async_method(engine, method, lower_lane_trace)
 
-    try:
-        asyncio.run(_evaluate_and_refresh(engine, sensors))
-        mode_sensor = _find_sensor(sensors, "air_control_mode")
-        reason_sensor = _find_sensor(sensors, "air_control_reason")
-        runtime_data = hass.data[DOMAIN][ENTRY_ID]
-        return SimulationResult(
-            mode_entity_id=getattr(mode_sensor, "entity_id", ""),
-            reason_entity_id=getattr(reason_sensor, "entity_id", ""),
-            mode_sensor_state=str(getattr(mode_sensor, "_attr_native_value", "")),
-            mode_sensor_attrs=dict(getattr(mode_sensor, "_attr_extra_state_attributes", {}) or {}),
-            reason_sensor_state=str(getattr(reason_sensor, "_attr_native_value", "")),
-            reason_sensor_attrs=dict(getattr(reason_sensor, "_attr_extra_state_attributes", {}) or {}),
-            runtime_mode=runtime_data.get("runtime_mode"),
-            runtime_display=runtime_data.get("runtime_mode_display"),
-            runtime_reason=str(runtime_data.get("runtime_reason") or ""),
-            lower_lane_trace=list(lower_lane_trace),
-            fan_service_calls=[
-                call for call in hass.services.calls if call[0] in {"fan", "switch"}
-            ],
-            all_service_calls=list(hass.services.calls),
-            telemetry=dict(telemetry),
-            co_pressure_opted_in=bool(co_pressure),
-        )
-    finally:
-        asyncio.run(engine.async_stop())
-        engine_mod.build_display_reason = original_presenter
+    async def simulate() -> SimulationResult:
+        try:
+            await _evaluate_and_refresh(engine, sensors)
+            mode_sensor = _find_sensor(sensors, "air_control_mode")
+            reason_sensor = _find_sensor(sensors, "air_control_reason")
+            runtime_data = hass.data[DOMAIN][ENTRY_ID]
+            return SimulationResult(
+                mode_entity_id=getattr(mode_sensor, "entity_id", ""),
+                reason_entity_id=getattr(reason_sensor, "entity_id", ""),
+                mode_sensor_state=str(getattr(mode_sensor, "_attr_native_value", "")),
+                mode_sensor_attrs=dict(getattr(mode_sensor, "_attr_extra_state_attributes", {}) or {}),
+                reason_sensor_state=str(getattr(reason_sensor, "_attr_native_value", "")),
+                reason_sensor_attrs=dict(getattr(reason_sensor, "_attr_extra_state_attributes", {}) or {}),
+                runtime_mode=runtime_data.get("runtime_mode"),
+                runtime_display=runtime_data.get("runtime_mode_display"),
+                runtime_reason=str(runtime_data.get("runtime_reason") or ""),
+                lower_lane_trace=list(lower_lane_trace),
+                fan_service_calls=[
+                    call for call in hass.services.calls if call[0] in {"fan", "switch"}
+                ],
+                all_service_calls=list(hass.services.calls),
+                telemetry=dict(telemetry),
+                co_pressure_opted_in=bool(co_pressure),
+            )
+        finally:
+            await engine.async_stop()
+            engine_mod.build_display_reason = original_presenter
+
+    return asyncio.run(simulate())
 
 
 def _install_homeassistant_stubs() -> None:
@@ -257,7 +260,7 @@ def _install_package_scaffold() -> None:
     pkg.__path__ = [str(ROOT)]
     sys.modules[PKG] = pkg
 
-    for sub in ("automations", "helpers", "sensors"):
+    for sub in ("automations", "helpers", "sensors", "ui"):
         mod = types.ModuleType(f"{PKG}.{sub}")
         mod.__path__ = [str(INTEGRATION_ROOT / sub)]
         sys.modules[f"{PKG}.{sub}"] = mod

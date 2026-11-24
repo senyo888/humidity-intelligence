@@ -545,3 +545,7 @@ transaction; they introduce no control authority. See
 [custom monitoring meanings](docs/custom-monitoring-meanings.md).
 See [output observation](docs/output-observation.md) for lifecycle, limits,
 prototype migration, and rollback boundaries.
+
+## Display-only VOC indices
+
+Explicit VOC index bindings live in an entry-local collection outside control telemetry. A dedicated read-only sensor counts available providers and exposes each index separately. Its listener updates only that sensor. The [original VOC contract](docs/releases/v2.1.3-beta.1.md) defines provider mapping, units and removal. Feed schema 2 carries the entry’s opaque binding. Cards from revision 19 onward compare that binding before showing live rows. Recorder excludes both the binding and the readings. Support diagnostics expose counts. See [card/feed compatibility and rollback](docs/releases/v2.1.3-rc.1.md).

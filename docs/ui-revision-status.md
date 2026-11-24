@@ -1,6 +1,11 @@
 # Rendered UI revision
 
-Current v2.1.1 Stable uses revision **13** in both V2 layouts, with stamp schema
+Both v2.1.3-rc.1 layouts now use revision **26**, stamp schema **1** and generator
+contract **1**. Replace saved cards at revision 25 or earlier. The final beta.1
+and the first RC.1 build exported revision 18.
+See [RC card compatibility and upgrade](releases/v2.1.3-rc.1.md).
+
+The v2.1.1 Stable release uses revision **13** in both V2 layouts, with stamp schema
 **1** and generator contract **1**. Revisions 1–12 require fresh exports and full
 saved-card replacement; existing v2.1.1-beta.4 and v2.1.1-rc.1 revision-13 cards
 remain compatible.
@@ -16,8 +21,7 @@ See [2026.11 compatibility](home-assistant-2026.11.md).
 The V2 mobile and tablet cards include a small bottom-left UI indicator. Open it
 for UI and software version details and the next step. The UI label reports the revision declared by this
 rendered card, compared with the compatible target advertised by its HI backend.
-It is independent of environmental alerts, Stability and control health. Its 4px
-top margin keeps the footer close to Outputs. A single button occupies at least
+It is independent of environmental alerts, Stability and control health. Revision 17 removes the footer top margin and uses 7px of lower wrapper padding. A single button occupies at least
 44px of real layout height and wraps visible labels on narrow screens; the UI LED
 retains its size and revision meaning.
 

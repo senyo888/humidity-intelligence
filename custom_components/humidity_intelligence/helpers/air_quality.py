@@ -16,6 +16,19 @@ AQ_TRIGGER_SPECS = {
 AQ_CANONICAL_UNITS = {
     "iaq": "index", "pm25": "µg/m³", "voc": "ppb", "co2": "ppm", "co": "ppm",
 }
+# Historical V2 measurement bands, in each aggregate's canonical unit.
+# These apply to the displayed mean only. Control and Stability use their own rules.
+_DISPLAY_THRESHOLDS = {"iaq": (60, 50), "pm25": (35, 65), "voc": (40, 60), "co": (10, 15)}
+
+
+def aq_display_band(kind: str, value: float) -> int:
+    """Return the V2 display band (1 green, 2 amber, 3 red) for a complete mean."""
+    middle, outer = _DISPLAY_THRESHOLDS[kind]
+    if kind == "iaq":
+        return 3 if value <= outer else 2 if value <= middle else 1
+    return 3 if value >= outer else 2 if value >= middle else 1
+
+
 _AQ_UNIT_FACTORS = {
     "iaq": {"": 1.0, "iaq": 1.0, "index": 1.0},
     "pm25": {"ug/m3": 1.0, "mg/m3": 1000.0},

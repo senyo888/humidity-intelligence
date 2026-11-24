@@ -6,6 +6,32 @@ All notable changes to Humidity Intelligence will be documented in this file.
 
 This project follows a practical changelog format for Home Assistant and HACS users. Add new entries under a fresh `Unreleased` section before publishing a future release.
 
+## Unreleased — v2.1.3-rc.1
+
+- Admit RC.1 to the controller package builder and the admin release check.
+- Revision 22 added the per-user VOC chip preference in AQ details. Revision 23 keeps failed saves retryable across reconnects and distinguishes index configuration from AQ telemetry availability. Revision 24 restores live updates after a retry, accepts late write confirmations, and keeps an unconfirmed choice across a temporary Diagnostics outage. Revision 25 retains the last verified VOC filter during a preference refresh and labels a successful request as accepted by Home Assistant. Revision 26 restores that filter after Diagnostics recovers, keeps a working subscription after a resend and offers separate read and resend actions. Existing concentrations and per-monitor indices keep their own units and roles.
+- Advance Mobile and Tablet to revision 21. AQ chips show the measurement in its
+  threshold colour and expose the range to screen readers. House averages include
+  valid unlevelled inputs. Risk badges distinguish reported risk from room names.
+- Require a matching entry on the display-only VOC index feed. Cancel queued
+  dialog actions on dismissal and when the user leaves history. If a native details
+  destination disappears, keep the current dialog open.
+- Align semantic mode colours across the current status chip, history ribbon and
+  legend. Preserve the live safety indicators.
+
+See [RC compatibility and upgrade](docs/releases/v2.1.3-rc.1.md).
+
+## v2.1.3-beta.1 — earlier unpublished candidate
+
+- Use a fixed mode palette in V2 history ribbons and legends. Preserve aliases and recorded unavailable states.
+- Revision 18 restores HI display-band colours for complete AQ averages and shortens concentration chip labels to VOC. Both layouts show the owning units and keep partial or unavailable measurements neutral.
+- Share the current mode and validated reason presentation across V2 summaries. Guard retained risk and reason attributes in current details and recorded reason samples.
+- Match Tablet Risk icons to the red borders, tighten revision-footer spacing and retain the full focusable target.
+- Keep labelled opening snapshots and inspected history through routine telemetry. Close a dialog when its owner or source binding changes.
+- Add explicit per-source VOC indices with a separate Options collection and read-only sensor. Counts appear in support diagnostics. Concentration thresholds and Stability use their existing inputs.
+
+See the [candidate compatibility and rollback record](docs/releases/v2.1.3-beta.1.md).
+
 <a id="v212--stable-source-preparation"></a>
 
 ## v2.1.2 — Stable (2026-11-08)

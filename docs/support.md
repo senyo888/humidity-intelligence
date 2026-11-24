@@ -101,7 +101,8 @@ and does not independently prove which version is loaded. See
 for the separate package, restart, and registration checks.
 
 The historical `v205_release_check` service name is unchanged. Its accepted manifest
-range and result wording cover v2.0.5-v2.0.12 plus v2.1.0-v2.1.2 beta/rc/stable. The service remains
+range and result wording cover v2.0.5-v2.0.12 plus v2.1.0-v2.1.2 beta/rc/stable and the
+exact v2.1.3-beta.1 and v2.1.3-rc.1 candidates. The service remains
 admin-only and runtime/device read-only, writes under
 `<config>/humidity_intelligence/exports/`, and cannot prove physical moisture output.
 Treat its entity-bearing report as local/private until reviewed or sanitized.

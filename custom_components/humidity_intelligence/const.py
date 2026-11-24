@@ -37,7 +37,7 @@ SENSOR_TYPES = [
     {"value": "humidity", "label": "Humidity"},
     {"value": "temperature", "label": "Temperature"},
     {"value": "co2", "label": "CO2"},
-    {"value": "voc", "label": "VOC"},
+    {"value": "voc", "label": "VOC concentration"},
     {"value": "iaq", "label": "IAQ"},
     {"value": "pm25", "label": "PM2.5"},
     {"value": "co", "label": "CO"},

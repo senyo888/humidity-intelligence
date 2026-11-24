@@ -836,6 +836,21 @@ def test_to_redact_covers_required_sensitive_terms():
         assert key in redacted
 
 
+def test_voc_index_diagnostics_contains_only_counts_across_effective_options():
+    diagnostics = _load_diagnostics_module()
+    entry, hass = _sample_entry(), _sample_hass()
+    row = {"source_key": "00000000-0000-4000-8000-000000000042",
+           "label": "Synthetic private index label", "entity_id": "sensor.example_private_index"}
+    entry.options["voc_index_sources"] = [row]
+    hass.states._values[row["entity_id"]] = _FakeState("278.251")
+    payload = asyncio.run(diagnostics.async_get_config_entry_diagnostics(hass, entry))
+    assert payload["diagnostics_summary"]["voc_index_sources"] == {
+        "configured": 1, "available": 1, "unknown": 0, "unavailable": 0, "invalid": 0, "unsupported_unit": 0
+    }
+    rendered = json.dumps(payload)
+    assert all(value not in rendered for value in (*row.values(), "278.251"))
+
+
 if __name__ == "__main__":
     tests = [
         (name, value)

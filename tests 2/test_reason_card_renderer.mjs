@@ -46,7 +46,13 @@ function statusBody(relativePath) {
 }
 
 const BODIES = SURFACES.map(reasonBody);
-const RENDERERS = BODIES.map((body) => new Function('states', body));
+const RENDERERS = SURFACES.map((file, index) => {
+  const source = fs.readFileSync(path.join(ROOT, file), 'utf8');
+  const start = source.indexOf('[[[', source.indexOf('hi_reason_html: &hi_reason_html |')) + 3;
+  const present = new Function('states', source.slice(start, source.indexOf(']]]', start)));
+  const render = new Function('variables', BODIES[index]);
+  return states => render({hi_reason_html: present(states)});
+});
 const STATUS_BODIES = SURFACES.map(statusBody);
 const STATUS_RENDERERS = STATUS_BODIES.map((body) => new Function('states', body));
 
@@ -117,6 +123,33 @@ test('all four V2 surfaces carry one identical reason renderer', () => {
 
 test('all four V2 surfaces carry one identical status renderer', () => {
   assert.equal(new Set(STATUS_BODIES).size, 1);
+});
+
+test('live safety and AQ status retain their colours when they override an exact mode', () => {
+  const co = {'input_boolean.air_co_emergency_active': {state: 'on'}};
+  const aq = {'input_boolean.air_aq_upstairs_active': {state: 'on'}};
+  const alert = {'switch.alert_active': {state: 'on', attributes: {alert_index: 1, trigger_type: 'humidity'}}};
+  const cases = [
+    ['manual_override', co, 'ALERT', '#ef4444'],
+    ['alert', co, 'ALERT', '#ef4444'],
+    ['disabled', alert, 'ALERT', '#ef4444'],
+    ['normal', aq, 'AQ', '#a855f7'],
+    ['danger', aq, 'AQ', '#ef4444'],
+    ['cooking', aq, 'ZONE 1', '#38bdf8'],
+    ['away', alert, 'GATE', '#5eead4'],
+    ['telemetry_unavailable', co, 'TELEMETRY UNAVAILABLE', '#fdba74'],
+    ['unknown', co, 'UNKNOWN', '#64748b'],
+    ['unavailable', aq, 'UNKNOWN', '#64748b'],
+    ['constructor', aq, 'UNKNOWN', '#64748b'],
+  ];
+  for (const [mode, flags, text, colour] of cases) {
+    const states = {'sensor.air_control_mode': {state: mode}, ...flags};
+    const output = assertIdentical(STATUS_RENDERERS.map(render => render(states)));
+    const leading = output.match(/style="--cv:(#[a-f0-9]{6});[^"]*">\s*<span class="t">([^<]+)</);
+    assert.deepEqual(leading.slice(1), [colour, text], mode);
+    if (flags === co) assert.match(output, /style="--cv:#ef4444;[^"]*">\s*<span class="t">CO EMERGENCY</);
+    if (flags === aq) assert.match(output, /style="--cv:#a855f7;[^"]*">\s*<span class="t">AQ Upstairs</);
+  }
 });
 
 test('humidity danger chip stops after the resolved zone', () => {
@@ -349,8 +382,9 @@ test('legacy fallback is escaped and follows full_reason then state then fixed t
   assert.doesNotMatch(output, /<b>/);
 
   for (const state of ['', 'unknown', 'unavailable']) {
-    output = assertIdentical(renderAll(OMIT, { fullReason: '', state }));
-    assert.match(output, /Reason unavailable\./);
+    output = assertIdentical(renderAll(OMIT, { fullReason: 'retained healthy text', state }));
+    assert.match(output, state === 'unknown' ? /Reason unknown\./ : /Reason unavailable\./);
+    assert.doesNotMatch(output, /retained healthy/);
   }
 });
 

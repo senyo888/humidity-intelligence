@@ -12,6 +12,7 @@ from homeassistant.core import HomeAssistant
 
 from .helpers.stability import stability_diagnostics_payload
 from .helpers.air_quality import aq_source_summary
+from .helpers.voc_index import source_counts
 from .helpers.update_observation import update_observation
 from .const import (
     CONF_ALERT_HANDLING_ENABLED,
@@ -465,6 +466,7 @@ def _diagnostics_summary(
 
     return {
         "aq_inputs": aq_inputs,
+        "voc_index_sources": source_counts(hass, config.get("voc_index_sources")),
         "update_observation": update_observation(hass, include_entity_id=False),
         "runtime_control": runtime_control_summary(runtime_data),
         "target_profile": {

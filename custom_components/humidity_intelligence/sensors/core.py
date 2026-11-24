@@ -5,7 +5,8 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass
 from enum import StrEnum
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from math import isfinite
+from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple
 
 from homeassistant.core import HomeAssistant
 from homeassistant.config_entries import ConfigEntry
@@ -25,7 +26,7 @@ from homeassistant.components.binary_sensor import BinarySensorEntity
 from homeassistant.util import slugify
 
 from ..const import DOMAIN
-from ..helpers.air_quality import AQ_CANONICAL_UNITS, parse_aq_value
+from ..helpers.air_quality import AQ_CANONICAL_UNITS, aq_display_band, parse_aq_value
 from ..helpers.drift import (
     HOUSE_HUMIDITY_MEAN_7D_ENTITY,
     house_drift_unavailable_attributes,
@@ -45,6 +46,7 @@ from ..helpers.seasonal import (
     temperature_comfort_state,
 )
 from ..helpers.zone_validation import detect_zone_mapping_duplicates, summarize_zone_mapping_duplicates
+from ..ui.revision import revision_metadata
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -65,6 +67,8 @@ _RISK_ORDER = {"OK": 0, "Watch": 1, "Risk": 2, "Danger": 3, "Unknown": -1}
 
 class HIComputedSensor(SensorEntity):
     """Sensor whose state is computed from other entities."""
+
+    _unrecorded_attributes = frozenset({"source_room_marker"})
 
     def __init__(
         self,
@@ -636,37 +640,42 @@ class _CoreComputations:
             "spread_risk_threshold": profile.mould_spread_risk,
         }
 
+    def _aq_average(self, kind: str, level: str | None = None) -> Tuple[Optional[float], Dict[str, Any]]:
+        source_ids = [
+            row.get("entity_id") for row in self.telemetry
+            if row.get("sensor_type") == kind and (level is None or row.get("level") == level)
+        ]
+        values = self._read_values(kind, level, source_ids)
+        value = _avg(values)
+        if value is None or not isfinite(value):
+            return None, {}
+        if len(values) != len(source_ids):
+            return value, {}
+        return value, {"aq_display_band": aq_display_band(kind, value)}
+
     def _compute_house_iaq_avg(self) -> Tuple[Optional[float], Dict[str, Any]]:
-        values = self._collect_values("iaq")
-        return _avg(values), {}
+        return self._aq_average("iaq")
 
     def _compute_house_pm25_avg(self) -> Tuple[Optional[float], Dict[str, Any]]:
-        values = self._collect_values("pm25")
-        return _avg(values), {}
+        return self._aq_average("pm25")
 
     def _compute_house_voc_avg(self) -> Tuple[Optional[float], Dict[str, Any]]:
-        values = self._collect_values("voc")
-        return _avg(values), {}
+        return self._aq_average("voc")
 
     def _compute_house_co_avg(self) -> Tuple[Optional[float], Dict[str, Any]]:
-        values = self._collect_values("co")
-        return _avg(values), {}
+        return self._aq_average("co")
 
     def _compute_level_iaq_avg(self, level: str) -> Tuple[Optional[float], Dict[str, Any]]:
-        values = self._collect_values("iaq", level)
-        return _avg(values), {}
+        return self._aq_average("iaq", level)
 
     def _compute_level_pm25_avg(self, level: str) -> Tuple[Optional[float], Dict[str, Any]]:
-        values = self._collect_values("pm25", level)
-        return _avg(values), {}
+        return self._aq_average("pm25", level)
 
     def _compute_level_voc_avg(self, level: str) -> Tuple[Optional[float], Dict[str, Any]]:
-        values = self._collect_values("voc", level)
-        return _avg(values), {}
+        return self._aq_average("voc", level)
 
     def _compute_level_co_avg(self, level: str) -> Tuple[Optional[float], Dict[str, Any]]:
-        values = self._collect_values("co", level)
-        return _avg(values), {}
+        return self._aq_average("co", level)
 
     def _compute_house_drift_7d(self) -> Tuple[Optional[float], Dict[str, Any]]:
         current = self._compute_house_avg_humidity()[0]
@@ -777,19 +786,22 @@ class _CoreComputations:
             return None, {"slope_entity": slope_entity}
         return slope, {"slope_entity": slope_entity}
 
+    def _risk_sensor_value(self, kind: str, room: str, attrs: Dict[str, Any]) -> Tuple[str, Dict[str, Any]]:
+        risk = attrs.get("risk", "Unknown")
+        details = {"season": attrs.get("season"), "profile": attrs.get("profile")}
+        # A configured room can have the exact spelling of an HA state marker.
+        # Only expose those two reserved literals when live evidence identifies it.
+        if room in ("unknown", "unavailable") and risk in ("OK", "Watch", "Risk", "Danger"):
+            details["source_room_marker"] = {
+                "entry": revision_metadata(self.entry.entry_id)["entry"], "kind": kind, "room": room,
+            }
+        return risk, details
+
     def _compute_worst_condensation_risk(self) -> Tuple[str, Dict[str, Any]]:
-        _, attrs = self._compute_worst_condensation()
-        return attrs.get("risk", "Unknown"), {
-            "season": attrs.get("season"),
-            "profile": attrs.get("profile"),
-        }
+        return self._risk_sensor_value("condensation", *self._compute_worst_condensation())
 
     def _compute_worst_mould_risk(self) -> Tuple[str, Dict[str, Any]]:
-        _, attrs = self._compute_worst_mould()
-        return attrs.get("risk", "Unknown"), {
-            "season": attrs.get("season"),
-            "profile": attrs.get("profile"),
-        }
+        return self._risk_sensor_value("mould", *self._compute_worst_mould())
 
     def _compute_zone_mapping_duplicates(self) -> Tuple[str, Dict[str, Any]]:
         duplicates = detect_zone_mapping_duplicates(
@@ -853,6 +865,11 @@ class _CoreComputations:
         else:
             for lvl in self.levels.values():
                 entity_ids.extend(lvl.get(sensor_type, []))
+        return self._read_values(sensor_type, level, entity_ids)
+
+    def _read_values(
+        self, sensor_type: str, level: Optional[str], entity_ids: Iterable[Optional[str]]
+    ) -> List[float]:
         values: List[float] = []
         exclusions: List[Tuple[str, str]] = []
         expected_unit: Optional[str] = None
