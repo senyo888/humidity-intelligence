@@ -62,19 +62,19 @@ class Node extends EventTarget {
  focus(){this.ownerDocument.activeElement=this;}
  set innerHTML(html){this.replaceChildren();this._html=html;this.selectors=new Map();
   const add=(selector,tag='button')=>{const node=new Node(tag,this.ownerDocument);this.selectors.set(selector,node);this.appendChild(node);return node;};
-  if(html.includes('data-back')){add('nav','nav');add('[data-back]');add('[data-native]');const day=add('[data-hours="24"]');day.dataset.hours='24';const week=add('[data-hours="168"]');week.dataset.hours='168';const c=add('.hi-history-content','div');c.className='hi-history-content';}
+  if(html.includes('data-back')){add('nav','nav');add('[data-back]');add('[data-native]');add('[data-native-status]','div');const day=add('[data-hours="24"]');day.dataset.hours='24';const week=add('[data-hours="168"]');week.dataset.hours='168';const c=add('.hi-history-content','div');c.className='hi-history-content';}
   if(html.includes('<select')){add('select','select');add('output','output');}
  }
  get innerHTML(){return this._html||'';}
  querySelector(selector){return this.selectors?.get(selector)||this.children.find(node=>selector==='.'+node.className)||null;}
  querySelectorAll(selector){return selector==='[data-hours]'?[this.selectors.get('[data-hours="24"]'),this.selectors.get('[data-hours="168"]')]:[];}
 }
-function harness({timeoutMs=1000, entities=[{id:'sensor.entry_risk',label:'Highest reported risk',kind:'risk'},{id:'sensor.entry_source',label:'Reported source room',kind:'source'}], states, callWS, endTime=end}={}){
+function harness({timeoutMs=1000, withSource, entities=[{id:'sensor.entry_risk',label:'Highest reported risk',kind:'risk'},{id:'sensor.entry_source',label:'Reported source room',kind:'source'}], states, callWS, endTime=end}={}){
  const document={createElement(tag){return new Node(tag,document);}};const body=document.createElement('body');const dialog=body.appendChild(document.createElement('dialog'));
  const close=dialog.appendChild(document.createElement('button'));close.className='hi-summary-close';const title=dialog.appendChild(document.createElement('h2'));const button=dialog.appendChild(document.createElement('button'));button.className='hi-summary-history';
  const requests=[],pending=[];const owner={isConnected:true,hass:{config:{time_zone:'Europe/London'},locale:{language:'en-GB'},callWS:callWS||((request)=>{requests.push(request);return new Promise((resolve,reject)=>pending.push({resolve,reject}));})}};
  let native=0;let controller;
- controller=model.create({dialog,owner,entities,states:states||Object.fromEntries(entities.map(e=>[e.id,{state:'unknown'}])),now:()=>endTime,timeoutMs,close:()=>controller.dispose(),openEntity:()=>native++});
+ controller=model.create({dialog,owner,entities,states:states||Object.fromEntries(entities.map(e=>[e.id,{state:'unknown'}])),now:()=>endTime,timeoutMs,withSource,close:()=>controller.dispose(),openEntity:beforeOpen=>{beforeOpen();native++;return true;}});
  const section=dialog.children.find(n=>n.className==='hi-history');
  return {controller,document,dialog,section,owner,requests,pending,content:section.querySelector('.hi-history-content'),button,title,native:()=>native};
 }
@@ -110,6 +110,24 @@ test('native secondary action disposes before opening existing entity details',(
  const h=harness();h.controller.open();h.section.querySelector('[data-native]').dispatchEvent(new Event('click'));assert.equal(h.native(),1);assert.equal(h.section.isConnected,false);
 });
 
+test('deferred controls belong to the history visit that received the click', () => {
+ for (const exit of ['same visit', 'Back', 'Back and reopen', 'dispose']) {
+  const queued = [];
+  const h = harness({withSource: action => queued.push(action)});
+  h.controller.open();
+  h.section.querySelector('[data-hours="168"]').dispatchEvent(new Event('click'));
+  h.section.querySelector('[data-native]').dispatchEvent(new Event('click'));
+  if (exit.startsWith('Back')) h.section.querySelector('[data-back]').dispatchEvent(new Event('click'));
+  if (exit === 'Back and reopen') h.controller.open();
+  if (exit === 'dispose') h.controller.dispose();
+  const requests = h.requests.length;
+  for (const action of queued) action();
+  assert.equal(h.requests.length - requests, exit === 'same visit' ? 1 : 0, exit);
+  assert.equal(h.native(), exit === 'same visit' ? 1 : 0, exit);
+  h.controller.dispose();
+ }
+});
+
 test('truncation preserves predecessor evidence and never invents a first retained transition',()=>{
  const same=model.normalize(Array.from({length:600},(_,i)=>row(i,'normal')),start,end,'mode');assert.equal(same.records.length,500);assert.equal(model.transitions(same.records).length,0);
  const changed=model.normalize(Array.from({length:600},(_,i)=>row(i,i<100?'normal':'cooking')),start,end,'mode');assert.equal(model.transitions(changed.records).length,1);assert.equal(model.transitions(changed.records)[0].time,start+100000);
@@ -141,4 +159,58 @@ test('source ribbons and labelled legends use matching individual room colours',
  assert.notEqual(fills[0],fills[1]);assert.equal(fills[0],fills[2]);assert.equal(fills[3],'#64748b');
  for(const color of new Set(fills))assert.ok(html.includes(`background:${color}`));
  assert.match(html,/Colours identify rooms/);assert.match(html,/Room A/);assert.match(html,/Room B/);h.controller.dispose();
+});
+
+test('a retained reason cannot mask the state of its own recorded sample', () => {
+ const rows=['unknown','unavailable','available'].map((state,i)=>row(i+1,state,{full_reason:'retained'}));
+ assert.deepEqual(model.normalize(rows,start,end,'reason').records.map(r=>r.state),['unknown','unavailable','retained']);
+});
+
+test('live chips, mode ribbons and legend agree across both layouts and Zone 2 aliases', async () => {
+ const modes = ['normal','cooking','bathroom','bath','air_quality','global_gate','away','paused',
+   'manual_override','disabled','telemetry_unavailable','alert','danger','co_emergency','unavailable','unexpected'];
+ const h = harness({entities:[{id:'sensor.entry_mode',kind:'mode',label:'Mode'}]});
+ h.controller.open();
+ h.pending[0].resolve({'sensor.entry_mode': modes.map((state,i)=>row(i * 4000,state))});
+ await flush();
+ const html = h.content.children.find(node=>node.tagName==='ARTICLE').innerHTML;
+ const fills = [...html.matchAll(/height="36" fill="([^"]+)"/g)].map(m=>m[1]);
+ assert.equal(fills.length, modes.length);
+ assert.equal(fills[2],fills[3]);
+ assert.equal(new Set(fills.slice(0,-2)).size,13);
+ assert.equal(fills.at(-1),'#64748b');assert.equal(fills.at(-2),fills.at(-1));
+ const legend = html.split('class="hi-history-legend"')[1].split('</div>')[0];
+ assert.equal(legend.match(/Zone 2/g).length,1);
+ for (const fill of fills) assert.ok(legend.includes('background:'+fill));
+ const surfaces = [
+   'custom_components/humidity_intelligence/ui/cards/v2_mobile.yaml',
+   'custom_components/humidity_intelligence/ui/cards/v2_tablet.yaml',
+   'ui-gallery/default-v2-mobile-aq/card.yaml',
+   'ui-gallery/default-v2-tablet-zone-1-cooking/card.yaml',
+ ];
+ for (const file of surfaces) {
+   const card = fs.readFileSync(path.join(ROOT, file), 'utf8');
+   const body = card.match(/^        status: \|\n          \[\[\[\n(.*?)^          \]\]\]/ms);
+   assert.ok(body, file);
+   const render = new Function('states', body[1]);
+   for (const [index, mode] of modes.entries()) {
+     const live = render({'sensor.air_control_mode': {state: mode}});
+     assert.equal(live.match(/style="--cv:(#[a-f0-9]{6});/)[1], fills[index], file + ': ' + mode);
+   }
+ }
+ h.controller.dispose();
+});
+
+test('a recovered source joins only the next history request', async () => {
+  const risk = 'sensor.entry_risk', source = 'sensor.entry_source';
+  const h = harness({states:{[risk]:{state:'Risk'}}});
+  h.controller.open();
+  assert.deepEqual(h.requests[0].entity_ids, [risk]);
+  h.owner.hass.states = {[risk]:{state:'Risk'}, [source]:{state:'available'}};
+  h.pending[0].resolve({[source]:[row(1,'unexpected-source')]});
+  await flush();
+  assert.doesNotMatch(h.content.children.map(n=>n.innerHTML).join(''), /unexpected-source/);
+  h.section.querySelector('[data-hours="168"]').dispatchEvent(new Event('click'));
+  assert.deepEqual(h.requests[1].entity_ids, [risk,source]);
+  h.controller.dispose();
 });

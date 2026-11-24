@@ -22,7 +22,8 @@ const hiBadgeHistory = (() => {
       if (!Number.isFinite(time) || time > end || time < start) { invalid++; continue; }
       const attrs = item.a && typeof item.a === 'object' ? item.a : item.attributes && typeof item.attributes === 'object' ? item.attributes : {};
       const state = text(item.s ?? item.state);
-      const value = kind === 'reason' ? text(attrs.full_reason) || state : state;
+      const usable = state.trim() && !['unknown', 'unavailable'].includes(state.trim().toLowerCase());
+      const value = kind === 'reason' && usable ? text(attrs.full_reason) || state : state.trim() || 'Unknown';
       const unit = typeof attrs.unit_of_measurement === 'string' && attrs.unit_of_measurement.trim() ? text(attrs.unit_of_measurement.trim()) : null;
       rows.push({time, state: value || 'Unknown', unit, number: numeric(value), boundary: time === start, conflict: false});
     }
@@ -40,6 +41,15 @@ const hiBadgeHistory = (() => {
     unique.forEach((record, index) => {record.transition = index > 0 && (record.state !== unique[index - 1].state || record.conflict);});
     return {records: unique.slice(omitted), status: unique.length ? 'ok' : 'empty', omitted, invalid};
   }
+  // HI-MODE-PALETTE:START
+  const modeColours = Object.freeze({
+    normal: '#e5e7eb', cooking: '#38bdf8', bathroom: '#4ade80', bath: '#4ade80',
+    air_quality: '#c084fc', global_gate: '#fbbf24', away: '#5eead4', paused: '#fde68a',
+    manual_override: '#f9a8d4', disabled: '#a5b4fc', telemetry_unavailable: '#fdba74',
+    alert: '#fb923c', danger: '#f87171', co_emergency: '#ef4444',
+  });
+  const modeColour = mode => Object.hasOwn(modeColours, mode) ? modeColours[mode] : '#64748b';
+  // HI-MODE-PALETTE:END
   function category(value, kind) {
     if (kind === 'source' || kind === 'reason') return {label: value, tone: 'neutral'};
     if (['unknown', 'unavailable', 'Conflicting records'].some(x => x.toLowerCase() === value.toLowerCase())) return {label: value, tone: 'unknown'};
@@ -94,10 +104,9 @@ const hiBadgeHistory = (() => {
     if (segment.length) segments.push(segment);
     return {segments, points, min, max};
   }
-  function create({dialog, owner, title, entities, states, close, openEntity, nativeLabel = 'entity', nativeAvailable = true, now = () => Date.now(), timeoutMs = 15000}) {
+  function create({dialog, owner, title, entities, states, close, openEntity, nativeLabel = 'entity', nativeAvailable = true, withSource = action => action(), now = () => Date.now(), timeoutMs = 15000}) {
     const document = dialog.ownerDocument;
     const allowed = entities.slice(0, 4).filter(item => item && typeof item.id === 'string' && /^sensor\.[a-z0-9_]+$/.test(item.id));
-    const requested = [...new Set(allowed.filter(item => states[item.id]).map(item => item.id))];
     const summaryNodes = Array.from(dialog.children).filter(node => node.tagName !== 'STYLE' && !node.classList.contains('hi-summary-close'));
     const closeButton = dialog.querySelector('.hi-summary-close');
     const section = document.createElement('section'); section.className = 'hi-history'; section.hidden = true;
@@ -121,10 +130,10 @@ const hiBadgeHistory = (() => {
       .hi-history .hi-history-legend i { display:inline-block; width:10px; height:10px; border-radius:3px; margin-right:5px; }
       .hi-history .hi-history-note { color:#bdcad9; font-size:12px; }
       .hi-history button:focus-visible,.hi-history select:focus-visible,.hi-history summary:focus-visible { outline:2px solid #38bdf8; outline-offset:2px; }
-    </style><nav aria-label="History navigation"><button type="button" data-back>Back</button></nav><h2 tabindex="-1">${escape(title === 'Current Air Control' ? 'Operating mode history' : title === 'AQ' ? 'Air quality history' : title === 'Mould' ? 'Mould risk history' : title === 'Condensation' ? 'Condensation history' : 'Recorded history')}</h2><div class="hi-history-ranges" role="group" aria-label="History range"><button type="button" data-hours="24" aria-pressed="true">24 hours</button><button type="button" data-hours="168" aria-pressed="false">7 days</button></div><div class="hi-history-content" aria-live="polite"></div><button type="button" data-native ${nativeAvailable ? '' : 'disabled'}>Open ${escape(nativeLabel)} details</button>`;
+    </style><nav aria-label="History navigation"><button type="button" data-back>Back</button></nav><h2 tabindex="-1">${escape(title === 'Current Air Control' ? 'Operating mode history' : title === 'AQ' ? 'Air quality history' : title === 'Mould' ? 'Mould risk history' : title === 'Condensation' ? 'Condensation history' : 'Recorded history')}</h2><div class="hi-history-ranges" role="group" aria-label="History range"><button type="button" data-hours="24" aria-pressed="true">24 hours</button><button type="button" data-hours="168" aria-pressed="false">7 days</button></div><div class="hi-history-content" aria-live="polite"></div><button type="button" data-native ${nativeAvailable ? '' : 'disabled'}>Open ${escape(nativeLabel)} details</button><div role="status" data-native-status></div>`;
     dialog.appendChild(section);
     const content = section.querySelector('.hi-history-content');
-    let hours = 24, generation = 0, active = false, disposed = false, timer;
+    let hours = 24, generation = 0, activeVisit = null, disposed = false, timer;
     const hass = owner.hass || owner._hass;
     const date = time => {
       try { return new Intl.DateTimeFormat(hass?.locale?.language || undefined, {timeZone: hass?.config?.time_zone || undefined, year:'numeric',month:'short',day:'numeric',hour:'2-digit',minute:'2-digit',second:'2-digit',timeZoneName:'shortOffset'}).format(time); }
@@ -133,18 +142,27 @@ const hiBadgeHistory = (() => {
     const invalidate = () => { generation++; clearTimeout(timer); };
     const restoreClose = () => { if (closeButton) {dialog.insertBefore(closeButton, dialog.firstChild); closeButton.style.margin = ''; } };
     const back = () => {
-      invalidate(); active = false; restoreClose(); section.hidden = true; dialog.scrollTop = 0;
+      invalidate(); activeVisit = null; restoreClose(); section.hidden = true; dialog.scrollTop = 0;
       summaryNodes.forEach(node => { node.hidden = false; });
       dialog.querySelector('.hi-summary-history')?.focus({preventScroll:true});
       dialog.scrollTop = 0;
     };
+    // A transient source replacement can defer a click past Back and into another visit.
+    const withVisit = action => {
+      const visit = activeVisit;
+      withSource(() => { if (visit && visit === activeVisit) action(); });
+    };
     section.querySelector('[data-back]').addEventListener('click', back);
-    section.querySelector('[data-native]').addEventListener('click', () => { if (nativeAvailable) {close(); openEntity();} });
-    for (const button of section.querySelectorAll('[data-hours]')) button.addEventListener('click', () => {
+    const nativeStatus = section.querySelector('[data-native-status]');
+    const nativeButton = section.querySelector('[data-native]');
+    nativeButton.addEventListener('click', () => withVisit(() => {
+      if (!nativeButton.disabled && !openEntity(close)) nativeStatus.textContent = 'This entity is no longer present in Home Assistant.';
+    }));
+    for (const button of section.querySelectorAll('[data-hours]')) button.addEventListener('click', () => withVisit(() => {
       hours = Number(button.dataset.hours);
       for (const choice of section.querySelectorAll('[data-hours]')) choice.setAttribute('aria-pressed', String(Number(choice.dataset.hours) === hours));
       load();
-    });
+    }));
     function inspect(article, records) {
       const select = article.querySelector('select');
       if (!select) return;
@@ -189,17 +207,27 @@ const hiBadgeHistory = (() => {
         html += '<p class="hi-history-note">Lines join recorded values. A recorded state such as Unavailable, or a change of unit, creates a break.</p>';
       } else if (item.kind !== 'reason') {
         const colors = {ok:'#4ade80',watch:'#facc15',risk:'#fb923c',danger:'#f87171',unknown:'#64748b',neutral:'#7dd3fc'};
-        const colorFor = value => item.kind === 'source' ? sourceColor(value, document) : colors[category(value, item.kind).tone];
+        const colorFor = value => {
+          if (item.kind === 'source') return sourceColor(value, document);
+          if (item.kind === 'mode') return modeColour(value);
+          return colors[category(value, item.kind).tone];
+        };
         if (item.kind === 'source') html += '<p class="hi-history-note">Colours identify rooms. The risk level is shown in the chart above.</p>';
         const ribbons = records.map((record,index) => {
           const next = records[index+1]?.time ?? end;
           const x = 500 * (record.time-start) / Math.max(1,end-start);
           const width = Math.max(0,500 * (next-record.time) / Math.max(1,end-start));
           const label = category(record.state,item.kind);
-          return `<rect x="${x.toFixed(2)}" y="0" width="${width.toFixed(2)}" height="36" fill="${colorFor(record.state)}" stroke="#0d1522" stroke-width="1"><title>${escape(label.label)} · ${escape(date(record.time))}</title></rect>${width >= 50 ? `<text x="${(x+5).toFixed(2)}" y="23" font-size="13" fill="#071523">${escape(label.label.slice(0, Math.max(1, Math.floor((width-10)/8))))}${label.label.length > Math.floor((width-10)/8) ? '…' : ''}</text>` : ''}`;
+          const foreground = item.kind === 'mode' && label.tone === 'unknown' ? '#ffffff' : '#071523';
+          return `<rect x="${x.toFixed(2)}" y="0" width="${width.toFixed(2)}" height="36" fill="${colorFor(record.state)}" stroke="#0d1522" stroke-width="1"><title>${escape(label.label)} · ${escape(date(record.time))}</title></rect>${width >= 50 ? `<text x="${(x+5).toFixed(2)}" y="23" font-size="13" fill="${foreground}">${escape(label.label.slice(0, Math.max(1, Math.floor((width-10)/8))))}${label.label.length > Math.floor((width-10)/8) ? '…' : ''}</text>` : ''}`;
         }).join('');
         html += `<svg class="hi-history-chart" viewBox="0 0 500 36" role="img" aria-label="${escape(item.label)} recorded states. Choose a recorded state below for its time and value.">${ribbons}</svg>${axis}`;
-        html += `<div class="hi-history-legend">${[...new Set(records.map(record => record.state))].map(value => {const label=category(value,item.kind); return `<span><i style="background:${colorFor(value)}" aria-hidden="true"></i>${escape(label.label)}</span>`;}).join('')}</div>`;
+        const legend = new Map();
+        for (const {state} of records) {
+          const key = item.kind === 'mode' ? category(state, item.kind).label : state;
+          if (!legend.has(key)) legend.set(key, state);
+        }
+        html += `<div class="hi-history-legend">${[...legend.values()].map(value => {const label=category(value,item.kind); return `<span><i style="background:${colorFor(value)}" aria-hidden="true"></i>${escape(label.label)}</span>`;}).join('')}</div>`;
       }
       html += inspection(records,item.label,item.kind);
       const updates = item.kind === 'numeric' || item.kind === 'reason' ? records.filter(record => !record.boundary) : transitions(records);
@@ -209,41 +237,61 @@ const hiBadgeHistory = (() => {
     }
     async function load() {
       invalidate(); const requestGeneration = generation;
+      const liveStates = (owner.hass || owner._hass)?.states || states;
+      const requested = [...new Set(allowed.filter(item => liveStates[item.id]).map(item => item.id))];
       const end = now(), start = end - hours * 3600000;
       content.innerHTML = '<p role="status">Loading recorded history…</p>';
       if (!requested.length) { content.innerHTML = '<p>History sources are currently unavailable in Home Assistant.</p>'; return; }
       if (typeof hass?.callWS !== 'function') { content.innerHTML = '<p>Open entity details to access history in this client.</p>'; return; }
       let timedOut = false;
       timer = setTimeout(() => {
-        if (disposed || !active || requestGeneration !== generation) return;
-        timedOut = true; generation++;
-        content.innerHTML = '<p>History took too long to load. Choose a range to try again, or open source details.</p>';
+        if (disposed || !activeVisit || requestGeneration !== generation) return;
+        timedOut = true;
+        withSource(() => {
+          if (disposed || !activeVisit || requestGeneration !== generation) return;
+          content.innerHTML = '<p>History took too long to load. Choose a range to try again, or open source details.</p>';
+        });
       }, timeoutMs);
       try {
         const response = await hass.callWS({type:'history/history_during_period',start_time:new Date(start).toISOString(),end_time:new Date(end).toISOString(),entity_ids:requested,include_start_time_state:true,significant_changes_only:false,minimal_response:false,no_attributes:false});
-        if (disposed || !active || timedOut || requestGeneration !== generation || !owner.isConnected || !dialog.isConnected) return;
+        if (disposed || !activeVisit || timedOut || requestGeneration !== generation) return;
         clearTimeout(timer);
-        content.replaceChildren();
-        const context = document.createElement('p'); context.className='hi-history-note';
-        context.textContent = allowed.some(item=>item.kind==='numeric') ? 'Each chart shows a recorded house average. The mix of sensors can change over time. Details of that mix are unavailable for past readings. For CO emergencies, use dedicated CO safety information.' : allowed.some(item=>item.kind==='risk') ? 'Risk and room changes are recorded separately. “OK” reflects the room readings available at the time.' : 'Explore HI’s recorded modes and reasons. Each keeps its own timestamp. These records describe HI’s selected mode.';
-        content.appendChild(context);
-        const range = document.createElement('p'); range.className='hi-history-note';
-        range.textContent = `${date(start)} — ${date(end)}. “State at start” shows the value carried into this period. Its timestamp marks the start of your selected range.`;
-        content.appendChild(range);
-        if (!response || typeof response !== 'object' || Array.isArray(response)) throw new Error('Invalid history response');
-        for (const item of allowed) {
-          // Ignore all unrequested response keys, even if the server supplied them.
-          const model = requested.includes(item.id) ? normalize(Object.hasOwn(response,item.id) ? response[item.id] : undefined,start,end,item.kind) : {status:'unmapped',records:[]};
-          content.appendChild(draw(model,item,start,end));
-        }
+        withSource(() => {
+          if (disposed || !activeVisit || timedOut || requestGeneration !== generation || !owner.isConnected || !dialog.isConnected) return;
+          content.replaceChildren();
+          const context = document.createElement('p'); context.className='hi-history-note';
+          context.textContent = allowed.some(item=>item.kind==='numeric') ? 'Each chart shows a recorded house average. The mix of sensors can change over time. Details of that mix are unavailable for past readings. For CO emergencies, use dedicated CO safety information.' : allowed.some(item=>item.kind==='risk') ? 'Risk and room changes are recorded separately. “OK” reflects the room readings available at the time.' : 'Explore HI’s recorded modes and reasons. Each keeps its own timestamp. These records describe HI’s selected mode.';
+          content.appendChild(context);
+          const range = document.createElement('p'); range.className='hi-history-note';
+          range.textContent = `${date(start)} — ${date(end)}. “State at start” shows the value carried into this period. Its timestamp marks the start of your selected range.`;
+          content.appendChild(range);
+          if (!response || typeof response !== 'object' || Array.isArray(response)) {
+            content.innerHTML = '<p>History is currently unavailable. Try another range or open source details.</p>'; return;
+          }
+          for (const item of allowed) {
+            // Ignore all unrequested response keys, even if the server supplied them.
+            const model = requested.includes(item.id) ? normalize(Object.hasOwn(response,item.id) ? response[item.id] : undefined,start,end,item.kind) : {status:'unmapped',records:[]};
+            content.appendChild(draw(model,item,start,end));
+          }
+        });
       } catch (_) {
-        if (disposed || !active || requestGeneration !== generation) return;
-        clearTimeout(timer); content.innerHTML = '<p>History is currently unavailable. Try another range or open source details.</p>';
+        if (disposed || !activeVisit || requestGeneration !== generation) return;
+        clearTimeout(timer);
+        withSource(() => {
+          if (!disposed && activeVisit && !timedOut && requestGeneration === generation)
+            content.innerHTML = '<p>History is currently unavailable. Try another range or open source details.</p>';
+        });
       }
     }
     return {
-      open() { if (disposed) return; active = true; summaryNodes.forEach(node => {node.hidden = true;}); section.hidden = false; if (closeButton) {section.querySelector('nav').appendChild(closeButton); closeButton.style.margin='0 0 0 auto';} dialog.scrollTop=0; section.querySelector('[data-back]').focus({preventScroll:true}); dialog.scrollTop=0; load(); },
-      dispose() { disposed = true; active = false; invalidate(); section.remove(); },
+      open(target) {
+        if (disposed) return;
+        if (target) {
+          nativeButton.textContent = 'Open ' + (target.label || 'entity') + ' details';
+          nativeButton.disabled = !target.id;
+        }
+        activeVisit = Symbol(); nativeStatus.textContent = ''; summaryNodes.forEach(node => {node.hidden = true;}); section.hidden = false; if (closeButton) {section.querySelector('nav').appendChild(closeButton); closeButton.style.margin='0 0 0 auto';} dialog.scrollTop=0; section.querySelector('[data-back]').focus({preventScroll:true}); dialog.scrollTop=0; load(); },
+      dispose() { disposed = true; activeVisit = null; invalidate(); section.remove(); },
     };
   }
   return {normalize, numeric, category, transitions, seriesPaths, sourceColor, create};

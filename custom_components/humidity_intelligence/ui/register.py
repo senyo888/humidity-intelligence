@@ -21,6 +21,7 @@ from ..const import (
     DEFAULT_SHOW_OUTPUT_ENTITY_DETAILS,
     DOMAIN,
 )
+from ..helpers.voc_index import configured_sources
 from ..helpers.level_labels import resolve_level_labels
 from .revision import revision_metadata, stamp_card
 
@@ -50,6 +51,7 @@ _ALERT_ONLY_HIDDEN_TIMER_KEYS = {
     "air_control_pause",
 }
 _OPTIONAL_AQ_AGGREGATE_PLACEHOLDERS = {
+    "sensor.hi_voc_index_sources",
     "sensor.air_control_house_iaq_average",
     "sensor.air_control_downstairs_iaq_average",
     "sensor.air_control_upstairs_iaq_average",
@@ -211,6 +213,10 @@ async def async_build_entity_mapping(hass: HomeAssistant, entry_id: str) -> Dict
         "sensor.air_control_mode": _entity_id("sensor", "air_control_mode"),
         "sensor.air_control_reason": _entity_id("sensor", "air_control_reason"),
         "sensor.active_alert_context": _entity_id("sensor", "active_alert_context"),
+        "sensor.hi_voc_index_sources": (
+            _entity_id("sensor", "voc_index_sources")
+            if entry and configured_sources(_entry_section(entry, "voc_index_sources", [])) else None
+        ),
         "sensor.hi_diagnostics": _entity_id("sensor", "diagnostics"),
         "sensor.air_control_kitchen_humidity_delta": _entity_id("sensor", "air_control_kitchen_humidity_delta"),
         "sensor.air_control_bathroom_humidity_delta": _entity_id("sensor", "air_control_bathroom_humidity_delta"),
@@ -394,13 +400,14 @@ async def async_register_cards(hass: HomeAssistant, entry_id: str, mapping: Dict
         # Remove absent optional source placeholders before substituting mappings.
         # A configured entity may legitimately use a different placeholder's name.
         content = _prune_unresolved_entity_items(content, unresolved)
-        content = _neutralize_unresolved_optional_js(content, unresolved)
-        # Replace placeholders safely (avoid partial matches like binary_sensor.*)
-        for placeholder, entity_id in mapping.items():
-            if not entity_id:
-                continue
-            pattern = rf"(?<![A-Za-z0-9_]){re.escape(placeholder)}(?![A-Za-z0-9_])"
-            content = re.sub(pattern, entity_id, content)
+        content = _neutralize_unresolved_js_sources(content, unresolved)
+        # Resolve each original token once. A registry rename may itself equal
+        # another placeholder, including the Diagnostics and VOC feed names.
+        bindings = {key: value for key, value in mapping.items() if value}
+        if bindings:
+            tokens = "|".join(re.escape(key) for key in bindings)
+            content = re.sub(rf"(?<![A-Za-z0-9_])(?:{tokens})(?![A-Za-z0-9_])",
+                             lambda match: bindings[match[0]], content)
 
         # A configured output without a current HA state is unavailable, not
         # absent. Resolve the native header inventory here so the browser never
@@ -464,6 +471,19 @@ async def async_register_cards(hass: HomeAssistant, entry_id: str, mapping: Dict
             )
             content = warning + content
         content, revision_target = stamp_card(content, name, ui_revision)
+        if name in {"v2_mobile", "v2_tablet"}:
+            sources = configured_sources(_entry_section(entry, "voc_index_sources", [])) if entry else []
+            # Keep user labels literal through button-card template and exported-entity scanning.
+            literals = [
+                json.dumps(row["label"], ensure_ascii=True)
+                .replace("]", r"\u005d").replace("[", r"\u005b").replace(".", r"\u002e")
+                for row in sources
+            ]
+            labels = "[" + ", ".join(literals) + "]"
+            content = content.replace(
+                "const indexInventory = []; // HI VOC index export inventory",
+                f"const indexInventory = {labels}; // HI VOC index export inventory",
+            )
         if revision_target is not None and not unresolved_in_card:
             ui_revision["layouts"][name] = revision_target
         cards[name] = content
@@ -570,14 +590,20 @@ def _is_optional_placeholder(placeholder: str) -> bool:
     )
 
 
-def _neutralize_unresolved_optional_js(content: str, unresolved: List[str]) -> str:
-    """Keep unconfigured optional sources absent even if legacy IDs exist in HA.
+def _neutralize_unresolved_js_sources(content: str, unresolved: List[str]) -> str:
+    """Prevent unresolved source literals from reading unrelated HA entities.
 
     Work on source literals inside button-card JavaScript only, before mapping.
     Resolved entities remain referenced regardless of current state availability.
     ``null`` is an absence value, not a fabricated Home Assistant entity.
     """
-    absent = {item for item in unresolved if _is_optional_placeholder(item)}
+    risk_sources = {
+        "sensor.worst_room_condensation", "sensor.worst_room_condensation_risk",
+        "sensor.worst_room_mould", "sensor.worst_room_mould_risk",
+    }
+    # The required risk badges keep their missing-binding diagnostic. Their JS
+    # must never read a different entity that occupies an unresolved template ID.
+    absent = {item for item in unresolved if _is_optional_placeholder(item) or item in risk_sources}
     if not absent:
         return content
     # Canonical templates use exact quoted entity IDs. Match those literals
@@ -620,6 +646,18 @@ def _prune_unresolved_entity_items(content: str, unresolved: List[str]) -> str:
 
     while i < len(lines):
         line = lines[i]
+
+        if line.strip() == "triggers_update:":
+            base_indent = len(line) - len(line.lstrip())
+            end = i + 1
+            while (end < len(lines) and len(lines[end]) - len(lines[end].lstrip()) > base_indent
+                   and lines[end].strip().startswith("- ")):
+                end += 1
+            kept = [item for item in lines[i + 1:end] if item.strip().removeprefix("- ") not in prune_set]
+            if any(item.strip().startswith("- ") for item in kept):
+                out.extend([line, *kept])
+            i = end
+            continue
 
         list_match = list_entity_pattern.match(line)
         if list_match:

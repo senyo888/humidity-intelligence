@@ -4,14 +4,7 @@
     "step": {
       "welcome": {
         "title": "Welcome to Humidity Intelligence",
-        "description": "Humidity Intelligence is a deterministic Home Assistant control engine for humidity, air quality, condensation, mould risk, and carbon monoxide safety. It uses configured sensors, room mappings, zones, outputs, and runtime gates to make one explainable control decision per cycle.\n\nRecommended setup method\n\nFor most homes, start small. Add a few core sensors first, ideally one humidity sensor and one temperature sensor for a main room. Continue through setup and save the integration. You can then return to Options to add more rooms, sensors, zones, air-quality inputs, humidifiers, alerts, and dashboard exports.\n\nThis staged method gives you a saved baseline to return to, makes setup easier to validate, and avoids losing a long first-run configuration.\n\nAdvanced setup method\n\nIf you already know your full sensor layout, you can add all sensors during first setup and configure everything in one pass.\n\nNext, Humidity Intelligence will check optional dashboard add-ons. Backend control does not require these cards, but generated dashboards look best when they are installed.\n\nFull Configuration Walkthrough: {walkthrough_url}"
-      },
-      "dependencies": {
-        "title": "Dashboard add-ons",
-        "description": "Optional frontend custom cards used by the Humidity Intelligence dashboards.\n\n{dependencies}\n\nBackend control works without optional frontend cards, but dashboard visuals may degrade until they are installed. If a status is Unknown, verify optional cards in Settings → Marketplace on Home Assistant 2026.11 or later; on earlier supported versions, use HACS. Also check Dashboard resources.\n\nNeed help finishing setup? Open the Configuration Walkthrough for the recommended dependency, dashboard, and first-run checks: {walkthrough_url}\n\nThanks to Home Assistant, HACS, and the community developers that make these cards possible.",
-        "data": {
-          "skip": "Skip frontend dependency checks and continue"
-        }
+        "description": "Humidity Intelligence is a deterministic Home Assistant control engine for humidity, air quality, condensation, mould risk, and carbon monoxide safety. It uses configured sensors, room mappings, zones, outputs, and runtime gates to make one explainable control decision per cycle.\n\nRecommended setup method\n\nFor most homes, start small. Add a few core sensors first, ideally one humidity sensor and one temperature sensor for a main room. Continue through setup and save the integration. You can then return to Options to add more rooms, sensors, zones, air-quality inputs, humidifiers, alerts, and dashboard exports.\n\nThis staged method gives you a saved baseline to return to, makes setup easier to validate, and avoids losing a long first-run configuration.\n\nAdvanced setup method\n\nIf you already know your full sensor layout, you can add all sensors during first setup and configure everything in one pass.\n\nNext, set your operating schedule and limits. The final setup page shows optional dashboard add-ons and lets you choose your cards.\n\nFull Configuration Walkthrough: {walkthrough_url}"
       },
       "gates": {
         "title": "Operating schedule & limits",
@@ -132,8 +125,8 @@
           "level_labels": "Level display labels",
           "zone1": "Configure Zone 1",
           "zone2": "Configure Zone 2",
-          "zones_done": "Done",
-          "zones_back": "Back"
+          "zones_done": "Continue to humidifiers",
+          "zones_back": "Back to temperature change settings"
         }
       },
       "level_labels": {
@@ -225,8 +218,8 @@
         "menu_options": {
           "humidifier_level1": "Configure Level 1",
           "humidifier_level2": "Configure Level 2",
-          "humidifiers_done": "Continue",
-          "humidifiers_back": "Back"
+          "humidifiers_done": "Continue to air quality",
+          "humidifiers_back": "Back to zones"
         }
       },
       "humidifier_level1": {
@@ -273,8 +266,8 @@
         "menu_options": {
           "aq_level1": "Configure Level 1",
           "aq_level2": "Configure Level 2",
-          "aq_done": "Continue",
-          "aq_back": "Back"
+          "aq_done": "Continue to alerts",
+          "aq_back": "Back to humidifiers"
         }
       },
       "aq_skip": {
@@ -360,8 +353,8 @@
           "alert_settings": "Alert handling settings",
           "alert_add": "Add alert visual rule",
           "alert_remove": "Remove alert visual rule",
-          "alerts_done": "Finish",
-          "alerts_back": "Back"
+          "alerts_done": "Continue to UI cards",
+          "alerts_back": "Back to air quality"
         }
       },
       "alert_settings": {
@@ -406,10 +399,30 @@
         }
       },
       "ui_install": {
-        "title": "UI Cards",
-        "description": "Select the Manual-card layouts to export. The tablet layout is selected by default for initial setup. Later, dump_cards without a layout exports all cached layouts; supply layout to export one layout only.\n\nV1 Mobile remains available in this candidate but is deprecated for new dashboards. Use V2 Mobile for new dashboards. Removing V1 Mobile requires a separate approved migration.\n\nHI writes card fragments under /config/humidity_intelligence/ui/ and posts a notification with every exact path created during setup. It does not create, register, replace, or delete Home Assistant dashboards. Multi-entry installations add an entry-qualified token to the filename.\n\nUpdating from an older HI release: a file such as /config/humidity_intelligence_cards_v2_mobile.yaml is a retained legacy root file and is no longer refreshed. Do not copy that old root file after upgrading. Use only the exact /config/humidity_intelligence/ui/... path in the new notification. If File Editor was already open, refresh its file tree after export.\n\nConfigured alerts:\n{configured_alerts}\n\nWarning: The backend logic will work without frontend dependencies, but the UI cards may render incorrectly unless the required custom cards are installed (card-mod, button-card, mod-card, apexcharts-card).\n\nTo load a card: open the exact /config/humidity_intelligence/ui/... path from the notification in File Editor → copy the complete YAML → create or open a Home Assistant dashboard → Edit dashboard → Add card → Manual → paste YAML. The export is a card fragment; do not copy it to /config/dashboards/.\n\nNext step: Configuration Walkthrough: {walkthrough_url}",
+        "title": "UI cards and dashboard add-ons",
+        "description": "Choose the Manual-card layouts you intend to use. Selecting any layout exports the cached card set. Tablet is selected by default. Clear the selection to skip the setup export.\n\n**Dashboard add-ons**\n\n{dependencies}\n\nBackend control works without these optional frontend dependencies. You can revisit their status in HI Settings → Dashboard add-ons.\n\n**Using exported cards**\n\nHI writes card fragments under /config/humidity_intelligence/ui/. Open an exact path from the new notification in File Editor, then paste the complete YAML into a Manual card. HI does not create, register, replace, or delete dashboards.\n\nConfigured alerts:\n{configured_alerts}\n\nNext step: Configuration Walkthrough: {walkthrough_url}",
         "data": {
-          "ui_layouts": "UI layouts to export"
+          "ui_layouts": "UI layouts to export",
+          "skip": "Continue without reviewing dashboard add-ons"
+        },
+        "data_description": {
+          "ui_layouts": "If File Editor was open, refresh its file tree. A file such as /config/humidity_intelligence_cards_v2_mobile.yaml is a retained legacy root file and is no longer refreshed. V1 Mobile remains available in this candidate but is deprecated for new dashboards. Use V2 Mobile for new dashboards. Removing V1 Mobile requires a separate approved migration."
+        }
+      },
+      "voc_index": {
+        "title": "VOC index (display only)",
+        "description": "Choose a provider source to edit, or add a new source. Each index is displayed separately. If both VOC concentrations and indices are configured, open the AQ badge on your dashboard to choose which readings appear on your cards.",
+        "data": {
+          "source": "Index source"
+        }
+      },
+      "voc_index_edit": {
+        "title": "VOC index source",
+        "description": "Choose an index sensor and a distinct display label. Reselect a renamed provider to keep its verified identity. Selecting a different provider creates a new binding.",
+        "data": {
+          "entity_id": "Provider index sensor",
+          "label": "Display label",
+          "action": "Action"
         }
       }
     },
@@ -421,7 +434,11 @@
       "room_unknown": "Selected room is not in configured telemetry.",
       "room_missing_humidity": "Selected room has no humidity telemetry for room-scoped humidity danger.",
       "room_missing_temp_humidity": "Selected room needs both humidity and temperature telemetry for this room-scoped trigger.",
-      "ambiguous_slope_mapping": "Cannot uniquely pair every temperature source with a slope sensor. Use matching room names, or select one source and one slope sensor. Existing saved pairs are retained."
+      "ambiguous_slope_mapping": "Cannot uniquely pair every temperature source with a slope sensor. Use matching room names, or select one source and one slope sensor. Existing saved pairs are retained.",
+      "voc_index_provider": "Choose an external provider index sensor.",
+      "voc_index_unreadable_rows": "Some saved VOC index settings cannot be read. HI preserves them while you edit the available sources.",
+      "voc_index_conflicting_rows": "This change would activate a conflicting saved source. HI kept the previous settings.",
+      "voc_index_label": "Enter a distinct display label of 1–80 printable characters."
     },
     "abort": {
       "user_cancelled": "Setup closed without saving."
@@ -435,7 +452,7 @@
           "options_dependencies": "Dashboard add-ons",
           "options_sensors": "Sensors",
           "options_gates": "Operating schedule & limits",
-          "options_thresholds": "Comfort and thresholds",
+          "options_thresholds": "Humidity targets and temperature comfort",
           "options_telemetry": "Sensors",
           "options_zones": "Zones",
           "options_humidifiers": "Humidifier control",
@@ -451,12 +468,12 @@
         "title": "Dashboard add-ons",
         "description": "Optional frontend custom cards used by the Humidity Intelligence dashboards.\n\n{dependencies}\n\nCustom card lines include upstream repository links. On Home Assistant 2026.11 or later, use Settings → Marketplace to install or verify optional cards; on earlier supported versions, use HACS. Also check Dashboard resources.\n\nNeed help finishing setup? Open the Configuration Walkthrough for the recommended dependency, dashboard, and first-run checks: {walkthrough_url}",
         "data": {
-          "skip": "Skip frontend dependency checks in setup"
+          "skip": "Continue without reviewing dashboard add-ons"
         }
       },
       "options_gates": {
         "title": "Operating schedule & limits",
-        "description": "Edit the essential operating gates. Presence can use person, device_tracker, alarm panel, or helper entities. Humidity Intelligence target profile mode controls seasonal vs custom humidity interpretation.\n\n{advanced_note}\n\nAdvanced tuning contains control-loop timing, startup UI mapping refresh, custom target bands, and generated-card output details visibility.",
+        "description": "Set the operating schedule, presence conditions and alert-only mode. Advanced tuning includes the control loop interval and dashboard options.\n\n{advanced_note}",
         "data": {
           "enable_time_gate": "Use an operating schedule",
           "start_time": "Start time",
@@ -466,9 +483,6 @@
           "alert_only_mode": "Alert-only mode (monitor + alerts only)",
           "auto_refresh_ui_on_startup": "Refresh HI UI mapping on Home Assistant startup",
           "show_output_entity_details": "Show output entity details",
-          "target_profile": "Humidity Intelligence target profile mode",
-          "custom_target_low": "Humidity custom target low (%)",
-          "custom_target_high": "Humidity custom target high (%)",
           "enable_presence_gate": "Use presence conditions",
           "presence_entities": "Presence/alarm entities",
           "show_advanced_options": "Show advanced tuning"
@@ -480,45 +494,31 @@
             "data": {
               "engine_interval_minutes": "Control loop interval",
               "auto_refresh_ui_on_startup": "Refresh HI UI mapping on Home Assistant startup",
-              "show_output_entity_details": "Show output entity details",
-              "custom_target_low": "Humidity custom target low (%)",
-              "custom_target_high": "Humidity custom target high (%)"
+              "show_output_entity_details": "Show output entity details"
             }
           }
         }
       },
       "options_thresholds": {
-        "title": "Comfort and thresholds",
-        "description": "Review comfort mode first. Custom comfort levels and deterministic zone thresholds are advanced tuning controls.\n\n{advanced_note}\n\nConfigured zones:\n{configured_zones}",
-        "data": {
-          "temperature_comfort_mode": "Temperature comfort mode",
-          "temperature_comfort_custom_low": "Custom temperature comfort low (°C)",
-          "temperature_comfort_custom_high": "Custom temperature comfort high (°C)",
-          "zone1_threshold_humidity_high": "Zone 1 humidity above house average (delta %)",
-          "zone1_threshold_condensation_risk": "Zone 1 condensation risk threshold (dew-point spread °C)",
-          "zone1_threshold_mould_risk": "Zone 1 mould risk threshold (level 1-3)",
-          "zone1_threshold_air_quality_bad": "Zone 1 air quality bad threshold (IAQ)",
-          "zone2_threshold_humidity_high": "Zone 2 humidity above house average (delta %)",
-          "zone2_threshold_condensation_risk": "Zone 2 condensation risk threshold (dew-point spread °C)",
-          "zone2_threshold_mould_risk": "Zone 2 mould risk threshold (level 1-3)",
-          "zone2_threshold_air_quality_bad": "Zone 2 air quality bad threshold (IAQ)",
-          "show_advanced_options": "Show advanced tuning"
-        },
+        "title": "Humidity targets and temperature comfort",
+        "description": "Choose a profile in each group. Custom profiles use the lower and upper limits shown. Changes apply when you choose Save changes on the main settings page.\n\n{range_notes}",
         "sections": {
-          "show_advanced_options": {
-            "name": "Show advanced tuning",
-            "description": "Open to customise deterministic tuning controls. Leave collapsed to keep recommended defaults.",
+          "humidity_targets": {
+            "name": "Humidity targets",
+            "description": "This profile sets the humidity range HI uses for control and risk evaluation.",
             "data": {
-              "temperature_comfort_custom_low": "Custom temperature comfort low (°C)",
-              "temperature_comfort_custom_high": "Custom temperature comfort high (°C)",
-              "zone1_threshold_humidity_high": "Zone 1 humidity above house average (delta %)",
-              "zone1_threshold_condensation_risk": "Zone 1 condensation risk threshold (dew-point spread °C)",
-              "zone1_threshold_mould_risk": "Zone 1 mould risk threshold (level 1-3)",
-              "zone1_threshold_air_quality_bad": "Zone 1 air quality bad threshold (IAQ)",
-              "zone2_threshold_humidity_high": "Zone 2 humidity above house average (delta %)",
-              "zone2_threshold_condensation_risk": "Zone 2 condensation risk threshold (dew-point spread °C)",
-              "zone2_threshold_mould_risk": "Zone 2 mould risk threshold (level 1-3)",
-              "zone2_threshold_air_quality_bad": "Zone 2 air quality bad threshold (IAQ)"
+              "target_profile": "Humidity profile",
+              "custom_target_low": "Custom lower limit",
+              "custom_target_high": "Custom upper limit"
+            }
+          },
+          "temperature_comfort": {
+            "name": "Temperature comfort",
+            "description": "This range describes how temperature is reported on your dashboard.",
+            "data": {
+              "temperature_comfort_mode": "Comfort profile",
+              "temperature_comfort_custom_low": "Custom lower limit",
+              "temperature_comfort_custom_high": "Custom upper limit"
             }
           }
         }
@@ -577,7 +577,7 @@
       },
       "options_zones": {
         "title": "Zone Options",
-        "description": "Edit level display labels before Zone 1 / Zone 2 configuration, or select a zone to edit.\n\nConfigured zones:\n{configured_zones}",
+        "description": "Select a zone to edit, configure an unused zone or edit the level names.\n\nConfigured zones:\n{configured_zones}",
         "data": {
           "action": "Zone action"
         }
@@ -592,7 +592,7 @@
       },
       "options_zone_edit": {
         "title": "Edit Zone",
-        "description": "Editing {zone_label}. Keep the essential mapping visible; fan levels and label tuning are advanced.\n\n{advanced_note}\n\n{boost_guidance}",
+        "description": "Editing {zone_label}. Apply the edits to this session, then choose Save changes in Settings.\n\n{boost_guidance}",
         "data": {
           "enabled": "Enable zone",
           "level": "Level",
@@ -602,16 +602,31 @@
           "output_level": "Normal fan run level (Auto/33/66/100)",
           "boost_output_level": "Boost fan run level (Auto/33/66/100) - danger/alert escalation level for this zone",
           "ui_label": "Current Air Control label",
-          "show_advanced_options": "Show advanced tuning"
+          "show_advanced_options": "Show advanced tuning",
+          "action": "Next action",
+          "threshold_humidity_high": "Humidity above house average",
+          "threshold_condensation_risk": "Dew-point spread baseline (°C)",
+          "threshold_mould_risk": "Mould risk at or above (level)",
+          "threshold_air_quality_bad": "IAQ at or below (index)"
         },
         "sections": {
           "show_advanced_options": {
             "name": "Show advanced tuning",
-            "description": "Open to customise deterministic tuning controls. Leave collapsed to keep recommended defaults.",
+            "description": "You can tune thresholds even when their triggers are off. Blank fields keep saved values. A newly selected trigger uses its listed default if it has no saved threshold.",
             "data": {
               "output_level": "Normal fan run level (Auto/33/66/100)",
               "boost_output_level": "Boost fan run level (Auto/33/66/100) - danger/alert escalation level for this zone",
-              "ui_label": "Current Air Control label"
+              "ui_label": "Current Air Control label",
+              "threshold_humidity_high": "Humidity above house average",
+              "threshold_condensation_risk": "Dew-point spread baseline (°C)",
+              "threshold_mould_risk": "Mould risk at or above (level)",
+              "threshold_air_quality_bad": "IAQ at or below (index)"
+            },
+            "data_description": {
+              "threshold_humidity_high": "Triggers when average humidity in the selected rooms exceeds the house average by this many percentage points or more. Range 2–20. Default 5.",
+              "threshold_condensation_risk": "Range 2–6. Default 4. HI triggers at or below the spread adjusted for the active target profile.",
+              "threshold_mould_risk": "Range 1–3. Default 2.",
+              "threshold_air_quality_bad": "Range 50–90. Default 70."
             }
           }
         }
@@ -653,7 +668,7 @@
       },
       "options_aq_edit": {
         "title": "Edit Air Quality Lane",
-        "description": "Editing {level_label}. Keep enablement, triggers, and outputs visible. Removal, run duration, fan level, and trigger thresholds are advanced tuning.\n\n{advanced_note}",
+        "description": "Editing {level_label}. Choose the triggers and outputs for this level. Adding triggers opens a threshold review. Use Advanced tuning to adjust existing thresholds or set a missing value or replace one outside the editable range.\n\n{advanced_note}",
         "data": {
           "remove_lane": "Remove this AQ lane",
           "enabled": "Enable AQ lane",
@@ -666,12 +681,13 @@
           "threshold_voc_bad": "VOC bad threshold",
           "threshold_co2_high": "CO2 high threshold",
           "threshold_co_warning": "CO warning threshold",
-          "show_advanced_options": "Show advanced tuning"
+          "show_advanced_options": "Show advanced tuning",
+          "set_thresholds": "Set thresholds for selected triggers"
         },
         "sections": {
           "show_advanced_options": {
             "name": "Show advanced tuning",
-            "description": "Open to customise deterministic tuning controls. Leave collapsed to keep recommended defaults.",
+            "description": "Adjust this lane’s settings. Choose Set thresholds to review a value this editor cannot display.",
             "data": {
               "remove_lane": "Remove this AQ lane",
               "run_duration": "Run duration",
@@ -680,9 +696,26 @@
               "threshold_pm25_high": "PM2.5 high threshold",
               "threshold_voc_bad": "VOC bad threshold",
               "threshold_co2_high": "CO2 high threshold",
-              "threshold_co_warning": "CO warning threshold"
+              "threshold_co_warning": "CO warning threshold",
+              "set_thresholds": "Set thresholds for selected triggers"
             }
           }
+        }
+      },
+      "options_aq_thresholds_unavailable": {
+        "title": "AQ thresholds unavailable",
+        "description": "HI cannot read the stored thresholds for this lane. Returning to air quality keeps the saved lane intact. Review the lane configuration before changing its thresholds."
+      },
+      "options_aq_thresholds": {
+        "title": "Review AQ thresholds",
+        "description": "Review the values for {level_label}.\n\n{threshold_sources}\n\nKeep these thresholds stages the lane for this session. Choose Save changes on the main settings page to apply it.",
+        "data": {
+          "threshold_iaq_bad": "IAQ at or below",
+          "threshold_pm25_high": "PM2.5 at or above",
+          "threshold_voc_bad": "VOC concentration at or above",
+          "threshold_co2_high": "CO₂ at or above",
+          "threshold_co_warning": "CO warning at or above",
+          "action": "Next action"
         }
       },
       "options_alerts": {
@@ -881,6 +914,22 @@
           "replacement": "How to handle existing rules",
           "cancel": "Return without changing"
         }
+      },
+      "voc_index": {
+        "title": "VOC index (display only)",
+        "description": "Choose a provider source to edit, or add a new source. Each index is displayed separately. If both VOC concentrations and indices are configured, open the AQ badge on your dashboard to choose which readings appear on your cards.",
+        "data": {
+          "source": "Index source"
+        }
+      },
+      "voc_index_edit": {
+        "title": "VOC index source",
+        "description": "Choose an index sensor and a distinct display label. Reselect a renamed provider to keep its verified identity. Selecting a different provider creates a new binding.",
+        "data": {
+          "entity_id": "Provider index sensor",
+          "label": "Display label",
+          "action": "Action"
+        }
       }
     },
     "error": {
@@ -906,7 +955,20 @@
       "meaning_in_use": "This meaning is used by saved rules. Choose a replacement or explicitly remove those rules.",
       "invalid_replacement": "Choose a different saved meaning or a standard classification as the replacement.",
       "invalid_instructions": "Use at most 240 characters of plain text. Line breaks are allowed; other control characters are not.",
-      "ambiguous_slope_mapping": "Cannot uniquely pair every temperature source with a slope sensor. Use matching room names, or select one source and one slope sensor. Existing saved pairs are retained."
+      "ambiguous_slope_mapping": "Cannot uniquely pair every temperature source with a slope sensor. Use matching room names, or select one source and one slope sensor. Existing saved pairs are retained.",
+      "voc_index_provider": "Choose an external provider index sensor.",
+      "voc_index_unreadable_rows": "Some saved VOC index settings cannot be read. HI preserves them while you edit the available sources.",
+      "voc_index_conflicting_rows": "This change would activate a conflicting saved source. HI kept the previous settings.",
+      "voc_index_label": "Enter a distinct display label of 1–80 printable characters.",
+      "invalid_aq_threshold": "Enter a number within the range shown.",
+      "profile_value_invalid": "Enter a finite number in the range shown.",
+      "humidity_range_invalid": "Enter both custom humidity limits within their allowed ranges, with the lower value below the upper value.",
+      "temperature_range_invalid": "Enter both custom temperature limits within their allowed ranges, with the lower value below the upper value.",
+      "zone_activation_threshold": "Open Advanced and enter a number in the indicated range for each marked trigger before activating it.",
+      "confirm_zone_outputs": "Confirm the zone’s output selection before activating it.",
+      "invalid_zone_threshold": "Enter a finite number in the range shown, or leave the field blank to keep its saved value.",
+      "unrecognised_zone_thresholds": "HI cannot read the saved thresholds for this zone. Its threshold settings have been preserved.",
+      "unrecognised_zone_settings": "HI cannot read these zone settings. Their saved values have been preserved."
     },
     "abort": {
       "user_cancelled": "Options closed without saving."
@@ -962,6 +1024,12 @@
       "options": {
         "edit": "Rename or reclassify",
         "delete": "Delete"
+      }
+    },
+    "zone_edit_action": {
+      "options": {
+        "apply": "Apply edits and return to zones",
+        "back": "Back to zones without applying these edits"
       }
     }
   },

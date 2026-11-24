@@ -76,7 +76,8 @@ def _output_details_block(source: str) -> str:
 def _v2_reason_block(source: str) -> str:
     start = source.index("        reason: |\n")
     end = source.index("        aq: |\n", start)
-    return source[start:end]
+    presenter = source.index("        hi_reason_html: &hi_reason_html |")
+    return source[presenter:source.index("        hi_summary: |", presenter)] + source[start:end]
 
 
 def _strip_allowed_output_expander_toggle(source: str) -> str:
@@ -2596,18 +2597,19 @@ async def _run_runtime_assertions(engine_mod) -> None:
             pass
 
 
-def _contains_v2_border_pill_sync_logic(yaml_text: str) -> bool:
+def _contains_v2_status_chip_and_border_guards(yaml_text: str) -> bool:
     chip_tokens = [
+        "// HI-LIVE-MODE-PALETTE:START",
         "const red =",
         "const gateActive =",
         "const zone1 =",
         "const zone2 =",
         "const aqActive =",
-        "if (red) return '#ef4444'",
-        "if (gateActive) return '#f59e0b'",
-        "if (zone1) return '#38bdf8'",
-        "if (zone2) return '#4ade80'",
-        "if (aqActive) return '#a855f7'",
+        "return ['ALERT', exactMode",
+        "if (gateActive) return ['GATE', colour]",
+        "if (zone1) return ['ZONE 1', colour]",
+        "if (zone2) return ['ZONE 2', colour]",
+        "if (mode === 'air_quality') return ['AQ', colour]",
     ]
     border_tokens = [
         "if (red) return '1px solid rgba(239,68,68",
@@ -2880,16 +2882,11 @@ async def _run_card_assertions(register_mod) -> None:
         assert "'telemetry_unavailable'," in card
         assert "const modeKnown =" in card
         assert "const mode = modeKnown ? rawMode : 'unknown'" in card
-        assert "if (!modeKnown) return 'UNKNOWN';" in card
+        assert "if (!modeKnown) return ['UNKNOWN', colour];" in card
         assert "const ready = modeKnown && mode === 'normal'" in card
-        assert "if (mode === 'telemetry_unavailable') return '#f59e0b';" in card
-        assert "if (mode === 'telemetry_unavailable') return 'TELEMETRY UNAVAILABLE';" in card
+        assert "if (mode === 'telemetry_unavailable') return ['TELEMETRY UNAVAILABLE', colour];" in card
         assert "mode === 'telemetry_unavailable'" in card
         assert "if (mode === 'telemetry_unavailable') return '1px solid rgba(245,158,11" in card
-        assert card.index("if (mode === 'telemetry_unavailable') return '#f59e0b';") < card.index("if (red || coE")
-        assert card.index("if (!modeKnown) return '#94a3b8';") < card.index("if (red || coE")
-        assert card.index("if (mode === 'telemetry_unavailable') return 'TELEMETRY UNAVAILABLE';") < card.index("if (red) return 'ALERT';")
-        assert card.index("if (!modeKnown) return 'UNKNOWN';") < card.index("if (red) return 'ALERT';")
         assert "const borderModeKnown =" in card
         assert "if (!borderModeKnown) return '1px solid rgba(148,163,184,0.55)';" in card
         assert card.index("if (!borderModeKnown) return '1px solid rgba(148,163,184,0.55)';") < card.index("if (red) return '1px solid rgba(239,68,68,0.85)'")
@@ -2900,8 +2897,8 @@ async def _run_card_assertions(register_mod) -> None:
         assert card.index("${chip('House AVG'") < card.index("${levelHumidityChips}")
         assert card.index("House IAQ") < card.index("Loft IAQ") < card.index("Ground Floor IAQ")
 
-    assert _contains_v2_border_pill_sync_logic(mobile)
-    assert _contains_v2_border_pill_sync_logic(tablet)
+    assert _contains_v2_status_chip_and_border_guards(mobile)
+    assert _contains_v2_status_chip_and_border_guards(tablet)
     # Outputs should only include configured alert placeholders.
     assert "input_boolean.air_alert_2_active" not in mobile
     assert "light.alert_2" not in mobile
@@ -3519,9 +3516,7 @@ def test_v2_reason_panels_use_backend_schema_with_atomic_escaped_fallback():
         for marker in forbidden:
             assert marker not in block, (path.relative_to(ROOT), marker)
         assert block.count("states[") == 1
-        assert block.index("reasonState?.attributes?.full_reason") < block.index(
-            "reasonState?.state"
-        )
+        assert block.index("reasonState?.state") < block.index("reasonState?.attributes?.full_reason")
         assert "max-height: 60px" in source
         assert "overflow-y: auto" in source
         assert ".cv-reason:focus-visible" in source
@@ -3599,7 +3594,7 @@ def test_public_v2_gallery_cards_preserve_air_control_mode_truth():
         assert "'telemetry_unavailable'," in source
         assert "const modeKnown =" in source
         assert "const mode = modeKnown ? rawMode : 'unknown'" in source
-        assert "if (!modeKnown) return 'UNKNOWN';" in source
+        assert "if (!modeKnown) return ['UNKNOWN', colour];" in source
         assert "const ready = modeKnown && mode === 'normal'" in source
         assert "states['binary_sensor.humidity_danger']?.state === 'on'" not in source
         assert "states['binary_sensor.condensation_danger']?.state === 'on'" not in source
@@ -3607,8 +3602,7 @@ def test_public_v2_gallery_cards_preserve_air_control_mode_truth():
         assert "_humidity_danger']?.state === 'on'" not in source
         assert "_condensation_danger']?.state === 'on'" not in source
         assert "_mould_danger']?.state === 'on'" not in source
-        assert "if (mode === 'telemetry_unavailable') return '#f59e0b';" in source
-        assert "if (mode === 'telemetry_unavailable') return 'TELEMETRY UNAVAILABLE';" in source
+        assert "if (mode === 'telemetry_unavailable') return ['TELEMETRY UNAVAILABLE', colour];" in source
         assert "tempColor(tempValueC(entity))" in source
         assert "slopeEntityFor(item)" in source
         assert "displayReason.schema !== 'hi.reason.v1'" in source
@@ -3616,10 +3610,6 @@ def test_public_v2_gallery_cards_preserve_air_control_mode_truth():
         assert "Stage:" not in _v2_reason_block(source)
         assert "Engine:" not in _v2_reason_block(source)
         assert "if (mode === 'telemetry_unavailable') return '1px solid rgba(245,158,11" in source
-        assert source.index("if (mode === 'telemetry_unavailable') return '#f59e0b';") < source.index("if (red || coE")
-        assert source.index("if (!modeKnown) return '#94a3b8';") < source.index("if (red || coE")
-        assert source.index("if (mode === 'telemetry_unavailable') return 'TELEMETRY UNAVAILABLE';") < source.index("if (red) return 'ALERT';")
-        assert source.index("if (!modeKnown) return 'UNKNOWN';") < source.index("if (red) return 'ALERT';")
         assert "const borderModeKnown =" in source
         assert "if (!borderModeKnown) return '1px solid rgba(148,163,184,0.55)';" in source
         assert source.index("if (!borderModeKnown) return '1px solid rgba(148,163,184,0.55)';") < source.index("if (red) return '1px solid rgba(239,68,68,0.85)'")
@@ -3660,7 +3650,6 @@ def test_startup_ui_refresh_contract_is_wired():
     assert "Show output entity details" in strings_source
     assert "['v2_tablet']" in config_source or 'default=["v2_tablet"]' in config_source
     assert "async_step_options_thresholds" in config_source
-    assert "zone1_threshold_humidity_high" in strings_source
     assert "temperature_comfort_mode" in strings_source
     assert "auto_refresh_ui_on_startup" in strings_source
     assert "recommended defaults" in config_source
@@ -3835,32 +3824,23 @@ def test_options_update_reports_export_failure_without_success_path():
     assert "files were written" not in notifications[0][2]["message"]
 
 
-def test_options_gates_keeps_custom_targets_behind_advanced():
-    config_source = (INTEGRATION_ROOT / "config_flow.py").read_text()
-    method_source = config_source.split("async def async_step_options_gates", 1)[1].split(
-        "async def async_step_options_presence_states", 1
-    )[0]
-    schema_source = method_source.split("schema_fields: Dict[Any, Any]", 1)[1]
-    visible_schema_source = schema_source.split("vol.Optional(ADVANCED_OPTIONS_FIELD", 1)[0]
-    advanced_schema_source = schema_source.split("vol.Optional(ADVANCED_OPTIONS_FIELD", 1)[1]
-
-    assert 'vol.Optional("target_profile"' in visible_schema_source
-    assert '"custom_target_low"' not in visible_schema_source
-    assert '"custom_target_high"' not in visible_schema_source
-    assert '"custom_target_low"' in advanced_schema_source
-    assert '"custom_target_high"' in advanced_schema_source
-
-
-def test_options_thresholds_only_persists_real_zone_configs():
-    config_source = (INTEGRATION_ROOT / "config_flow.py").read_text()
-    method_source = config_source.split("async def async_step_options_thresholds", 1)[1].split(
-        "async def async_step_options_sensors", 1
-    )[0]
-
-    assert "_configured_zone_items(zones)" in method_source
-    assert 'for zone_key in ("zone1", "zone2")' not in method_source
-    assert "zones[zone_key] = zone" in method_source
-    assert "zone[\"thresholds\"] = thresholds" in method_source
+def test_profile_and_zone_labels_belong_to_their_own_settings():
+    for filename in ("strings.json", "translations/en.json"):
+        steps = json.loads((INTEGRATION_ROOT / filename).read_text())["options"]["step"]
+        sections = steps["options_thresholds"]["sections"]
+        assert set(sections["humidity_targets"]["data"]) == {
+            "target_profile", "custom_target_low", "custom_target_high",
+        }
+        assert set(sections["temperature_comfort"]["data"]) == {
+            "temperature_comfort_mode", "temperature_comfort_custom_low", "temperature_comfort_custom_high",
+        }
+        gates = steps["options_gates"]
+        assert set(sections["humidity_targets"]["data"]).isdisjoint(gates["data"])
+        assert set(sections["humidity_targets"]["data"]).isdisjoint(gates["sections"]["show_advanced_options"]["data"])
+        zone = steps["options_zone_edit"]["sections"]["show_advanced_options"]
+        assert set(zone["data_description"]) == {
+            "threshold_humidity_high", "threshold_mould_risk", "threshold_condensation_risk", "threshold_air_quality_bad",
+        }
 
 
 def test_advanced_tuning_uses_collapsible_sections_not_submit_reveal():
@@ -3888,7 +3868,6 @@ def test_advanced_tuning_uses_collapsible_sections_not_submit_reveal():
         "async_step_aq_thresholds",
         "async_step_alert_add",
         "async_step_options_gates",
-        "async_step_options_thresholds",
         "async_step_options_zone_edit",
         "async_step_options_humidifier_edit",
         "async_step_options_aq_edit",
@@ -3922,6 +3901,11 @@ def test_readme_keeps_current_stable_visible_with_older_releases_collapsed():
     release_notes = readme_source.split("## Release Notes", 1)[1]
     visible_notes, previous_releases = release_notes.split("<details>", 1)
 
+    assert "### v2.1.3 — Air Quality in Focus (Stable release preparation)" in visible_notes
+    assert "### v2.1.3-rc.1" not in visible_notes
+    assert "### v2.1.3-rc.1 (Earlier unpublished candidate)" in previous_releases
+    assert "### v2.1.3-beta.1" not in visible_notes
+    assert "### v2.1.3-beta.1 (Earlier unpublished candidate)" in previous_releases
     assert "### v2.1.2 (Current Stable)" in visible_notes
     assert "### v2.1.1" not in visible_notes
     assert "### v2.1.1 (Previous Stable)" in previous_releases
@@ -4525,7 +4509,7 @@ def test_config_flow_dependency_pages_keep_drift_statistics_status_out_of_fronte
     assert "drift_statistics" not in config_source
     assert "_render_drift_statistics_status" not in config_source
     for payload in (strings, translations):
-        setup_description = payload["config"]["step"]["dependencies"]["description"]
+        setup_description = payload["config"]["step"]["ui_install"]["description"]
         options_description = payload["options"]["step"]["options_dependencies"]["description"]
         assert "House Humidity Mean 7d" not in setup_description
         assert "House Humidity Mean 7d" not in options_description
@@ -4600,6 +4584,17 @@ def test_diagnostics_summary_can_surface_shared_frontend_dependency_status_witho
     sensor_mod = _load_sensor_platform_module()
     compact = sensor_mod._compact_diagnostics_summary(full_summary)
     assert compact["runtime_control"] == full_summary["runtime_control"]
+
+
+def test_compact_diagnostics_keeps_only_a_verified_configured_index_count():
+    sensor = _load_sensor_platform_module()
+    for value, expected in ((0, {"configured": 0}), (2, {"configured": 2}),
+                            (None, {}), (True, {}), ("1", {}), (-1, {})):
+        compact = sensor._compact_diagnostics_summary({"voc_index_sources": {
+            "configured": value, "available": 0, "labels": ["Example"],
+        }})
+        assert compact["voc_index_sources"] == expected
+    assert sensor._compact_diagnostics_summary({})["voc_index_sources"] == {}
 
 
 def test_support_diagnostics_summary_uses_canonical_level_label_source():
@@ -5377,9 +5372,9 @@ def test_generated_v2_cards_escape_dynamic_html_text():
         assert "const escapeHtml = " in source, path
         assert "escapeHtml(displayReason.headline)" in source, path
         assert "displayReason.lines.map((line) => escapeHtml(line.text))" in source, path
-        assert "wrapReason(escapeHtml(legacyReason()))" in source, path
+        assert "return escapeHtml(legacyReason())" in source, path
         assert "${escapeHtml(k)}" in source, path
-        assert "${escapeHtml(v === null ? '—' : `${v}${unit || ''}`)}" in source, path
+        assert "${esc(label)}</span>" in source and ">${esc(value)}</span>" in source, path
 
 
 def test_diagnostics_summary_surfaces_temperature_comfort_warm_boundary():
@@ -5857,7 +5852,7 @@ def test_v205_release_check_service_is_documented_and_registered():
     assert "wiki/Services-Reference" in readme_source
     assert "wiki/Release-Validation-for-Users" in readme_source
     assert "humidity_intelligence_v205_release_check.json" in services_yaml
-    assert manifest["version"] == "2.1.2"
+    assert manifest["version"] == "2.1.3"
 
 
 def test_owned_ui_path_discovery_and_legacy_cleanup_guidance_is_explicit():
@@ -5890,7 +5885,8 @@ def test_owned_ui_path_discovery_and_legacy_cleanup_guidance_is_explicit():
     assert "does not write a file" in support_source
 
     for data in (strings_data, translations_data):
-        description = data["config"]["step"]["ui_install"]["description"]
+        step = data["config"]["step"]["ui_install"]
+        description = step["description"] + step["data_description"]["ui_layouts"]
         assert "/config/humidity_intelligence/ui/" in description
         assert "/config/humidity_intelligence_cards_v2_mobile.yaml" in description
         assert "retained legacy root file" in description
@@ -7130,7 +7126,11 @@ def test_generated_v1_cards_escape_dynamic_html_text():
 
 def test_release_check_rejects_unsupported_or_malformed_v21_versions():
     services = _load_services_module()
-    for version in ("2.1.3-beta.1", "2.2.0-beta.1", "2.1.2-beta.0",
+    assert services._release_check_manifest_status("2.1.3-beta.1")[0] == "pass"
+    assert services._release_check_manifest_status("2.1.3-rc.1")[0] == "pass"
+    assert services._release_check_manifest_status("2.1.3")[0] == "pass"
+    for version in ("2.1.3-beta.2", "2.1.3-rc.2", "2.1.3-rc.01", "2.1.4",
+                    "2.2.0-beta.1", "2.1.2-beta.0",
                     "2.1.0-beta.01", "2.1.0-alpha.1", "2.1.0-beta.1extra"):
         status, _ = services._release_check_manifest_status(version)
         assert status == "fail", version

@@ -2,3 +2,17 @@ title = "Humidity Intelligence Gitleaks configuration"
 
 [extend]
 useDefault = true
+
+[[rules]]
+id = "generic-api-key"
+
+[[rules.allowlists]]
+description = "Public Home Assistant user-data key for the VOC chip preference"
+condition = "AND"
+regexTarget = "secret"
+regexes = ['''^humidity_intelligence\.voc_chips\.v1\.$''']
+paths = [
+    '''(^|/)custom_components/humidity_intelligence/ui/voc_presentation\.js$''',
+    '''(^|/)custom_components/humidity_intelligence/ui/cards/v2_(mobile|tablet)\.yaml$''',
+    '''(^|/)ui-gallery/default-v2-(mobile-aq|tablet-zone-1-cooking)/card\.yaml$''',
+]

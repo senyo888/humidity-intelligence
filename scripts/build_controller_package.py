@@ -201,12 +201,14 @@ def _write_new_file(path: Path, content: bytes) -> None:
 
 
 def _contract_for_version(version: str) -> str:
-    """Keep the V2.0 identity fixed and identify V2.1.0 through V2.1.2 artifacts."""
+    """Select the public package contract for an admitted manifest version."""
     if SEMANTIC_VERSION.fullmatch(version) and version.startswith("2.0."):
         return CONTRACT_ID
-    if re.fullmatch(r"2\.1\.[012](?:-(?:beta|rc)\.[1-9]\d*)?", version):
+    if version in {"2.1.3-beta.1", "2.1.3-rc.1", "2.1.3"} or re.fullmatch(
+        r"2\.1\.[012](?:-(?:beta|rc)\.[1-9]\d*)?", version
+    ):
         return V21_CONTRACT_ID
-    raise PackageBuildError("Integration manifest version is outside the public V2.0/V2.1.0-V2.1.2 contracts")
+    raise PackageBuildError("Integration manifest version is outside the supported public controller package contracts")
 
 
 def build_package(repository: Path, commitish: str, output: Path) -> dict[str, object]:

@@ -97,7 +97,7 @@ variables:
   hi_summary: >-
     [[[ return {"history": "sensor.air_control_house_iaq_average", "historyEntities": [{"id": "sensor.air_control_house_iaq_average"}], "required": "sensor.house_humidity_drift_7d"}; ]]]
 '''
-    result = register._neutralize_unresolved_optional_js(source, ["sensor.air_control_house_iaq_average", "sensor.house_humidity_drift_7d"])
+    result = register._neutralize_unresolved_js_sources(source, ["sensor.air_control_house_iaq_average", "sensor.house_humidity_drift_7d"])
     code = re.search(r"\[\[\[(.*?)\]\]\]", result, re.S).group(1)
     value = execute([code], {})[0]
     assert value == {"history": None, "historyEntities": [{"id": None}], "required": "sensor.house_humidity_drift_7d"}
@@ -117,10 +117,24 @@ const longer = 'input_boolean.air_aq_downstairs_active_extra';
 return [html, a, b, longer];
 ]]]
 """
-    rendered = register._neutralize_unresolved_optional_js(source, [entity])
+    rendered = register._neutralize_unresolved_js_sources(source, [entity])
     assert rendered.startswith("outside: '" + entity + "'")
     assert "const a = states[null]" in rendered
     assert "const b = states[null]" in rendered
     assert "'" + entity + "_extra'" in rendered
     code = re.search(r"\[\[\[(.*?)\]\]\]", rendered, re.S).group(1)
     assert execute([code], {}) == execute([code], {entity: {"state": "on"}})
+
+
+def test_missing_current_risk_binding_stays_neutral_with_a_lookalike_entity(monkeypatch):
+    kinds = ("condensation", "mould")
+    _, mapping, cards, runtime = generate(monkeypatch, missing=[f"worst_{kind}_risk" for kind in kinds])
+    states = {}
+    for kind in kinds:
+        room = f"sensor.worst_room_{kind}"
+        states[mapping[room]] = {"state": "unavailable", "attributes": {"risk": "OK"}}
+        states[room + "_risk"] = {"state": "OK"}
+    for layout in LAYOUTS:
+        code = re.findall(r"hi_risk: \|\s*\[\[\[(.*?)\]\]\]", cards[layout], re.S)
+        assert len(code) == 2 and execute(code, states) == ["Unavailable", "Unavailable"]
+        assert all(f"sensor.worst_room_{kind}_risk" in runtime["unresolved_placeholders_by_card"][layout] for kind in kinds)
