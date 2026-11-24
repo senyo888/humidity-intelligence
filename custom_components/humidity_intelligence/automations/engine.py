@@ -1464,6 +1464,8 @@ class HIAutomationEngine:
         facts: List[_TriggerFact] = []
         triggers = cfg.get("triggers", [])
         thresholds = cfg.get("thresholds", {})
+        if not isinstance(thresholds, dict):
+            return details, tuple(facts)
         for trig in triggers:
             threshold = thresholds.get(trig)
             if trig == "iaq_bad":

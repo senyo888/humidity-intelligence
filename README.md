@@ -747,7 +747,7 @@ Common post-configuration areas:
 - `Humidity targets and temperature comfort`: the humidity profile guides control and risk evaluation. The temperature range describes comfort on the dashboard. Each group keeps its custom limits when you switch profiles.
 - `Humidifier control`: add or edit per-level humidifier lanes
 - `Air quality control`: select a level, then choose its triggers and outputs.
-  Adding triggers opens one threshold review for that level. **Keep these thresholds**
+  Adding triggers or activating a lane with missing thresholds opens one threshold review for that level. **Keep these thresholds**
   stages the lane until **Save changes** on the main settings page. Returning to the
   lane from the review discards that visit’s edits. In **Advanced tuning**, use
   **Set thresholds for selected triggers** to set a missing threshold or replace
@@ -833,9 +833,13 @@ CO emergency pressure. Details are in
 ![Humidity Intelligence v2.1.3 — Air Quality in Focus](assets/release_banner/v2.1.3_release.gif)
 
 Mobile and Tablet can show each monitor’s VOC index, the concentration averages, or both.
+If Diagnostics goes offline, mapped AQ averages with verified readings stay visible.
 Operating-mode colours match across the live card and history. Unavailable sources are
-identified, and timestamped AQ details stay open while readings update. Both layouts use
-revision 26. Replace saved cards at revision 25 or earlier after upgrading.
+identified, and timestamped AQ details stay open while readings update. When you enable
+an AQ lane with a missing threshold, Settings asks you to confirm it.
+
+Both layouts use **revision 27**. After upgrading, re-export and replace saved Mobile
+and Tablet cards at **revision 26 or earlier**, including cards from the final RC.
 [Release notes and upgrade guidance](docs/releases/v2.1.3.md)
 
 <a id="v212-stable-source-preparation"></a>

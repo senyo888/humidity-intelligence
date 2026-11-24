@@ -436,6 +436,8 @@
       "room_missing_temp_humidity": "Selected room needs both humidity and temperature telemetry for this room-scoped trigger.",
       "ambiguous_slope_mapping": "Cannot uniquely pair every temperature source with a slope sensor. Use matching room names, or select one source and one slope sensor. Existing saved pairs are retained.",
       "voc_index_provider": "Choose an external provider index sensor.",
+      "voc_index_unreadable_rows": "Some saved VOC index settings cannot be read. HI preserves them while you edit the available sources.",
+      "voc_index_conflicting_rows": "This change would activate a conflicting saved source. HI kept the previous settings.",
       "voc_index_label": "Enter a distinct display label of 1–80 printable characters."
     },
     "abort": {
@@ -955,11 +957,15 @@
       "invalid_instructions": "Use at most 240 characters of plain text. Line breaks are allowed; other control characters are not.",
       "ambiguous_slope_mapping": "Cannot uniquely pair every temperature source with a slope sensor. Use matching room names, or select one source and one slope sensor. Existing saved pairs are retained.",
       "voc_index_provider": "Choose an external provider index sensor.",
+      "voc_index_unreadable_rows": "Some saved VOC index settings cannot be read. HI preserves them while you edit the available sources.",
+      "voc_index_conflicting_rows": "This change would activate a conflicting saved source. HI kept the previous settings.",
       "voc_index_label": "Enter a distinct display label of 1–80 printable characters.",
       "invalid_aq_threshold": "Enter a number within the range shown.",
       "profile_value_invalid": "Enter a finite number in the range shown.",
       "humidity_range_invalid": "Enter both custom humidity limits within their allowed ranges, with the lower value below the upper value.",
       "temperature_range_invalid": "Enter both custom temperature limits within their allowed ranges, with the lower value below the upper value.",
+      "zone_activation_threshold": "Open Advanced and enter a number in the indicated range for each marked trigger before activating it.",
+      "confirm_zone_outputs": "Confirm the zone’s output selection before activating it.",
       "invalid_zone_threshold": "Enter a finite number in the range shown, or leave the field blank to keep its saved value.",
       "unrecognised_zone_thresholds": "HI cannot read the saved thresholds for this zone. Its threshold settings have been preserved.",
       "unrecognised_zone_settings": "HI cannot read these zone settings. Their saved values have been preserved."

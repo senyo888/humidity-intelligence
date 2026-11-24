@@ -107,7 +107,6 @@ const hiBadgeHistory = (() => {
   function create({dialog, owner, title, entities, states, close, openEntity, nativeLabel = 'entity', nativeAvailable = true, withSource = action => action(), now = () => Date.now(), timeoutMs = 15000}) {
     const document = dialog.ownerDocument;
     const allowed = entities.slice(0, 4).filter(item => item && typeof item.id === 'string' && /^sensor\.[a-z0-9_]+$/.test(item.id));
-    const requested = [...new Set(allowed.filter(item => states[item.id]).map(item => item.id))];
     const summaryNodes = Array.from(dialog.children).filter(node => node.tagName !== 'STYLE' && !node.classList.contains('hi-summary-close'));
     const closeButton = dialog.querySelector('.hi-summary-close');
     const section = document.createElement('section'); section.className = 'hi-history'; section.hidden = true;
@@ -155,8 +154,9 @@ const hiBadgeHistory = (() => {
     };
     section.querySelector('[data-back]').addEventListener('click', back);
     const nativeStatus = section.querySelector('[data-native-status]');
-    section.querySelector('[data-native]').addEventListener('click', () => withVisit(() => {
-      if (nativeAvailable && !openEntity(close)) nativeStatus.textContent = 'This entity is no longer present in Home Assistant.';
+    const nativeButton = section.querySelector('[data-native]');
+    nativeButton.addEventListener('click', () => withVisit(() => {
+      if (!nativeButton.disabled && !openEntity(close)) nativeStatus.textContent = 'This entity is no longer present in Home Assistant.';
     }));
     for (const button of section.querySelectorAll('[data-hours]')) button.addEventListener('click', () => withVisit(() => {
       hours = Number(button.dataset.hours);
@@ -237,6 +237,8 @@ const hiBadgeHistory = (() => {
     }
     async function load() {
       invalidate(); const requestGeneration = generation;
+      const liveStates = (owner.hass || owner._hass)?.states || states;
+      const requested = [...new Set(allowed.filter(item => liveStates[item.id]).map(item => item.id))];
       const end = now(), start = end - hours * 3600000;
       content.innerHTML = '<p role="status">Loading recorded history…</p>';
       if (!requested.length) { content.innerHTML = '<p>History sources are currently unavailable in Home Assistant.</p>'; return; }
@@ -282,7 +284,13 @@ const hiBadgeHistory = (() => {
       }
     }
     return {
-      open() { if (disposed) return; activeVisit = Symbol(); nativeStatus.textContent = ''; summaryNodes.forEach(node => {node.hidden = true;}); section.hidden = false; if (closeButton) {section.querySelector('nav').appendChild(closeButton); closeButton.style.margin='0 0 0 auto';} dialog.scrollTop=0; section.querySelector('[data-back]').focus({preventScroll:true}); dialog.scrollTop=0; load(); },
+      open(target) {
+        if (disposed) return;
+        if (target) {
+          nativeButton.textContent = 'Open ' + (target.label || 'entity') + ' details';
+          nativeButton.disabled = !target.id;
+        }
+        activeVisit = Symbol(); nativeStatus.textContent = ''; summaryNodes.forEach(node => {node.hidden = true;}); section.hidden = false; if (closeButton) {section.querySelector('nav').appendChild(closeButton); closeButton.style.margin='0 0 0 auto';} dialog.scrollTop=0; section.querySelector('[data-back]').focus({preventScroll:true}); dialog.scrollTop=0; load(); },
       dispose() { disposed = true; activeVisit = null; invalidate(); section.remove(); },
     };
   }

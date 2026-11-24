@@ -12,13 +12,13 @@ function hiVocScope(stamp, diag) {
   const indices = Number.isSafeInteger(count) && count >= 0 ? count : null;
   const inventoryKnown = Array.isArray(inventory) &&
     inventory.every(row => row && typeof row.sensor_type === 'string');
-  return {entry, indices, inventory, inventoryKnown,
+  return {entry, foreign, indices, inventory, inventoryKnown,
     mixed: inventoryKnown && indices > 0 && inventory.some(row => row.sensor_type === 'voc')};
 }
 
 function hiPrepareVoc(owner, hass, stamp, diagId) {
   if (!owner?.shadowRoot || !hass || !globalThis.customElements) return;
-  const tag = 'hi-voc-presentation-v5';
+  const tag = 'hi-voc-presentation-v6';
   const contextKey = Symbol.for('humidity_intelligence.voc_chips.context.v1');
   const changed = 'hi-voc-presentation-context';
   const modes = ['all', 'indices', 'concentrations'];
@@ -121,7 +121,10 @@ function hiPrepareVoc(owner, hass, stamp, diagId) {
             if (store.write !== write) return;
             clearTimeout(writeTimer);
             store.write = null;
-            if (!listening) { releaseStore(); return; }
+            if (!listening) {
+              if (sequence === before) scope.value = next;
+              releaseStore(); return;
+            }
             // A successful command acknowledges the request. A newer live value takes precedence.
             store.acceptedValue = sequence === before || store.value === next ? next : null;
             const needsRead = store.readStatus === unavailable || (recovering && sequence === before);
@@ -219,7 +222,6 @@ function hiPrepareVoc(owner, hass, stamp, diagId) {
         const fields = this.querySelector('fieldset');
         if (!fields) return;
         fields.hidden = !this.mixed;
-        fields.setAttribute('aria-busy', String(!!this.store?.pending));
         let resendLabel = 'Resend';
         for (const input of fields.querySelectorAll('input')) {
           if (input.value === this.store?.retryValue && input.labels?.length)
@@ -235,11 +237,18 @@ function hiPrepareVoc(owner, hass, stamp, diagId) {
         const status = fields.querySelector('[role="status"]');
         if (status.textContent !== message) status.textContent = message;
         const retry = fields.querySelector('[data-voc-retry]');
-        retry.hidden = !this.store || readStatus !== unavailable;
-        retry.disabled = this.connection?.connected !== true;
         const resend = fields.querySelector('[data-voc-resend]');
+        const hideRetry = !this.store || readStatus !== unavailable;
+        const hideResend = !this.store?.retryValue;
+        const focused = this.ownerDocument?.activeElement;
+        if ((focused === retry && hideRetry) || (focused === resend && hideResend)) {
+          const target = fields.hidden ? this.dialog?.querySelector('.hi-summary-close') : fields.querySelector('input[tabindex="0"]');
+          target?.focus({preventScroll:true});
+        }
+        retry.hidden = hideRetry;
+        retry.disabled = this.connection?.connected !== true;
         resend.textContent = resendLabel;
-        resend.hidden = !this.store?.retryValue;
+        resend.hidden = hideResend;
         resend.disabled = retry.disabled;
       }
     });

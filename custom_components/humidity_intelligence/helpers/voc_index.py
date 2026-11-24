@@ -24,8 +24,8 @@ def same_provider(row: dict, registry_entry: Any) -> bool:
     return isinstance(proof, str) and proof == provider_identity(row["source_key"], registry_entry)
 
 
-def configured_sources(section: Any) -> list[dict[str, str]]:
-    """Validate the display binding shape without repairing or rewriting Options."""
+def configured_source_rows(section: Any) -> list[dict[str, Any]]:
+    """Return the original, accepted records in display order without mutating Options."""
     if not isinstance(section, list):
         return []
     sources = []
@@ -45,7 +45,15 @@ def configured_sources(section: Any) -> list[dict[str, str]]:
             continue
         keys.add(identity)
         ids.add(entity_id)
-        source = {"source_key": key, "entity_id": entity_id, "label": label}
+        sources.append(row)
+    return sources
+
+
+def configured_sources(section: Any) -> list[dict[str, str]]:
+    """Expose only the supported binding fields to runtime consumers."""
+    sources = []
+    for row in configured_source_rows(section):
+        source = {field: row[field] for field in ("source_key", "entity_id", "label")}
         if "provider_identity" in row:
             source["provider_identity"] = row["provider_identity"]
         sources.append(source)

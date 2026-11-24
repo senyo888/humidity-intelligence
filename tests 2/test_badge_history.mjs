@@ -200,3 +200,17 @@ test('live chips, mode ribbons and legend agree across both layouts and Zone 2 a
  }
  h.controller.dispose();
 });
+
+test('a recovered source joins only the next history request', async () => {
+  const risk = 'sensor.entry_risk', source = 'sensor.entry_source';
+  const h = harness({states:{[risk]:{state:'Risk'}}});
+  h.controller.open();
+  assert.deepEqual(h.requests[0].entity_ids, [risk]);
+  h.owner.hass.states = {[risk]:{state:'Risk'}, [source]:{state:'available'}};
+  h.pending[0].resolve({[source]:[row(1,'unexpected-source')]});
+  await flush();
+  assert.doesNotMatch(h.content.children.map(n=>n.innerHTML).join(''), /unexpected-source/);
+  h.section.querySelector('[data-hours="168"]').dispatchEvent(new Event('click'));
+  assert.deepEqual(h.requests[1].entity_ids, [risk,source]);
+  h.controller.dispose();
+});

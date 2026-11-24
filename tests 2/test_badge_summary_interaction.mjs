@@ -218,7 +218,7 @@ test('renderer escapes dynamic risk, reason and history labels and qualifies exi
   const html=render(entity,{hi_summary:config,hi_risk:'Danger',hi_mode:hostile,hi_reason_html:presentReason(states)},states);
   if(config.kind==='mode') assert.equal(html.split('Reason: Inspect &lt;valve&gt; &amp; confirm').length,2,title);
   assert.ok(!html.includes(hostile),title);if(title !== 'Humidity') assert.match(html,/&lt;img/);assert.match(html,/Recorder and retention/);
-  const absent=render(undefined,{hi_summary:config,hi_risk:'Unavailable',hi_mode:'Unavailable',hi_reason_html:presentReason({})},{});assert.match(absent,/currently unavailable in Home Assistant/);assert.match(absent,/disabled/);assert.match(absent,/Unavailable/);
+  const absent=render(undefined,{hi_summary:config,hi_risk:'Unavailable',hi_mode:'Unavailable',hi_reason_html:presentReason({})},{});assert.match(absent,/when this snapshot was captured/);assert.match(absent,/disabled/);assert.match(absent,/Unavailable/);
  }
 });
 test('compact badges preserve color expressions and icons are removed only from four cards',()=>{
@@ -282,4 +282,23 @@ test('enhanced-history native fallback selects an available explicitly mapped so
   const card=h.owner();let event;card.addEventListener('hass-more-info',e=>event=e.detail);
   h.invoke(card,source,'Condensation');assert.equal(event.entityId,'sensor.worst_room_condensation_risk');assert.equal(h.dialogs().length,0);
  }
+});
+
+test('the opening snapshot keeps its live history action when a mapped entity returns', () => {
+  for (const source of SURFACES) {
+    const h = harness({missing:true});
+    const card = h.owner();
+    h.invoke(card, source, 'Humidity');
+    const [dialog] = h.dialogs();
+    const button = dialog.querySelector('.hi-summary-history');
+    assert.equal(button.disabled, true);
+    card.hass.states = {'sensor.house_average_humidity':{state:'52'}};
+    h.flushObservers();
+    assert.equal(h.dialogs()[0], dialog);
+    assert.equal(button.disabled, false);
+    let opened;
+    card.addEventListener('hass-more-info', event => { opened = event.detail.entityId; });
+    button.dispatchEvent(new Event('click'));
+    assert.equal(opened, 'sensor.house_average_humidity');
+  }
 });

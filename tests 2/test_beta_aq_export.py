@@ -51,11 +51,11 @@ def exports(section):
         yield next(node for node in nodes(yaml.safe_load(cards[layout])) if node.get("name") == "Current Air Control")
 
 
-def render(expression, states):
+def render(expression, states, entities=None):
     result = subprocess.run(
-        ["node", "-e", """const [body, states] = JSON.parse(require('node:fs').readFileSync(0,'utf8'));
-console.log(new Function('states', body)(states));"""],
-        input=json.dumps([expression.strip()[3:-3], states]), text=True, capture_output=True, check=True,
+        ["node", "-e", """const [body, states, entities] = JSON.parse(require('node:fs').readFileSync(0,'utf8'));
+console.log(new Function('states', 'hass', body)(states, {states, entities}));"""],
+        input=json.dumps([expression.strip()[3:-3], states, entities]), text=True, capture_output=True, check=True,
     )
     return result.stdout
 
@@ -113,7 +113,7 @@ def test_generated_strip_uses_same_entry_config_units_and_source_status():
             assert "VOC index (exported source)" in fallback and "Unavailable" in fallback
             assert '>0</span>' not in fallback
         missing = render(expr, {**states, "sensor.example_diagnostics": None})
-        assert "AQ configuration" in missing and "100 ppb" not in missing
+        assert "AQ configuration" in missing and "100 ppb" in missing
 
 
 def test_unconfigured_feed_has_no_subscription_or_rows():
@@ -177,12 +177,51 @@ def test_current_membership_overrides_saved_index_inventory_and_fallback_is_neut
             degraded = output(diagnostics(telemetry, unknown))
             assert "AQ configuration" not in degraded and "VOC index configuration" in degraded
             assert "110 ppb" in degraded and "Live monitor VOC index" in degraded
-        for diag in ({"state": "unavailable", "attributes": diagnostics(telemetry, 1)["attributes"]},
-                     diagnostics(telemetry, 1, "f" * 64)):
+        for diag in (None, {"state": "unavailable", "attributes": diagnostics(telemetry, 1)["attributes"]}):
             degraded = output(diag)
-            assert "AQ configuration" in degraded and "110 ppb" not in degraded and "Live monitor VOC index" in degraded
+            assert "AQ configuration" in degraded and "110 ppb" in degraded and "Live monitor VOC index" in degraded
+        foreign = output(diagnostics(telemetry, 1, "f" * 64))
+        assert "AQ configuration" in foreign and "110 ppb" not in foreign and "Live monitor VOC index" in foreign
         offline = output(diagnostics(telemetry, 1), {"state": "0", "attributes": {
             "entry": ENTRY_BINDING, "schema": 2,
             "readings": {KEY: {"label": "Live monitor", "status": "unknown", "value": None}},
         }})
         assert "Live monitor VOC index" in offline and "Unknown" in offline
+
+def test_confirmed_registry_contradictions_and_native_iaq_during_inventory_outage():
+    telemetry = [{"sensor_type": "iaq", "level": "level1"}, {"sensor_type": "voc", "level": "level1"}]
+    diag_id, iaq_id, voc_id = "sensor.example_diagnostics", "sensor.hi_house_iaq_average", "sensor.hi_house_voc_average"
+    hi = {"platform": "humidity_intelligence", "config_entry_id": ENTRY_ID}
+    for card in exports([]):
+        expr = card["custom_fields"]["aq"]
+        states = {iaq_id: {"state": "61", "attributes": {}},
+                  voc_id: {"state": "42", "attributes": {"unit_of_measurement": "ppb", "aq_display_band": 1}}}
+        eligible = {diag_id: hi, iaq_id: hi, voc_id: hi}
+        html = render(expr, states, eligible)
+        assert "61 index" in html and "42 ppb" in html and "AQ configuration" in html
+        for diag in (None, diagnostics(telemetry, 0)):
+            for conflict in (dict(hi, platform="other"), dict(hi, config_entry_id="other")):
+                html = render(expr, {**states, diag_id: diag}, {**eligible, voc_id: conflict})
+                assert "61 index" in html and "42 ppb" not in html
+        for invalid in ({"state": "unknown", "attributes": {"unit_of_measurement": "ppb"}},
+                        {"state": "99", "attributes": {"unit_of_measurement": "index"}}):
+            html = render(expr, {**states, voc_id: invalid}, eligible)
+            assert "House VOC" not in html and "AQ configuration" in html
+
+
+def test_unstamped_gallery_fallback_requires_hi_registry_and_credible_units():
+    root = Path(__file__).resolve().parents[1]
+    hi = {"platform": "humidity_intelligence"}
+    iaq_id, voc_id = "sensor.air_control_house_iaq_average", "sensor.air_control_house_voc_average"
+    states = {iaq_id: {"state": "65", "attributes": {}},
+              voc_id: {"state": "42", "attributes": {"unit_of_measurement": "ppb"}}}
+    for gallery in ("default-v2-mobile-aq", "default-v2-tablet-zone-1-cooking"):
+        tree = yaml.safe_load((root / "ui-gallery" / gallery / "card.yaml").read_text())
+        expr = next(card["custom_fields"]["aq"] for card in nodes(tree) if card.get("name") == "Current Air Control")
+        registry = {"sensor.hi_diagnostics": hi, iaq_id: hi, voc_id: hi}
+        html = render(expr, states, registry)
+        assert "42 ppb" in html and "65 index" not in html and "AQ configuration" in html
+        typed = {**states, iaq_id: {"state": "65", "attributes": {"aq_display_band": 2}}}
+        assert "65 index" in render(expr, typed, registry)
+        assert "42 ppb" not in render(expr, states, {**registry, voc_id: {"platform": "another"}})
+        assert "42 ppb" not in render(expr, states, {voc_id: hi})

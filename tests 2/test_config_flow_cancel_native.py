@@ -204,6 +204,206 @@ class NativeCancelTests(unittest.IsolatedAsyncioTestCase):
             await flow.async_step_options_zone_edit(form["data_schema"]({"enabled": False}))
         self.assertEqual(flow._options["zones"]["zone2"], {**self.entry.data["zones"]["zone2"], "enabled": False})
 
+    async def test_zone_activation_repairs_only_missing_selected_thresholds(self):
+        other = {"enabled": False, "thresholds": {"legacy": 12}}
+        for before, update in (
+            ({"enabled": False, "outputs": ["fan.example"]}, {"enabled": True}),
+            ({"enabled": True, "outputs": []}, {"outputs": ["fan.example"]}),
+        ):
+            zone = {**before, "triggers": ["humidity_high", "mould_risk", "legacy"],
+                    "thresholds": {"mould_risk": "3", "legacy": 7}}
+            self.entry.data["zones"] = {"zone1": other, "zone2": zone}
+            flow = self.flow(True)
+            form = await flow.async_step_options_zones({"action": "zone2"})
+            await flow.async_step_options_zone_edit(form["data_schema"](update))
+            self.assertEqual(flow._options["zones"]["zone2"]["thresholds"],
+                             {"humidity_high": 5, "mould_risk": "3", "legacy": 7})
+            self.assertEqual(flow._options["zones"]["zone1"], other)
+            self.assertNotIn("humidity_high", zone["thresholds"])
+            self.assertEqual(self.entry.options, {})
+
+    async def test_zone_legacy_outputs_require_explicit_confirmation(self):
+        for legacy in ("fan.example", ["fan.example", None], ["fan.example", "fan.example"]):
+            with self.subTest(outputs=legacy):
+                zone = {"enabled": False, "outputs": legacy, "triggers": ["humidity_high"]}
+                self.entry.data["zones"] = {"zone2": zone}
+                flow = self.flow(True)
+                form = await flow.async_step_options_zones({"action": "zone2"})
+                omitted = form["data_schema"]({"show_advanced_options": {"ui_label": "Kitchen"}})
+                self.assertNotIn("outputs", omitted)
+                await flow.async_step_options_zone_edit(omitted)
+                self.assertEqual(flow._options["zones"]["zone2"]["outputs"], legacy)
+                form = await flow.async_step_options_zones({"action": "zone2"})
+                rejected = await flow.async_step_options_zone_edit(form["data_schema"]({"enabled": True}))
+                self.assertEqual(rejected["errors"]["outputs"], "confirm_zone_outputs")
+                form = await flow.async_step_options_zones({"action": "zone2"})
+                submitted = form["data_schema"]({"enabled": True, "outputs": ["fan.example"]})
+                await flow.async_step_options_zone_edit(submitted)
+                saved = flow._options["zones"]["zone2"]
+                self.assertEqual(saved["outputs"], ["fan.example"])
+                self.assertEqual(saved["thresholds"]["humidity_high"], 5)
+                self.assertEqual(zone["outputs"], legacy)
+        self.entry.data["zones"] = {"zone2": {"outputs": ["fan.example"]}}
+        flow = self.flow(True)
+        form = await flow.async_step_options_zones({"action": "zone2"})
+        self.assertEqual(form["data_schema"]({})["outputs"], ["fan.example"])
+
+    async def test_zone_activating_an_invalid_saved_threshold_requires_repair(self):
+        for trigger, raw, repaired in (
+            ("humidity_high", "old limit", 5),
+            ("humidity_high", "NaN", 5),
+            ("humidity_high", -2, 5),
+            ("condensation_risk", None, 4),
+            ("mould_risk", True, 1),
+            ("air_quality_bad", 100, 70),
+        ):
+            with self.subTest(trigger=trigger, raw=raw):
+                zone = {"enabled": False, "outputs": ["fan.example"], "triggers": [trigger],
+                        "thresholds": {trigger: raw, "legacy": 18}}
+                self.entry.data["zones"] = {"zone2": zone}
+                flow = self.flow(True)
+                form = await flow.async_step_options_zones({"action": "zone2"})
+                await flow.async_step_options_zone_edit(form["data_schema"]({
+                    "show_advanced_options": {"ui_label": "Named zone"}}))
+                self.assertEqual(flow._options["zones"]["zone2"]["thresholds"], zone["thresholds"])
+                form = await flow.async_step_options_zones({"action": "zone2"})
+                rejected = await flow.async_step_options_zone_edit(form["data_schema"]({"enabled": True}))
+                self.assertEqual(rejected["errors"][f"threshold_{trigger}"], "zone_activation_threshold")
+                self.assertEqual(rejected["errors"]["base"], "zone_activation_threshold")
+                self.assertFalse(flow._options["zones"]["zone2"]["enabled"])
+                fixed = rejected["data_schema"]({"enabled": True, "show_advanced_options": {
+                    f"threshold_{trigger}": str(repaired)}})
+                await flow.async_step_options_zone_edit(fixed)
+                saved = flow._options["zones"]["zone2"]
+                self.assertTrue(saved["enabled"])
+                self.assertEqual(saved["thresholds"], {trigger: repaired, "legacy": 18})
+                self.assertIsInstance(saved["thresholds"][trigger], float)
+                self.assertEqual(zone["thresholds"][trigger], raw)
+
+        # Adding a trigger to a runnable zone also activates its dormant threshold.
+        self.entry.data["zones"] = {"zone2": {
+            "enabled": True, "outputs": ["fan.example"], "triggers": ["mould_risk"],
+            "thresholds": {"mould_risk": 2, "humidity_high": -6},
+        }}
+        flow = self.flow(True)
+        form = await flow.async_step_options_zones({"action": "zone2"})
+        rejected = await flow.async_step_options_zone_edit(form["data_schema"]({
+            "triggers": ["humidity_high", "mould_risk"]}))
+        self.assertEqual(rejected["errors"]["threshold_humidity_high"], "zone_activation_threshold")
+        self.assertEqual(flow._options, {})
+
+    async def test_aq_activation_reviews_missing_limits_before_persisting(self):
+        from homeassistant import config_entries
+
+        valid = {"co_warning": "40", "legacy": 3}
+        for before, update in (
+            ({"enabled": False, "outputs": ["fan.example"]}, {"enabled": True}),
+            ({"enabled": True, "outputs": []}, {"outputs": ["fan.example"]}),
+        ):
+            lane = {**before, "triggers": ["co2_high", "co_warning"], "thresholds": dict(valid)}
+            entry = ConfigEntry(domain="humidity_intelligence", version=1, minor_version=0,
+                title="Example HI", source="user", unique_id=None, discovery_keys=MappingProxyType({}),
+                subentries_data=[], data={"aq": {"level1": lane}}, options={})
+            manager = self.hass.config_entries
+            manager._entries[entry.entry_id] = entry
+            with patch.object(config_entries, "_async_get_flow_handler",
+                              return_value=config_flow.HumidityIntelligenceConfigFlow):
+                root = await manager.options.async_init(entry.entry_id)
+            post = partial(manager.options.async_configure, root["flow_id"])
+            await post({"next_step_id": "options_aq"})
+            await post({"action": "level1"})
+            review = await post(update)
+            self.assertEqual(review["step_id"], "options_aq_thresholds")
+            self.assertEqual({str(k) for k in review["data_schema"].schema}, {"action", "threshold_co2_high"})
+            await post({"action": "back"})
+            self.assertEqual(entry.options, {})
+            await post(update)
+            await post({"action": "confirm", "threshold_co2_high": "1350"})
+            self.assertEqual(entry.options, {})
+            await post({"action": "done"})
+            await post({"next_step_id": "options_done"})
+            saved = entry.options["aq"]["level1"]
+            self.assertTrue(saved["enabled"])
+            self.assertEqual(saved["thresholds"], {**valid, "co2_high": 1350})
+            self.assertEqual(entry.data["aq"]["level1"], lane)
+
+    async def test_malformed_aq_limits_block_activation_and_isolate_existing_lane(self):
+        engine_class = importlib.import_module(PACKAGE + ".automations.engine").HIAutomationEngine
+        for threshold_map in ([], ["legacy"], None):
+            dormant = {"enabled": False, "outputs": ["fan.example"], "triggers": ["co2_high"],
+                       "thresholds": threshold_map}
+            active = {**dormant, "enabled": True}
+            self.entry.data["aq"] = {"level1": dormant}
+            flow = self.flow(True)
+            form = await flow.async_step_options_aq({"action": "level1"})
+            blocked = await flow.async_step_options_aq_edit(form["data_schema"]({"enabled": True}))
+            self.assertEqual(blocked["step_id"], "options_aq_thresholds_unavailable")
+            self.assertNotIn("aq", flow._options)
+            self.assertEqual(dormant["thresholds"], threshold_map)
+            # A persisted bad lane must not interrupt decision-making for the next level.
+            self.entry.data.update({
+                "telemetry": [{"entity_id": "sensor.example_co2", "sensor_type": "co2", "level": "level2"}],
+                "aq": {"level1": active, "level2": {**active, "thresholds": {"co2_high": 1200}}},
+            })
+            self.entry.entry_id = "example"
+            self.hass.states.async_set("sensor.example_co2", "1500", {"unit_of_measurement": "ppm"})
+            engine = engine_class(self.hass, self.entry)
+            with patch.object(engine, "_start_aq") as start:
+                self.assertEqual(engine._aq_trigger_evaluation("level1", active)[0], [])
+                fired, details = await engine._handle_aq()
+                self.assertTrue(fired)
+                self.assertEqual([detail["level"] for detail in details], ["level2"])
+                self.assertEqual(start.await_count, 1)
+            flow = self.flow(True)
+            form = await flow.async_step_options_aq({"action": "level1"})
+            await flow.async_step_options_aq_edit(form["data_schema"]({"enabled": False}))
+            self.assertFalse(flow._options["aq"]["level1"]["enabled"])
+            self.assertEqual(flow._options["aq"]["level1"]["thresholds"], threshold_map)
+
+    async def test_voc_editor_preserves_unreadable_rows_and_fields_on_valid_edits(self):
+        index = importlib.import_module(PACKAGE + ".helpers.voc_index")
+        current = {"source_key": "12345678-1234-4234-9234-123456789012",
+                   "entity_id": "sensor.example_index", "label": "Monitor", "future": {"retained": True}}
+        self.entry.data["voc_index_sources"] = [None, {"future": 8}, current]
+        flow = self.flow(True)
+        form = await flow.async_step_options_telemetry({"action": "voc_index"})
+        choices = next(iter(form["data_schema"].schema.values())).config["options"]
+        self.assertEqual([c["value"] for c in choices], [current["source_key"], "add", "done"])
+        self.assertTrue(flow._uses_index_provider("sensor.example_index"))
+        await flow.async_step_voc_index({"source": current["source_key"]})
+        await flow.async_step_voc_index_edit({**current, "label": "Renamed", "action": "save"})
+        expected = [None, {"future": 8}, {**current, "label": "Renamed"}]
+        self.assertEqual(flow._options["voc_index_sources"], expected)
+        self.assertNotIn("future", index.configured_sources(expected)[0])
+        await flow.async_step_options_telemetry_add({
+            "action": "save", "sensor_type": "temperature", "entity_id": "sensor.example_temperature",
+            "room": "Example room", "level": "level1",
+        })
+        self.assertEqual(flow._options["telemetry"][-1]["entity_id"], "sensor.example_temperature")
+        await flow.async_step_voc_index({"source": current["source_key"]})
+        await flow.async_step_voc_index_edit({"action": "save", "entity_id": "sensor.new_index", "label": "New"})
+        rebound = flow._options["voc_index_sources"][-1]
+        self.assertNotEqual(rebound["source_key"], current["source_key"])
+        self.assertEqual(rebound["future"], current["future"])
+        await flow.async_step_voc_index({"source": rebound["source_key"]})
+        await flow.async_step_voc_index_edit({"action": "delete"})
+        self.assertEqual(flow._options["voc_index_sources"], [None, {"future": 8}])
+        # Removing a record must not resurrect a shadowed duplicate with a different provider.
+        second = {"source_key": "22345678-1234-4234-9234-123456789012",
+                  "entity_id": "sensor.other_index", "label": "Second"}
+        # The duplicate could also displace the second valid record, leaving the same count.
+        self.entry.data["voc_index_sources"] = [current, {**current, "entity_id": second["entity_id"]}, second]
+        flow = self.flow(True)
+        await flow.async_step_voc_index({"source": current["source_key"]})
+        blocked = await flow.async_step_voc_index_edit({"action": "delete"})
+        self.assertEqual(blocked["errors"]["base"], "voc_index_conflicting_rows")
+        self.assertEqual(flow._options, {})
+        self.entry.data["voc_index_sources"] = {"future": 9}
+        flow = self.flow(True)
+        blocked = await flow.async_step_voc_index_edit({"action": "save", "entity_id": "sensor.new", "label": "New"})
+        self.assertEqual(blocked["errors"]["base"], "voc_index_unreadable_rows")
+        self.assertEqual(flow._options, {})
+
     async def test_profile_edits_preserve_legacy_aliases_gates_and_dormant_limits(self):
         seasonal = importlib.import_module(PACKAGE + ".helpers.seasonal")
         self.entry.data.update({
