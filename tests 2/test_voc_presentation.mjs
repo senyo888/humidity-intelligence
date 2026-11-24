@@ -62,7 +62,7 @@ function fixture() {
     };
     const render = () => prepare(owner, owner.hass, stamp, 'diagnostics');
     render();
-    const Presentation = elements.get('hi-voc-presentation-v5');
+    const Presentation = elements.get('hi-voc-presentation-v6');
     const row = new Presentation();
     row.host = owner;
     const chip = family => ({dataset: {voc: family}, style: {display: ''}});
@@ -73,6 +73,8 @@ function fixture() {
     const dialog = {hiVocOwner: owner, open: true, close() { this.open = false; },
       hiVocSession: {entry: entryId, user, connection}};
     details.dialog = dialog;
+    const document = {activeElement: null};
+    details.ownerDocument = document;
     const fields = new Element();
     const status = {};
     const retry = {matches: selector => selector === '[data-voc-retry]'};
@@ -82,12 +84,14 @@ function fixture() {
       value, labels: [{textContent}], matches: selector => selector === 'input[name="hi-voc-choice"]',
     }));
     const controls = {'[role="status"]': status, '[data-voc-retry]': retry, '[data-voc-resend]': resend};
-    fields.querySelector = selector => controls[selector];
+    for (const radio of radios) radio.focus = () => { document.activeElement = radio; };
+    fields.querySelector = selector => selector === 'input[tabindex="0"]'
+      ? radios.find(radio => radio.tabIndex === 0) : controls[selector];
     fields.querySelectorAll = () => radios;
     details.fields = fields;
     details.connectedCallback();
     return {
-      owner, render, dialog, fields, status, retry, resend, radios,
+      owner, render, dialog, fields, status, retry, resend, radios, document,
       choose: mode => details.handleEvent({type: 'change', target: radios.find(radio => radio.value === mode)}),
       retryRead: () => details.handleEvent({type: 'click', target: retry}),
       resendWrite: () => details.handleEvent({type: 'click', target: resend}),
@@ -266,11 +270,12 @@ for (const lateOutcome of ['resolve', 'reject']) {
     const first = connection.writes[0];
     assert.equal(first.request.key, original.key);
     assert.equal(first.request.value, 'indices');
-    assert.equal(tablet.fields.attributes['aria-busy'], 'true');
+    assert.match(tablet.status.textContent, /Sending request/);
+    assert.notEqual(tablet.fields.attributes['aria-busy'], 'true');
     if (lateOutcome === 'resolve') original.receive({value: 'concentrations'});
     advance(10000);
     assert.equal(mobile.status.textContent, 'Request unconfirmed.');
-    assert.equal(tablet.fields.attributes['aria-busy'], 'false');
+    assert.equal(tablet.status.textContent, 'Request unconfirmed.');
     assert.equal(mobile.resend.hidden, false);
     const expected = lateOutcome === 'resolve' ? [false, true, true] : [true, true, true];
     assert.deepEqual(tablet.visible(), expected);
@@ -282,13 +287,14 @@ for (const lateOutcome of ['resolve', 'reject']) {
     if (lateOutcome === 'resolve') first.resolve();
     else first.reject(new Error('Late failure'));
     await settle();
-    assert.equal(tablet.fields.attributes['aria-busy'], 'true');
+    assert.match(tablet.status.textContent, /Sending request/);
+    assert.notEqual(tablet.fields.attributes['aria-busy'], 'true');
     assert.deepEqual(mobile.visible(), expected);
     connection.writes[1].resolve();
     await settle();
     assert.equal(original.active, false);
     connection.subscriptions.at(-1).receive({value: 'indices'});
-    assert.equal(mobile.fields.attributes['aria-busy'], 'false');
+    assert.doesNotMatch(mobile.status.textContent, /Sending request/);
     assert.deepEqual(tablet.visible(), [true, false, true]);
     mobile.remove();
     tablet.remove();
@@ -518,7 +524,9 @@ test('Retry read and Resend recover independently when both requests fail', asyn
     assert.ok(!card.retry.hidden && !card.resend.hidden && !card.retry.disabled && !card.resend.disabled);
     assert.equal(card.resend.textContent, 'Resend “Concentration averages only”');
   }
+  tablet.document.activeElement = tablet.retry;
   tablet.retryRead();
+  assert.equal(tablet.document.activeElement, tablet.radios.find(radio => radio.checked));
   tablet.retryRead();
   await settle();
   assert.equal(connection.writes.length, 1);
@@ -528,7 +536,9 @@ test('Retry read and Resend recover independently when both requests fail', asyn
   live.receive({value: 'all'});
   assert.equal(mobile.status.textContent, 'Request unconfirmed.');
   assert.deepEqual(tablet.visible(), [true, true, true]);
+  mobile.document.activeElement = mobile.resend;
   mobile.resendWrite();
+  assert.equal(mobile.document.activeElement, mobile.radios.find(radio => radio.checked));
   assert.deepEqual(connection.writes[1].request, connection.writes[0].request);
   live.receive({value: 'concentrations'});
   connection.writes[1].resolve();
@@ -565,4 +575,29 @@ test('an acknowledgement during a read retry lets that pending read complete', a
   assert.deepEqual(card.visible(), [false, true, true]);
   card.remove();
   await settle();
+});
+
+test('a detached acknowledgement survives a failed reread unless a later observation superseded it', async () => {
+  for (const observed of [null, 'concentrations']) {
+    const {mount, advance} = fixture();
+    const connection = new Connection();
+    const mobile = mount(connection, 'v2_mobile');
+    await settle();
+    const live = connection.subscriptions[0];
+    live.receive({value: 'all'});
+    mobile.choose('indices');
+    if (observed) live.receive({value: observed});
+    mobile.remove();
+    await settle();
+    connection.writes[0].resolve();
+    await settle();
+
+    const tablet = mount(connection, 'v2_tablet');
+    await settle();
+    advance(10000);
+    assert.equal(tablet.status.textContent, 'Display preference unavailable');
+    assert.equal(tablet.radios.find(radio => radio.checked)?.value, observed || 'indices');
+    tablet.remove();
+    await settle();
+  }
 });

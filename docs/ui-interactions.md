@@ -42,7 +42,7 @@ chip row. Each index uses its monitor’s own scale. Source mappings are in **Se
 
 A single configured family appears automatically. An offline source keeps its
 unknown or unavailable indication. When configuration cannot be verified, the
-row shows available readings. An unreadable telemetry inventory shows an AQ configuration warning. If only the VOC index configuration is unknown, its warning names VOC indices. Your choice
+row shows verified readings. If Diagnostics goes offline, the stamped export can still show a finite reading from a mapped HI aggregate in its expected unit, alongside an AQ configuration warning. For raw gallery YAML, the HA registry must identify both the aggregate and Diagnostics as HI entities. A unitless gallery IAQ reading also needs HI’s aggregate band attribute to identify its scale. The generated export carries its own binding and can show a partial IAQ average in neutral. If only the VOC index configuration is unknown, its warning names VOC indices. Your choice
 resumes when both families are confirmed. If a source was added since the last
 export and its feed is missing, refresh the mappings and replace the saved card.
 While HI refreshes the preference, the chips keep the last verified filter for the same connection, account and HI entry. A read failure shows **Display preference unavailable**. Select **Retry read** to refresh the preference. When Diagnostics confirms both VOC families after an outage, the previous filter reappears for that same connection, account and entry. A fresh valid read replaces it. Without a previously verified choice, both families remain visible.
@@ -133,12 +133,14 @@ scroll position, focus, history range and inspected record. Back returns to the 
 snapshot. A changed card owner, entry stamp, badge or mapped source retires the dialog.
 History retains its recorded timestamps and units.
 
-Renderer changes require synchronized Mobile, Tablet and gallery embeds. RC.1 now
-exports revision **26**. The final beta.1 and first RC.1 build exported revision
+A history source that returns becomes available on the next history request. A recovered source can also re-enable **View history** in the opening snapshot. If **Retry read** or **Resend** disappears while focused, focus returns to the current radio choice. A pending write leaves the separate read status available to assistive technology.
+
+Renderer changes require synchronized Mobile, Tablet and gallery embeds. Stable
+exports revision **27**. The final RC.1 exported revision **26**. The final beta.1 and first RC.1 build exported revision
 **18**, and published Stable v2.1.2 exported revision **16**. After installing the
 complete integration and restarting Home Assistant, refresh the mappings and export
-fresh cards. Replace the complete saved card for each layout at revision 25 or
-earlier for the updated VOC preference handling. Restart
+fresh cards. Replace the complete saved card for each layout at revision 26 or
+earlier for these updates. Restart
 resets in-memory Stability history.
 
 Keep the previous complete package and saved cards together for rollback. For

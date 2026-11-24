@@ -21,7 +21,7 @@ from homeassistant.helpers.selector import SelectOptionDict
 
 from .adaptive_output.options import OutputObservationOptionsMixin
 from .helpers.air_quality import AQ_CANONICAL_UNITS, AQ_TRIGGER_SPECS, _finite_float
-from .helpers.voc_index import provider_identity, same_provider
+from .helpers.voc_index import configured_source_rows, provider_identity, same_provider
 from .helpers.slope_mapping import bindings_for_save
 from .helpers.frontend_dependencies import async_render_dependency_status
 from .helpers.level_labels import (
@@ -266,7 +266,7 @@ class VocIndexEditor:
 
     def _uses_index_provider(self, entity_id: str) -> bool:
         """Exclude the same provider from control telemetry, including a verified rename."""
-        rows = self._index_context()[0].get("voc_index_sources", [])
+        rows = configured_source_rows(self._index_context()[0].get("voc_index_sources"))
         if any(row.get("entity_id") == entity_id for row in rows):
             return True
         if not any("provider_identity" in row for row in rows):
@@ -276,26 +276,46 @@ class VocIndexEditor:
         provider = er.async_get(self.hass).async_get(entity_id)
         return any(same_provider(row, provider) for row in rows)
 
-    async def async_step_voc_index(self, user_input=None):
+    async def async_step_voc_index(self, user_input=None, *, conflict=False):
         config, _, back = self._index_context()
-        rows = config.get("voc_index_sources", [])
+        stored = config.get("voc_index_sources", [])
+        rows = configured_source_rows(stored)
         if user_input:
             choice = user_input["source"]
             if choice == "done":
                 return await back()
-            if choice == "add" or any(row["source_key"] == choice for row in rows):
+            if (choice == "add" and isinstance(stored, list)) or any(row["source_key"] == choice for row in rows):
                 self._index_key = None if choice == "add" else choice
                 self._index_defaults = None
                 return await self.async_step_voc_index_edit()
         choices = [{"value": row["source_key"], "label": row["label"]} for row in rows]
-        choices.extend([{"value": "add", "label": "Add a source"}, {"value": "done", "label": "Back to sensors"}])
-        return self.async_show_form(step_id="voc_index", data_schema=vol.Schema({
+        if isinstance(stored, list):
+            choices.append({"value": "add", "label": "Add a source"})
+        choices.append({"value": "done", "label": "Back to sensors"})
+        errors = {}
+        if conflict:
+            errors["base"] = "voc_index_conflicting_rows"
+        elif not isinstance(stored, list) or len(rows) != len(stored):
+            errors["base"] = "voc_index_unreadable_rows"
+        return self.async_show_form(step_id="voc_index", errors=errors, data_schema=vol.Schema({
             vol.Required("source"): selector.SelectSelector(selector.SelectSelectorConfig(options=choices)),
         }))
 
+    async def _stage_index_edit(self, target, proposed, expected_sources):
+        # Match the original rows themselves: an ignored duplicate can share a key
+        # with one source and an entity ID with another, without changing the count.
+        accepted = configured_source_rows(proposed)
+        if [id(row) for row in accepted] != [id(row) for row in expected_sources]:
+            return await self.async_step_voc_index(conflict=True)
+        target["voc_index_sources"] = proposed
+        return await self.async_step_voc_index()
+
     async def async_step_voc_index_edit(self, user_input=None):
         config, target, _ = self._index_context()
-        rows = list(config.get("voc_index_sources", []))
+        stored = config.get("voc_index_sources", [])
+        if not isinstance(stored, list):
+            return await self.async_step_voc_index()
+        rows = configured_source_rows(stored)
         current = next((row for row in rows if row["source_key"] == self._index_key), None)
         if self._index_key and current is None:
             return await self.async_step_voc_index()
@@ -306,8 +326,8 @@ class VocIndexEditor:
                 return await self.async_step_voc_index()
             others = [row for row in rows if row is not current]
             if action == "delete" and current:
-                target["voc_index_sources"] = others
-                return await self.async_step_voc_index()
+                proposed = [row for row in stored if row is not current]
+                return await self._stage_index_edit(target, proposed, others)
             entity_id = _sanitize_optional_entity_id(user_input.get("entity_id"))
             label = str(user_input.get("label") or "").strip()
             if not entity_id or not re.fullmatch(r"sensor\.[a-z0-9_]+", entity_id):
@@ -331,15 +351,18 @@ class VocIndexEditor:
                     record = {**current, "entity_id": entity_id, "label": label}
                 else:
                     key = str(uuid4())
-                    record = {"source_key": key, "entity_id": entity_id, "label": label}
+                    record = dict(current or {})
+                    record.update(source_key=key, entity_id=entity_id, label=label)
+                    record.pop("provider_identity", None)
                     if proof := provider_identity(key, provider):
                         record["provider_identity"] = proof
                 if current:
-                    rows[rows.index(current)] = record
+                    proposed = [record if row is current else row for row in stored]
+                    expected = [record if row is current else row for row in rows]
                 else:
-                    rows.append(record)
-                target["voc_index_sources"] = rows
-                return await self.async_step_voc_index()
+                    proposed = [*stored, record]
+                    expected = [*rows, record]
+                return await self._stage_index_edit(target, proposed, expected)
 
         defaults = user_input or current or self._index_defaults or {}
         actions = ["save", "delete", "cancel"] if current else ["save", "cancel"]
@@ -2533,18 +2556,22 @@ class HumidityIntelligenceOptionsFlow(VocIndexEditor, OutputObservationOptionsMi
                     trig for trig in stored_triggers
                     if trig not in selected_triggers or trig in requested
                 ] + additions
-            if "outputs" in changes:
-                changes["outputs"] = _sanitize_entity_ids(changes["outputs"])
+            if "outputs" in user_input:
+                outputs = _sanitize_entity_ids(user_input["outputs"])
+                if outputs != zone.get("outputs", []):
+                    changes["outputs"] = outputs
             if "ui_label" in changes:
                 changes["ui_label"] = _sanitize_ui_label(changes["ui_label"], defaults["ui_label"])
 
             updated = dict(thresholds)
+            thresholds_changed = False
             for trig, bounds in TRIGGER_DEFS.items():
                 field = f"threshold_{trig}"
                 raw = user_input.get(field)
                 if raw is None or raw == "":
                     if trig in additions and trig not in thresholds:
                         updated[trig] = bounds["default"]
+                        thresholds_changed = True
                     continue
                 value = _finite_float(raw)
                 if value is not None and value == _finite_float(thresholds.get(trig)):
@@ -2553,7 +2580,8 @@ class HumidityIntelligenceOptionsFlow(VocIndexEditor, OutputObservationOptionsMi
                     errors[field] = "invalid_zone_threshold"
                 else:
                     updated[trig] = value
-            if updated != thresholds:
+                    thresholds_changed = True
+            if thresholds_changed:
                 if isinstance(stored_thresholds, dict):
                     changes["thresholds"] = updated
                 else:
@@ -2562,13 +2590,31 @@ class HumidityIntelligenceOptionsFlow(VocIndexEditor, OutputObservationOptionsMi
             existing = zone if zone else {**defaults, "triggers": [], "thresholds": {}}
             edited = {**existing, **changes}
             enable_fields = ("enabled", "outputs", "triggers")
-            if all(edited.get(key) for key in enable_fields) and not all(zone.get(key) for key in enable_fields):
+            activating = not all(zone.get(key) for key in enable_fields) or (
+                "outputs" in changes and zone.get("outputs", []) != defaults["outputs"]
+            )
+            if all(edited.get(key) for key in enable_fields) and (activating or additions):
+                if edited["outputs"] != _sanitize_entity_ids(edited["outputs"]):
+                    errors["outputs"] = "confirm_zone_outputs"
                 if not isinstance(edited.get("thresholds", {}), dict):
                     errors["base"] = "unrecognised_zone_thresholds"
                 elif not isinstance(edited["triggers"], list) or not all(
                     isinstance(trigger, str) for trigger in edited["triggers"]
                 ):
                     errors["base"] = "unrecognised_zone_settings"
+                else:
+                    active_thresholds = dict(edited.get("thresholds", {}))
+                    activated_triggers = edited["triggers"] if activating else additions
+                    for trigger in activated_triggers:
+                        if trigger not in TRIGGER_DEFS:
+                            continue
+                        bounds = TRIGGER_DEFS[trigger]
+                        value = _finite_float(active_thresholds.setdefault(trigger, bounds["default"]))
+                        if value is None or not bounds["min"] <= value <= bounds["max"]:
+                            errors[f"threshold_{trigger}"] = "zone_activation_threshold"
+                            errors["base"] = "zone_activation_threshold"
+                    if active_thresholds != edited.get("thresholds", {}):
+                        edited["thresholds"] = active_thresholds
             if not errors:
                 if changes:
                     # Preserve raw representations and sparse legacy zones on unrelated edits.
@@ -2594,6 +2640,11 @@ class HumidityIntelligenceOptionsFlow(VocIndexEditor, OutputObservationOptionsMi
         selected_level_default = zone_default("level", defaults["level"])
         if defaults["level"] not in {option["value"] for option in level_options}:
             level_options.append(SelectOptionDict(value=defaults["level"], label=defaults["level"]))
+        output_selection = zone_default("outputs", defaults["outputs"])
+        output_key = vol.Optional("outputs", default=output_selection)
+        if zone.get("outputs", []) != defaults["outputs"]:
+            # A native schema default would turn an omitted legacy field into a confirmed edit.
+            output_key = vol.Optional("outputs", description={"suggested_value": output_selection})
         schema_fields: Dict[Any, Any] = {
             vol.Optional("enabled", default=zone_default("enabled", defaults["enabled"])): selector.BooleanSelector(),
             vol.Optional("level", default=selected_level_default): selector.SelectSelector(
@@ -2621,7 +2672,7 @@ class HumidityIntelligenceOptionsFlow(VocIndexEditor, OutputObservationOptionsMi
                     mode=selector.SelectSelectorMode.DROPDOWN,
                 )
             ),
-            vol.Optional("outputs", default=zone_default("outputs", defaults["outputs"])): selector.EntitySelector(
+            output_key: selector.EntitySelector(
                 selector.EntitySelectorConfig(domain=["fan", "switch"], multiple=True)
             ),
         }
@@ -2887,8 +2938,16 @@ class HumidityIntelligenceOptionsFlow(VocIndexEditor, OutputObservationOptionsMi
                 }
                 if thresholds != saved_thresholds or level not in aq:
                     lane["thresholds"] = thresholds
+                activation_fields = ("enabled", "outputs", "triggers")
+                activating = all(lane.get(key) for key in activation_fields) and not all(
+                    cfg.get(key) for key in activation_fields
+                )
+                if activating and not isinstance(lane.get("thresholds", {}), dict):
+                    return await self.async_step_options_aq_thresholds_unavailable()
                 repairs = user_input.get("set_thresholds", [])
-                review = additions + [trig for trig in repairable if trig in repairs and trig in triggers]
+                review = additions + [
+                    trig for trig in repairable if trig in triggers and (activating or trig in repairs)
+                ]
                 if review:
                     self._aq_review = _AQThresholdReview(level, deepcopy(aq.get(level)), lane, review)
                     return await self.async_step_options_aq_thresholds()
@@ -2974,8 +3033,8 @@ class HumidityIntelligenceOptionsFlow(VocIndexEditor, OutputObservationOptionsMi
             self._aq_review = None
             return await self.async_step_options_aq_edit()
 
-        stored = lane.get("thresholds")
-        if stored is not None and not isinstance(stored, dict):
+        stored = lane.get("thresholds", {})
+        if not isinstance(stored, dict):
             return await self.async_step_options_aq_thresholds_unavailable()
         thresholds = stored or {}
         fields = {}

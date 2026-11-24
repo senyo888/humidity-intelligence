@@ -97,7 +97,7 @@ card:
                   <p class="hi-snapshot-time"></p>
                   <p>${escapeHtml(view.description)}</p>
                   <p>${context}</p>
-                  <p>${target ? `History: ${escapeHtml(historyName === 'Unavailable' ? 'mapped entity' : historyName)}. ${escapeHtml(view.historyNote)}` : 'This source is currently unavailable in Home Assistant.'}</p>
+                  <p>${target ? `History: ${escapeHtml(historyName === 'Unavailable' ? 'mapped entity' : historyName)}. ${escapeHtml(view.historyNote)}` : 'This source was unavailable when this snapshot was captured.'}</p>
                   <p>Available history depends on Home Assistant Recorder and retention.</p>
                   <button type="button" class="hi-summary-history" ${target ? '' : 'disabled'}>View history</button>
                 </template>`;
@@ -200,6 +200,7 @@ card:
                   }
                   clearTimeout(bindingTimer);
                   bindingTimer = undefined;
+                  refreshHistoryButton();
                   const ready = pendingActions;
                   pendingActions = [];
                   for (const run of ready) { if (!cleaned && dialog.open) run(); }
@@ -233,7 +234,13 @@ card:
                 dialog.addEventListener('close', cleanup, { once: true });
                 dialog.querySelector('.hi-summary-close').addEventListener('click', close);
                 const historyButton = dialog.querySelector('.hi-summary-history');
-                historyButton.disabled = !hasEntity(entityId);
+                const refreshHistoryButton = () => {
+                  const available = hasEntity(entityId);
+                  // A disappearing destination must not drop focus while a guarded action is pending.
+                  if (available || document.activeElement !== historyButton) historyButton.disabled = !available;
+                  historyButton.setAttribute('aria-disabled', String(!available));
+                };
+                refreshHistoryButton();
                 const historyStatus = document.createElement('div');
                 historyStatus.setAttribute('role', 'status');
                 dialog.appendChild(historyStatus);
@@ -395,7 +402,7 @@ card:
                   <p class="hi-snapshot-time"></p>
                   <p>${escapeHtml(view.description)}</p>
                   <p>${context}</p>
-                  <p>${historyAvailable ? escapeHtml(view.historyNote) : 'History sources are currently unavailable in Home Assistant.'}</p>
+                  <p>${historyAvailable ? escapeHtml(view.historyNote) : 'No history sources were available when this snapshot was captured.'}</p>
                   <p>Available history depends on Home Assistant Recorder and retention.</p>
                   <button type="button" class="hi-summary-history" ${historyAvailable ? '' : 'disabled'}>View history</button>
                 </template>`;
@@ -514,7 +521,6 @@ card:
                   function create({dialog, owner, title, entities, states, close, openEntity, nativeLabel = 'entity', nativeAvailable = true, withSource = action => action(), now = () => Date.now(), timeoutMs = 15000}) {
                     const document = dialog.ownerDocument;
                     const allowed = entities.slice(0, 4).filter(item => item && typeof item.id === 'string' && /^sensor\.[a-z0-9_]+$/.test(item.id));
-                    const requested = [...new Set(allowed.filter(item => states[item.id]).map(item => item.id))];
                     const summaryNodes = Array.from(dialog.children).filter(node => node.tagName !== 'STYLE' && !node.classList.contains('hi-summary-close'));
                     const closeButton = dialog.querySelector('.hi-summary-close');
                     const section = document.createElement('section'); section.className = 'hi-history'; section.hidden = true;
@@ -562,8 +568,9 @@ card:
                     };
                     section.querySelector('[data-back]').addEventListener('click', back);
                     const nativeStatus = section.querySelector('[data-native-status]');
-                    section.querySelector('[data-native]').addEventListener('click', () => withVisit(() => {
-                      if (nativeAvailable && !openEntity(close)) nativeStatus.textContent = 'This entity is no longer present in Home Assistant.';
+                    const nativeButton = section.querySelector('[data-native]');
+                    nativeButton.addEventListener('click', () => withVisit(() => {
+                      if (!nativeButton.disabled && !openEntity(close)) nativeStatus.textContent = 'This entity is no longer present in Home Assistant.';
                     }));
                     for (const button of section.querySelectorAll('[data-hours]')) button.addEventListener('click', () => withVisit(() => {
                       hours = Number(button.dataset.hours);
@@ -644,6 +651,8 @@ card:
                     }
                     async function load() {
                       invalidate(); const requestGeneration = generation;
+                      const liveStates = (owner.hass || owner._hass)?.states || states;
+                      const requested = [...new Set(allowed.filter(item => liveStates[item.id]).map(item => item.id))];
                       const end = now(), start = end - hours * 3600000;
                       content.innerHTML = '<p role="status">Loading recorded history…</p>';
                       if (!requested.length) { content.innerHTML = '<p>History sources are currently unavailable in Home Assistant.</p>'; return; }
@@ -689,7 +698,13 @@ card:
                       }
                     }
                     return {
-                      open() { if (disposed) return; activeVisit = Symbol(); nativeStatus.textContent = ''; summaryNodes.forEach(node => {node.hidden = true;}); section.hidden = false; if (closeButton) {section.querySelector('nav').appendChild(closeButton); closeButton.style.margin='0 0 0 auto';} dialog.scrollTop=0; section.querySelector('[data-back]').focus({preventScroll:true}); dialog.scrollTop=0; load(); },
+                      open(target) {
+                        if (disposed) return;
+                        if (target) {
+                          nativeButton.textContent = 'Open ' + (target.label || 'entity') + ' details';
+                          nativeButton.disabled = !target.id;
+                        }
+                        activeVisit = Symbol(); nativeStatus.textContent = ''; summaryNodes.forEach(node => {node.hidden = true;}); section.hidden = false; if (closeButton) {section.querySelector('nav').appendChild(closeButton); closeButton.style.margin='0 0 0 auto';} dialog.scrollTop=0; section.querySelector('[data-back]').focus({preventScroll:true}); dialog.scrollTop=0; load(); },
                       dispose() { disposed = true; activeVisit = null; invalidate(); section.remove(); },
                     };
                   }
@@ -754,9 +769,10 @@ card:
                 const owner = this;
                 const entityId = variables.hi_summary.history;
                 const hasEntity = id => Boolean(id && (owner.hass || owner._hass)?.states?.[id]);
-                const nativeTarget = variables.hi_summary.historyEntities.find(item => item.id === entityId && hasEntity(item.id)) || variables.hi_summary.historyEntities.find(item => hasEntity(item.id));
-                const nativeEntityId = nativeTarget?.id;
+                const selectNativeTarget = () => variables.hi_summary.historyEntities.find(item => item.id === entityId && hasEntity(item.id)) || variables.hi_summary.historyEntities.find(item => hasEntity(item.id));
+                let nativeTarget = selectNativeTarget();
                 const history = beforeOpen => {
+                  const nativeEntityId = nativeTarget?.id;
                   if (!owner.isConnected || !hasEntity(nativeEntityId)) return false;
                   beforeOpen?.();
                   owner.dispatchEvent(new CustomEvent('hass-more-info', {
@@ -792,6 +808,7 @@ card:
                   }
                   clearTimeout(bindingTimer);
                   bindingTimer = undefined;
+                  refreshHistoryButton();
                   const ready = pendingActions;
                   pendingActions = [];
                   for (const run of ready) { if (!cleaned && dialog.open) run(); }
@@ -827,10 +844,17 @@ card:
                 dialog.addEventListener('close', cleanup, { once: true });
                 dialog.querySelector('.hi-summary-close').addEventListener('click', close);
                 const historyButton = dialog.querySelector('.hi-summary-history');
-                historyButton.disabled = !variables.hi_summary.historyEntities.some(item => hasEntity(item.id));
+                const refreshHistoryButton = () => {
+                  const available = variables.hi_summary.historyEntities.some(item => hasEntity(item.id));
+                  // A disappearing destination must not drop focus while a guarded action is pending.
+                  if (available || document.activeElement !== historyButton) historyButton.disabled = !available;
+                  historyButton.setAttribute('aria-disabled', String(!available));
+                };
+                refreshHistoryButton();
                 historyButton.addEventListener('click', () => withSource(() => {
-                  historyController ||= hiBadgeHistory.create({dialog, owner, title:variables.hi_summary.title, entities:variables.hi_summary.historyEntities, states, close, withSource, nativeLabel:nativeTarget?.label, nativeAvailable:Boolean(nativeEntityId), openEntity:history});
-                  historyController.open();
+                  nativeTarget = selectNativeTarget();
+                  historyController ||= hiBadgeHistory.create({dialog, owner, title:variables.hi_summary.title, entities:variables.hi_summary.historyEntities, states, close, withSource, openEntity:history});
+                  historyController.open(nativeTarget || {});
                 }));
                 dialog.addEventListener('click', event => {
                   event.stopPropagation();
@@ -984,7 +1008,7 @@ card:
                   <p class="hi-snapshot-time"></p>
                   <p>${escapeHtml(view.description)}</p>
                   <p>${context}</p>
-                  <p>${historyAvailable ? escapeHtml(view.historyNote) : 'History sources are currently unavailable in Home Assistant.'}</p>
+                  <p>${historyAvailable ? escapeHtml(view.historyNote) : 'No history sources were available when this snapshot was captured.'}</p>
                   <p>Available history depends on Home Assistant Recorder and retention.</p>
                   <button type="button" class="hi-summary-history" ${historyAvailable ? '' : 'disabled'}>View history</button>
                 </template>`;
@@ -1103,7 +1127,6 @@ card:
                   function create({dialog, owner, title, entities, states, close, openEntity, nativeLabel = 'entity', nativeAvailable = true, withSource = action => action(), now = () => Date.now(), timeoutMs = 15000}) {
                     const document = dialog.ownerDocument;
                     const allowed = entities.slice(0, 4).filter(item => item && typeof item.id === 'string' && /^sensor\.[a-z0-9_]+$/.test(item.id));
-                    const requested = [...new Set(allowed.filter(item => states[item.id]).map(item => item.id))];
                     const summaryNodes = Array.from(dialog.children).filter(node => node.tagName !== 'STYLE' && !node.classList.contains('hi-summary-close'));
                     const closeButton = dialog.querySelector('.hi-summary-close');
                     const section = document.createElement('section'); section.className = 'hi-history'; section.hidden = true;
@@ -1151,8 +1174,9 @@ card:
                     };
                     section.querySelector('[data-back]').addEventListener('click', back);
                     const nativeStatus = section.querySelector('[data-native-status]');
-                    section.querySelector('[data-native]').addEventListener('click', () => withVisit(() => {
-                      if (nativeAvailable && !openEntity(close)) nativeStatus.textContent = 'This entity is no longer present in Home Assistant.';
+                    const nativeButton = section.querySelector('[data-native]');
+                    nativeButton.addEventListener('click', () => withVisit(() => {
+                      if (!nativeButton.disabled && !openEntity(close)) nativeStatus.textContent = 'This entity is no longer present in Home Assistant.';
                     }));
                     for (const button of section.querySelectorAll('[data-hours]')) button.addEventListener('click', () => withVisit(() => {
                       hours = Number(button.dataset.hours);
@@ -1233,6 +1257,8 @@ card:
                     }
                     async function load() {
                       invalidate(); const requestGeneration = generation;
+                      const liveStates = (owner.hass || owner._hass)?.states || states;
+                      const requested = [...new Set(allowed.filter(item => liveStates[item.id]).map(item => item.id))];
                       const end = now(), start = end - hours * 3600000;
                       content.innerHTML = '<p role="status">Loading recorded history…</p>';
                       if (!requested.length) { content.innerHTML = '<p>History sources are currently unavailable in Home Assistant.</p>'; return; }
@@ -1278,7 +1304,13 @@ card:
                       }
                     }
                     return {
-                      open() { if (disposed) return; activeVisit = Symbol(); nativeStatus.textContent = ''; summaryNodes.forEach(node => {node.hidden = true;}); section.hidden = false; if (closeButton) {section.querySelector('nav').appendChild(closeButton); closeButton.style.margin='0 0 0 auto';} dialog.scrollTop=0; section.querySelector('[data-back]').focus({preventScroll:true}); dialog.scrollTop=0; load(); },
+                      open(target) {
+                        if (disposed) return;
+                        if (target) {
+                          nativeButton.textContent = 'Open ' + (target.label || 'entity') + ' details';
+                          nativeButton.disabled = !target.id;
+                        }
+                        activeVisit = Symbol(); nativeStatus.textContent = ''; summaryNodes.forEach(node => {node.hidden = true;}); section.hidden = false; if (closeButton) {section.querySelector('nav').appendChild(closeButton); closeButton.style.margin='0 0 0 auto';} dialog.scrollTop=0; section.querySelector('[data-back]').focus({preventScroll:true}); dialog.scrollTop=0; load(); },
                       dispose() { disposed = true; activeVisit = null; invalidate(); section.remove(); },
                     };
                   }
@@ -1343,9 +1375,10 @@ card:
                 const owner = this;
                 const entityId = variables.hi_summary.history;
                 const hasEntity = id => Boolean(id && (owner.hass || owner._hass)?.states?.[id]);
-                const nativeTarget = variables.hi_summary.historyEntities.find(item => item.id === entityId && hasEntity(item.id)) || variables.hi_summary.historyEntities.find(item => hasEntity(item.id));
-                const nativeEntityId = nativeTarget?.id;
+                const selectNativeTarget = () => variables.hi_summary.historyEntities.find(item => item.id === entityId && hasEntity(item.id)) || variables.hi_summary.historyEntities.find(item => hasEntity(item.id));
+                let nativeTarget = selectNativeTarget();
                 const history = beforeOpen => {
+                  const nativeEntityId = nativeTarget?.id;
                   if (!owner.isConnected || !hasEntity(nativeEntityId)) return false;
                   beforeOpen?.();
                   owner.dispatchEvent(new CustomEvent('hass-more-info', {
@@ -1381,6 +1414,7 @@ card:
                   }
                   clearTimeout(bindingTimer);
                   bindingTimer = undefined;
+                  refreshHistoryButton();
                   const ready = pendingActions;
                   pendingActions = [];
                   for (const run of ready) { if (!cleaned && dialog.open) run(); }
@@ -1416,10 +1450,17 @@ card:
                 dialog.addEventListener('close', cleanup, { once: true });
                 dialog.querySelector('.hi-summary-close').addEventListener('click', close);
                 const historyButton = dialog.querySelector('.hi-summary-history');
-                historyButton.disabled = !variables.hi_summary.historyEntities.some(item => hasEntity(item.id));
+                const refreshHistoryButton = () => {
+                  const available = variables.hi_summary.historyEntities.some(item => hasEntity(item.id));
+                  // A disappearing destination must not drop focus while a guarded action is pending.
+                  if (available || document.activeElement !== historyButton) historyButton.disabled = !available;
+                  historyButton.setAttribute('aria-disabled', String(!available));
+                };
+                refreshHistoryButton();
                 historyButton.addEventListener('click', () => withSource(() => {
-                  historyController ||= hiBadgeHistory.create({dialog, owner, title:variables.hi_summary.title, entities:variables.hi_summary.historyEntities, states, close, withSource, nativeLabel:nativeTarget?.label, nativeAvailable:Boolean(nativeEntityId), openEntity:history});
-                  historyController.open();
+                  nativeTarget = selectNativeTarget();
+                  historyController ||= hiBadgeHistory.create({dialog, owner, title:variables.hi_summary.title, entities:variables.hi_summary.historyEntities, states, close, withSource, openEntity:history});
+                  historyController.open(nativeTarget || {});
                 }));
                 dialog.addEventListener('click', event => {
                   event.stopPropagation();
@@ -2059,7 +2100,7 @@ card:
               <p class="hi-snapshot-time"></p>
                   <p>${escapeHtml(view.description)}</p>
               <p>${context}</p>
-              <p>${historyAvailable ? escapeHtml(view.historyNote) : 'History sources are currently unavailable in Home Assistant.'}</p>
+              <p>${historyAvailable ? escapeHtml(view.historyNote) : 'No history sources were available when this snapshot was captured.'}</p>
               <p>Available history depends on Home Assistant Recorder and retention.</p>
               <button type="button" class="hi-summary-history" ${historyAvailable ? '' : 'disabled'}>View history</button>
             </template>`;
@@ -2248,13 +2289,13 @@ card:
               const indices = Number.isSafeInteger(count) && count >= 0 ? count : null;
               const inventoryKnown = Array.isArray(inventory) &&
                 inventory.every(row => row && typeof row.sensor_type === 'string');
-              return {entry, indices, inventory, inventoryKnown,
+              return {entry, foreign, indices, inventory, inventoryKnown,
                 mixed: inventoryKnown && indices > 0 && inventory.some(row => row.sensor_type === 'voc')};
             }
 
             function hiPrepareVoc(owner, hass, stamp, diagId) {
               if (!owner?.shadowRoot || !hass || !globalThis.customElements) return;
-              const tag = 'hi-voc-presentation-v5';
+              const tag = 'hi-voc-presentation-v6';
               const contextKey = Symbol.for('humidity_intelligence.voc_chips.context.v1');
               const changed = 'hi-voc-presentation-context';
               const modes = ['all', 'indices', 'concentrations'];
@@ -2357,7 +2398,10 @@ card:
                         if (store.write !== write) return;
                         clearTimeout(writeTimer);
                         store.write = null;
-                        if (!listening) { releaseStore(); return; }
+                        if (!listening) {
+                          if (sequence === before) scope.value = next;
+                          releaseStore(); return;
+                        }
                         // A successful command acknowledges the request. A newer live value takes precedence.
                         store.acceptedValue = sequence === before || store.value === next ? next : null;
                         const needsRead = store.readStatus === unavailable || (recovering && sequence === before);
@@ -2455,7 +2499,6 @@ card:
                     const fields = this.querySelector('fieldset');
                     if (!fields) return;
                     fields.hidden = !this.mixed;
-                    fields.setAttribute('aria-busy', String(!!this.store?.pending));
                     let resendLabel = 'Resend';
                     for (const input of fields.querySelectorAll('input')) {
                       if (input.value === this.store?.retryValue && input.labels?.length)
@@ -2471,11 +2514,18 @@ card:
                     const status = fields.querySelector('[role="status"]');
                     if (status.textContent !== message) status.textContent = message;
                     const retry = fields.querySelector('[data-voc-retry]');
-                    retry.hidden = !this.store || readStatus !== unavailable;
-                    retry.disabled = this.connection?.connected !== true;
                     const resend = fields.querySelector('[data-voc-resend]');
+                    const hideRetry = !this.store || readStatus !== unavailable;
+                    const hideResend = !this.store?.retryValue;
+                    const focused = this.ownerDocument?.activeElement;
+                    if ((focused === retry && hideRetry) || (focused === resend && hideResend)) {
+                      const target = fields.hidden ? this.dialog?.querySelector('.hi-summary-close') : fields.querySelector('input[tabindex="0"]');
+                      target?.focus({preventScroll:true});
+                    }
+                    retry.hidden = hideRetry;
+                    retry.disabled = this.connection?.connected !== true;
                     resend.textContent = resendLabel;
-                    resend.hidden = !this.store?.retryValue;
+                    resend.hidden = hideResend;
                     resend.disabled = retry.disabled;
                   }
                 });
@@ -2516,24 +2566,35 @@ card:
               return `<span class="cv-chip"${family ? ` data-voc="${family}"` : ''}${range} style="--cv:${color}"><span class="k">${esc(label)}</span> <span class="v" style="color:${color}">${esc(value)}</span></span>`;
             };
             const chips = [];
-            if (Array.isArray(inventory)) {
-              for (const [level, kind, label, id] of metrics) {
-                if (!inventory.some(row => row?.sensor_type === kind && (!level || row.level === level))) continue;
-                const sensor = id ? states[id] : null;
-                const raw = String(sensor?.state ?? '').trim();
-                const numeric = /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:e[+-]?\d+)?$/i.test(raw) && Number.isFinite(Number(raw));
-                const unit = sensor?.attributes?.unit_of_measurement || (kind === 'iaq' &&
-                  diag.attributes?.diagnostics_summary?.aq_inputs?.by_type?.iaq?.unit === 'index' ? 'index' : null);
-                const missing = raw.toLowerCase() === 'unknown' ? 'Unknown' : 'Unavailable';
-                const band = sensor?.attributes?.aq_display_band;
-                const canonicalUnit = {iaq:'index', pm25:'µg/m³', voc:'ppb', co:'ppm'}[kind];
-                const useBand = numeric && Number(raw) >= 0 && typeof unit === 'string' &&
-                  unit.replace('μ','µ') === canonicalUnit && [1, 2, 3].includes(band);
-                chips.push(chip(label, numeric ? `${raw} ${unit || '(unit not supplied)'}` : missing, useBand ? band : 0, kind === 'voc' ? 'concentrations' : null));
-              }
-              if (inventory.some(row => ['iaq', 'pm25', 'voc', 'co', 'co2'].includes(row?.sensor_type) && !['level1', 'level2'].includes(row.level)))
-                chips.push(chip('AQ configuration', 'Incomplete'));
+            const registry = typeof hass !== 'undefined' ? hass?.entities : null;
+            const diagRegistry = registry?.['sensor.hi_diagnostics'];
+            const wrongPlatform = record => record?.platform && record.platform !== 'humidity_intelligence';
+            for (const [level, kind, label, id] of metrics) {
+              if (scope.inventoryKnown && !inventory.some(row => row.sensor_type === kind && (!level || row.level === level))) continue;
+              const mapped = registry?.[id];
+              const otherEntry = mapped?.config_entry_id && diagRegistry?.config_entry_id && mapped.config_entry_id !== diagRegistry.config_entry_id;
+              if (scope.foreign || wrongPlatform(mapped) || wrongPlatform(diagRegistry) || otherEntry) continue;
+              // HI supports one config entry. Compact HA registry records expose platform, even without entry IDs.
+              const mappedByHI = mapped?.platform === 'humidity_intelligence' && diagRegistry?.platform === 'humidity_intelligence';
+              const trustedMapping = scope.entry || mappedByHI;
+              const sensor = id ? states[id] : null;
+              const raw = String(sensor?.state ?? '').trim();
+              const numeric = /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:e[+-]?\d+)?$/i.test(raw) && Number.isFinite(Number(raw));
+              const unit = sensor?.attributes?.unit_of_measurement || (kind === 'iaq' &&
+                (scope.entry || (mappedByHI && Object.hasOwn(sensor?.attributes || {}, 'aq_display_band')) ||
+                  (scope.inventoryKnown && diag?.attributes?.diagnostics_summary?.aq_inputs?.by_type?.iaq?.unit === 'index')) ? 'index' : null);
+              const missing = raw.toLowerCase() === 'unknown' ? 'Unknown' : 'Unavailable';
+              const band = sensor?.attributes?.aq_display_band;
+              const canonicalUnit = {iaq:'index', pm25:'µg/m³', voc:'ppb', co:'ppm'}[kind];
+              // A verified HI IAQ aggregate uses an index even when HA omits the native unit.
+              if (!scope.inventoryKnown && (!trustedMapping || !numeric || typeof unit !== 'string' ||
+                  unit.replace('μ','µ') !== canonicalUnit)) continue;
+              const useBand = numeric && Number(raw) >= 0 && typeof unit === 'string' &&
+                unit.replace('μ','µ') === canonicalUnit && [1, 2, 3].includes(band);
+              chips.push(chip(label, numeric ? `${raw} ${unit || '(unit not supplied)'}` : missing, useBand ? band : 0, kind === 'voc' ? 'concentrations' : null));
             }
+            if (scope.inventoryKnown && inventory.some(row => ['iaq', 'pm25', 'voc', 'co', 'co2'].includes(row?.sensor_type) && !['level1', 'level2'].includes(row.level)))
+              chips.push(chip('AQ configuration', 'Incomplete'));
             if (!scope.inventoryKnown) {
               chips.push(chip('AQ configuration', 'Unavailable'));
             }
@@ -2563,7 +2624,7 @@ card:
                 chips.push(chip(`VOC index (${scope.indices} configured)`, 'Unavailable', 0, 'indices'));
               }
             }
-            return chips.length ? `<div class="cv-scroll"><hi-voc-presentation-v5 style="display:contents">${chips.join('')}</hi-voc-presentation-v5></div>` : '';
+            return chips.length ? `<div class="cv-scroll"><hi-voc-presentation-v6 style="display:contents">${chips.join('')}</hi-voc-presentation-v6></div>` : '';
           ]]]
         humidity: |
           [[[
@@ -2891,7 +2952,6 @@ card:
               function create({dialog, owner, title, entities, states, close, openEntity, nativeLabel = 'entity', nativeAvailable = true, withSource = action => action(), now = () => Date.now(), timeoutMs = 15000}) {
                 const document = dialog.ownerDocument;
                 const allowed = entities.slice(0, 4).filter(item => item && typeof item.id === 'string' && /^sensor\.[a-z0-9_]+$/.test(item.id));
-                const requested = [...new Set(allowed.filter(item => states[item.id]).map(item => item.id))];
                 const summaryNodes = Array.from(dialog.children).filter(node => node.tagName !== 'STYLE' && !node.classList.contains('hi-summary-close'));
                 const closeButton = dialog.querySelector('.hi-summary-close');
                 const section = document.createElement('section'); section.className = 'hi-history'; section.hidden = true;
@@ -2939,8 +2999,9 @@ card:
                 };
                 section.querySelector('[data-back]').addEventListener('click', back);
                 const nativeStatus = section.querySelector('[data-native-status]');
-                section.querySelector('[data-native]').addEventListener('click', () => withVisit(() => {
-                  if (nativeAvailable && !openEntity(close)) nativeStatus.textContent = 'This entity is no longer present in Home Assistant.';
+                const nativeButton = section.querySelector('[data-native]');
+                nativeButton.addEventListener('click', () => withVisit(() => {
+                  if (!nativeButton.disabled && !openEntity(close)) nativeStatus.textContent = 'This entity is no longer present in Home Assistant.';
                 }));
                 for (const button of section.querySelectorAll('[data-hours]')) button.addEventListener('click', () => withVisit(() => {
                   hours = Number(button.dataset.hours);
@@ -3021,6 +3082,8 @@ card:
                 }
                 async function load() {
                   invalidate(); const requestGeneration = generation;
+                  const liveStates = (owner.hass || owner._hass)?.states || states;
+                  const requested = [...new Set(allowed.filter(item => liveStates[item.id]).map(item => item.id))];
                   const end = now(), start = end - hours * 3600000;
                   content.innerHTML = '<p role="status">Loading recorded history…</p>';
                   if (!requested.length) { content.innerHTML = '<p>History sources are currently unavailable in Home Assistant.</p>'; return; }
@@ -3066,7 +3129,13 @@ card:
                   }
                 }
                 return {
-                  open() { if (disposed) return; activeVisit = Symbol(); nativeStatus.textContent = ''; summaryNodes.forEach(node => {node.hidden = true;}); section.hidden = false; if (closeButton) {section.querySelector('nav').appendChild(closeButton); closeButton.style.margin='0 0 0 auto';} dialog.scrollTop=0; section.querySelector('[data-back]').focus({preventScroll:true}); dialog.scrollTop=0; load(); },
+                  open(target) {
+                    if (disposed) return;
+                    if (target) {
+                      nativeButton.textContent = 'Open ' + (target.label || 'entity') + ' details';
+                      nativeButton.disabled = !target.id;
+                    }
+                    activeVisit = Symbol(); nativeStatus.textContent = ''; summaryNodes.forEach(node => {node.hidden = true;}); section.hidden = false; if (closeButton) {section.querySelector('nav').appendChild(closeButton); closeButton.style.margin='0 0 0 auto';} dialog.scrollTop=0; section.querySelector('[data-back]').focus({preventScroll:true}); dialog.scrollTop=0; load(); },
                   dispose() { disposed = true; activeVisit = null; invalidate(); section.remove(); },
                 };
               }
@@ -3131,9 +3200,10 @@ card:
             const owner = this;
             const entityId = variables.hi_summary.history;
             const hasEntity = id => Boolean(id && (owner.hass || owner._hass)?.states?.[id]);
-            const nativeTarget = variables.hi_summary.historyEntities.find(item => item.id === entityId && hasEntity(item.id)) || variables.hi_summary.historyEntities.find(item => hasEntity(item.id));
-            const nativeEntityId = nativeTarget?.id;
+            const selectNativeTarget = () => variables.hi_summary.historyEntities.find(item => item.id === entityId && hasEntity(item.id)) || variables.hi_summary.historyEntities.find(item => hasEntity(item.id));
+            let nativeTarget = selectNativeTarget();
             const history = beforeOpen => {
+              const nativeEntityId = nativeTarget?.id;
               if (!owner.isConnected || !hasEntity(nativeEntityId)) return false;
               beforeOpen?.();
               owner.dispatchEvent(new CustomEvent('hass-more-info', {
@@ -3169,6 +3239,7 @@ card:
               }
               clearTimeout(bindingTimer);
               bindingTimer = undefined;
+              refreshHistoryButton();
               const ready = pendingActions;
               pendingActions = [];
               for (const run of ready) { if (!cleaned && dialog.open) run(); }
@@ -3204,10 +3275,17 @@ card:
             dialog.addEventListener('close', cleanup, { once: true });
             dialog.querySelector('.hi-summary-close').addEventListener('click', close);
             const historyButton = dialog.querySelector('.hi-summary-history');
-            historyButton.disabled = !variables.hi_summary.historyEntities.some(item => hasEntity(item.id));
+            const refreshHistoryButton = () => {
+              const available = variables.hi_summary.historyEntities.some(item => hasEntity(item.id));
+              // A disappearing destination must not drop focus while a guarded action is pending.
+              if (available || document.activeElement !== historyButton) historyButton.disabled = !available;
+              historyButton.setAttribute('aria-disabled', String(!available));
+            };
+            refreshHistoryButton();
             historyButton.addEventListener('click', () => withSource(() => {
-              historyController ||= hiBadgeHistory.create({dialog, owner, title:variables.hi_summary.title, entities:variables.hi_summary.historyEntities, states, close, withSource, nativeLabel:nativeTarget?.label, nativeAvailable:Boolean(nativeEntityId), openEntity:history});
-              historyController.open();
+              nativeTarget = selectNativeTarget();
+              historyController ||= hiBadgeHistory.create({dialog, owner, title:variables.hi_summary.title, entities:variables.hi_summary.historyEntities, states, close, withSource, openEntity:history});
+              historyController.open(nativeTarget || {});
             }));
             dialog.addEventListener('click', event => {
               event.stopPropagation();
@@ -3499,7 +3577,7 @@ card:
                   <p class="hi-snapshot-time"></p>
                   <p>${escapeHtml(view.description)}</p>
                   <p>${context}</p>
-                  <p>${target ? `History: ${escapeHtml(historyName === 'Unavailable' ? 'mapped entity' : historyName)}. ${escapeHtml(view.historyNote)}` : 'This source is currently unavailable in Home Assistant.'}</p>
+                  <p>${target ? `History: ${escapeHtml(historyName === 'Unavailable' ? 'mapped entity' : historyName)}. ${escapeHtml(view.historyNote)}` : 'This source was unavailable when this snapshot was captured.'}</p>
                   <p>Available history depends on Home Assistant Recorder and retention.</p>
                   <button type="button" class="hi-summary-history" ${target ? '' : 'disabled'}>View history</button>
                 </template>`;
@@ -3602,6 +3680,7 @@ card:
                   }
                   clearTimeout(bindingTimer);
                   bindingTimer = undefined;
+                  refreshHistoryButton();
                   const ready = pendingActions;
                   pendingActions = [];
                   for (const run of ready) { if (!cleaned && dialog.open) run(); }
@@ -3635,7 +3714,13 @@ card:
                 dialog.addEventListener('close', cleanup, { once: true });
                 dialog.querySelector('.hi-summary-close').addEventListener('click', close);
                 const historyButton = dialog.querySelector('.hi-summary-history');
-                historyButton.disabled = !hasEntity(entityId);
+                const refreshHistoryButton = () => {
+                  const available = hasEntity(entityId);
+                  // A disappearing destination must not drop focus while a guarded action is pending.
+                  if (available || document.activeElement !== historyButton) historyButton.disabled = !available;
+                  historyButton.setAttribute('aria-disabled', String(!available));
+                };
+                refreshHistoryButton();
                 const historyStatus = document.createElement('div');
                 historyStatus.setAttribute('role', 'status');
                 dialog.appendChild(historyStatus);
@@ -3790,7 +3875,7 @@ card:
                   <p class="hi-snapshot-time"></p>
                   <p>${escapeHtml(view.description)}</p>
                   <p>${context}</p>
-                  <p>${target ? `History: ${escapeHtml(historyName === 'Unavailable' ? 'mapped entity' : historyName)}. ${escapeHtml(view.historyNote)}` : 'This source is currently unavailable in Home Assistant.'}</p>
+                  <p>${target ? `History: ${escapeHtml(historyName === 'Unavailable' ? 'mapped entity' : historyName)}. ${escapeHtml(view.historyNote)}` : 'This source was unavailable when this snapshot was captured.'}</p>
                   <p>Available history depends on Home Assistant Recorder and retention.</p>
                   <button type="button" class="hi-summary-history" ${target ? '' : 'disabled'}>View history</button>
                 </template>`;
@@ -3893,6 +3978,7 @@ card:
                   }
                   clearTimeout(bindingTimer);
                   bindingTimer = undefined;
+                  refreshHistoryButton();
                   const ready = pendingActions;
                   pendingActions = [];
                   for (const run of ready) { if (!cleaned && dialog.open) run(); }
@@ -3926,7 +4012,13 @@ card:
                 dialog.addEventListener('close', cleanup, { once: true });
                 dialog.querySelector('.hi-summary-close').addEventListener('click', close);
                 const historyButton = dialog.querySelector('.hi-summary-history');
-                historyButton.disabled = !hasEntity(entityId);
+                const refreshHistoryButton = () => {
+                  const available = hasEntity(entityId);
+                  // A disappearing destination must not drop focus while a guarded action is pending.
+                  if (available || document.activeElement !== historyButton) historyButton.disabled = !available;
+                  historyButton.setAttribute('aria-disabled', String(!available));
+                };
+                refreshHistoryButton();
                 const historyStatus = document.createElement('div');
                 historyStatus.setAttribute('role', 'status');
                 dialog.appendChild(historyStatus);
@@ -4081,7 +4173,7 @@ card:
                   <p class="hi-snapshot-time"></p>
                   <p>${escapeHtml(view.description)}</p>
                   <p>${context}</p>
-                  <p>${target ? `History: ${escapeHtml(historyName === 'Unavailable' ? 'mapped entity' : historyName)}. ${escapeHtml(view.historyNote)}` : 'This source is currently unavailable in Home Assistant.'}</p>
+                  <p>${target ? `History: ${escapeHtml(historyName === 'Unavailable' ? 'mapped entity' : historyName)}. ${escapeHtml(view.historyNote)}` : 'This source was unavailable when this snapshot was captured.'}</p>
                   <p>Available history depends on Home Assistant Recorder and retention.</p>
                   <button type="button" class="hi-summary-history" ${target ? '' : 'disabled'}>View history</button>
                 </template>`;
@@ -4184,6 +4276,7 @@ card:
                   }
                   clearTimeout(bindingTimer);
                   bindingTimer = undefined;
+                  refreshHistoryButton();
                   const ready = pendingActions;
                   pendingActions = [];
                   for (const run of ready) { if (!cleaned && dialog.open) run(); }
@@ -4217,7 +4310,13 @@ card:
                 dialog.addEventListener('close', cleanup, { once: true });
                 dialog.querySelector('.hi-summary-close').addEventListener('click', close);
                 const historyButton = dialog.querySelector('.hi-summary-history');
-                historyButton.disabled = !hasEntity(entityId);
+                const refreshHistoryButton = () => {
+                  const available = hasEntity(entityId);
+                  // A disappearing destination must not drop focus while a guarded action is pending.
+                  if (available || document.activeElement !== historyButton) historyButton.disabled = !available;
+                  historyButton.setAttribute('aria-disabled', String(!available));
+                };
+                refreshHistoryButton();
                 const historyStatus = document.createElement('div');
                 historyStatus.setAttribute('role', 'status');
                 dialog.appendChild(historyStatus);
@@ -4383,13 +4482,13 @@ card:
                   const indices = Number.isSafeInteger(count) && count >= 0 ? count : null;
                   const inventoryKnown = Array.isArray(inventory) &&
                     inventory.every(row => row && typeof row.sensor_type === 'string');
-                  return {entry, indices, inventory, inventoryKnown,
+                  return {entry, foreign, indices, inventory, inventoryKnown,
                     mixed: inventoryKnown && indices > 0 && inventory.some(row => row.sensor_type === 'voc')};
                 }
 
                 function hiPrepareVoc(owner, hass, stamp, diagId) {
                   if (!owner?.shadowRoot || !hass || !globalThis.customElements) return;
-                  const tag = 'hi-voc-presentation-v5';
+                  const tag = 'hi-voc-presentation-v6';
                   const contextKey = Symbol.for('humidity_intelligence.voc_chips.context.v1');
                   const changed = 'hi-voc-presentation-context';
                   const modes = ['all', 'indices', 'concentrations'];
@@ -4492,7 +4591,10 @@ card:
                             if (store.write !== write) return;
                             clearTimeout(writeTimer);
                             store.write = null;
-                            if (!listening) { releaseStore(); return; }
+                            if (!listening) {
+                              if (sequence === before) scope.value = next;
+                              releaseStore(); return;
+                            }
                             // A successful command acknowledges the request. A newer live value takes precedence.
                             store.acceptedValue = sequence === before || store.value === next ? next : null;
                             const needsRead = store.readStatus === unavailable || (recovering && sequence === before);
@@ -4590,7 +4692,6 @@ card:
                         const fields = this.querySelector('fieldset');
                         if (!fields) return;
                         fields.hidden = !this.mixed;
-                        fields.setAttribute('aria-busy', String(!!this.store?.pending));
                         let resendLabel = 'Resend';
                         for (const input of fields.querySelectorAll('input')) {
                           if (input.value === this.store?.retryValue && input.labels?.length)
@@ -4606,11 +4707,18 @@ card:
                         const status = fields.querySelector('[role="status"]');
                         if (status.textContent !== message) status.textContent = message;
                         const retry = fields.querySelector('[data-voc-retry]');
-                        retry.hidden = !this.store || readStatus !== unavailable;
-                        retry.disabled = this.connection?.connected !== true;
                         const resend = fields.querySelector('[data-voc-resend]');
+                        const hideRetry = !this.store || readStatus !== unavailable;
+                        const hideResend = !this.store?.retryValue;
+                        const focused = this.ownerDocument?.activeElement;
+                        if ((focused === retry && hideRetry) || (focused === resend && hideResend)) {
+                          const target = fields.hidden ? this.dialog?.querySelector('.hi-summary-close') : fields.querySelector('input[tabindex="0"]');
+                          target?.focus({preventScroll:true});
+                        }
+                        retry.hidden = hideRetry;
+                        retry.disabled = this.connection?.connected !== true;
                         resend.textContent = resendLabel;
-                        resend.hidden = !this.store?.retryValue;
+                        resend.hidden = hideResend;
                         resend.disabled = retry.disabled;
                       }
                     });
@@ -4650,15 +4758,15 @@ card:
                   <p class="hi-snapshot-time"></p>
                   <p>${escapeHtml(view.description)}</p>
                   <p>${context}</p>
-                  <div><hi-voc-presentation-v5><fieldset hidden>
+                  <div><hi-voc-presentation-v6><fieldset hidden>
                     <legend>VOC readings on your cards</legend>
                     <p>This choice applies to your current Mobile and Tablet chips. Each monitor has its own index scale. If Home Assistant cannot store a change, your previous choice may return after a restart.</p>
                     <label><input type="radio" name="hi-voc-choice" value="all"> All configured readings</label>
                     <label><input type="radio" name="hi-voc-choice" value="indices"> Monitor indices only</label>
                     <label><input type="radio" name="hi-voc-choice" value="concentrations"> Concentration averages only</label>
                     <span role="status"></span> <button type="button" data-voc-retry tabindex="0" hidden>Retry read</button> <button type="button" data-voc-resend tabindex="0" hidden>Resend</button>
-                  </fieldset></hi-voc-presentation-v5></div>
-                  <p>${historyAvailable ? escapeHtml(view.historyNote) : 'History sources are currently unavailable in Home Assistant.'}</p>
+                  </fieldset></hi-voc-presentation-v6></div>
+                  <p>${historyAvailable ? escapeHtml(view.historyNote) : 'No history sources were available when this snapshot was captured.'}</p>
                   <p>Available history depends on Home Assistant Recorder and retention.</p>
                   <button type="button" class="hi-summary-history" tabindex="0" ${historyAvailable ? '' : 'disabled'}>View history</button>
                 </template>`;
@@ -4777,7 +4885,6 @@ card:
                   function create({dialog, owner, title, entities, states, close, openEntity, nativeLabel = 'entity', nativeAvailable = true, withSource = action => action(), now = () => Date.now(), timeoutMs = 15000}) {
                     const document = dialog.ownerDocument;
                     const allowed = entities.slice(0, 4).filter(item => item && typeof item.id === 'string' && /^sensor\.[a-z0-9_]+$/.test(item.id));
-                    const requested = [...new Set(allowed.filter(item => states[item.id]).map(item => item.id))];
                     const summaryNodes = Array.from(dialog.children).filter(node => node.tagName !== 'STYLE' && !node.classList.contains('hi-summary-close'));
                     const closeButton = dialog.querySelector('.hi-summary-close');
                     const section = document.createElement('section'); section.className = 'hi-history'; section.hidden = true;
@@ -4825,8 +4932,9 @@ card:
                     };
                     section.querySelector('[data-back]').addEventListener('click', back);
                     const nativeStatus = section.querySelector('[data-native-status]');
-                    section.querySelector('[data-native]').addEventListener('click', () => withVisit(() => {
-                      if (nativeAvailable && !openEntity(close)) nativeStatus.textContent = 'This entity is no longer present in Home Assistant.';
+                    const nativeButton = section.querySelector('[data-native]');
+                    nativeButton.addEventListener('click', () => withVisit(() => {
+                      if (!nativeButton.disabled && !openEntity(close)) nativeStatus.textContent = 'This entity is no longer present in Home Assistant.';
                     }));
                     for (const button of section.querySelectorAll('[data-hours]')) button.addEventListener('click', () => withVisit(() => {
                       hours = Number(button.dataset.hours);
@@ -4907,6 +5015,8 @@ card:
                     }
                     async function load() {
                       invalidate(); const requestGeneration = generation;
+                      const liveStates = (owner.hass || owner._hass)?.states || states;
+                      const requested = [...new Set(allowed.filter(item => liveStates[item.id]).map(item => item.id))];
                       const end = now(), start = end - hours * 3600000;
                       content.innerHTML = '<p role="status">Loading recorded history…</p>';
                       if (!requested.length) { content.innerHTML = '<p>History sources are currently unavailable in Home Assistant.</p>'; return; }
@@ -4952,7 +5062,13 @@ card:
                       }
                     }
                     return {
-                      open() { if (disposed) return; activeVisit = Symbol(); nativeStatus.textContent = ''; summaryNodes.forEach(node => {node.hidden = true;}); section.hidden = false; if (closeButton) {section.querySelector('nav').appendChild(closeButton); closeButton.style.margin='0 0 0 auto';} dialog.scrollTop=0; section.querySelector('[data-back]').focus({preventScroll:true}); dialog.scrollTop=0; load(); },
+                      open(target) {
+                        if (disposed) return;
+                        if (target) {
+                          nativeButton.textContent = 'Open ' + (target.label || 'entity') + ' details';
+                          nativeButton.disabled = !target.id;
+                        }
+                        activeVisit = Symbol(); nativeStatus.textContent = ''; summaryNodes.forEach(node => {node.hidden = true;}); section.hidden = false; if (closeButton) {section.querySelector('nav').appendChild(closeButton); closeButton.style.margin='0 0 0 auto';} dialog.scrollTop=0; section.querySelector('[data-back]').focus({preventScroll:true}); dialog.scrollTop=0; load(); },
                       dispose() { disposed = true; activeVisit = null; invalidate(); section.remove(); },
                     };
                   }
@@ -5017,9 +5133,10 @@ card:
                 const owner = this;
                 const entityId = variables.hi_summary.history;
                 const hasEntity = id => Boolean(id && (owner.hass || owner._hass)?.states?.[id]);
-                const nativeTarget = variables.hi_summary.historyEntities.find(item => item.id === entityId && hasEntity(item.id)) || variables.hi_summary.historyEntities.find(item => hasEntity(item.id));
-                const nativeEntityId = nativeTarget?.id;
+                const selectNativeTarget = () => variables.hi_summary.historyEntities.find(item => item.id === entityId && hasEntity(item.id)) || variables.hi_summary.historyEntities.find(item => hasEntity(item.id));
+                let nativeTarget = selectNativeTarget();
                 const history = beforeOpen => {
+                  const nativeEntityId = nativeTarget?.id;
                   if (!owner.isConnected || !hasEntity(nativeEntityId)) return false;
                   beforeOpen?.();
                   owner.dispatchEvent(new CustomEvent('hass-more-info', {
@@ -5055,6 +5172,7 @@ card:
                   }
                   clearTimeout(bindingTimer);
                   bindingTimer = undefined;
+                  refreshHistoryButton();
                   const ready = pendingActions;
                   pendingActions = [];
                   for (const run of ready) { if (!cleaned && dialog.open) run(); }
@@ -5094,10 +5212,17 @@ card:
                 dialog.addEventListener('close', cleanup, { once: true });
                 dialog.querySelector('.hi-summary-close').addEventListener('click', close);
                 const historyButton = dialog.querySelector('.hi-summary-history');
-                historyButton.disabled = !variables.hi_summary.historyEntities.some(item => hasEntity(item.id));
+                const refreshHistoryButton = () => {
+                  const available = variables.hi_summary.historyEntities.some(item => hasEntity(item.id));
+                  // A disappearing destination must not drop focus while a guarded action is pending.
+                  if (available || document.activeElement !== historyButton) historyButton.disabled = !available;
+                  historyButton.setAttribute('aria-disabled', String(!available));
+                };
+                refreshHistoryButton();
                 historyButton.addEventListener('click', () => withSource(() => {
-                  historyController ||= hiBadgeHistory.create({dialog, owner, title:variables.hi_summary.title, entities:variables.hi_summary.historyEntities, states, close, withSource, nativeLabel:nativeTarget?.label, nativeAvailable:Boolean(nativeEntityId), openEntity:history});
-                  historyController.open();
+                  nativeTarget = selectNativeTarget();
+                  historyController ||= hiBadgeHistory.create({dialog, owner, title:variables.hi_summary.title, entities:variables.hi_summary.historyEntities, states, close, withSource, openEntity:history});
+                  historyController.open(nativeTarget || {});
                 }));
                 dialog.addEventListener('click', event => {
                   event.stopPropagation();

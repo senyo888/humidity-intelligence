@@ -8,9 +8,14 @@ This project follows a practical changelog format for Home Assistant and HACS us
 
 ## v2.1.3 — Stable release preparation
 
-**Air Quality in Focus** carries the revision 26 release candidate forward. The
-controller package builder and admin release check also accept the exact Stable
-version. The revision 26 Mobile and Tablet cards remain compatible. See the
+**Air Quality in Focus** advances Mobile and Tablet to revision 27. Both cards keep
+verified AQ averages visible during a Diagnostics outage, pick up returning history
+sources and retain acknowledged VOC choices. Keyboard focus stays in AQ details when
+a recovery button disappears. Replace saved cards through revision 26, including the final RC.
+
+Settings now handles unreadable VOC index rows, legacy zone output selections and
+missing thresholds when enabling zones or AQ lanes. The controller package builder
+and admin release check accept the exact Stable version. See the
 [release notes and upgrade instructions](docs/releases/v2.1.3.md).
 
 ## v2.1.3-rc.1 — earlier unpublished candidate

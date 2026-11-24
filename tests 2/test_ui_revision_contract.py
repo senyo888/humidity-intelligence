@@ -88,7 +88,7 @@ def test_voc_sync_rejects_misplaced_embeds_before_writing_any_target(tmp_path, d
     before = [(tmp_path / card).read_bytes() for card in cards]
     for args in (["--check"], []):
         result = subprocess.run([sys.executable, tmp_path / script, *args], capture_output=True, text=True, timeout=10)
-        assert result.returncode != 0 and "misplaced VOC preference helper" in result.stderr
+        assert result.returncode != 0 and f"{cards[-1]}: misplaced VOC preference helper" in result.stderr
         assert before == [(tmp_path / card).read_bytes() for card in cards]
 
 
@@ -104,10 +104,10 @@ def test_rendered_stamp_matches_backend_target_and_is_entry_scoped(monkeypatch):
         stamp = json.loads(raw)
         assert stamp == {
             "schema": 1, "entry": metadata["entry"], "layout": layout,
-            "revision": 26, "generator": 1,
+            "revision": 27, "generator": 1,
         }
         assert metadata["layouts"][layout] == {
-            "revision": 26, "generator": 1, "supersedes": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25],
+            "revision": 27, "generator": 1, "supersedes": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26],
         }
         assert STAMP not in cards[layout]
     module = sys.modules[f"{PKG}.ui.revision"]
