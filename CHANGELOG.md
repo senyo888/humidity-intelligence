@@ -6,7 +6,14 @@ All notable changes to Humidity Intelligence will be documented in this file.
 
 This project follows a practical changelog format for Home Assistant and HACS users. Add new entries under a fresh `Unreleased` section before publishing a future release.
 
-## Unreleased — v2.1.3-rc.1
+## v2.1.3 — Stable release preparation
+
+**Air Quality in Focus** carries the revision 26 release candidate forward. The
+controller package builder and admin release check also accept the exact Stable
+version. The revision 26 Mobile and Tablet cards remain compatible. See the
+[release notes and upgrade instructions](docs/releases/v2.1.3.md).
+
+## v2.1.3-rc.1 — earlier unpublished candidate
 
 - Admit RC.1 to the controller package builder and the admin release check.
 - Revision 22 added the per-user VOC chip preference in AQ details. Revision 23 keeps failed saves retryable across reconnects and distinguishes index configuration from AQ telemetry availability. Revision 24 restores live updates after a retry, accepts late write confirmations, and keeps an unconfirmed choice across a temporary Diagnostics outage. Revision 25 retains the last verified VOC filter during a preference refresh and labels a successful request as accepted by Home Assistant. Revision 26 restores that filter after Diagnostics recovers, keeps a working subscription after a resend and offers separate read and resend actions. Existing concentrations and per-monitor indices keep their own units and roles.

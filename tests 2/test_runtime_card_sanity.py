@@ -3901,7 +3901,9 @@ def test_readme_keeps_current_stable_visible_with_older_releases_collapsed():
     release_notes = readme_source.split("## Release Notes", 1)[1]
     visible_notes, previous_releases = release_notes.split("<details>", 1)
 
-    assert "### v2.1.3-rc.1 (Release candidate)" in visible_notes
+    assert "### v2.1.3 — Air Quality in Focus (Stable release preparation)" in visible_notes
+    assert "### v2.1.3-rc.1" not in visible_notes
+    assert "### v2.1.3-rc.1 (Earlier unpublished candidate)" in previous_releases
     assert "### v2.1.3-beta.1" not in visible_notes
     assert "### v2.1.3-beta.1 (Earlier unpublished candidate)" in previous_releases
     assert "### v2.1.2 (Current Stable)" in visible_notes
@@ -5850,7 +5852,7 @@ def test_v205_release_check_service_is_documented_and_registered():
     assert "wiki/Services-Reference" in readme_source
     assert "wiki/Release-Validation-for-Users" in readme_source
     assert "humidity_intelligence_v205_release_check.json" in services_yaml
-    assert manifest["version"] == "2.1.3-rc.1"
+    assert manifest["version"] == "2.1.3"
 
 
 def test_owned_ui_path_discovery_and_legacy_cleanup_guidance_is_explicit():
@@ -7126,7 +7128,8 @@ def test_release_check_rejects_unsupported_or_malformed_v21_versions():
     services = _load_services_module()
     assert services._release_check_manifest_status("2.1.3-beta.1")[0] == "pass"
     assert services._release_check_manifest_status("2.1.3-rc.1")[0] == "pass"
-    for version in ("2.1.3-beta.2", "2.1.3-rc.2", "2.1.3-rc.01", "2.1.3",
+    assert services._release_check_manifest_status("2.1.3")[0] == "pass"
+    for version in ("2.1.3-beta.2", "2.1.3-rc.2", "2.1.3-rc.01", "2.1.4",
                     "2.2.0-beta.1", "2.1.2-beta.0",
                     "2.1.0-beta.01", "2.1.0-alpha.1", "2.1.0-beta.1extra"):
         status, _ = services._release_check_manifest_status(version)

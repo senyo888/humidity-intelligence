@@ -129,7 +129,7 @@ _SAFE_FILENAME_RE = re.compile(r"^[A-Za-z0-9._-]{1,128}$")
 _OWNED_REPORT_FILENAME_PREFIX = "humidity_intelligence_"
 _OWNED_REPORT_FILENAME_SUFFIX = ".json"
 _RELEASE_CHECK_MANIFEST_VERSION_RE = re.compile(
-    r"^2\.(?:0\.(?:5|(?:[6-9]|1[0-2])(?:-(?:beta|rc)\.[1-9]\d*)?)|1\.[012](?:-(?:beta|rc)\.[1-9]\d*)?|1\.3-(?:beta|rc)\.1)$"
+    r"^2\.(?:0\.(?:5|(?:[6-9]|1[0-2])(?:-(?:beta|rc)\.[1-9]\d*)?)|1\.[012](?:-(?:beta|rc)\.[1-9]\d*)?|1\.3(?:-(?:beta|rc)\.1)?)$"
 )
 _SENSITIVE_ATTR_EXACT = {
     "access_token",
@@ -1710,11 +1710,11 @@ def _release_check_manifest_status(manifest_version: Optional[str]) -> Tuple[str
     if manifest_version and _RELEASE_CHECK_MANIFEST_VERSION_RE.fullmatch(manifest_version):
         return (
             "pass",
-            f"Manifest version {version} matches the release-check contract for the v2.0.5-v2.0.12 and v2.1.0-v2.1.2 lines, plus the v2.1.3-beta.1 and v2.1.3-rc.1 candidates.",
+            f"Manifest version {version} matches the release-check contract for the v2.0.5-v2.0.12 and v2.1.0-v2.1.2 lines, plus v2.1.3-beta.1, v2.1.3-rc.1 and v2.1.3.",
         )
     return (
         "fail",
-        f"Manifest version {version} is outside the accepted range. Expected v2.0.5, a v2.0.6-v2.0.12 beta/rc/stable version, v2.1.0-v2.1.2 beta/rc/stable, v2.1.3-beta.1 or v2.1.3-rc.1.",
+        f"Manifest version {version} is outside the accepted range. Expected v2.0.5, a v2.0.6-v2.0.12 beta/rc/stable version, v2.1.0-v2.1.2 beta/rc/stable, v2.1.3-beta.1, v2.1.3-rc.1 or v2.1.3.",
     )
 
 
