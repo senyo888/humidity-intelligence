@@ -1,9 +1,9 @@
 # Rendered UI revision
 
-Both v2.1.3-rc.1 layouts now use revision **26**, stamp schema **1** and generator
+Both v2.1.3 layouts now use revision **26**, stamp schema **1** and generator
 contract **1**. Replace saved cards at revision 25 or earlier. The final beta.1
 and the first RC.1 build exported revision 18.
-See [RC card compatibility and upgrade](releases/v2.1.3-rc.1.md).
+See [Card compatibility and upgrade](releases/v2.1.3.md).
 
 The v2.1.1 Stable release uses revision **13** in both V2 layouts, with stamp schema
 **1** and generator contract **1**. Revisions 1–12 require fresh exports and full

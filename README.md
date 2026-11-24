@@ -828,18 +828,15 @@ CO emergency pressure. Details are in
 
 ## Release Notes
 
-### v2.1.3-rc.1 (Release candidate)
+### v2.1.3 — Air Quality in Focus (Stable release preparation)
 
-Mobile and Tablet keep summary dialogs open during telemetry updates, label their
-opening snapshots and preserve the selected history range. History colours distinguish
-operating modes. AQ chips show units, retain configured missing readings and colour
-complete averages using HI display bands. Each monitor’s VOC index appears on its
-own display-only chip. Existing VOC concentration mappings keep their ppb or ppm
-units. Risk and reason displays follow the availability of their source.
+![Humidity Intelligence v2.1.3 — Air Quality in Focus](assets/release_banner/v2.1.3_release.gif)
 
-Both layouts now use revision 26. For installations with both VOC types, open the AQ badge to choose which readings appear on your cards. After upgrading, refresh the mappings, export
-each layout you use and replace saved cards at revision 25 or earlier.
-[RC compatibility and upgrade](docs/releases/v2.1.3-rc.1.md)
+Mobile and Tablet can show each monitor’s VOC index, the concentration averages, or both.
+Operating-mode colours match across the live card and history. Unavailable sources are
+identified, and timestamped AQ details stay open while readings update. Both layouts use
+revision 26. Replace saved cards at revision 25 or earlier after upgrading.
+[Release notes and upgrade guidance](docs/releases/v2.1.3.md)
 
 <a id="v212-stable-source-preparation"></a>
 
@@ -866,6 +863,19 @@ installation problem in [#145](https://github.com/senyo888/humidity-intelligence
 under Previous Releases; CHANGELOG.md retains the complete detailed history. -->
 <details>
 <summary>Previous Releases</summary>
+
+### v2.1.3-rc.1 (Earlier unpublished candidate)
+
+Mobile and Tablet keep summary dialogs open during telemetry updates, label their
+opening snapshots and preserve the selected history range. History colours distinguish
+operating modes. AQ chips show units, retain configured missing readings and colour
+complete averages using HI display bands. Each monitor’s VOC index appears on its
+own display-only chip. Existing VOC concentration mappings keep their ppb or ppm
+units. Risk and reason displays follow the availability of their source.
+
+Both layouts now use revision 26. For installations with both VOC types, open the AQ badge to choose which readings appear on your cards. After upgrading, refresh the mappings, export
+each layout you use and replace saved cards at revision 25 or earlier.
+[RC compatibility and upgrade](docs/releases/v2.1.3-rc.1.md)
 
 ### v2.1.3-beta.1 (Earlier unpublished candidate)
 
